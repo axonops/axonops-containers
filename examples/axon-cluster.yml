@@ -28,14 +28,13 @@ spec:
               - name: AXON_AGENT_ORG
                 value: "${AXON_AGENT_ORG}"
               - name: AXON_AGENT_HOST
-                value: "${AXON_AGENT_HOST}
+                value: "${AXON_AGENT_HOST}"
         config:
           jvmOptions:
             heap_initial_size: 1G
             heap_max_size: 1G
         storageConfig:
           cassandraDataVolumeClaimSpec:
-            storageClassName: local-path
             accessModes:
               - ReadWriteOnce
             resources:
