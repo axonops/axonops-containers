@@ -1,0 +1,26 @@
+apiVersion: k8ssandra.io/v1alpha1
+kind: K8ssandraCluster
+metadata:
+  name: axonops
+  namespace: k8ssandra-operator
+spec:
+  cassandra:
+    serverVersion: "4.1.9"
+    serverImage: ${IMAGE_NAME}
+      #serverImage: k8ssandra/cass-management-api:5.0.5-ubi
+    datacenters:
+      - metadata:
+          name: dc1
+        size: 1
+        config:
+          jvmOptions:
+            heap_initial_size: 2G
+            heap_max_size: 2G
+        storageConfig:
+          cassandraDataVolumeClaimSpec:
+            storageClassName: local-path
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi

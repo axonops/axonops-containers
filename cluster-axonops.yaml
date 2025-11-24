@@ -1,0 +1,34 @@
+apiVersion: k8ssandra.io/v1alpha1
+kind: K8ssandraCluster
+metadata:
+  name: marc-k8ssandra-5
+  namespace: k8ssandra-operator
+spec:
+  cassandra:
+    serverVersion: "5.0.5"
+    serverImage: ttl.sh/ac6edc24-dee7-4545-9377-d095ad5fa124:1h
+    datacenters:
+      - metadata:
+          name: dc1
+        size: 1
+        containers:
+          - name: cassandra
+            env:
+              - name: AXON_AGENT_KEY
+                value: "4428c71d2f02a33f03a15b147fc47ffb"
+              - name: AXON_AGENT_ORG
+                value: "sergio2023"
+              - name: AXON_AGENT_HOST
+                value: "agents.axonopsdev.com"
+        config:
+          jvmOptions:
+            heap_initial_size: 1G
+            heap_max_size: 1G
+        storageConfig:
+          cassandraDataVolumeClaimSpec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+
