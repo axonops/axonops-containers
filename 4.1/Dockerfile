@@ -1,6 +1,5 @@
 ARG CASSANDRA_VERSION=4.1
 FROM docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi
-FROM k8ssandra/cass-management-api:4.1-ubi
 ENV AXON_AGENT_LOG_OUTPUT=std
 ARG MAJOR_VERSION=4.1
 ARG AGENT_VER=1.0.11.asb4126cass5k8ssandra1-1

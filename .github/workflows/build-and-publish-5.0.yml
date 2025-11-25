@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - '*.*.*'
+      - '*.*.*.*-*' # example: 1.0.11.asb4126cass5k8ssandra1-1
 
 env:
   REGISTRY: ghcr.io
@@ -49,7 +50,7 @@ jobs:
     needs: create-release
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 1
+      max-parallel: 3
       matrix:
         cassandra_version: [5.0.4,5.0.5,5.0.6,4.1.9,4.1.10]
     permissions:
@@ -100,6 +101,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.version.outputs.base_version }}
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+            AGENT_VER=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
