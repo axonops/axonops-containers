@@ -51,7 +51,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        cassandra_version: [5.0.4,5.0.5,5.0.6]
+        cassandra_version: [5.0.4,5.0.5,5.0.6,4.1.9,4.1.10]
     permissions:
       contents: read
       packages: write
@@ -77,6 +77,11 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "CASSANDRA_VERSION=${{ matrix.cassandra_version }}" >> $GITHUB_OUTPUT
 
+          # Extract base version (4.1 or 5.0) from cassandra_version
+          BASE_VERSION=$(echo "${{ matrix.cassandra_version }}" | cut -d. -f1,2)
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Base version: ${BASE_VERSION}"
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -89,8 +94,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./5.0
-          file: ./5.0/Dockerfile
+          context: ./${{ steps.version.outputs.base_version }}
+          file: ./${{ steps.version.outputs.base_version }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

@@ -1,7 +1,9 @@
+ARG CASSANDRA_VERSION=4.1
+FROM docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi
 FROM k8ssandra/cass-management-api:4.1-ubi
 ENV AXON_AGENT_LOG_OUTPUT=std
-ENV MAJOR_VERSION=4.1
-ENV AGENT_VER=1.0.11.asb4126cass5k8ssandra1-1
+ARG MAJOR_VERSION=4.1
+ARG AGENT_VER=1.0.11.asb4126cass5k8ssandra1-1
 
 USER root
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
@@ -10,6 +12,7 @@ RUN groupadd --gid 9988 axonops && \
     usermod -aG axonops cassandra && \
     microdnf -y install axon-cassandra4.1-agent-${AGENT_VER} axon-agent && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
+    chmod 755 /usr/share/axonops/axon-agent && \
     rm -f /etc/axonops/axon-agent.yml && \
     touch /var/run/utmp
 
