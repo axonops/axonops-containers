@@ -48,8 +48,10 @@ jobs:
   build-and-push:
     needs: create-release
     runs-on: ubuntu-latest
-    matrix:
-      cassandra_version: [5.0.5]
+    strategy:
+      max-parallel: 1
+      matrix:
+        cassandra_version: [5.0.4,5.0.5]
     permissions:
       contents: read
       packages: write
@@ -73,7 +75,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Building version: ${VERSION}"
+          echo "CASSANDRA_VERSION=${{ matrix.cassandra_version }}" >> $GITHUB_OUTPUT
 
       - name: Extract metadata for Docker
         id: meta

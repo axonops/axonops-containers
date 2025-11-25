@@ -1,7 +1,9 @@
-FROM docker.io/k8ssandra/cass-management-api:5.0.5-ubi
+ARG CASSANDRA_VERSION=5.0
+FROM docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi
+
 ENV AXON_AGENT_LOG_OUTPUT=std
-ENV MAJOR_VERSION=5.0
-ENV AGENT_VER=1.0.11.asb4126cass5k8ssandra1-1
+ARG MAJOR_VERSION=5.0
+ARG AGENT_VER=1.0.11.asb4126cass5k8ssandra1-1
 
 USER root
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
@@ -11,6 +13,7 @@ RUN groupadd --gid 9988 axonops && \
     microdnf -y install axon-cassandra5.0-agent-jdk17-${AGENT_VER} axon-agent gettext && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
     chmod 755 /usr/share/axonops/axon-agent && \
+    rm -f /etc/axonops/axon-agent.yml && \
     touch /var/run/utmp && \
     echo ". /usr/share/axonops/axonops-jvm.options" >> /opt/cassandra/conf/cassandra-env.sh
 

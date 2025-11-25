@@ -10,6 +10,7 @@ RUN groupadd --gid 9988 axonops && \
     usermod -aG axonops cassandra && \
     microdnf -y install axon-cassandra4.1-agent-${AGENT_VER} axon-agent && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
+    rm -f /etc/axonops/axon-agent.yml && \
     touch /var/run/utmp
 
 ENV JVM_EXTRA_OPTS="-javaagent:/usr/share/axonops/axon-cassandra${MAJOR_VERSION}-agent.jar=/etc/axonops/axon-agent.yml"
