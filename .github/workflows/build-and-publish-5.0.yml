@@ -3,7 +3,7 @@ name: Build and Publish 5.0 Container
 on:
   push:
     tags:
-      - '*.*.*-*.*.*'
+      - '*.*.*'
 
 env:
   REGISTRY: ghcr.io
