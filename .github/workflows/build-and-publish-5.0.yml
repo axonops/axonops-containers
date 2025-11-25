@@ -51,7 +51,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        cassandra_version: [5.0.4,5.0.5]
+        cassandra_version: [5.0.4,5.0.5,5.0.6]
     permissions:
       contents: read
       packages: write
@@ -83,6 +83,7 @@ jobs:
         with:
           images: ghcr.io/${{ env.IMAGE_NAME }}
           tags: |
+            # Tags based on the git version, prefixed by the matrix variable
             type=semver,pattern={{version}},prefix=${{ matrix.cassandra_version }}-
 
       - name: Build and push Docker image
