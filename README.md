@@ -17,19 +17,19 @@ These containers are optimized for Kubernetes deployments using the K8ssandra Op
 - kubectl configured to access your cluster
 - Helm 3.x
 - Docker (for local builds)
-- AxonOps account with valid API key and organization ID
+- AxonOps account with valid API key and organization ID (see [AxonOps Cloud Setup Guide](https://docs.axonops.com/get_started/cloud/))
 
 ## Supported Cassandra Versions
 
 ### Cassandra 5.0
 - Base Image: `k8ssandra/cass-management-api:5.0.5-ubi`
-- AxonOps Agent: `1.0.11.asb4126cass5k8ssandra1-1`
+- AxonOps Agent: `1.0.12`
 - JDK: JDK17
 - Location: `5.0/` directory
 
 ### Cassandra 4.1
 - Base Image: `k8ssandra/cass-management-api:4.1-ubi`
-- AxonOps Agent: `1.0.14.asb4118k8ssandra411-1`
+- AxonOps Agent: `1.0.15`
 - Location: `4.1/` directory
 
 ## Getting Started
@@ -52,9 +52,9 @@ This script will:
 Set up your AxonOps credentials:
 
 ```bash
-export AXON_AGENT_KEY="your-axonops-api-key"
-export AXON_AGENT_ORG="your-organization-id"
-export AXON_AGENT_HOST="agents.axonops.cloud"  # or your custom host
+export AXON_AGENT_KEY="your-axonops-api-key" # Obtained from AxonOps Cloud Console
+export AXON_AGENT_ORG="your-organization-id" # AxonOps Cloud organization name
+export AXON_AGENT_HOST="agents.axonops.cloud"
 ```
 
 Optional: Specify a custom image name (defaults to ttl.sh with 1-hour TTL):
@@ -94,7 +94,7 @@ docker push your-registry/axonops-cassandra:5.0.5
 
 ```bash
 cd 4.1
-docker build -f Dockerfile.4-1 -t your-registry/axonops-cassandra:4.1 .
+docker build -t your-registry/axonops-cassandra:4.1 .
 docker push your-registry/axonops-cassandra:4.1
 ```
 
@@ -200,7 +200,7 @@ export AXON_AGENT_HOST="your-host"  # Optional
 4. Builds new Docker image
 5. Pushes image to registry
 6. Pulls image using crictl
-7. Substitutes environment variables in `cluster-axonops.yaml`
+7. Substitutes environment variables in `axon-cluster.yml`
 8. Deploys the updated cluster configuration
 
 **Environment Variables:**
@@ -244,7 +244,9 @@ storageConfig:
         storage: 2Gi
 ```
 
-AxonOps requires a small volume to hold its configuration. You can add it with
+**AxonOps Volume (Required):**
+
+AxonOps requires a persistent volume to store its configuration. Add this to your cluster configuration:
 
 ```yaml
         extraVolumes:
