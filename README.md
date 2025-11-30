@@ -147,6 +147,8 @@ kubectl exec -it <pod-name> -n k8ssandra-operator -c cassandra -- cqlsh
 
 #### External Access (port-forward)
 
+> **Note:** Port-forwarding is suitable for local development and testing. For production environments (AWS, GCP, Azure, etc.), consider using a LoadBalancer service, Ingress controller, or VPN-based access depending on your security requirements.
+
 To connect from outside the Kubernetes cluster (e.g., from your local machine):
 
 1. Get the superuser credentials:
