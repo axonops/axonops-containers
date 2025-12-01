@@ -17,6 +17,9 @@ These containers are optimized for Kubernetes deployments using the K8ssandra Op
 - kubectl configured to access your cluster
 - Helm 3.x
 - Docker (for local builds)
+- envsubst (for environment variable substitution in YAML files)
+  - macOS: `brew install gettext`
+  - Linux: Usually pre-installed, or `apt install gettext` / `yum install gettext`
 - AxonOps account with valid API key and organization ID (see [AxonOps Cloud Setup Guide](https://docs.axonops.com/get_started/cloud/))
 
 ## Supported Cassandra Versions
@@ -115,6 +118,59 @@ export AXON_AGENT_HOST="agents.axonops.cloud"
 cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
 ```
 
+### Verifying the Deployment
+
+After deploying, verify that your cluster is running:
+
+```bash
+# Check cluster status
+kubectl get k8ssandraclusters -n k8ssandra-operator
+
+# Watch pods come up (wait for all to show Running and Ready)
+kubectl get pods -n k8ssandra-operator -w
+
+# Check detailed cluster status
+kubectl describe k8ssandracluster <cluster-name> -n k8ssandra-operator
+```
+
+All Cassandra pods should show `2/2` in the READY column when fully started.
+
+### Connecting to the Cluster
+
+#### Using cqlsh
+
+Connect directly to a Cassandra pod:
+
+```bash
+kubectl exec -it <pod-name> -n k8ssandra-operator -c cassandra -- cqlsh
+```
+
+#### External Access (port-forward)
+
+> **Note:** Port-forwarding is suitable for local development and testing. For production environments (AWS, GCP, Azure, etc.), consider using a LoadBalancer service, Ingress controller, or VPN-based access depending on your security requirements.
+
+To connect from outside the Kubernetes cluster (e.g., from your local machine):
+
+1. Get the superuser credentials:
+   ```bash
+   # Username
+   kubectl get secret <cluster-name>-superuser -n k8ssandra-operator -o jsonpath='{.data.username}' | base64 -d
+
+   # Password
+   kubectl get secret <cluster-name>-superuser -n k8ssandra-operator -o jsonpath='{.data.password}' | base64 -d
+   ```
+
+2. Start port-forwarding:
+   ```bash
+   kubectl port-forward svc/<cluster-name>-dc1-service 9042:9042 -n k8ssandra-operator
+   ```
+
+3. Connect using cqlsh or any CQL client at `localhost:9042` with the credentials from step 1.
+
+#### AxonOps Workbench
+
+[AxonOps Workbench](https://axonops.com/workbench) is a free desktop IDE for developers and DBAs to connect to and manage Cassandra clusters. It provides a modern interface for running queries, browsing schema, and managing your data. Use the port-forward method above to connect Workbench to your Kubernetes-based cluster.
+
 ### Key Configuration Options
 
 The example cluster includes:
@@ -183,6 +239,8 @@ Installs the K8ssandra Operator and its prerequisites.
 
 Builds, pushes, and deploys a Cassandra cluster with AxonOps integration.
 
+> **Note:** This script is designed for Kubernetes environments with direct node access using `crictl`. It may not work on local development setups like minikube, kind, or Docker Desktop. For local development, see the manual build and deploy steps in the [Building Docker Images](#building-docker-images) and [Deploying to Kubernetes](#deploying-to-kubernetes) sections.
+
 **Usage:**
 ```bash
 export IMAGE_NAME="your-registry/image:tag"  # Optional, defaults to ttl.sh
@@ -190,17 +248,18 @@ export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
 export AXON_AGENT_HOST="your-host"  # Optional
 
-./scripts/rebuild.sh
+cd 5.0  # or 4.1
+../scripts/rebuild.sh
 ```
 
 **What it does:**
 1. Generates a unique image name if not provided (using ttl.sh with 1-hour TTL)
 2. Deletes existing cluster deployment
-3. Cleans up old container images from crictl
+3. Cleans up old container images using crictl
 4. Builds new Docker image
 5. Pushes image to registry
 6. Pulls image using crictl
-7. Substitutes environment variables in `axon-cluster.yml`
+7. Substitutes environment variables in `cluster-axonops.yaml` (copy from [examples/axon-cluster.yml](examples/axon-cluster.yml))
 8. Deploys the updated cluster configuration
 
 **Environment Variables:**
@@ -216,7 +275,7 @@ export AXON_AGENT_HOST="your-host"  # Optional
 A complete K8ssandraCluster resource definition showcasing:
 
 **Cluster Specifications:**
-- Name: `axonops-k8ssandra-5`
+- Name: `axonops-k8ssandra-50`
 - Namespace: `k8ssandra-operator`
 - Cassandra Version: 5.0.5
 - Datacenter: `dc1` with 3 nodes
@@ -273,12 +332,12 @@ To use this example:
    cp examples/axon-cluster.yml my-cluster.yml
    ```
 
-2. Update the values:
-   - Change cluster name and namespace
-   - Adjust node count (`size`)
-   - Modify resource allocations
-   - Update storage settings
-   - Set your image name
+2. Update the values in `my-cluster.yml`:
+   - **Cluster name**: Edit the `metadata.name` field (e.g., change `axonops-k8ssandra-50` to `my-cassandra-cluster`). Note: The cluster name is used to generate service names, secret names, and pod names.
+   - **Namespace**: Edit `metadata.namespace` if deploying to a different namespace
+   - **Node count**: Adjust `size` under `datacenters` (default is 3)
+   - **Resources**: Modify CPU/memory allocations under `resources`
+   - **Storage**: Update `storage` size under `storageConfig`
 
 3. Deploy:
    ```bash
