@@ -1,0 +1,25 @@
+# Trivy ignore file - suppress known upstream vulnerabilities
+# These should be reviewed periodically and removed when fixed upstream
+
+# OS - expat (base UBI image)
+CVE-2025-59375
+
+# Java - AxonOps Cassandra Agent (agent-c4-2.3.2-all.jar)
+# Requires AxonOps team to update dependencies
+CVE-2024-53990  # async-http-client (CRITICAL)
+CVE-2025-52999  # jackson-core
+CVE-2024-7254   # protobuf-java
+CVE-2024-47554  # commons-io
+CVE-2024-36114  # aircompressor
+CVE-2022-1471   # snakeyaml
+
+# Java - K8ssandra Management API (upstream)
+CVE-2025-24970  # netty-handler
+CVE-2023-6378   # logback
+CVE-2023-6481   # logback
+
+# Go - AxonOps binaries (axon-agent, axon-cassandra-restore, etc.)
+# Requires rebuild with Go 1.24.9+
+CVE-2025-58183  # archive/tar
+CVE-2025-58186  # HTTP headers
+CVE-2025-58187  # name constraint
