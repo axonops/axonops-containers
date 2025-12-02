@@ -195,7 +195,7 @@ The AxonOps agent is configured via environment variables passed to the Cassandr
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `AXON_AGENT_KEY` | Your AxonOps API key | Required |
+| `AXON_AGENT_KEY` | Your AxonOps agent key | Required |
 | `AXON_AGENT_ORG` | Your AxonOps organization ID | Required |
 | `AXON_AGENT_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
 | `AXON_AGENT_LOG_OUTPUT` | Agent log output destination | `std` |
