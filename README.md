@@ -5,11 +5,65 @@ Docker containers for Apache Cassandra with integrated AxonOps monitoring and ma
 ## Overview
 
 This repository provides pre-configured Docker images that combine:
-- Apache Cassandra (versions 4.1 and 5.0)
+- Apache Cassandra 5.0
 - K8ssandra Management API
 - AxonOps Agent for monitoring and management
+- [cqlai](https://github.com/axonops/cqlai) - Modern CQL shell
 
 These containers are optimized for Kubernetes deployments using the K8ssandra Operator and include automated CI/CD pipelines for building and publishing to GitHub Container Registry.
+
+## Pre-built Docker Images
+
+Pre-built images are available from GitHub Container Registry (GHCR). This is the easiest way to get started.
+
+### Available Images
+
+| Cassandra Version | Image |
+|-------------------|-------|
+| 5.0.6 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0` |
+| 5.0.5 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.5-1.0.0` |
+| 5.0.4 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.4-1.0.0` |
+
+Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
+
+### Quick Start with Docker/Podman
+
+Run a single-node Cassandra instance locally:
+
+```bash
+# Pull the image
+docker pull ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0
+
+# Run with AxonOps agent (replace with your credentials)
+docker run -d --name cassandra \
+  -e AXON_AGENT_KEY="your-axonops-agent-key" \
+  -e AXON_AGENT_ORG="your-organization" \
+  -e AXON_AGENT_HOST="agents.axonops.cloud" \
+  -p 9042:9042 \
+  -p 8080:8080 \
+  ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0
+
+# Wait for Cassandra to be ready (check Management API)
+curl http://localhost:8080/api/v0/probes/readiness
+
+# Connect using cqlai (included in the image)
+docker exec -it cassandra cqlai
+```
+
+### Using with Kubernetes (K8ssandra)
+
+For Kubernetes deployments, use the image with K8ssandra Operator:
+
+```bash
+export IMAGE_NAME="ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0"
+export AXON_AGENT_KEY="your-key"
+export AXON_AGENT_ORG="your-org"
+export AXON_AGENT_HOST="agents.axonops.cloud"
+
+cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
+```
+
+See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instructions.
 
 ## Prerequisites
 
@@ -25,15 +79,11 @@ These containers are optimized for Kubernetes deployments using the K8ssandra Op
 ## Supported Cassandra Versions
 
 ### Cassandra 5.0
-- Base Image: `k8ssandra/cass-management-api:5.0.5-ubi`
-- AxonOps Agent: `1.0.12`
+- Base Image: `k8ssandra/cass-management-api:5.0-ubi`
+- Supported versions: 5.0.4, 5.0.5, 5.0.6
 - JDK: JDK17
+- Includes: AxonOps Agent, cqlai
 - Location: `5.0/` directory
-
-### Cassandra 4.1
-- Base Image: `k8ssandra/cass-management-api:4.1-ubi`
-- AxonOps Agent: `1.0.15`
-- Location: `4.1/` directory
 
 ## Getting Started
 
@@ -85,20 +135,12 @@ The script will:
 
 ## Building Docker Images
 
-### Cassandra 5.0
+If you prefer to build images yourself instead of using the [pre-built images](#pre-built-docker-images):
 
 ```bash
 cd 5.0
-docker build -t your-registry/axonops-cassandra:5.0.5 .
-docker push your-registry/axonops-cassandra:5.0.5
-```
-
-### Cassandra 4.1
-
-```bash
-cd 4.1
-docker build -t your-registry/axonops-cassandra:4.1 .
-docker push your-registry/axonops-cassandra:4.1
+docker build -t your-registry/axonops-cassandra:5.0.6 .
+docker push your-registry/axonops-cassandra:5.0.6
 ```
 
 ## Deploying to Kubernetes
@@ -353,27 +395,37 @@ To use this example:
 
 ### Automated Builds
 
-The repository includes a GitHub Actions workflow that automatically builds and publishes Docker images when version tags are pushed.
+The repository includes a GitHub Actions workflow that automatically builds and publishes Docker images.
 
 **Workflow:** `.github/workflows/build-and-publish-5.0.yml`
 
-**Trigger:** Push tags matching pattern `*.*.*-*.*.*`
+**Triggers:**
+- Push to `main` branch - runs tests only
+- Pull requests to `main` - runs tests only
+- Push version tags (e.g., `1.0.0`) - runs tests, creates release, and publishes images
 
-Example tag: `1.0.0-5.0.5` (agent-version-cassandra-version)
+**Test Suite:**
+The CI pipeline includes comprehensive testing:
+- Management API health checks (liveness, readiness)
+- Management API Java agent operations (create keyspace, table, flush, compact)
+- CQL operations using cqlai (CREATE, INSERT, SELECT, DROP)
+- AxonOps agent process verification
+- Trivy container security scanning
 
-**Process:**
-1. **Create Release**: Automatically creates a GitHub release for the tag
-2. **Build and Push**:
-   - Builds Docker image from `5.0/Dockerfile`
-   - Tags with version (`5.0-<version>`) and `5.0-latest`
-   - Pushes to GitHub Container Registry (`ghcr.io`)
-   - Uses Docker layer caching for faster builds
+**Publishing Process:**
+1. Tests must pass for all Cassandra versions (5.0.4, 5.0.5, 5.0.6)
+2. GitHub Release is created automatically
+3. Multi-arch images (amd64, arm64) are built and pushed to GHCR
 
-**Image Location:**
+**Image Tags:**
 ```
-ghcr.io/<owner>/<repository>:5.0-<version>
-ghcr.io/<owner>/<repository>:5.0-latest
+ghcr.io/axonops/axonops-cassandra-containers:<cassandra-version>-<release-tag>
 ```
+
+Example: For release tag `1.0.0`:
+- `ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0`
+- `ghcr.io/axonops/axonops-cassandra-containers:5.0.5-1.0.0`
+- `ghcr.io/axonops/axonops-cassandra-containers:5.0.4-1.0.0`
 
 ## Monitoring with AxonOps
 
