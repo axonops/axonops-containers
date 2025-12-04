@@ -60,7 +60,7 @@ export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
 export AXON_AGENT_HOST="agents.axonops.cloud"
 
-cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
+cat k8ssandra/examples/axon-cluster.yml | envsubst | kubectl apply -f -
 ```
 
 See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instructions.
@@ -83,7 +83,7 @@ See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instruction
 - Supported versions: 5.0.4, 5.0.5, 5.0.6
 - JDK: JDK17
 - Includes: AxonOps Agent, cqlai
-- Location: `5.0/` directory
+- Location: `k8ssandra/5.0/` directory
 
 ## Getting Started
 
