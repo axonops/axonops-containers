@@ -7,9 +7,15 @@ on:
       - '*.*.*.*-*'
     branches:
       - main
+    paths:
+      - 'k8ssandra/**'
+      - '.github/workflows/k8ssandra-build-and-publish-5.0.yml'
   pull_request:
     branches:
       - main
+    paths:
+      - 'k8ssandra/**'
+      - '.github/workflows/k8ssandra-build-and-publish-5.0.yml'
 
 env:
   REGISTRY: ghcr.io
