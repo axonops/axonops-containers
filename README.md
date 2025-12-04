@@ -6,11 +6,11 @@
 
 Container build definitions and CI/CD pipelines for AxonOps container images.
 
-## 📦 Components
+## Components
 
 - **[k8ssandra/](./k8ssandra/)** - Apache Cassandra with AxonOps integration for K8ssandra Operator
 
-## 🏗️ Repository Conventions
+## Repository Conventions
 
 - **Multi-architecture support**: linux/amd64, linux/arm64
 - **Published to**: GitHub Container Registry `ghcr.io/axonops/<image-name>:<tag>`
@@ -18,17 +18,17 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - **Security scanning**: Trivy vulnerability scanning on all images
 - **Base images**: Official upstream sources where possible
 
-## 🚀 Getting Started
+## Getting Started
 
 Each component has its own documentation with detailed instructions:
 
 - [K8ssandra Documentation](./k8ssandra/README.md)
 
-## 🛠️ Development
+## Development
 
 See [DEVELOPMENT.md](./DEVELOPMENT.md) for guidelines on contributing, adding new components, and maintenance procedures.
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 ### Apache Cassandra
 We extend our appreciation to the [Apache Cassandra](https://cassandra.apache.org/) community for their outstanding work and contributions to the distributed database field. Apache Cassandra is a free and open-source, distributed, wide-column store, NoSQL database management system designed to handle large amounts of data across many commodity servers, providing high availability with no single point of failure.
@@ -46,11 +46,11 @@ For more information:
 - [K8ssandra GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [K8ssandra Documentation](https://docs.k8ssandra.io/)
 
-## 📄 License
+## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-## ⚖️ Legal Notices
+## Legal Notices
 
 This project may contain trademarks or logos for projects, products, or services. Any use of third-party trademarks or logos are subject to those third-party's policies.
 
