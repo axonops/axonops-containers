@@ -22,6 +22,7 @@ fi
 
 # Add AxonOps JVM options to cassandra-env.sh
 echo ". /usr/share/axonops/axonops-jvm.options" >> /opt/cassandra/conf/cassandra-env.sh
+echo ". /usr/share/axonops/axonops-jvm.options" >> /config/cassandra-env.sh
 
 # Start Management API + Cassandra in background
 /docker-entrypoint.sh mgmtapi &
