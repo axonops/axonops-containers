@@ -63,7 +63,7 @@ git push origin 1.0.0
 2. Select **K8ssandra Publish to GHCR** workflow
 3. Click **Run workflow** button
 4. Fill in inputs:
-   - **git_tag**: The tag you created (e.g., `1.0.0`)
+   - **main_git_tag**: The tag you created (e.g., `1.0.0`)
    - **container_version**: Version to tag images in GHCR (e.g., `1.0.0`)
 5. Click **Run workflow**
 
@@ -94,7 +94,7 @@ The publish workflow performs these steps:
    - Fails if any image tag `*-container_version` exists
    - Prevents accidental overwrites
 
-2. **Checkout** - Checks out the specific `git_tag` commit
+2. **Checkout** - Checks out the specific `main_git_tag` commit
    - Not the current state of `main`
    - Ensures you're publishing exactly what was tagged
 
@@ -187,7 +187,7 @@ All images are multi-arch: `linux/amd64`, `linux/arm64`
 
 ### GitHub Release
 - Name: `k8ssandra-<container_version>`
-- Tag: `<git_tag>`
+- Tag: `<main_git_tag>`
 - Body: Lists all published image tags
 
 ## Troubleshooting
