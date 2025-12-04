@@ -70,9 +70,16 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           TAG_NAME="${GITHUB_REF#refs/tags/}"
 
-          # Get tag creator info
-          TAG_AUTHOR=$(git tag -l --format='%(taggername)' ${TAG_NAME})
-          TAG_EMAIL=$(git tag -l --format='%(taggeremail)' ${TAG_NAME})
+          # Get tag creator info (from annotated tag or commit author)
+          TAG_AUTHOR=$(git tag -l --format='%(taggername)' ${TAG_NAME} 2>/dev/null)
+          TAG_EMAIL=$(git tag -l --format='%(taggeremail)' ${TAG_NAME} 2>/dev/null)
+
+          # If tag is not annotated, get from commit author
+          if [ -z "${TAG_AUTHOR}" ]; then
+            TAG_COMMIT=$(git rev-parse ${TAG_NAME})
+            TAG_AUTHOR=$(git log -1 --format='%an' ${TAG_COMMIT})
+            TAG_EMAIL=$(git log -1 --format='%ae' ${TAG_COMMIT})
+          fi
 
           git log --oneline origin/main..origin/development --pretty=format:"- %s" > /tmp/changelog.txt
 
