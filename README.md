@@ -87,7 +87,9 @@ gh workflow run development-<component>-publish.yml \
 docker pull ghcr.io/axonops/development-<image>:5.0.6-dev-1.0.0
 # Run tests, validate functionality
 
-# 4. When ready, promote to production via PR: development → main
+# 4. Promote to production (auto-creates PR)
+git tag merge-1.0.0 && git push origin merge-1.0.0
+# PR auto-created, review and merge to main
 ```
 
 **Use for:** Feature testing, integration testing, QA validation before production.

@@ -1,0 +1,124 @@
+name: Create Promotion PR to Main
+
+on:
+  push:
+    tags:
+      - 'merge-*'
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on development branch
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Tag: $TAG_NAME"
+
+          # Get commit of the tag
+          TAG_COMMIT=$(git rev-parse $TAG_NAME)
+          echo "Tag commit: $TAG_COMMIT"
+
+          # Check if on development branch
+          git fetch origin development
+          if git merge-base --is-ancestor $TAG_COMMIT origin/development; then
+            echo "✓ Tag is on development branch"
+          else
+            echo "ERROR: Tag must be on development branch"
+            exit 1
+          fi
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          # Remove 'merge-' prefix
+          VERSION="${TAG_NAME#merge-}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Promotion version: ${VERSION}"
+
+      - name: Check if PR already exists
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh pr list --base main --head development --state open --json number --jq '.[0].number' > /dev/null 2>&1; then
+            PR_NUM=$(gh pr list --base main --head development --state open --json number --jq '.[0].number')
+            if [ ! -z "$PR_NUM" ]; then
+              echo "pr_exists=true" >> $GITHUB_OUTPUT
+              echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+              echo "PR already exists: #$PR_NUM"
+            else
+              echo "pr_exists=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR to main
+        if: steps.check_pr.outputs.pr_exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+
+          # Get tag creator info (from annotated tag or commit author)
+          TAG_AUTHOR=$(git tag -l --format='%(taggername)' ${TAG_NAME} 2>/dev/null)
+          TAG_EMAIL=$(git tag -l --format='%(taggeremail)' ${TAG_NAME} 2>/dev/null)
+
+          # If tag is not annotated, get from commit author
+          if [ -z "${TAG_AUTHOR}" ]; then
+            TAG_COMMIT=$(git rev-parse ${TAG_NAME})
+            TAG_AUTHOR=$(git log -1 --format='%an' ${TAG_COMMIT})
+            TAG_EMAIL=$(git log -1 --format='%ae' ${TAG_COMMIT})
+          fi
+
+          # Extract GitHub username from email (e.g., 163300+millerjp@users.noreply.github.com → millerjp)
+          if [[ "${TAG_EMAIL}" =~ \+([^@]+)@users\.noreply\.github\.com ]]; then
+            GITHUB_USER="${BASH_REMATCH[1]}"
+          else
+            GITHUB_USER="${TAG_AUTHOR}"
+          fi
+
+          git log --oneline origin/main..origin/development --pretty=format:"- %s" > /tmp/changelog.txt
+
+          echo "## Merge to Main" > /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "This PR merges tested changes from development branch to main." >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          if [ ! -z "${TAG_AUTHOR}" ]; then
+            echo "**Requested by:** ${TAG_AUTHOR} (@${GITHUB_USER})" >> /tmp/pr-body.md
+          fi
+          echo "**Tag:** ${TAG_NAME}" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "### Changes in this release" >> /tmp/pr-body.md
+          cat /tmp/changelog.txt >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "### Next Steps" >> /tmp/pr-body.md
+          echo "1. Review changes" >> /tmp/pr-body.md
+          echo "2. Approve PR" >> /tmp/pr-body.md
+          echo "3. Merge to main" >> /tmp/pr-body.md
+          echo "4. Tag main branch and run production publish workflow" >> /tmp/pr-body.md
+
+          # Create PR from development to main
+          gh pr create \
+            --base main \
+            --head development \
+            --title "${GITHUB_USER}: Merge ${TAG_NAME} from development branch to main" \
+            --body-file /tmp/pr-body.md
+
+          echo "✓ PR created for tag ${TAG_NAME}"
+
+      - name: PR already exists
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        run: |
+          echo "ℹ️ PR already exists: #${{ steps.check_pr.outputs.pr_number }}"
+          echo "Skipping PR creation"

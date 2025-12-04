@@ -291,13 +291,26 @@ Publish development images for testing before production release:
 
 When development images are tested and ready for production:
 
-1. **Merge development to main**
-   - Create PR: `development` → `main`
-   - Approval required
+1. **Create promotion tag to auto-generate PR**
+   ```bash
+   git checkout development
+   git pull origin development
+   git tag merge-1.0.0
+   git push origin merge-1.0.0
+   ```
+
+   The `create-promotion-pr.yml` workflow automatically creates a PR from `development` → `main` with:
+   - Changelog of all commits
+   - Next steps for production publishing
+   - 'production-release' label
+
+2. **Review and merge the auto-generated PR**
+   - Review changes in PR
+   - Approval required (enforced by branch protection)
    - Tests run on PR
    - Merge when approved
 
-2. **Create Git Tag on Main Branch**
+3. **Create Git Tag on Main Branch**
    ```bash
    # IMPORTANT: Must be on main branch
    git checkout main
@@ -306,7 +319,7 @@ When development images are tested and ready for production:
    git push origin 1.0.0
    ```
 
-3. **Trigger Production Publish Workflow**
+4. **Trigger Production Publish Workflow**
 
    **GitHub CLI:**
    ```bash
@@ -319,7 +332,7 @@ When development images are tested and ready for production:
    - Actions → Select publish workflow → Run workflow
    - Enter `main_git_tag` and `container_version`
 
-4. **Workflow Execution**
+5. **Workflow Execution**
    - Validates tag is on main branch (fails if not)
    - Validates container version doesn't exist in GHCR (prevents overwrites)
    - Checks out specific git tag
@@ -328,7 +341,7 @@ When development images are tested and ready for production:
    - Publishes to: `ghcr.io/axonops/<image-name>`
    - Creates GitHub Release
 
-5. **Verify Production Release**
+6. **Verify Production Release**
    ```bash
    gh release view <component>-1.0.0
    docker pull ghcr.io/axonops/<image>:<version>-1.0.0

@@ -17,7 +17,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  validate:
+  k8ssandra-validate:
     runs-on: ubuntu-latest
     permissions:
       packages: read
@@ -68,8 +68,8 @@ jobs:
 
           echo "✓ Container version ${{ inputs.container_version }} is available"
 
-  test:
-    needs: validate
+  k8ssandra-test:
+    needs: k8ssandra-validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -349,8 +349,8 @@ jobs:
           docker stop cassandra-test || true
           docker rm cassandra-test || true
 
-  create-release:
-    needs: test
+  k8ssandra-create-release:
+    needs: k8ssandra-test
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -380,8 +380,8 @@ jobs:
             console.log(`Release created: ${release.data.html_url}`);
             return release.data.id;
 
-  build-and-push:
-    needs: [test, create-release]
+  k8ssandra-build-and-push:
+    needs: [k8ssandra-test, k8ssandra-create-release]
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 3
