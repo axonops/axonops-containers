@@ -74,10 +74,7 @@ jobs:
           TAG_AUTHOR=$(git tag -l --format='%(taggername)' ${TAG_NAME})
           TAG_EMAIL=$(git tag -l --format='%(taggeremail)' ${TAG_NAME})
 
-          # Generate changelog
           git log --oneline origin/main..origin/development --pretty=format:"- %s" > /tmp/changelog.txt
-
-          # Create PR body file using echo
           echo "## Production Release" > /tmp/pr-body.md
           echo "" >> /tmp/pr-body.md
           echo "This PR promotes tested changes from development to main for production release." >> /tmp/pr-body.md
