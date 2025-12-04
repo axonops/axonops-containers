@@ -77,27 +77,22 @@ jobs:
           # Generate changelog
           git log --oneline origin/main..origin/development --pretty=format:"- %s" > /tmp/changelog.txt
 
-          # Create PR body file
-          cat > /tmp/pr-body.md <<EOFBODY
-## Production Release
-
-This PR promotes tested changes from development to main for production release.
-
-**Requested by:** ${TAG_AUTHOR} ${TAG_EMAIL}
-**Tag:** ${TAG_NAME}
-
-### Changes in this release
-EOFBODY
+          # Create PR body file using echo
+          echo "## Production Release" > /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "This PR promotes tested changes from development to main for production release." >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "**Requested by:** ${TAG_AUTHOR} ${TAG_EMAIL}" >> /tmp/pr-body.md
+          echo "**Tag:** ${TAG_NAME}" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "### Changes in this release" >> /tmp/pr-body.md
           cat /tmp/changelog.txt >> /tmp/pr-body.md
-          cat >> /tmp/pr-body.md <<'EOFBODY'
-
-### Next Steps
-1. Review changes
-2. Approve PR
-3. Merge to main
-4. Tag main branch and run production publish workflow
-
-EOFBODY
+          echo "" >> /tmp/pr-body.md
+          echo "### Next Steps" >> /tmp/pr-body.md
+          echo "1. Review changes" >> /tmp/pr-body.md
+          echo "2. Approve PR" >> /tmp/pr-body.md
+          echo "3. Merge to main" >> /tmp/pr-body.md
+          echo "4. Tag main branch and run production publish workflow" >> /tmp/pr-body.md
 
           # Create PR from development to main
           gh pr create \
