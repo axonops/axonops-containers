@@ -69,17 +69,17 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Create PR from development to main
-          gh pr create \
-            --base main \
-            --head development \
-            --title "Release ${VERSION} to production" \
-            --body "## Production Release ${VERSION}
+          # Generate changelog
+          CHANGELOG=$(git log --oneline origin/main..origin/development --pretty=format:"- %s")
+
+          # Create PR body
+          PR_BODY=$(cat <<EOF
+## Production Release ${VERSION}
 
 This PR promotes tested changes from development to main for production release.
 
 ### Changes in this release
-$(git log --oneline origin/main..origin/development --pretty=format:"- %s")
+${CHANGELOG}
 
 ### Next Steps
 1. Review changes
@@ -95,8 +95,19 @@ gh workflow run k8ssandra-publish.yml \\
   -f main_git_tag=${VERSION} \\
   -f container_version=${VERSION}
 \`\`\`
-" \
-            --label "production-release"
+EOF
+)
+
+          # Get the actual tag name
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+
+          # Create PR from development to main
+          gh pr create \
+            --base main \
+            --head development \
+            --title "Merge ${TAG_NAME} from development branch to main" \
+            --body "$PR_BODY" \
+            --label "merge-to-main"
 
           echo "✓ PR created for release ${VERSION}"
 
