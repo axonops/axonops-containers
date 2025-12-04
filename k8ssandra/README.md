@@ -303,7 +303,7 @@ cd 5.0
 4. Builds new Docker image
 5. Pushes image to registry
 6. Pulls image using crictl
-7. Substitutes environment variables in `cluster-axonops.yaml` (copy from [k8ssandra/examples/axon-cluster.yml](k8ssandra/examples/axon-cluster.yml))
+7. Substitutes environment variables in `cluster-axonops.yaml` (copy from [examples/axon-cluster.yml](examples/axon-cluster.yml))
 8. Deploys the updated cluster configuration
 
 **Environment Variables:**
