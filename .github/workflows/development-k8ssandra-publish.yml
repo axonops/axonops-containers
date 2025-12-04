@@ -1,27 +1,52 @@
-name: K8ssandra Build and Test
+name: Development K8ssandra Publish to GHCR
 
 on:
-  push:
-    branches:
-      - main
-      - development
-    paths:
-      - 'k8ssandra/**'
-      - '.github/workflows/k8ssandra-build-and-test.yml'
-  pull_request:
-    branches:
-      - main
-      - development
-    paths:
-      - 'k8ssandra/**'
-      - '.github/workflows/k8ssandra-build-and-test.yml'
+  workflow_dispatch:
+    inputs:
+      dev_git_tag:
+        description: 'Git tag on development branch to checkout and build (e.g., dev-1.0.0)'
+        required: true
+        type: string
+      container_version:
+        description: 'Container version for GHCR (e.g., dev-feature-x, dev-1.0.0)'
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: development-axonops-cassandra-containers
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dev_git_tag }}
+
+      - name: Verify tag is on development branch
+        run: |
+          echo "Checking if tag ${{ inputs.dev_git_tag }} is on development branch..."
+
+          # Get the commit hash of the tag
+          TAG_COMMIT=$(git rev-parse ${{ inputs.dev_git_tag }})
+          echo "Tag commit: $TAG_COMMIT"
+
+          # Check if this commit exists in development branch history
+          git fetch origin development
+          if git merge-base --is-ancestor $TAG_COMMIT origin/development; then
+            echo "✓ Tag ${{ inputs.dev_git_tag }} is on development branch"
+          else
+            echo "ERROR: Tag ${{ inputs.dev_git_tag }} is not on development branch"
+            echo "Only tags pointing to commits on development branch can be published to development registry"
+            exit 1
+          fi
+
   test:
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,8 +55,10 @@ jobs:
       matrix:
         cassandra_version: [5.0.6]
     steps:
-      - name: Checkout code
+      - name: Checkout code at tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dev_git_tag }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -298,3 +325,59 @@ jobs:
           docker logs cassandra-test || true
           docker stop cassandra-test || true
           docker rm cassandra-test || true
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 3
+      matrix:
+        cassandra_version: [5.0.4, 5.0.5, 5.0.6]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dev_git_tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract base version
+        id: version
+        run: |
+          BASE_VERSION=$(echo "${{ matrix.cassandra_version }}" | cut -d. -f1,2)
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Base version: ${BASE_VERSION}"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/axonops/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+          labels: |
+            org.opencontainers.image.title=AxonOps K8ssandra Development Container
+            org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with AxonOps integration (DEVELOPMENT)
+            org.opencontainers.image.version=${{ inputs.container_version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.version.outputs.base_version }}
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image digest
+        run: echo "Development image pushed to ghcr.io/axonops/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}"

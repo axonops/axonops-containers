@@ -1,39 +1,98 @@
 # K8ssandra Release Process
 
-This document describes how to create and publish a new K8ssandra container release.
+This document describes how to create and publish K8ssandra container releases for both development and production.
 
 ## Overview
 
-The release process uses two separate GitHub Actions workflows:
+The release process uses separate workflows for development and production:
 
-1. **k8ssandra-build-and-test.yml** - Runs automatically on pushes/PRs (tests only, no publishing)
-2. **k8ssandra-publish.yml** - Manual workflow for publishing to GHCR
+**Development Workflow:**
+1. **k8ssandra-build-and-test.yml** - Automatic testing on pushes/PRs to `development`
+2. **development-k8ssandra-publish.yml** - Manual publishing to development registry
 
-This two-stage approach ensures:
-- All code is tested before merge
-- Manual control over what gets published
-- Publishing from a specific git tag (frozen snapshot)
-- Re-running tests on the exact code being published
+**Production Workflow:**
+1. **k8ssandra-build-and-test.yml** - Automatic testing on pushes/PRs to `main`
+2. **k8ssandra-publish.yml** - Manual publishing to production registry
 
-## Release Workflow
+This approach ensures:
+- Testing happens on both development and main branches
+- Development images available for testing before production
+- Manual control over all publishing
+- Production releases are immutable
+
+## Development Release Workflow
+
+Use this workflow to publish images to the development registry for testing.
 
 ### 1. Development and Testing
 
 Code changes are tested automatically:
 
 ```bash
-# Push your feature branch
+# Create feature branch from development
+git checkout development
+git pull origin development
+git checkout -b feature/my-feature
+
+# Make changes and push
+git add .
+git commit -m "Add my feature"
 git push origin feature/my-feature
 
-# Create PR - tests run automatically
+# Create PR to development - tests run automatically
 # Merge when tests pass
 ```
 
 The `k8ssandra-build-and-test.yml` workflow runs on:
-- Push to `main` branch (when `k8ssandra/**` changes)
-- Pull requests to `main` (when `k8ssandra/**` changes)
+- Push to `development` branch (when `k8ssandra/**` changes)
+- Pull requests to `development` (when `k8ssandra/**` changes)
 
-### 2. Create Git Tag on Main Branch
+### 2. Publish Development Images (Optional)
+
+To test images before promoting to production, publish to development registry:
+
+```bash
+# Tag on development branch
+git checkout development
+git pull origin development
+git tag dev-1.0.0
+git push origin dev-1.0.0
+
+# Trigger development publish workflow
+gh workflow run development-k8ssandra-publish.yml \
+  -f dev_git_tag=dev-1.0.0 \
+  -f container_version=dev-1.0.0
+```
+
+**Images published to:**
+- `ghcr.io/axonops/development-axonops-cassandra-containers:5.0.6-dev-1.0.0`
+- `ghcr.io/axonops/development-axonops-cassandra-containers:5.0.5-dev-1.0.0`
+- `ghcr.io/axonops/development-axonops-cassandra-containers:5.0.4-dev-1.0.0`
+
+**Testing development images:**
+```bash
+docker pull ghcr.io/axonops/development-axonops-cassandra-containers:5.0.6-dev-1.0.0
+# Run tests, validate functionality
+```
+
+**Note:** Development images can be overwritten (no version validation). No GitHub Releases are created.
+
+### 3. Promote to Production
+
+When development images are tested and validated, promote to main:
+
+```bash
+# Create PR from development to main
+gh pr create --base main --head development --title "Release 1.0.0" --body "Promote tested changes to production"
+
+# After PR approved and merged, continue to step 4
+```
+
+---
+
+## Production Release Workflow
+
+### 4. Create Git Tag on Main Branch
 
 **IMPORTANT:** Tags must be created on the `main` branch only. The publish workflow validates this.
 
@@ -55,7 +114,7 @@ git push origin 1.0.0
 
 **Validation:** The publish workflow will verify the tag points to a commit on `main` branch. If you tag a commit from a feature branch, the workflow will fail.
 
-### 3. Trigger Publish Workflow
+### 5. Trigger Production Publish Workflow
 
 #### Option A: Using GitHub UI
 

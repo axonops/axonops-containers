@@ -6,6 +6,21 @@
 
 Container build definitions and CI/CD pipelines for AxonOps container images.
 
+## Table of Contents
+
+- [Components](#components)
+- [Repository Conventions](#repository-conventions)
+- [Getting Started](#getting-started)
+- [Development](#development)
+- [Releasing](#releasing)
+  - [Development Publishing](#development-publishing)
+  - [Production Publishing](#production-publishing)
+- [Acknowledgements](#acknowledgements)
+  - [Apache Cassandra](#apache-cassandra)
+  - [K8ssandra](#k8ssandra)
+- [License](#license)
+- [Legal Notices](#legal-notices)
+
 ## Components
 
 - **[k8ssandra/](./k8ssandra/)** - Apache Cassandra with AxonOps integration for K8ssandra Operator
@@ -26,16 +41,79 @@ Each component has its own documentation with detailed instructions:
 
 ## Development
 
-See [DEVELOPMENT.md](./DEVELOPMENT.md) for guidelines on contributing, adding new components, and maintenance procedures.
+**Branch Structure:**
+- `development` - Default branch, all feature work starts here
+- `main` - Production releases only
+- `feature/*` - Feature branches (merge to development)
+
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for complete guidelines.
+
+**Developer Workflow:**
+```bash
+# Work on development branch
+git checkout development
+git pull origin development
+git checkout -b feature/my-feature
+
+# Make changes, create PR to development
+# After merge and testing, promote to main via PR
+```
 
 ## Releasing
 
-Components use a two-stage release process for safety and control:
+### Development Publishing
 
-1. **Continuous Testing** - Automatic tests on every push/PR
-2. **Manual Publishing** - Controlled release to GHCR when ready
+**Purpose:** Publish images to development registry for testing before production release.
 
-### Release Process Overview
+**Registry:** `ghcr.io/axonops/development-<image-name>`
+
+**Characteristics:**
+- Images can be overwritten (no version validation)
+- Allows iterative testing with same tag
+- No GitHub Releases created
+- Tagged from `development` branch
+
+**Process:**
+
+```bash
+# 1. Tag development branch (any name, e.g., dev-feature-x, dev-1.0.0)
+git checkout development && git pull origin development
+git tag dev-1.0.0 && git push origin dev-1.0.0
+
+# 2. Trigger development publish workflow
+gh workflow run development-<component>-publish.yml \
+  -f dev_git_tag=dev-1.0.0 \
+  -f container_version=dev-1.0.0
+
+# 3. Test development image
+docker pull ghcr.io/axonops/development-<image>:5.0.6-dev-1.0.0
+# Run tests, validate functionality
+
+# 4. When ready, promote to production via PR: development → main
+```
+
+**Use for:** Feature testing, integration testing, QA validation before production.
+
+---
+
+### Production Publishing
+
+**Purpose:** Publish stable, tested images to production registry.
+
+**Registry:** `ghcr.io/axonops/<image-name>`
+
+**Characteristics:**
+- Immutable (version validation prevents overwrites)
+- Creates GitHub Releases
+- Tagged from `main` branch only
+- Only after testing in development
+
+**Prerequisites:**
+- Changes merged to `development` and tested
+- Development images validated (if published)
+- PR from `development` → `main` approved and merged
+
+**Process:**
 
 **Step 1: Create Git Tag on Main Branch**
 
