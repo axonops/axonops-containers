@@ -119,43 +119,58 @@ Every workflow must include:
 
 **`development` - Integration Branch**
 - Default branch for all development work
-- All feature branches created from here
-- Protected: requires PR approval
+- Developers commit directly (no PR required)
 - Releases published to: `ghcr.io/axonops/development-axonops-cassandra-containers`
 - Testing ground before promoting to production
 
-**`feature/<name>` - Feature Branches**
-- Created from `development` branch
-- Merged back to `development` via PR
-- Deleted after merge
-
-**`fix/<name>` - Bug Fix Branches**
-- Created from `development` branch
-- Merged back to `development` via PR
-- Deleted after merge
+**`feature/<name>` - Feature Branches (Optional)**
+- Use for complex features that need isolation
+- Use for collaborative work
+- Not required - direct commits to development are fine
 
 ### Development Workflow
 
+**Standard Workflow (Direct Commits):**
 ```bash
-# 1. Start new feature
+# Work directly on development
+git checkout development
+git pull origin development
+
+# Make changes and commit
+git add .
+git commit -S -m "Add my feature"  # -S for signed commit
+
+# Push to development
+git push origin development
+
+# CI tests run automatically on push
+```
+
+**Alternative: Feature Branches (Optional)**
+```bash
+# For complex features, use a feature branch
 git checkout development
 git pull origin development
 git checkout -b feature/my-feature
 
-# 2. Make changes and commit
+# Make changes
 git add .
-git commit -m "Add my feature"
+git commit -S -m "Add my feature"
 
-# 3. Push and create PR to development
+# Push feature branch
 git push origin feature/my-feature
-# Create PR on GitHub: feature/my-feature → development
 
-# 4. After PR approved and merged to development
-# CI tests run automatically
+# Merge to development (direct merge, no PR needed)
+git checkout development
+git merge feature/my-feature
+git push origin development
+git branch -d feature/my-feature
+```
 
-# 5. When development is stable and ready for production
-# Create PR on GitHub: development → main
-# After approval and tests, merge to main
+**Promoting to Production:**
+```bash
+# When development is stable, create PR: development → main
+# This REQUIRES approval before merging
 ```
 
 ### Commits
