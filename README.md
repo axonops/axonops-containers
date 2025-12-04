@@ -78,12 +78,12 @@ gh auth login
 Trigger the workflow:
 ```bash
 gh workflow run <component>-publish.yml \
-  -f git_tag=1.0.0 \
+  -f main_git_tag=1.0.0 \
   -f container_version=1.0.0
 ```
 
 **Arguments explained:**
-- `-f git_tag=1.0.0` - The git tag to checkout and build (the tag you created in Step 1)
+- `-f main_git_tag=1.0.0` - The git tag on main branch to checkout and build (the tag you created in Step 1)
 - `-f container_version=1.0.0` - The version suffix for GHCR images (e.g., creates `5.0.6-1.0.0`)
 
 Monitor progress:
@@ -97,7 +97,7 @@ gh run watch
 2. Select the publish workflow (e.g., **K8ssandra Publish to GHCR**)
 3. Click **Run workflow** button (top right)
 4. A form appears with inputs:
-   - **git_tag**: Enter the git tag created in Step 1 (e.g., `1.0.0`)
+   - **main_git_tag**: Enter the git tag on main branch created in Step 1 (e.g., `1.0.0`)
      - This determines which code to build
    - **container_version**: Enter the GHCR version tag (e.g., `1.0.0`)
      - This becomes the version suffix on published images
@@ -107,8 +107,9 @@ gh run watch
 **Step 3: Workflow Execution**
 
 The workflow will:
+- Validate tag is on main branch (fails if not)
 - Validate `container_version` doesn't exist in GHCR (fails if duplicate)
-- Checkout the `git_tag` commit (exact code snapshot)
+- Checkout the `main_git_tag` commit (exact code snapshot)
 - Run full test suite
 - Build multi-arch images (amd64, arm64)
 - Publish to GHCR with tags like `5.0.6-<container_version>`

@@ -3,8 +3,8 @@ name: K8ssandra Publish to GHCR
 on:
   workflow_dispatch:
     inputs:
-      git_tag:
-        description: 'Git tag to checkout and build (e.g., 1.0.0)'
+      main_git_tag:
+        description: 'Git tag on main branch to checkout and build (e.g., 1.0.0)'
         required: true
         type: string
       container_version:
@@ -26,22 +26,22 @@ jobs:
       - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_tag }}
+          ref: ${{ inputs.main_git_tag }}
 
       - name: Verify tag is on main branch
         run: |
-          echo "Checking if tag ${{ inputs.git_tag }} is on main branch..."
+          echo "Checking if tag ${{ inputs.main_git_tag }} is on main branch..."
 
           # Get the commit hash of the tag
-          TAG_COMMIT=$(git rev-parse ${{ inputs.git_tag }})
+          TAG_COMMIT=$(git rev-parse ${{ inputs.main_git_tag }})
           echo "Tag commit: $TAG_COMMIT"
 
           # Check if this commit exists in main branch history
           git fetch origin main
           if git merge-base --is-ancestor $TAG_COMMIT origin/main; then
-            echo "✓ Tag ${{ inputs.git_tag }} is on main branch"
+            echo "✓ Tag ${{ inputs.main_git_tag }} is on main branch"
           else
-            echo "ERROR: Tag ${{ inputs.git_tag }} is not on main branch"
+            echo "ERROR: Tag ${{ inputs.main_git_tag }} is not on main branch"
             echo "Only tags pointing to commits on main branch can be released"
             exit 1
           fi
@@ -81,7 +81,7 @@ jobs:
       - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_tag }}
+          ref: ${{ inputs.main_git_tag }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -361,7 +361,7 @@ jobs:
       - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_tag }}
+          ref: ${{ inputs.main_git_tag }}
 
       - name: Create GitHub Release
         id: create_release
@@ -371,9 +371,9 @@ jobs:
             const release = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: '${{ inputs.git_tag }}',
+              tag_name: '${{ inputs.main_git_tag }}',
               name: `k8ssandra-${{ inputs.container_version }}`,
-              body: `K8ssandra container images release ${{ inputs.container_version }}\n\nBuilt from git tag: ${{ inputs.git_tag }}\n\nPublished images:\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.6-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.5-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.4-${{ inputs.container_version }}`,
+              body: `K8ssandra container images release ${{ inputs.container_version }}\n\nBuilt from git tag: ${{ inputs.main_git_tag }}\n\nPublished images:\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.6-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.5-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.4-${{ inputs.container_version }}`,
               draft: false,
               prerelease: false
             });
@@ -395,7 +395,7 @@ jobs:
       - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_tag }}
+          ref: ${{ inputs.main_git_tag }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

@@ -165,8 +165,8 @@ Each component should have two workflows:
 
 **2. `<component>-publish.yml`**
 - Trigger: Manual (`workflow_dispatch`)
-- Inputs: `git_tag`, `container_version`
-- Validates: Container version doesn't exist in GHCR
+- Inputs: `main_git_tag`, `container_version`
+- Validates: Tag is on main branch, container version doesn't exist in GHCR
 - Runs: Full test suite on tagged code
 - Publishes: Multi-arch images to GHCR
 - Creates: GitHub Release named `<component>-<container_version>`
@@ -193,12 +193,12 @@ Each component should have two workflows:
 
    **GitHub UI:**
    - Actions → Select publish workflow → Run workflow
-   - Enter `git_tag` and `container_version`
+   - Enter `main_git_tag` and `container_version`
 
    **GitHub CLI:**
    ```bash
    gh workflow run <component>-publish.yml \
-     -f git_tag=1.0.0 \
+     -f main_git_tag=1.0.0 \
      -f container_version=1.0.0
    ```
 

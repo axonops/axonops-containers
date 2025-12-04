@@ -79,7 +79,7 @@ gh auth login
 
 # Trigger the workflow
 gh workflow run k8ssandra-publish.yml \
-  -f git_tag=1.0.0 \
+  -f main_git_tag=1.0.0 \
   -f container_version=1.0.0
 
 # Monitor workflow progress
@@ -147,12 +147,12 @@ gh release view k8ssandra-1.0.0
 
 ## Inputs Reference
 
-### git_tag
+### main_git_tag
 **Required:** Yes
 **Type:** String
-**Description:** Git tag to checkout and build from
+**Description:** Git tag on main branch to checkout and build from
 
-The workflow checks out this exact tag. This ensures you're publishing a frozen snapshot of code, not whatever is currently on `main`.
+The workflow validates this tag is on main branch, then checks out this exact tag. This ensures you're publishing a frozen snapshot of code from main, not from a feature branch.
 
 **Examples:**
 - `1.0.0`
