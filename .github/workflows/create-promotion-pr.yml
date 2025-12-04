@@ -44,7 +44,26 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Promotion version: ${VERSION}"
 
+      - name: Check if PR already exists
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh pr list --base main --head development --state open --json number --jq '.[0].number' > /dev/null 2>&1; then
+            PR_NUM=$(gh pr list --base main --head development --state open --json number --jq '.[0].number')
+            if [ ! -z "$PR_NUM" ]; then
+              echo "pr_exists=true" >> $GITHUB_OUTPUT
+              echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+              echo "PR already exists: #$PR_NUM"
+            else
+              echo "pr_exists=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create PR to main
+        if: steps.check_pr.outputs.pr_exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -80,3 +99,9 @@ gh workflow run k8ssandra-publish.yml \\
             --label "production-release"
 
           echo "✓ PR created for release ${VERSION}"
+
+      - name: PR already exists
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        run: |
+          echo "ℹ️ PR already exists: #${{ steps.check_pr.outputs.pr_number }}"
+          echo "Skipping PR creation"
