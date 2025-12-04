@@ -1,15 +1,18 @@
-name: Build and Publish 5.0 Container
+name: K8ssandra Build and Test
 
 on:
   push:
-    tags:
-      - '*.*.*'
-      - '*.*.*.*-*'
     branches:
       - main
+    paths:
+      - 'k8ssandra/**'
+      - '.github/workflows/k8ssandra-build-and-test.yml'
   pull_request:
     branches:
       - main
+    paths:
+      - 'k8ssandra/**'
+      - '.github/workflows/k8ssandra-build-and-test.yml'
 
 env:
   REGISTRY: ghcr.io
@@ -40,8 +43,8 @@ jobs:
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./${{ steps.version.outputs.base_version }}
-          file: ./${{ steps.version.outputs.base_version }}/Dockerfile
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axonops-cassandra:test
@@ -270,7 +273,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          trivyignores: '.trivyignore'
+          trivyignores: 'k8ssandra/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
         uses: aquasecurity/trivy-action@master
@@ -280,7 +283,7 @@ jobs:
           output: 'trivy-results.sarif'
           ignore-unfixed: true
           vuln-type: 'os,library'
-          trivyignores: '.trivyignore'
+          trivyignores: 'k8ssandra/.trivyignore'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -293,105 +296,3 @@ jobs:
           docker logs cassandra-test || true
           docker stop cassandra-test || true
           docker rm cassandra-test || true
-
-  create-release:
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      release_id: ${{ steps.create_release.outputs.id }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Release version: ${VERSION}"
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const release = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: context.ref.replace('refs/tags/', ''),
-              name: `Release ${context.ref.replace('refs/tags/', '')}`,
-              body: `Automated release for ${context.ref.replace('refs/tags/', '')}`,
-              draft: false,
-              prerelease: false
-            });
-            console.log(`Release created: ${release.data.html_url}`);
-            return release.data.id;
-
-  build-and-push:
-    needs: [test, create-release]
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 3
-      matrix:
-        cassandra_version: [5.0.4, 5.0.5, 5.0.6]
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract version from tag
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "CASSANDRA_VERSION=${{ matrix.cassandra_version }}" >> $GITHUB_OUTPUT
-
-          # Extract base version (4.1 or 5.0) from cassandra_version
-          BASE_VERSION=$(echo "${{ matrix.cassandra_version }}" | cut -d. -f1,2)
-          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "Base version: ${BASE_VERSION}"
-
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ env.IMAGE_NAME }}
-          tags: |
-            # Tags based on the git version, prefixed by the matrix variable
-            type=ref,event=tag,prefix=${{ matrix.cassandra_version }}-
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./${{ steps.version.outputs.base_version }}
-          file: ./${{ steps.version.outputs.base_version }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            CASSANDRA_VERSION=${{ steps.version.outputs.base_version }}
-            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Image digest
-        run: echo "Image pushed successfully to ghcr.io/${{ env.IMAGE_NAME }}"

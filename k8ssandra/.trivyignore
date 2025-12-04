@@ -17,6 +17,7 @@ CVE-2022-1471   # snakeyaml
 CVE-2025-24970  # netty-handler
 CVE-2023-6378   # logback
 CVE-2023-6481   # logback
+CVE-2025-12183  # lz4-java 1.8.0 → 1.8.1 (HIGH - DoS risk, fixed in upstream)
 
 # Go - AxonOps binaries (axon-agent, axon-cassandra-restore, etc.)
 # Requires rebuild with Go 1.24.9+

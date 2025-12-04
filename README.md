@@ -1,500 +1,176 @@
-# AxonOps Cassandra Containers
+# AxonOps Container Images
 
-Docker containers for Apache Cassandra with integrated AxonOps monitoring and management agent, designed for deployment on Kubernetes using K8ssandra Operator.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![GitHub Issues](https://img.shields.io/github/issues/axonops/axonops-cassandra-containers)](https://github.com/axonops/axonops-cassandra-containers/issues)
+[![Multi-Architecture](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-brightgreen)](https://github.com/axonops/axonops-cassandra-containers)
 
-## Overview
+Container build definitions and CI/CD pipelines for AxonOps container images.
 
-This repository provides pre-configured Docker images that combine:
-- Apache Cassandra 5.0
-- K8ssandra Management API
-- AxonOps Agent for monitoring and management
-- [cqlai](https://github.com/axonops/cqlai) - Modern CQL shell
+## Components
 
-These containers are optimized for Kubernetes deployments using the K8ssandra Operator and include automated CI/CD pipelines for building and publishing to GitHub Container Registry.
+- **[k8ssandra/](./k8ssandra/)** - Apache Cassandra with AxonOps integration for K8ssandra Operator
 
-## Pre-built Docker Images
+## Repository Conventions
 
-Pre-built images are available from GitHub Container Registry (GHCR). This is the easiest way to get started.
-
-### Available Images
-
-| Cassandra Version | Image |
-|-------------------|-------|
-| 5.0.6 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0` |
-| 5.0.5 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.5-1.0.0` |
-| 5.0.4 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.4-1.0.0` |
-
-Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
-
-### Quick Start with Docker/Podman
-
-Run a single-node Cassandra instance locally:
-
-```bash
-# Pull the image
-docker pull ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0
-
-# Run with AxonOps agent (replace with your credentials)
-docker run -d --name cassandra \
-  -e AXON_AGENT_KEY="your-axonops-agent-key" \
-  -e AXON_AGENT_ORG="your-organization" \
-  -e AXON_AGENT_HOST="agents.axonops.cloud" \
-  -p 9042:9042 \
-  -p 8080:8080 \
-  ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0
-
-# Wait for Cassandra to be ready (check Management API)
-curl http://localhost:8080/api/v0/probes/readiness
-
-# Connect using cqlai (included in the image)
-docker exec -it cassandra cqlai
-```
-
-### Using with Kubernetes (K8ssandra)
-
-For Kubernetes deployments, use the image with K8ssandra Operator:
-
-```bash
-export IMAGE_NAME="ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0"
-export AXON_AGENT_KEY="your-key"
-export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="agents.axonops.cloud"
-
-cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
-```
-
-See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instructions.
-
-## Prerequisites
-
-- Kubernetes cluster (local or cloud)
-- kubectl configured to access your cluster
-- Helm 3.x
-- Docker (for local builds)
-- envsubst (for environment variable substitution in YAML files)
-  - macOS: `brew install gettext`
-  - Linux: Usually pre-installed, or `apt install gettext` / `yum install gettext`
-- AxonOps account with valid API key and organization ID (see [AxonOps Cloud Setup Guide](https://docs.axonops.com/get_started/cloud/))
-
-## Supported Cassandra Versions
-
-### Cassandra 5.0
-- Base Image: `k8ssandra/cass-management-api:5.0-ubi`
-- Supported versions: 5.0.4, 5.0.5, 5.0.6
-- JDK: JDK17
-- Includes: AxonOps Agent, cqlai
-- Location: `5.0/` directory
+- **Multi-architecture support**: linux/amd64, linux/arm64
+- **Published to**: GitHub Container Registry `ghcr.io/axonops/<image-name>:<tag>`
+- **Automated CI/CD**: GitHub Actions with comprehensive testing
+- **Security scanning**: Trivy vulnerability scanning on all images
+- **Base images**: Official upstream sources where possible
 
 ## Getting Started
 
-### 1. Install K8ssandra Operator
+Each component has its own documentation with detailed instructions:
 
-Run the installation script to set up the K8ssandra Operator and required dependencies:
+- [K8ssandra Documentation](./k8ssandra/README.md)
 
-```bash
-./scripts/install_k8ssandra.sh
-```
+## Development
 
-This script will:
-- Install cert-manager (v1.19.1) in the `cert-manager` namespace
-- Add the K8ssandra Helm repository
-- Install K8ssandra Operator (v1.29.0) in the `k8ssandra-operator` namespace
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for guidelines on contributing, adding new components, and maintenance procedures.
 
-### 2. Configure Environment Variables
+## Releasing
 
-Set up your AxonOps credentials:
+Components use a two-stage release process for safety and control:
 
-```bash
-export AXON_AGENT_KEY="your-axonops-api-key" # Obtained from AxonOps Cloud Console
-export AXON_AGENT_ORG="your-organization-id" # AxonOps Cloud organization name
-export AXON_AGENT_HOST="agents.axonops.cloud"
-```
+1. **Continuous Testing** - Automatic tests on every push/PR
+2. **Manual Publishing** - Controlled release to GHCR when ready
 
-Optional: Specify a custom image name (defaults to ttl.sh with 1-hour TTL):
+### Release Process Overview
+
+**Step 1: Create Git Tag on Main Branch**
+
+**IMPORTANT:** Tags must be created on the `main` branch. The publish workflow will validate this.
 
 ```bash
-export IMAGE_NAME="your-registry/your-image:tag"
+# Ensure you're on main and up to date
+git checkout main
+git pull origin main
+
+# Tag the commit
+git tag 1.0.0
+
+# Push tag to remote
+git push origin 1.0.0
 ```
 
-### 3. Build and Deploy
+The tag can be any name (e.g., `1.0.0`, `v1.0.0`, `release-2024-12`). It marks the exact code snapshot to build from.
 
-Use the rebuild script to build, push, and deploy your cluster:
+**Note:** If you tag a commit not on `main`, the publish workflow will fail with an error.
+
+**Step 2: Trigger Publish Workflow**
+
+You can trigger the publish workflow via **GitHub CLI** or **GitHub UI**.
+
+#### Option A: GitHub CLI
+
+Install and authenticate (first time only):
+```bash
+# macOS
+brew install gh
+
+# Linux
+# See: https://github.com/cli/cli#installation
+
+# Authenticate
+gh auth login
+```
+
+Trigger the workflow:
+```bash
+gh workflow run <component>-publish.yml \
+  -f main_git_tag=1.0.0 \
+  -f container_version=1.0.0
+```
+
+**Arguments explained:**
+- `-f main_git_tag=1.0.0` - The git tag on main branch to checkout and build (the tag you created in Step 1)
+- `-f container_version=1.0.0` - The container version for GHCR images (e.g., creates `5.0.6-1.0.0`)
+
+Monitor progress:
+```bash
+gh run watch
+```
+
+#### Option B: GitHub UI
+
+1. Navigate to **Actions** tab in GitHub repository
+2. Select the publish workflow (e.g., **K8ssandra Publish to GHCR**)
+3. Click **Run workflow** button (top right)
+4. A form appears with inputs:
+   - **main_git_tag**: Enter the git tag on main branch created in Step 1 (e.g., `1.0.0`)
+     - This determines which code to build
+   - **container_version**: Enter the container version (e.g., `1.0.0`)
+     - This becomes the container version on published images
+     - Example: `5.0.6-1.0.0` where `1.0.0` is the container version
+5. Click **Run workflow** to start
+
+**Step 3: Workflow Execution**
+
+The workflow will:
+- Validate tag is on main branch (fails if not)
+- Validate `container_version` doesn't exist in GHCR (fails if duplicate)
+- Checkout the `main_git_tag` commit (exact code snapshot)
+- Run full test suite
+- Build multi-arch images (amd64, arm64)
+- Publish to GHCR with tags like `5.0.6-<container_version>`
+- Create GitHub Release named `<component>-<container_version>`
+
+**Step 4: Verify Release**
 
 ```bash
-cd 5.0  # or 4.1 for Cassandra 4.1
-../scripts/rebuild.sh
+# View GitHub Release
+gh release view k8ssandra-1.0.0
+
+# Pull and test image
+docker pull ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0
 ```
 
-The script will:
-1. Delete any existing cluster deployment
-2. Clean up old container images
-3. Build a new Docker image
-4. Push the image to the registry
-5. Apply the cluster configuration with environment variable substitution
-6. Deploy the cluster to Kubernetes
+### Component Release Documentation
 
-## Building Docker Images
+Each component has detailed release documentation:
+- [K8ssandra Release Process](./k8ssandra/RELEASE.md)
 
-If you prefer to build images yourself instead of using the [pre-built images](#pre-built-docker-images):
+## Acknowledgements
 
-```bash
-cd 5.0
-docker build -t your-registry/axonops-cassandra:5.0.6 .
-docker push your-registry/axonops-cassandra:5.0.6
-```
+### Apache Cassandra
+We extend our appreciation to the [Apache Cassandra](https://cassandra.apache.org/) community for their outstanding work and contributions to the distributed database field. Apache Cassandra is a free and open-source, distributed, wide-column store, NoSQL database management system designed to handle large amounts of data across many commodity servers, providing high availability with no single point of failure.
 
-## Deploying to Kubernetes
+For more information:
+- [Apache Cassandra Website](https://cassandra.apache.org/)
+- [Apache Cassandra GitHub](https://github.com/apache/cassandra)
+- [Apache Cassandra Documentation](https://cassandra.apache.org/doc/latest/)
 
-### Using the Example Configuration
+### K8ssandra
+We acknowledge [K8ssandra](https://k8ssandra.io/) for providing excellent Kubernetes operator and management tools for Apache Cassandra. K8ssandra is a production-ready platform for running Apache Cassandra on Kubernetes, including backup/restore, repairs, and monitoring capabilities.
 
-The `examples/axon-cluster.yml` provides a template for deploying a 3-node Cassandra 5.0 cluster:
-
-```bash
-# Set your environment variables
-export IMAGE_NAME="your-image"
-export AXON_AGENT_KEY="your-key"
-export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="agents.axonops.cloud"
-
-# Apply the configuration
-cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
-```
-
-### Verifying the Deployment
-
-After deploying, verify that your cluster is running:
-
-```bash
-# Check cluster status
-kubectl get k8ssandraclusters -n k8ssandra-operator
-
-# Watch pods come up (wait for all to show Running and Ready)
-kubectl get pods -n k8ssandra-operator -w
-
-# Check detailed cluster status
-kubectl describe k8ssandracluster <cluster-name> -n k8ssandra-operator
-```
-
-All Cassandra pods should show `2/2` in the READY column when fully started.
-
-### Connecting to the Cluster
-
-#### Using cqlsh
-
-Connect directly to a Cassandra pod:
-
-```bash
-kubectl exec -it <pod-name> -n k8ssandra-operator -c cassandra -- cqlsh
-```
-
-#### External Access (port-forward)
-
-> **Note:** Port-forwarding is suitable for local development and testing. For production environments (AWS, GCP, Azure, etc.), consider using a LoadBalancer service, Ingress controller, or VPN-based access depending on your security requirements.
-
-To connect from outside the Kubernetes cluster (e.g., from your local machine):
-
-1. Get the superuser credentials:
-   ```bash
-   # Username
-   kubectl get secret <cluster-name>-superuser -n k8ssandra-operator -o jsonpath='{.data.username}' | base64 -d
-
-   # Password
-   kubectl get secret <cluster-name>-superuser -n k8ssandra-operator -o jsonpath='{.data.password}' | base64 -d
-   ```
-
-2. Start port-forwarding:
-   ```bash
-   kubectl port-forward svc/<cluster-name>-dc1-service 9042:9042 -n k8ssandra-operator
-   ```
-
-3. Connect using cqlsh or any CQL client at `localhost:9042` with the credentials from step 1.
-
-#### AxonOps Workbench
-
-[AxonOps Workbench](https://axonops.com/workbench) is a free desktop IDE for developers and DBAs to connect to and manage Cassandra clusters. It provides a modern interface for running queries, browsing schema, and managing your data. Use the port-forward method above to connect Workbench to your Kubernetes-based cluster.
-
-### Key Configuration Options
-
-The example cluster includes:
-- **Cluster Size**: 3 nodes in datacenter `dc1`
-- **Resources**:
-  - CPU: 1 core (request and limit)
-  - Memory: 1Gi request, 2Gi limit
-- **JVM Settings**:
-  - Initial heap: 1G
-  - Maximum heap: 1G
-- **Storage**:
-  - Storage class: `local-path`
-  - Size: 2Gi per node
-  - Access mode: ReadWriteOnce
-- **Anti-affinity**: Soft pod anti-affinity enabled
-
-## Configuration
-
-### AxonOps Agent Configuration
-
-The AxonOps agent is configured via environment variables passed to the Cassandra container:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AXON_AGENT_KEY` | Your AxonOps agent key | Required |
-| `AXON_AGENT_ORG` | Your AxonOps organization ID | Required |
-| `AXON_AGENT_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
-| `AXON_AGENT_LOG_OUTPUT` | Agent log output destination | `std` |
-| `AXON_AGENT_ARGS` | Additional agent arguments | - |
-
-### Container Environment Variables
-
-Environment variables are injected into the K8ssandra cluster configuration:
-
-```yaml
-containers:
-  - name: cassandra
-    env:
-      - name: AXON_AGENT_KEY
-        value: "${AXON_AGENT_KEY}"
-      - name: AXON_AGENT_ORG
-        value: "${AXON_AGENT_ORG}"
-      - name: AXON_AGENT_HOST
-        value: "${AXON_AGENT_HOST}"
-```
-
-## Scripts Reference
-
-### scripts/install_k8ssandra.sh
-
-Installs the K8ssandra Operator and its prerequisites.
-
-**Usage:**
-```bash
-./scripts/install_k8ssandra.sh
-```
-
-**What it does:**
-- Installs cert-manager using Helm
-- Adds K8ssandra Helm repository
-- Installs K8ssandra Operator v1.29.0
-
-**No parameters required.**
-
-### scripts/rebuild.sh
-
-Builds, pushes, and deploys a Cassandra cluster with AxonOps integration.
-
-> **Note:** This script is designed for Kubernetes environments with direct node access using `crictl`. It may not work on local development setups like minikube, kind, or Docker Desktop. For local development, see the manual build and deploy steps in the [Building Docker Images](#building-docker-images) and [Deploying to Kubernetes](#deploying-to-kubernetes) sections.
-
-**Usage:**
-```bash
-export IMAGE_NAME="your-registry/image:tag"  # Optional, defaults to ttl.sh
-export AXON_AGENT_KEY="your-key"
-export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="your-host"  # Optional
-
-cd 5.0  # or 4.1
-../scripts/rebuild.sh
-```
-
-**What it does:**
-1. Generates a unique image name if not provided (using ttl.sh with 1-hour TTL)
-2. Deletes existing cluster deployment
-3. Cleans up old container images using crictl
-4. Builds new Docker image
-5. Pushes image to registry
-6. Pulls image using crictl
-7. Substitutes environment variables in `cluster-axonops.yaml` (copy from [examples/axon-cluster.yml](examples/axon-cluster.yml))
-8. Deploys the updated cluster configuration
-
-**Environment Variables:**
-- `IMAGE_NAME`: Docker image name (optional)
-- `AXON_AGENT_KEY`: AxonOps API key (required in cluster config)
-- `AXON_AGENT_ORG`: AxonOps organization (required in cluster config)
-- `AXON_AGENT_HOST`: AxonOps host (required in cluster config)
-
-## Examples
-
-### examples/axon-cluster.yml
-
-A complete K8ssandraCluster resource definition showcasing:
-
-**Cluster Specifications:**
-- Name: `axonops-k8ssandra-50`
-- Namespace: `k8ssandra-operator`
-- Cassandra Version: 5.0.5
-- Datacenter: `dc1` with 3 nodes
-
-**Resource Allocation:**
-```yaml
-resources:
-  limits:
-    cpu: 1
-    memory: 2Gi
-  requests:
-    cpu: 1
-    memory: 1Gi
-```
-
-**Storage Configuration:**
-```yaml
-storageConfig:
-  cassandraDataVolumeClaimSpec:
-    storageClassName: local-path
-    accessModes:
-      - ReadWriteOnce
-    resources:
-      requests:
-        storage: 2Gi
-```
-
-**AxonOps Volume (Required):**
-
-AxonOps requires a persistent volume to store its configuration. Add this to your cluster configuration:
-
-```yaml
-        extraVolumes:
-          pvcs:
-            - name: axonops-data
-              mountPath: /var/lib/axonops
-              pvcSpec:
-                accessModes:
-                  - ReadWriteOnce
-                resources:
-                  requests:
-                    storage: 512Mi
-```
-
-**AxonOps Integration:**
-The example shows proper environment variable injection for the AxonOps agent using the container-level environment variables approach required by K8ssandra.
-
-### Customizing the Example
-
-To use this example:
-
-1. Copy the example file:
-   ```bash
-   cp examples/axon-cluster.yml my-cluster.yml
-   ```
-
-2. Update the values in `my-cluster.yml`:
-   - **Cluster name**: Edit the `metadata.name` field (e.g., change `axonops-k8ssandra-50` to `my-cassandra-cluster`). Note: The cluster name is used to generate service names, secret names, and pod names.
-   - **Namespace**: Edit `metadata.namespace` if deploying to a different namespace
-   - **Node count**: Adjust `size` under `datacenters` (default is 3)
-   - **Resources**: Modify CPU/memory allocations under `resources`
-   - **Storage**: Update `storage` size under `storageConfig`
-
-3. Deploy:
-   ```bash
-   export AXON_AGENT_KEY="your-key"
-   export AXON_AGENT_ORG="your-org"
-   export AXON_AGENT_HOST="agents.axonops.cloud"
-   export IMAGE_NAME="your-image"
-
-   cat my-cluster.yml | envsubst | kubectl apply -f -
-   ```
-
-## CI/CD Pipeline
-
-### Automated Builds
-
-The repository includes a GitHub Actions workflow that automatically builds and publishes Docker images.
-
-**Workflow:** `.github/workflows/build-and-publish-5.0.yml`
-
-**Triggers:**
-- Push to `main` branch - runs tests only
-- Pull requests to `main` - runs tests only
-- Push version tags (e.g., `1.0.0`) - runs tests, creates release, and publishes images
-
-**Test Suite:**
-The CI pipeline includes comprehensive testing:
-- Management API health checks (liveness, readiness)
-- Management API Java agent operations (create keyspace, table, flush, compact)
-- CQL operations using cqlai (CREATE, INSERT, SELECT, DROP)
-- AxonOps agent process verification
-- Trivy container security scanning
-
-**Publishing Process:**
-1. Tests must pass for all Cassandra versions (5.0.4, 5.0.5, 5.0.6)
-2. GitHub Release is created automatically
-3. Multi-arch images (amd64, arm64) are built and pushed to GHCR
-
-**Image Tags:**
-```
-ghcr.io/axonops/axonops-cassandra-containers:<cassandra-version>-<release-tag>
-```
-
-Example: For release tag `1.0.0`:
-- `ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0`
-- `ghcr.io/axonops/axonops-cassandra-containers:5.0.5-1.0.0`
-- `ghcr.io/axonops/axonops-cassandra-containers:5.0.4-1.0.0`
-
-## Monitoring with AxonOps
-
-Once deployed, your Cassandra cluster will automatically:
-- Register with AxonOps using the provided API key and organization
-- Send metrics and logs to the AxonOps platform
-- Enable cluster monitoring, alerting, and management features
-
-Access your cluster monitoring at:
-- AxonOps Cloud: https://axonops.cloud
-- Custom installation: Your configured AxonOps URL
-
-## Troubleshooting
-
-### Agent Connection Issues
-
-Check agent logs:
-```bash
-kubectl logs <pod-name> -n k8ssandra-operator -c cassandra | grep axon
-```
-
-Verify environment variables:
-```bash
-kubectl describe pod <pod-name> -n k8ssandra-operator
-```
-
-### Image Pull Errors
-
-Ensure your image is accessible:
-```bash
-docker pull $IMAGE_NAME
-```
-
-For ttl.sh images, note they expire after 1 hour. Use a persistent registry for production.
-
-### Cluster Not Starting
-
-Check K8ssandra operator logs:
-```bash
-kubectl logs -n k8ssandra-operator deployment/k8ssandra-operator
-```
-
-Verify cluster status:
-```bash
-kubectl get k8ssandraclusters -n k8ssandra-operator
-kubectl describe k8ssandracluster <cluster-name> -n k8ssandra-operator
-```
-
-## Production Considerations
-
-1. **Image Registry**: Use a persistent container registry instead of ttl.sh
-2. **Resource Sizing**: Adjust CPU, memory, and storage based on workload
-3. **High Availability**: Deploy across multiple availability zones
-4. **Backup Strategy**: Configure K8ssandra Medusa for backups
-5. **Security**:
-   - Use secrets for AxonOps credentials instead of environment variables
-   - Enable encryption at rest and in transit
-   - Configure RBAC and network policies
-6. **Monitoring**: Set up alerts in AxonOps for critical metrics
+For more information:
+- [K8ssandra Website](https://k8ssandra.io/)
+- [K8ssandra GitHub](https://github.com/k8ssandra/k8ssandra-operator)
+- [K8ssandra Documentation](https://docs.k8ssandra.io/)
 
 ## License
 
-See [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## Legal Notices
 
-- AxonOps Documentation: https://axonops.com/docs
-- K8ssandra Documentation: https://docs.k8ssandra.io
-- Issues: Please report issues in this repository
+This project may contain trademarks or logos for projects, products, or services. Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+### Trademarks
+
+- **AxonOps** is a registered trademark of AxonOps Limited
+- **Apache**, **Apache Cassandra**, and **Cassandra** are trademarks of the Apache Software Foundation or its subsidiaries in Canada, the United States and/or other countries
+- **Apache Kafka** and **Kafka** are trademarks of the Apache Software Foundation
+- **K8ssandra** is a trademark of the Apache Software Foundation
+- **Docker** is a trademark or registered trademark of Docker, Inc. in the United States and/or other countries
+- **Podman** is a trademark of Red Hat, Inc.
+- **OpenSearch** is a trademark of Amazon.com, Inc. or its affiliates
+- **Kubernetes** is a registered trademark of The Linux Foundation
 
 ---
-*This project may contain trademarks or logos for projects, products, or services. Any use of third-party trademarks or logos are subject to those third-party's policies. AxonOps is a registered trademark of AxonOps Limited. Apache, Apache Cassandra, Cassandra, Apache Spark, Spark, Apache TinkerPop, TinkerPop, Apache Kafka and Kafka are either registered trademarks or trademarks of the Apache Software Foundation or its subsidiaries in Canada, the United States and/or other countries. Elasticsearch is a trademark of Elasticsearch B.V., registered in the U.S. and in other countries. Docker is a trademark or registered trademark of Docker, Inc. in the United States and/or other countries.*
+
+<div align="center">
+
+**Made with ❤️ by [AxonOps](https://axonops.com)**
+
+</div>

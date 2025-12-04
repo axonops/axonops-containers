@@ -1,0 +1,437 @@
+name: K8ssandra Publish to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      main_git_tag:
+        description: 'Git tag on main branch to checkout and build (e.g., 1.0.0)'
+        required: true
+        type: string
+      container_version:
+        description: 'Container version for GHCR (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Verify tag is on main branch
+        run: |
+          echo "Checking if tag ${{ inputs.main_git_tag }} is on main branch..."
+
+          # Get the commit hash of the tag
+          TAG_COMMIT=$(git rev-parse ${{ inputs.main_git_tag }})
+          echo "Tag commit: $TAG_COMMIT"
+
+          # Check if this commit exists in main branch history
+          git fetch origin main
+          if git merge-base --is-ancestor $TAG_COMMIT origin/main; then
+            echo "✓ Tag ${{ inputs.main_git_tag }} is on main branch"
+          else
+            echo "ERROR: Tag ${{ inputs.main_git_tag }} is not on main branch"
+            echo "Only tags pointing to commits on main branch can be released"
+            exit 1
+          fi
+
+      - name: Check if container version already exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Checking if any image with version ${{ inputs.container_version }} already exists..."
+
+          # Check for any tag matching *-${{ inputs.container_version }}
+          VERSIONS="5.0.4 5.0.5 5.0.6"
+          for VERSION in $VERSIONS; do
+            TAG="${VERSION}-${{ inputs.container_version }}"
+            echo "Checking for tag: $TAG"
+
+            if gh api --paginate "/orgs/${{ github.repository_owner }}/packages/container/${{ github.event.repository.name }}/versions" \
+              --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .metadata.container.tags[]" 2>/dev/null | grep -q "$TAG"; then
+              echo "ERROR: Container version $TAG already exists in GHCR"
+              echo "Please use a different container_version or delete the existing release"
+              exit 1
+            fi
+          done
+
+          echo "✓ Container version ${{ inputs.container_version }} is available"
+
+  test:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        cassandra_version: [5.0.6]
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract base version
+        id: version
+        run: |
+          BASE_VERSION=$(echo "${{ matrix.cassandra_version }}" | cut -d. -f1,2)
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-cassandra:test
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.version.outputs.base_version }}
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+
+      - name: Start container
+        run: |
+          docker run -d --name cassandra-test \
+            -e AXON_AGENT_KEY=test-key \
+            -e AXON_AGENT_ORG=test-org \
+            -e AXON_AGENT_HOST=localhost \
+            -p 8080:8080 \
+            -p 9042:9042 \
+            axonops-cassandra:test
+          echo "Container started, waiting for services..."
+
+      - name: Wait for Management API liveness
+        run: |
+          echo "Waiting for Management API to be live..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/api/v0/probes/liveness | grep -q "OK"; then
+              echo "Management API is live"
+              exit 0
+            fi
+            echo "Attempt $i/30 - waiting 10s..."
+            sleep 10
+          done
+          echo "Management API failed to become live"
+          docker logs cassandra-test
+          exit 1
+
+      - name: Wait for Cassandra readiness
+        run: |
+          echo "Waiting for Cassandra to be ready..."
+          for i in {1..60}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v0/probes/readiness | grep -q "200"; then
+              echo "Cassandra is ready"
+              exit 0
+            fi
+            echo "Attempt $i/60 - waiting 10s..."
+            sleep 10
+          done
+          echo "Cassandra failed to become ready"
+          docker logs cassandra-test
+          exit 1
+
+      - name: Wait for Cassandra CQL port 9042
+        run: |
+          echo "Waiting for Cassandra CQL port 9042..."
+          for i in {1..30}; do
+            if nc -z localhost 9042 2>/dev/null; then
+              echo "Cassandra CQL port 9042 is open"
+              exit 0
+            fi
+            echo "Attempt $i/30 - waiting 10s..."
+            sleep 10
+          done
+          echo "Cassandra CQL port 9042 failed to open"
+          docker logs cassandra-test
+          exit 1
+
+      - name: Test Management API endpoints
+        run: |
+          echo "=== Testing Management API endpoints ==="
+
+          echo "Testing /api/v0/probes/liveness..."
+          curl -sf http://localhost:8080/api/v0/probes/liveness
+          echo ""
+
+          echo "Testing /api/v0/probes/readiness..."
+          curl -sf http://localhost:8080/api/v0/probes/readiness
+          echo ""
+
+          echo "Testing /api/v0/metadata/versions/release..."
+          RELEASE=$(curl -sf http://localhost:8080/api/v0/metadata/versions/release) || echo "Endpoint not available (optional)"
+          echo "Cassandra version: $RELEASE"
+
+          echo "Testing /api/v0/metadata/localdc..."
+          DC=$(curl -sf http://localhost:8080/api/v0/metadata/localdc)
+          echo "Local datacenter: $DC"
+
+          echo "Testing /api/v0/lifecycle/pid..."
+          PID=$(curl -sf http://localhost:8080/api/v0/lifecycle/pid)
+          echo "Cassandra PID: $PID"
+
+          echo "Testing /api/v0/metadata/endpoints..."
+          curl -sf http://localhost:8080/api/v0/metadata/endpoints
+          echo ""
+
+          echo "Testing /api/v0/ops/keyspace..."
+          curl -sf http://localhost:8080/api/v0/ops/keyspace
+          echo ""
+
+          echo "=== All Management API tests passed ==="
+
+      - name: Test Management API Java agent operations
+        run: |
+          echo "=== Testing Management API Java agent operations ==="
+
+          echo "Creating test keyspace via Management API..."
+          curl -sf -X POST "http://localhost:8080/api/v0/ops/keyspace/create" \
+            -H "Content-Type: application/json" \
+            -d '{"keyspace_name": "test_keyspace", "replication_settings": [{"dc_name": "datacenter1", "replication_factor": 1}]}'
+          echo "Keyspace created"
+
+          echo "Verifying keyspace was created..."
+          curl -sf http://localhost:8080/api/v0/ops/keyspace | grep -q "test_keyspace"
+          echo "Keyspace verified"
+
+          echo "Creating test table via Management API..."
+          curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/create" \
+            -H "Content-Type: application/json" \
+            -d '{"keyspace_name": "test_keyspace", "table_name": "test_table", "columns": [{"name": "id", "type": "uuid", "kind": "PARTITION_KEY"}, {"name": "value", "type": "text", "kind": "REGULAR"}]}'
+          echo "Table created"
+
+          echo "Flushing tables (exercises Java agent)..."
+          curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/flush" \
+            -H "Content-Type: application/json" \
+            -d '{"keyspace_name": "test_keyspace"}'
+          echo "Flush completed"
+
+          echo "Running compaction (exercises Java agent)..."
+          curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/compact" \
+            -H "Content-Type: application/json" \
+            -d '{"keyspace_name": "test_keyspace"}'
+          echo "Compaction completed"
+
+          echo "Performing keyspace cleanup (exercises Java agent)..."
+          curl -sf -X POST "http://localhost:8080/api/v0/ops/keyspace/cleanup" \
+            -H "Content-Type: application/json" \
+            -d '{"keyspace_name": "test_keyspace", "jobs": 1}'
+          echo "Cleanup completed"
+
+          echo "=== All Java agent operation tests passed ==="
+
+      - name: Verify AxonOps agent is running
+        run: |
+          echo "Checking AxonOps agent process..."
+          if docker exec cassandra-test pgrep -f "axon-agent" > /dev/null; then
+            echo "AxonOps agent is running"
+          else
+            echo "WARNING: AxonOps agent process not found"
+            docker exec cassandra-test ps aux
+            exit 1
+          fi
+
+      - name: Verify processes run as cassandra user (not root)
+        run: |
+          echo "Checking process ownership..."
+          docker exec cassandra-test ps aux
+
+          echo ""
+          echo "Verifying Cassandra process runs as cassandra user..."
+          JAVA_USER=$(docker exec cassandra-test ps -o user= -C java | head -1 | tr -d ' ')
+          echo "Java process running as: $JAVA_USER"
+          if [ "$JAVA_USER" != "cassandr" ] && [ "$JAVA_USER" != "cassandra" ]; then
+            echo "ERROR: Java/Cassandra process is not running as cassandra user!"
+            exit 1
+          fi
+          echo "✓ Cassandra is running as cassandra user"
+
+          echo ""
+          echo "Verifying axon-agent process runs as cassandra user..."
+          AGENT_PID=$(docker exec cassandra-test pgrep -x "axon-agent")
+          AGENT_USER=$(docker exec cassandra-test ps -o user= -p $AGENT_PID | tr -d ' ')
+          echo "axon-agent process (PID $AGENT_PID) running as: $AGENT_USER"
+          if [ "$AGENT_USER" != "cassandr" ] && [ "$AGENT_USER" != "cassandra" ]; then
+            echo "ERROR: axon-agent process is not running as cassandra user!"
+            exit 1
+          fi
+          echo "✓ axon-agent is running as cassandra user"
+
+          echo ""
+          echo "=== All process ownership checks passed ==="
+
+      - name: Verify cqlai is installed
+        run: |
+          echo "Checking cqlai installation..."
+          docker exec cassandra-test cqlai --version
+          echo "cqlai is installed"
+
+      - name: Test CQL operations with cqlai
+        run: |
+          echo "=== Testing CQL operations with cqlai ==="
+
+          echo "Creating keyspace..."
+          docker exec cassandra-test cqlai -e "CREATE KEYSPACE IF NOT EXISTS cqlai_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+
+          echo "Creating table..."
+          docker exec cassandra-test cqlai -e "CREATE TABLE IF NOT EXISTS cqlai_test.users (id UUID PRIMARY KEY, name TEXT, email TEXT, created_at TIMESTAMP);"
+
+          echo "Inserting test data..."
+          docker exec cassandra-test cqlai -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Alice', 'alice@example.com', toTimestamp(now()));"
+          docker exec cassandra-test cqlai -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Bob', 'bob@example.com', toTimestamp(now()));"
+          docker exec cassandra-test cqlai -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Charlie', 'charlie@example.com', toTimestamp(now()));"
+
+          echo "Selecting data..."
+          docker exec cassandra-test cqlai -e "SELECT * FROM cqlai_test.users;"
+
+          echo "Verifying data..."
+          docker exec cassandra-test cqlai -e "SELECT * FROM cqlai_test.users;" | grep -q "example.com"
+          echo "Data verified"
+
+          echo "Testing UPDATE..."
+          docker exec cassandra-test cqlai -e "UPDATE cqlai_test.users SET name = 'Alice Updated' WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Alice' ALLOW FILTERING);" || true
+
+          echo "Testing DELETE..."
+          docker exec cassandra-test cqlai -e "DELETE FROM cqlai_test.users WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Charlie' ALLOW FILTERING);" || true
+
+          echo "Querying system tables..."
+          docker exec cassandra-test cqlai -e "SELECT keyspace_name, table_name FROM system_schema.tables WHERE keyspace_name = 'cqlai_test';"
+
+          echo "Cleanup test keyspace..."
+          docker exec cassandra-test cqlai -e "DROP KEYSPACE cqlai_test;"
+
+          echo "=== All cqlai CQL tests passed ==="
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'axonops-cassandra:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'k8ssandra/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'axonops-cassandra:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'k8ssandra/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker logs cassandra-test || true
+          docker stop cassandra-test || true
+          docker rm cassandra-test || true
+
+  create-release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ inputs.main_git_tag }}',
+              name: `k8ssandra-${{ inputs.container_version }}`,
+              body: `K8ssandra container images release ${{ inputs.container_version }}\n\nBuilt from git tag: ${{ inputs.main_git_tag }}\n\nPublished images:\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.6-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.5-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.4-${{ inputs.container_version }}`,
+              draft: false,
+              prerelease: false
+            });
+            console.log(`Release created: ${release.data.html_url}`);
+            return release.data.id;
+
+  build-and-push:
+    needs: [test, create-release]
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 3
+      matrix:
+        cassandra_version: [5.0.4, 5.0.5, 5.0.6]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract base version
+        id: version
+        run: |
+          BASE_VERSION=$(echo "${{ matrix.cassandra_version }}" | cut -d. -f1,2)
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Base version: ${BASE_VERSION}"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+          labels: |
+            org.opencontainers.image.title=AxonOps K8ssandra Container
+            org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with AxonOps integration
+            org.opencontainers.image.version=${{ inputs.container_version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.version.outputs.base_version }}
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image digest
+        run: echo "Image pushed successfully to ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}"
