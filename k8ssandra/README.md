@@ -92,7 +92,7 @@ See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instruction
 Run the installation script to set up the K8ssandra Operator and required dependencies:
 
 ```bash
-./scripts/install_k8ssandra.sh
+./k8ssandra/scripts/install_k8ssandra.sh
 ```
 
 This script will:
@@ -122,7 +122,7 @@ Use the rebuild script to build, push, and deploy your cluster:
 
 ```bash
 cd k8ssandra/5.0
-../../scripts/rebuild.sh
+../scripts/rebuild.sh
 ```
 
 The script will:
@@ -261,13 +261,13 @@ containers:
 
 ## Scripts Reference
 
-### scripts/install_k8ssandra.sh
+### k8ssandra/scripts/install_k8ssandra.sh
 
 Installs the K8ssandra Operator and its prerequisites.
 
 **Usage:**
 ```bash
-./scripts/install_k8ssandra.sh
+./k8ssandra/scripts/install_k8ssandra.sh
 ```
 
 **What it does:**
@@ -277,7 +277,7 @@ Installs the K8ssandra Operator and its prerequisites.
 
 **No parameters required.**
 
-### scripts/rebuild.sh
+### k8ssandra/scripts/rebuild.sh
 
 Builds, pushes, and deploys a Cassandra cluster with AxonOps integration.
 
@@ -291,7 +291,7 @@ export AXON_AGENT_ORG="your-org"
 export AXON_AGENT_HOST="your-host"  # Optional
 
 cd k8ssandra/5.0
-../../scripts/rebuild.sh
+../scripts/rebuild.sh
 ```
 
 **What it does:**

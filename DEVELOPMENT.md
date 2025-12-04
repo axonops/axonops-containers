@@ -12,8 +12,8 @@ axonops-cassandra-containers/
 │   │   ├── Dockerfile      # Container build definition
 │   │   └── *.sh            # Component-specific scripts
 │   ├── examples/           # Deployment examples for this component
+│   ├── scripts/            # Component-specific utility scripts
 │   └── README.md           # Component-specific documentation
-├── scripts/                # Shared utility scripts
 ├── DEVELOPMENT.md          # This file
 ├── README.md               # Repository overview
 └── LICENSE                 # Apache 2.0 license
