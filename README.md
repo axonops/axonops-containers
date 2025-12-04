@@ -35,23 +35,87 @@ Components use a two-stage release process for safety and control:
 1. **Continuous Testing** - Automatic tests on every push/PR
 2. **Manual Publishing** - Controlled release to GHCR when ready
 
-### Quick Release Guide
+### Release Process Overview
+
+**Step 1: Create Git Tag**
+
+Tag the commit you want to release:
 
 ```bash
-# 1. Create and push git tag
 git tag 1.0.0
 git push origin 1.0.0
+```
 
-# 2. Trigger publish workflow (GitHub CLI)
+The tag can be any name (e.g., `1.0.0`, `v1.0.0`, `release-2024-12`). It marks the exact code snapshot to build from.
+
+**Step 2: Trigger Publish Workflow**
+
+You can trigger the publish workflow via **GitHub CLI** or **GitHub UI**.
+
+#### Option A: GitHub CLI
+
+Install and authenticate (first time only):
+```bash
+# macOS
+brew install gh
+
+# Linux
+# See: https://github.com/cli/cli#installation
+
+# Authenticate
+gh auth login
+```
+
+Trigger the workflow:
+```bash
 gh workflow run <component>-publish.yml \
   -f git_tag=1.0.0 \
   -f container_version=1.0.0
+```
 
-# 3. Monitor workflow
+**Arguments explained:**
+- `-f git_tag=1.0.0` - The git tag to checkout and build (the tag you created in Step 1)
+- `-f container_version=1.0.0` - The version suffix for GHCR images (e.g., creates `5.0.6-1.0.0`)
+
+Monitor progress:
+```bash
 gh run watch
 ```
 
-**GitHub UI:** Actions → Select publish workflow → Run workflow → Enter inputs
+#### Option B: GitHub UI
+
+1. Navigate to **Actions** tab in GitHub repository
+2. Select the publish workflow (e.g., **K8ssandra Publish to GHCR**)
+3. Click **Run workflow** button (top right)
+4. A form appears with inputs:
+   - **git_tag**: Enter the git tag created in Step 1 (e.g., `1.0.0`)
+     - This determines which code to build
+   - **container_version**: Enter the GHCR version tag (e.g., `1.0.0`)
+     - This becomes the version suffix on published images
+     - Example: `5.0.6-1.0.0` where `1.0.0` is the container_version
+5. Click **Run workflow** to start
+
+**Step 3: Workflow Execution**
+
+The workflow will:
+- Validate `container_version` doesn't exist in GHCR (fails if duplicate)
+- Checkout the `git_tag` commit (exact code snapshot)
+- Run full test suite
+- Build multi-arch images (amd64, arm64)
+- Publish to GHCR with tags like `5.0.6-<container_version>`
+- Create GitHub Release named `<component>-<container_version>`
+
+**Step 4: Verify Release**
+
+```bash
+# View GitHub Release
+gh release view k8ssandra-1.0.0
+
+# Pull and test image
+docker pull ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0
+```
+
+### Component Release Documentation
 
 Each component has detailed release documentation:
 - [K8ssandra Release Process](./k8ssandra/RELEASE.md)
