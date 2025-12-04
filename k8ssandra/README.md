@@ -429,6 +429,8 @@ The CI pipeline includes comprehensive testing:
 - CQL operations using cqlai (CREATE, INSERT, SELECT, DROP)
 - AxonOps agent process verification
 - Trivy container security scanning
+  - Known upstream CVEs are documented in `.trivyignore`
+  - See [.trivyignore](./.trivyignore) for list of suppressed vulnerabilities
 
 **Publishing Process:**
 1. Developer creates git tag (e.g., `git tag 1.0.0 && git push origin 1.0.0`)
