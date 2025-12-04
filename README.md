@@ -71,6 +71,4 @@ This project may contain trademarks or logos for projects, products, or services
 
 **Made with ❤️ by [AxonOps](https://axonops.com)**
 
-*Simplifying Apache Cassandra operations*
-
 </div>
