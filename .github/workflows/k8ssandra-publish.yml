@@ -421,7 +421,9 @@ jobs:
           file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           labels: |
             org.opencontainers.image.title=AxonOps K8ssandra Container
             org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with AxonOps integration
