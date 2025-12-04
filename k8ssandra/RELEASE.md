@@ -64,7 +64,7 @@ git push origin 1.0.0
 3. Click **Run workflow** button
 4. Fill in inputs:
    - **main_git_tag**: The tag you created (e.g., `1.0.0`)
-   - **container_version**: Version to tag images in GHCR (e.g., `1.0.0`)
+   - **container_version**: Container version (e.g., `1.0.0`)
 5. Click **Run workflow**
 
 #### Option B: Using GitHub CLI
@@ -163,9 +163,9 @@ The workflow validates this tag is on main branch, then checks out this exact ta
 ### container_version
 **Required:** Yes
 **Type:** String
-**Description:** Version suffix for container image tags in GHCR
+**Description:** Container version for published images in GHCR
 
-This becomes the version suffix for all published images:
+This becomes the container version for all published images:
 - `5.0.6-<container_version>`
 - `5.0.5-<container_version>`
 - `5.0.4-<container_version>`

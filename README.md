@@ -84,7 +84,7 @@ gh workflow run <component>-publish.yml \
 
 **Arguments explained:**
 - `-f main_git_tag=1.0.0` - The git tag on main branch to checkout and build (the tag you created in Step 1)
-- `-f container_version=1.0.0` - The version suffix for GHCR images (e.g., creates `5.0.6-1.0.0`)
+- `-f container_version=1.0.0` - The container version for GHCR images (e.g., creates `5.0.6-1.0.0`)
 
 Monitor progress:
 ```bash
@@ -99,9 +99,9 @@ gh run watch
 4. A form appears with inputs:
    - **main_git_tag**: Enter the git tag on main branch created in Step 1 (e.g., `1.0.0`)
      - This determines which code to build
-   - **container_version**: Enter the GHCR version tag (e.g., `1.0.0`)
-     - This becomes the version suffix on published images
-     - Example: `5.0.6-1.0.0` where `1.0.0` is the container_version
+   - **container_version**: Enter the container version (e.g., `1.0.0`)
+     - This becomes the container version on published images
+     - Example: `5.0.6-1.0.0` where `1.0.0` is the container version
 5. Click **Run workflow** to start
 
 **Step 3: Workflow Execution**

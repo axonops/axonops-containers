@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       container_version:
-        description: 'Container release version for GHCR (e.g., 1.0.0)'
+        description: 'Container version for GHCR (e.g., 1.0.0)'
         required: true
         type: string
 
