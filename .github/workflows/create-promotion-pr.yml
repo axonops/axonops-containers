@@ -112,7 +112,7 @@ jobs:
           gh pr create \
             --base main \
             --head development \
-            --title "${GITHUB_USER}: Merge ${TAG_NAME} from development branch to main" \
+            --title "${GITHUB_USER}: Merge tag '${TAG_NAME}' from development to main" \
             --body-file /tmp/pr-body.md
 
           echo "✓ PR created for tag ${TAG_NAME}"
