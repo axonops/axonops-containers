@@ -61,41 +61,59 @@ git checkout -b feature/my-feature
 
 ## Releasing
 
-Components support both development and production releases:
+### Development Publishing
 
-### Development Releases (Testing)
-- Publish to: `ghcr.io/axonops/development-<image-name>`
-- Tag from: `development` branch
-- Purpose: Testing before production
-- Allows overwrites for iteration
+**Purpose:** Publish images to development registry for testing before production release.
 
-### Production Releases (Main)
-- Publish to: `ghcr.io/axonops/<image-name>`
-- Tag from: `main` branch only
-- Purpose: Stable production releases
-- Immutable (no overwrites)
+**Registry:** `ghcr.io/axonops/development-<image-name>`
 
-### Development Release Process (Quick Reference)
+**Characteristics:**
+- Images can be overwritten (no version validation)
+- Allows iterative testing with same tag
+- No GitHub Releases created
+- Tagged from `development` branch
 
-Publish development images for testing:
+**Process:**
 
 ```bash
-# 1. Tag development branch
+# 1. Tag development branch (any name, e.g., dev-feature-x, dev-1.0.0)
 git checkout development && git pull origin development
 git tag dev-1.0.0 && git push origin dev-1.0.0
 
-# 2. Trigger publish
+# 2. Trigger development publish workflow
 gh workflow run development-<component>-publish.yml \
   -f dev_git_tag=dev-1.0.0 \
   -f container_version=dev-1.0.0
 
 # 3. Test development image
 docker pull ghcr.io/axonops/development-<image>:5.0.6-dev-1.0.0
+# Run tests, validate functionality
+
+# 4. When ready, promote to production via PR: development → main
 ```
 
-**Note:** Development images can be overwritten. No GitHub Releases created.
+**Use for:** Feature testing, integration testing, QA validation before production.
 
-### Production Release Process (Quick Reference)
+---
+
+### Production Publishing
+
+**Purpose:** Publish stable, tested images to production registry.
+
+**Registry:** `ghcr.io/axonops/<image-name>`
+
+**Characteristics:**
+- Immutable (version validation prevents overwrites)
+- Creates GitHub Releases
+- Tagged from `main` branch only
+- Only after testing in development
+
+**Prerequisites:**
+- Changes merged to `development` and tested
+- Development images validated (if published)
+- PR from `development` → `main` approved and merged
+
+**Process:**
 
 **Step 1: Create Git Tag on Main Branch**
 
