@@ -68,45 +68,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
 
           # Generate changelog
-          CHANGELOG=$(git log --oneline origin/main..origin/development --pretty=format:"- %s")
+          git log --oneline origin/main..origin/development --pretty=format:"- %s" > /tmp/changelog.txt
 
-          # Create PR body
-          PR_BODY=$(cat <<EOF
-## Production Release ${VERSION}
-
+          # Create PR body file
+          cat > /tmp/pr-body.md <<'EOFBODY'
+## Production Release
 This PR promotes tested changes from development to main for production release.
 
 ### Changes in this release
-${CHANGELOG}
+EOFBODY
+          cat /tmp/changelog.txt >> /tmp/pr-body.md
+          cat >> /tmp/pr-body.md <<'EOFBODY'
 
 ### Next Steps
 1. Review changes
 2. Approve PR
 3. Merge to main
-4. Tag main branch: \`git tag ${VERSION} && git push origin ${VERSION}\`
-5. Run production publish workflow with tag \`${VERSION}\`
+4. Tag main branch and run production publish workflow
 
-### Workflows
-After merge to main, trigger production publish:
-\`\`\`bash
-gh workflow run k8ssandra-publish.yml \\
-  -f main_git_tag=${VERSION} \\
-  -f container_version=${VERSION}
-\`\`\`
-EOF
-)
-
-          # Get the actual tag name
-          TAG_NAME="${GITHUB_REF#refs/tags/}"
+EOFBODY
 
           # Create PR from development to main
           gh pr create \
             --base main \
             --head development \
             --title "Merge ${TAG_NAME} from development branch to main" \
-            --body "$PR_BODY" \
+            --body-file /tmp/pr-body.md \
             --label "merge-to-main"
 
           echo "✓ PR created for tag ${TAG_NAME}"
