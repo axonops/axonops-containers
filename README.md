@@ -42,21 +42,19 @@ Each component has its own documentation with detailed instructions:
 ## Development
 
 **Branch Structure:**
-- `development` - Default branch, all feature work starts here
-- `main` - Production releases only
-- `feature/*` - Feature branches (merge to development)
+- `development` - Default branch, commit directly here
+- `main` - Production releases only (PR required)
+- `feature/*` - Optional, for complex features
 
 See [DEVELOPMENT.md](./DEVELOPMENT.md) for complete guidelines.
 
 **Developer Workflow:**
 ```bash
-# Work on development branch
-git checkout development
-git pull origin development
-git checkout -b feature/my-feature
+# Work directly on development
+git checkout development && git pull origin development
+git add . && git commit -S -m "Add feature" && git push origin development
 
-# Make changes, create PR to development
-# After merge and testing, promote to main via PR
+# For production: create PR development → main (approval required)
 ```
 
 ## Releasing
