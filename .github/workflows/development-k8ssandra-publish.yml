@@ -17,7 +17,7 @@ env:
   IMAGE_NAME: development-axonops-cassandra-containers
 
 jobs:
-  validate:
+  k8ssandra-validate:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,8 +45,8 @@ jobs:
             exit 1
           fi
 
-  test:
-    needs: validate
+  k8ssandra-test:
+    needs: k8ssandra-validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -326,8 +326,8 @@ jobs:
           docker stop cassandra-test || true
           docker rm cassandra-test || true
 
-  build-and-push:
-    needs: test
+  k8ssandra-build-and-push:
+    needs: k8ssandra-test
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 3
