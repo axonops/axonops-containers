@@ -26,16 +26,41 @@ Each component has its own documentation with detailed instructions:
 
 ## Development
 
-See [DEVELOPMENT.md](./DEVELOPMENT.md) for guidelines on contributing, adding new components, and maintenance procedures.
+**Branch Structure:**
+- `development` - Default branch, all feature work starts here
+- `main` - Production releases only
+- `feature/*` - Feature branches (merge to development)
+
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for complete guidelines.
+
+**Developer Workflow:**
+```bash
+# Work on development branch
+git checkout development
+git pull origin development
+git checkout -b feature/my-feature
+
+# Make changes, create PR to development
+# After merge and testing, promote to main via PR
+```
 
 ## Releasing
 
-Components use a two-stage release process for safety and control:
+Components support both development and production releases:
 
-1. **Continuous Testing** - Automatic tests on every push/PR
-2. **Manual Publishing** - Controlled release to GHCR when ready
+### Development Releases (Testing)
+- Publish to: `ghcr.io/axonops/development-<image-name>`
+- Tag from: `development` branch
+- Purpose: Testing before production
+- Allows overwrites for iteration
 
-### Release Process Overview
+### Production Releases (Main)
+- Publish to: `ghcr.io/axonops/<image-name>`
+- Tag from: `main` branch only
+- Purpose: Stable production releases
+- Immutable (no overwrites)
+
+### Production Release Process (Quick Reference)
 
 **Step 1: Create Git Tag on Main Branch**
 

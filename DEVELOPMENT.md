@@ -109,10 +109,54 @@ Every workflow must include:
 
 ## Git Workflow
 
-### Branching
-- `main` - production-ready code
-- `feature/<name>` - new features or components
-- `fix/<name>` - bug fixes
+### Branch Structure
+
+**`main` - Production Branch**
+- Production-ready code only
+- Protected: requires PR approval, no direct pushes
+- Only accepts merges from `development` branch
+- Releases published to: `ghcr.io/axonops/axonops-cassandra-containers`
+
+**`development` - Integration Branch**
+- Default branch for all development work
+- All feature branches created from here
+- Protected: requires PR approval
+- Releases published to: `ghcr.io/axonops/development-axonops-cassandra-containers`
+- Testing ground before promoting to production
+
+**`feature/<name>` - Feature Branches**
+- Created from `development` branch
+- Merged back to `development` via PR
+- Deleted after merge
+
+**`fix/<name>` - Bug Fix Branches**
+- Created from `development` branch
+- Merged back to `development` via PR
+- Deleted after merge
+
+### Development Workflow
+
+```bash
+# 1. Start new feature
+git checkout development
+git pull origin development
+git checkout -b feature/my-feature
+
+# 2. Make changes and commit
+git add .
+git commit -m "Add my feature"
+
+# 3. Push and create PR to development
+git push origin feature/my-feature
+# Create PR on GitHub: feature/my-feature → development
+
+# 4. After PR approved and merged to development
+# CI tests run automatically
+
+# 5. When development is stable and ready for production
+# Create PR on GitHub: development → main
+# After approval and tests, merge to main
+```
 
 ### Commits
 - Use conventional commit messages
@@ -120,10 +164,18 @@ Every workflow must include:
 - No attribution to tools or AI in commit messages
 
 ### Pull Requests
-- Test locally before creating PR
-- Ensure CI passes on all platforms
-- Update documentation as needed
-- Link to related issues
+
+**To Development:**
+- Create from feature/fix branches
+- CI runs tests automatically
+- Requires approval (per branch protection rules)
+- Merge when approved and tests pass
+
+**To Main:**
+- Create from `development` branch only
+- CI runs tests again
+- Requires approval
+- Only merge when development is stable and tested
 
 ## Code Review Checklist
 
@@ -166,29 +218,70 @@ Each component uses a two-stage release process:
 
 ### Component Workflows
 
-Each component should have two workflows:
+Each component should have three workflows:
 
 **1. `<component>-build-and-test.yml`**
-- Triggers: Push to `main`, PRs (with path filters for `<component>/**`)
+- Triggers: Push to `main`/`development`, PRs to `main`/`development` (with path filters for `<component>/**`)
 - Runs: Full test suite
 - Does NOT publish to GHCR
 
-**2. `<component>-publish.yml`**
+**2. `development-<component>-publish.yml`** (Development Publishing)
+- Trigger: Manual (`workflow_dispatch`)
+- Inputs: `dev_git_tag`, `container_version`
+- Validates: Tag is on development branch
+- Runs: Full test suite on tagged code
+- Publishes: Multi-arch images to `ghcr.io/axonops/development-<image-name>`
+- No version validation (allows overwrites for iterative testing)
+- Does NOT create GitHub Releases
+
+**3. `<component>-publish.yml`** (Production Publishing)
 - Trigger: Manual (`workflow_dispatch`)
 - Inputs: `main_git_tag`, `container_version`
 - Validates: Tag is on main branch, container version doesn't exist in GHCR
 - Runs: Full test suite on tagged code
-- Publishes: Multi-arch images to GHCR
+- Publishes: Multi-arch images to `ghcr.io/axonops/<image-name>`
 - Creates: GitHub Release named `<component>-<container_version>`
 
-### Release Steps
+### Development Release (Testing)
 
-1. **Develop & Test**
+Publish development images for testing before production release:
+
+1. **Tag development branch**
    ```bash
-   git push origin feature/my-feature
-   # PR created → tests run automatically
-   # Merge when tests pass
+   git checkout development
+   git pull origin development
+   git tag dev-1.0.0
+   git push origin dev-1.0.0
    ```
+
+2. **Trigger development publish workflow**
+   ```bash
+   gh workflow run development-<component>-publish.yml \
+     -f dev_git_tag=dev-1.0.0 \
+     -f container_version=dev-1.0.0
+   ```
+
+3. **Images published to development registry**
+   - Registry: `ghcr.io/axonops/development-<image-name>`
+   - Example: `ghcr.io/axonops/development-axonops-cassandra-containers:5.0.6-dev-1.0.0`
+   - Can be overwritten (no version validation)
+   - No GitHub Release created
+
+4. **Test development images**
+   ```bash
+   docker pull ghcr.io/axonops/development-<image>:<version>-dev-1.0.0
+   # Run tests, validate functionality
+   ```
+
+### Production Release (Main Branch)
+
+When development images are tested and ready for production:
+
+1. **Merge development to main**
+   - Create PR: `development` → `main`
+   - Approval required
+   - Tests run on PR
+   - Merge when approved
 
 2. **Create Git Tag on Main Branch**
    ```bash
@@ -199,11 +292,7 @@ Each component should have two workflows:
    git push origin 1.0.0
    ```
 
-3. **Trigger Publish Workflow**
-
-   **GitHub UI:**
-   - Actions → Select publish workflow → Run workflow
-   - Enter `main_git_tag` and `container_version`
+3. **Trigger Production Publish Workflow**
 
    **GitHub CLI:**
    ```bash
@@ -212,16 +301,20 @@ Each component should have two workflows:
      -f container_version=1.0.0
    ```
 
+   **GitHub UI:**
+   - Actions → Select publish workflow → Run workflow
+   - Enter `main_git_tag` and `container_version`
+
 4. **Workflow Execution**
    - Validates tag is on main branch (fails if not)
-   - Validates version doesn't exist in GHCR
+   - Validates container version doesn't exist in GHCR (prevents overwrites)
    - Checks out specific git tag
    - Runs all tests
    - Builds multi-arch images
-   - Publishes to GHCR
+   - Publishes to: `ghcr.io/axonops/<image-name>`
    - Creates GitHub Release
 
-5. **Verify Release**
+5. **Verify Production Release**
    ```bash
    gh release view <component>-1.0.0
    docker pull ghcr.io/axonops/<image>:<version>-1.0.0
