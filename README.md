@@ -6,6 +6,21 @@
 
 Container build definitions and CI/CD pipelines for AxonOps container images.
 
+## Table of Contents
+
+- [Components](#components)
+- [Repository Conventions](#repository-conventions)
+- [Getting Started](#getting-started)
+- [Development](#development)
+- [Releasing](#releasing)
+  - [Development Releases (Testing)](#development-releases-testing)
+  - [Production Releases (Main)](#production-releases-main)
+  - [Development Release Process](#development-release-process-quick-reference)
+  - [Production Release Process](#production-release-process-quick-reference)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
+- [Legal Notices](#legal-notices)
+
 ## Components
 
 - **[k8ssandra/](./k8ssandra/)** - Apache Cassandra with AxonOps integration for K8ssandra Operator
@@ -59,6 +74,26 @@ Components support both development and production releases:
 - Tag from: `main` branch only
 - Purpose: Stable production releases
 - Immutable (no overwrites)
+
+### Development Release Process (Quick Reference)
+
+Publish development images for testing:
+
+```bash
+# 1. Tag development branch
+git checkout development && git pull origin development
+git tag dev-1.0.0 && git push origin dev-1.0.0
+
+# 2. Trigger publish
+gh workflow run development-<component>-publish.yml \
+  -f dev_git_tag=dev-1.0.0 \
+  -f container_version=dev-1.0.0
+
+# 3. Test development image
+docker pull ghcr.io/axonops/development-<image>:5.0.6-dev-1.0.0
+```
+
+**Note:** Development images can be overwritten. No GitHub Releases created.
 
 ### Production Release Process (Quick Reference)
 
