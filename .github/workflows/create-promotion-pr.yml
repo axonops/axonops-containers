@@ -96,8 +96,7 @@ jobs:
             --base main \
             --head development \
             --title "Merge ${TAG_NAME} from development branch to main" \
-            --body-file /tmp/pr-body.md \
-            --label "merge-to-main"
+            --body-file /tmp/pr-body.md
 
           echo "✓ PR created for tag ${TAG_NAME}"
 
