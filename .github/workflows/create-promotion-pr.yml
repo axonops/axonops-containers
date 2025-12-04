@@ -85,13 +85,9 @@ This PR promotes tested changes from development to main for production release.
 
 **Requested by:** ${TAG_AUTHOR} ${TAG_EMAIL}
 **Tag:** ${TAG_NAME}
-EOFBODY
-          cat >> /tmp/pr-body.md <<'EOFBODY'
 
 ### Changes in this release
 EOFBODY
-          echo "" >> /tmp/pr-body.md
-          echo "### Changes in this release" >> /tmp/pr-body.md
           cat /tmp/changelog.txt >> /tmp/pr-body.md
           cat >> /tmp/pr-body.md <<'EOFBODY'
 
