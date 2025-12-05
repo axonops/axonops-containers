@@ -249,6 +249,9 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+            ${{ matrix.cassandra_version == '4.0.19' && format('ghcr.io/{0}:4.0-latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '4.1.10' && format('ghcr.io/{0}:4.1-latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
             ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           labels: |
             org.opencontainers.image.title=AxonOps K8ssandra Container
