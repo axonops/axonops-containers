@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - development
+      - 'feature/**'
+      - 'fix/**'
     paths:
       - 'k8ssandra/**'
       - '.github/workflows/k8ssandra-build-and-test.yml'
