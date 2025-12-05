@@ -37,15 +37,15 @@ When version `5.0.6-1.0.1` is built, it gets tagged as:
 - `5.0-latest` (retag, because 5.0.6 is the highest 5.0.x patch)
 - `latest` (retag, because 5.0.6 is the highest overall version)
 
-**Production Best Practice:**
+**🚨 Production Best Practice:**
 
-Using ANY `-latest` tags in production is an **anti-pattern**. This includes `latest`, `5.0-latest`, and `5.0.6-latest` because:
+⚠️ **Using ANY `-latest` tags in production is an anti-pattern**. This includes `latest`, `5.0-latest`, and `5.0.6-latest` because:
 - **No audit trail**: You cannot determine which exact version was deployed at a given time
 - **Unexpected updates**: Kubernetes may pull a new image during pod restarts, causing unintended version changes
 - **Rollback difficulties**: You cannot reliably roll back to a previous version
 - **Compliance issues**: Many compliance frameworks require immutable version tracking
 
-**Always use immutable tags in production** (e.g., `5.0.6-1.0.1`). Use latest tags only for:
+👍 **Always use immutable tags in production** (e.g., `5.0.6-1.0.1`). Use latest tags only for:
 - Local development and testing
 - Documentation examples
 - Quick proof-of-concept deployments
