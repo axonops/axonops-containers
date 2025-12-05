@@ -37,7 +37,7 @@ When version `5.0.6-1.0.1` is built, it gets tagged as:
 - `5.0-latest` (retag, because 5.0.6 is the highest 5.0.x patch)
 - `latest` (retag, because 5.0.6 is the highest overall version)
 
-**🚨 Production Best Practice:**
+### 💡 Production Best Practice
 
 ⚠️ **Using ANY `-latest` tags in production is an anti-pattern**. This includes `latest`, `5.0-latest`, and `5.0.6-latest` because:
 - **No audit trail**: You cannot determine which exact version was deployed at a given time
@@ -51,6 +51,8 @@ When version `5.0.6-1.0.1` is built, it gets tagged as:
 - Quick proof-of-concept deployments
 
 **Image Updates with K8ssandra:** When you update the container image in your K8ssandraCluster manifest, the K8ssandra Operator handles the rolling update process. See the [K8ssandra Operator documentation](https://docs.k8ssandra.io/) for details on upgrade procedures and best practices.
+
+### Supported Cassandra Versions
 
 **Currently Supported Cassandra Versions:**
 - **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
