@@ -9,7 +9,9 @@ USER root
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
 
 # Update Java to latest version (security patches)
-RUN microdnf update -y java-17-openjdk-headless && \
+RUN echo "Current Java version:" && java -version 2>&1 | head -1 && \
+    microdnf update -y java-17-openjdk-headless && \
+    echo "Updated Java version:" && java -version 2>&1 | head -1 && \
     microdnf clean all && \
     rm -rf /var/cache/yum /var/cache/dnf
 
