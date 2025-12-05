@@ -20,7 +20,8 @@ CVE-2023-6481   # logback
 CVE-2025-12183  # lz4-java 1.8.0 → 1.8.1 (HIGH - DoS risk, fixed in upstream)
 
 # Go - AxonOps binaries (axon-agent, axon-cassandra-restore, etc.)
-# Requires rebuild with Go 1.24.9+
+# Requires rebuild with Go 1.24.11+ / 1.25.5+
 CVE-2025-58183  # archive/tar
 CVE-2025-58186  # HTTP headers
 CVE-2025-58187  # name constraint
+CVE-2025-61729  # stdlib HostnameError (HIGH - fixed in Go 1.24.11, 1.25.5)

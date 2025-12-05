@@ -101,220 +101,41 @@ jobs:
           load: true
           tags: axonops-cassandra:test
           build-args: |
-            CASSANDRA_VERSION=${{ steps.version.outputs.base_version }}
+            CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
 
-      - name: Start container
-        run: |
-          docker run -d --name cassandra-test \
-            -e AXON_AGENT_KEY=test-key \
-            -e AXON_AGENT_ORG=test-org \
-            -e AXON_AGENT_HOST=localhost \
-            -p 8080:8080 \
-            -p 9042:9042 \
-            axonops-cassandra:test
-          echo "Container started, waiting for services..."
+      - name: Verify correct base image
+        uses: ./.github/actions/k8ssandra-verify-base-image
+        with:
+          cassandra_version: ${{ matrix.cassandra_version }}
+          base_version: ${{ steps.version.outputs.base_version }}
 
-      - name: Wait for Management API liveness
-        run: |
-          echo "Waiting for Management API to be live..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8080/api/v0/probes/liveness | grep -q "OK"; then
-              echo "Management API is live"
-              exit 0
-            fi
-            echo "Attempt $i/30 - waiting 10s..."
-            sleep 10
-          done
-          echo "Management API failed to become live"
-          docker logs cassandra-test
-          exit 1
+      - name: Start container and wait for services
+        uses: ./.github/actions/k8ssandra-start-and-wait
+        with:
+          container_name: cassandra-test
 
-      - name: Wait for Cassandra readiness
-        run: |
-          echo "Waiting for Cassandra to be ready..."
-          for i in {1..60}; do
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v0/probes/readiness | grep -q "200"; then
-              echo "Cassandra is ready"
-              exit 0
-            fi
-            echo "Attempt $i/60 - waiting 10s..."
-            sleep 10
-          done
-          echo "Cassandra failed to become ready"
-          docker logs cassandra-test
-          exit 1
+      - name: Verify versions (jemalloc, Cassandra, Java)
+        uses: ./.github/actions/k8ssandra-verify-versions
+        with:
+          cassandra_version: ${{ matrix.cassandra_version }}
+          container_name: cassandra-test
 
-      - name: Wait for Cassandra CQL port 9042
-        run: |
-          echo "Waiting for Cassandra CQL port 9042..."
-          for i in {1..30}; do
-            if nc -z localhost 9042 2>/dev/null; then
-              echo "Cassandra CQL port 9042 is open"
-              exit 0
-            fi
-            echo "Attempt $i/30 - waiting 10s..."
-            sleep 10
-          done
-          echo "Cassandra CQL port 9042 failed to open"
-          docker logs cassandra-test
-          exit 1
+      - name: Test Management API
+        uses: ./.github/actions/k8ssandra-test-management-api
+        with:
+          container_name: cassandra-test
 
-      - name: Test Management API endpoints
-        run: |
-          echo "=== Testing Management API endpoints ==="
 
-          echo "Testing /api/v0/probes/liveness..."
-          curl -sf http://localhost:8080/api/v0/probes/liveness
-          echo ""
+      - name: Verify AxonOps
+        uses: ./.github/actions/k8ssandra-verify-axonops
+        with:
+          container_name: cassandra-test
 
-          echo "Testing /api/v0/probes/readiness..."
-          curl -sf http://localhost:8080/api/v0/probes/readiness
-          echo ""
-
-          echo "Testing /api/v0/metadata/versions/release..."
-          RELEASE=$(curl -sf http://localhost:8080/api/v0/metadata/versions/release) || echo "Endpoint not available (optional)"
-          echo "Cassandra version: $RELEASE"
-
-          echo "Testing /api/v0/metadata/localdc..."
-          DC=$(curl -sf http://localhost:8080/api/v0/metadata/localdc)
-          echo "Local datacenter: $DC"
-
-          echo "Testing /api/v0/lifecycle/pid..."
-          PID=$(curl -sf http://localhost:8080/api/v0/lifecycle/pid)
-          echo "Cassandra PID: $PID"
-
-          echo "Testing /api/v0/metadata/endpoints..."
-          curl -sf http://localhost:8080/api/v0/metadata/endpoints
-          echo ""
-
-          echo "Testing /api/v0/ops/keyspace..."
-          curl -sf http://localhost:8080/api/v0/ops/keyspace
-          echo ""
-
-          echo "=== All Management API tests passed ==="
-
-      - name: Test Management API Java agent operations
-        run: |
-          echo "=== Testing Management API Java agent operations ==="
-
-          echo "Creating test keyspace via Management API..."
-          curl -sf -X POST "http://localhost:8080/api/v0/ops/keyspace/create" \
-            -H "Content-Type: application/json" \
-            -d '{"keyspace_name": "test_keyspace", "replication_settings": [{"dc_name": "datacenter1", "replication_factor": 1}]}'
-          echo "Keyspace created"
-
-          echo "Verifying keyspace was created..."
-          curl -sf http://localhost:8080/api/v0/ops/keyspace | grep -q "test_keyspace"
-          echo "Keyspace verified"
-
-          echo "Creating test table via Management API..."
-          curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/create" \
-            -H "Content-Type: application/json" \
-            -d '{"keyspace_name": "test_keyspace", "table_name": "test_table", "columns": [{"name": "id", "type": "uuid", "kind": "PARTITION_KEY"}, {"name": "value", "type": "text", "kind": "REGULAR"}]}'
-          echo "Table created"
-
-          echo "Flushing tables (exercises Java agent)..."
-          curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/flush" \
-            -H "Content-Type: application/json" \
-            -d '{"keyspace_name": "test_keyspace"}'
-          echo "Flush completed"
-
-          echo "Running compaction (exercises Java agent)..."
-          curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/compact" \
-            -H "Content-Type: application/json" \
-            -d '{"keyspace_name": "test_keyspace"}'
-          echo "Compaction completed"
-
-          echo "Performing keyspace cleanup (exercises Java agent)..."
-          curl -sf -X POST "http://localhost:8080/api/v0/ops/keyspace/cleanup" \
-            -H "Content-Type: application/json" \
-            -d '{"keyspace_name": "test_keyspace", "jobs": 1}'
-          echo "Cleanup completed"
-
-          echo "=== All Java agent operation tests passed ==="
-
-      - name: Verify AxonOps agent is running
-        run: |
-          echo "Checking AxonOps agent process..."
-          if docker exec cassandra-test pgrep -f "axon-agent" > /dev/null; then
-            echo "AxonOps agent is running"
-          else
-            echo "WARNING: AxonOps agent process not found"
-            docker exec cassandra-test ps aux
-            exit 1
-          fi
-
-      - name: Verify processes run as cassandra user (not root)
-        run: |
-          echo "Checking process ownership..."
-          docker exec cassandra-test ps aux
-
-          echo ""
-          echo "Verifying Cassandra process runs as cassandra user..."
-          JAVA_USER=$(docker exec cassandra-test ps -o user= -C java | head -1 | tr -d ' ')
-          echo "Java process running as: $JAVA_USER"
-          if [ "$JAVA_USER" != "cassandr" ] && [ "$JAVA_USER" != "cassandra" ]; then
-            echo "ERROR: Java/Cassandra process is not running as cassandra user!"
-            exit 1
-          fi
-          echo "✓ Cassandra is running as cassandra user"
-
-          echo ""
-          echo "Verifying axon-agent process runs as cassandra user..."
-          AGENT_PID=$(docker exec cassandra-test pgrep -x "axon-agent")
-          AGENT_USER=$(docker exec cassandra-test ps -o user= -p $AGENT_PID | tr -d ' ')
-          echo "axon-agent process (PID $AGENT_PID) running as: $AGENT_USER"
-          if [ "$AGENT_USER" != "cassandr" ] && [ "$AGENT_USER" != "cassandra" ]; then
-            echo "ERROR: axon-agent process is not running as cassandra user!"
-            exit 1
-          fi
-          echo "✓ axon-agent is running as cassandra user"
-
-          echo ""
-          echo "=== All process ownership checks passed ==="
-
-      - name: Verify cqlai is installed
-        run: |
-          echo "Checking cqlai installation..."
-          docker exec cassandra-test cqlai --version
-          echo "cqlai is installed"
-
-      - name: Test CQL operations with cqlai
-        run: |
-          echo "=== Testing CQL operations with cqlai ==="
-
-          echo "Creating keyspace..."
-          docker exec cassandra-test cqlai -e "CREATE KEYSPACE IF NOT EXISTS cqlai_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
-
-          echo "Creating table..."
-          docker exec cassandra-test cqlai -e "CREATE TABLE IF NOT EXISTS cqlai_test.users (id UUID PRIMARY KEY, name TEXT, email TEXT, created_at TIMESTAMP);"
-
-          echo "Inserting test data..."
-          docker exec cassandra-test cqlai -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Alice', 'alice@example.com', toTimestamp(now()));"
-          docker exec cassandra-test cqlai -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Bob', 'bob@example.com', toTimestamp(now()));"
-          docker exec cassandra-test cqlai -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Charlie', 'charlie@example.com', toTimestamp(now()));"
-
-          echo "Selecting data..."
-          docker exec cassandra-test cqlai -e "SELECT * FROM cqlai_test.users;"
-
-          echo "Verifying data..."
-          docker exec cassandra-test cqlai -e "SELECT * FROM cqlai_test.users;" | grep -q "example.com"
-          echo "Data verified"
-
-          echo "Testing UPDATE..."
-          docker exec cassandra-test cqlai -e "UPDATE cqlai_test.users SET name = 'Alice Updated' WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Alice' ALLOW FILTERING);" || true
-
-          echo "Testing DELETE..."
-          docker exec cassandra-test cqlai -e "DELETE FROM cqlai_test.users WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Charlie' ALLOW FILTERING);" || true
-
-          echo "Querying system tables..."
-          docker exec cassandra-test cqlai -e "SELECT keyspace_name, table_name FROM system_schema.tables WHERE keyspace_name = 'cqlai_test';"
-
-          echo "Cleanup test keyspace..."
-          docker exec cassandra-test cqlai -e "DROP KEYSPACE cqlai_test;"
-
-          echo "=== All cqlai CQL tests passed ==="
+      - name: Test cqlai
+        uses: ./.github/actions/k8ssandra-test-cqlai
+        with:
+          container_name: cassandra-test
 
       - name: Run Trivy container security scan
         uses: aquasecurity/trivy-action@master
@@ -430,7 +251,7 @@ jobs:
             org.opencontainers.image.version=${{ inputs.container_version }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           build-args: |
-            CASSANDRA_VERSION=${{ steps.version.outputs.base_version }}
+            CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

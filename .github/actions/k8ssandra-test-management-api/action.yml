@@ -1,0 +1,86 @@
+name: 'K8ssandra Test Management API'
+description: 'Tests Management API endpoints and Java agent operations'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'cassandra-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test Management API endpoints
+      shell: bash
+      run: |
+        echo "=== Testing Management API endpoints ==="
+
+        echo "Testing /api/v0/probes/liveness..."
+        curl -sf http://localhost:8080/api/v0/probes/liveness
+        echo ""
+
+        echo "Testing /api/v0/probes/readiness..."
+        curl -sf http://localhost:8080/api/v0/probes/readiness
+        echo ""
+
+        echo "Testing /api/v0/metadata/versions/release..."
+        RELEASE=$(curl -sf http://localhost:8080/api/v0/metadata/versions/release) || echo "Endpoint not available (optional)"
+        echo "Cassandra version: $RELEASE"
+
+        echo "Testing /api/v0/metadata/localdc..."
+        DC=$(curl -sf http://localhost:8080/api/v0/metadata/localdc)
+        echo "Local datacenter: $DC"
+
+        echo "Testing /api/v0/lifecycle/pid..."
+        PID=$(curl -sf http://localhost:8080/api/v0/lifecycle/pid)
+        echo "Cassandra PID: $PID"
+
+        echo "Testing /api/v0/metadata/endpoints..."
+        curl -sf http://localhost:8080/api/v0/metadata/endpoints
+        echo ""
+
+        echo "Testing /api/v0/ops/keyspace..."
+        curl -sf http://localhost:8080/api/v0/ops/keyspace
+        echo ""
+
+        echo "=== All Management API tests passed ==="
+
+    - name: Test Management API Java agent operations
+      shell: bash
+      run: |
+        echo "=== Testing Management API Java agent operations ==="
+
+        echo "Creating test keyspace via Management API..."
+        curl -sf -X POST "http://localhost:8080/api/v0/ops/keyspace/create" \
+          -H "Content-Type: application/json" \
+          -d '{"keyspace_name": "test_keyspace", "replication_settings": [{"dc_name": "datacenter1", "replication_factor": 1}]}'
+        echo "Keyspace created"
+
+        echo "Verifying keyspace was created..."
+        curl -sf http://localhost:8080/api/v0/ops/keyspace | grep -q "test_keyspace"
+        echo "Keyspace verified"
+
+        echo "Creating test table via Management API..."
+        curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/create" \
+          -H "Content-Type: application/json" \
+          -d '{"keyspace_name": "test_keyspace", "table_name": "test_table", "columns": [{"name": "id", "type": "uuid", "kind": "PARTITION_KEY"}, {"name": "value", "type": "text", "kind": "REGULAR"}]}'
+        echo "Table created"
+
+        echo "Flushing tables (exercises Java agent)..."
+        curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/flush" \
+          -H "Content-Type: application/json" \
+          -d '{"keyspace_name": "test_keyspace"}'
+        echo "Flush completed"
+
+        echo "Running compaction (exercises Java agent)..."
+        curl -sf -X POST "http://localhost:8080/api/v0/ops/tables/compact" \
+          -H "Content-Type: application/json" \
+          -d '{"keyspace_name": "test_keyspace"}'
+        echo "Compaction completed"
+
+        echo "Performing keyspace cleanup (exercises Java agent)..."
+        curl -sf -X POST "http://localhost:8080/api/v0/ops/keyspace/cleanup" \
+          -H "Content-Type: application/json" \
+          -d '{"keyspace_name": "test_keyspace", "jobs": 1}'
+        echo "Cleanup completed"
+
+        echo "=== All Java agent operation tests passed ==="

@@ -1,0 +1,75 @@
+name: 'K8ssandra Verify Runtime Versions'
+description: 'Verifies jemalloc, Cassandra version, and Java version in running container'
+inputs:
+  cassandra_version:
+    description: 'Expected Cassandra version (e.g., 5.0.6)'
+    required: true
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'cassandra-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify jemalloc is loaded successfully
+      shell: bash
+      run: |
+        echo "=== Verifying jemalloc configuration ==="
+
+        LOGS=$(docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log 2>/dev/null || echo "")
+
+        if echo "$LOGS" | grep -iq ".*WARN.*jemalloc shared library could not be preloaded.*"; then
+          echo "ERROR: jemalloc warning found in logs!"
+          docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log | grep -i jemalloc
+          exit 1
+        fi
+
+        if ! echo "$LOGS" | grep -iq ".*INFO.*jemalloc seems to be preloaded.*"; then
+          echo "ERROR: jemalloc success message not found!"
+          docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log | grep -i jemalloc || echo "(no jemalloc messages found)"
+          exit 1
+        fi
+
+        echo "✓ jemalloc is properly configured and loaded"
+
+    - name: Verify Cassandra version
+      shell: bash
+      run: |
+        echo "=== Verifying Cassandra version ==="
+
+        LOGS=$(docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log 2>/dev/null || echo "")
+        echo "Expected: ${{ inputs.cassandra_version }}"
+
+        if ! echo "$LOGS" | grep -iq ".*INFO.*Cassandra version: ${{ inputs.cassandra_version }}"; then
+          echo "ERROR: Cassandra version ${{ inputs.cassandra_version }} not found!"
+          docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log | grep -i "Cassandra version:" || echo "(not found)"
+          exit 1
+        fi
+
+        echo "✓ Cassandra version ${{ inputs.cassandra_version }} verified"
+
+    - name: Verify Java version
+      shell: bash
+      run: |
+        echo "=== Verifying Java version ==="
+
+        docker exec ${{ inputs.container_name }} java -version > /tmp/java-ver.txt 2>&1 || true
+        JAVA_VERSION=$(head -n 1 /tmp/java-ver.txt)
+        echo "Java version: ${JAVA_VERSION}"
+
+        CASSANDRA_MAJOR=$(echo "${{ inputs.cassandra_version }}" | cut -d. -f1)
+        if [ "$CASSANDRA_MAJOR" = "4" ]; then
+          EXPECTED_JAVA="11"
+        else
+          EXPECTED_JAVA="17"
+        fi
+
+        if ! echo "$JAVA_VERSION" | grep -q "version \"${EXPECTED_JAVA}"; then
+          echo "ERROR: Wrong Java version!"
+          echo "Expected: Java ${EXPECTED_JAVA} for Cassandra ${{ inputs.cassandra_version }}"
+          echo "Found: ${JAVA_VERSION}"
+          exit 1
+        fi
+
+        echo "✓ Java ${EXPECTED_JAVA} verified"
