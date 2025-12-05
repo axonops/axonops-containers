@@ -17,17 +17,17 @@ runs:
       run: |
         echo "=== Verifying jemalloc configuration ==="
 
-        LOGS=$(docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log 2>/dev/null || echo "")
-
-        if echo "$LOGS" | grep -iq ".*WARN.*jemalloc shared library could not be preloaded.*"; then
+        # Check for jemalloc warning (should NOT exist)
+        if docker exec ${{ inputs.container_name }} grep -iq ".*WARN.*jemalloc shared library could not be preloaded.*" /var/log/cassandra/system.log 2>/dev/null; then
           echo "ERROR: jemalloc warning found in logs!"
-          docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log | grep -i jemalloc
+          docker exec ${{ inputs.container_name }} grep -i jemalloc /var/log/cassandra/system.log || true
           exit 1
         fi
 
-        if ! echo "$LOGS" | grep -iq ".*INFO.*jemalloc seems to be preloaded.*"; then
+        # Check for jemalloc success message (MUST exist)
+        if ! docker exec ${{ inputs.container_name }} grep -iq ".*INFO.*jemalloc seems to be preloaded.*" /var/log/cassandra/system.log 2>/dev/null; then
           echo "ERROR: jemalloc success message not found!"
-          docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log | grep -i jemalloc || echo "(no jemalloc messages found)"
+          docker exec ${{ inputs.container_name }} grep -i jemalloc /var/log/cassandra/system.log || echo "(no jemalloc messages found)"
           exit 1
         fi
 
