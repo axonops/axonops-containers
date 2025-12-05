@@ -1,8 +1,7 @@
 # AxonOps K8ssandra Containers
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
-[![Latest Version](https://ghcr-badge.elias.eu.org/axonops/axonops-cassandra-containers/latest_tag?trim=major&label=latest)](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
-[![Image Size](https://ghcr-badge.elias.eu.org/axonops/axonops-cassandra-containers/size?tag=latest)](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
+[![Docker Pulls](https://ghcr-badge.elias.eu.org/shield/axonops/axonops-cassandra-containers/axonops-cassandra-containers)](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
 
 Docker containers for Apache Cassandra with integrated AxonOps monitoring and management agent, designed for deployment on Kubernetes using K8ssandra Operator.
 
