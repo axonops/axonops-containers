@@ -50,7 +50,7 @@ Using `latest`, `5.0-latest`, or `{VERSION}-latest` tags in production is an **a
 - Documentation examples
 - Quick proof-of-concept deployments
 
-**Kubernetes Rolling Updates:** When you DO update to a new immutable tag, Kubernetes performs controlled rolling updates one pod at a time with zero cluster downtime. Data is preserved; only the container image changes.
+**Image Updates with K8ssandra:** When you update the container image in your K8ssandraCluster manifest, the K8ssandra Operator handles the rolling update process. See the [K8ssandra Operator documentation](https://docs.k8ssandra.io/) for details on upgrade procedures and best practices.
 
 **Currently Supported Cassandra Versions:**
 - **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
