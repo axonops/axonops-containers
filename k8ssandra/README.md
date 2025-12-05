@@ -5,7 +5,7 @@ Docker containers for Apache Cassandra with integrated AxonOps monitoring and ma
 ## Overview
 
 This repository provides pre-configured Docker images that combine:
-- Apache Cassandra 5.0
+- Apache Cassandra (4.0.x, 4.1.x, 5.0.x)
 - K8ssandra Management API
 - AxonOps Agent for monitoring and management
 - [cqlai](https://github.com/axonops/cqlai) - Modern CQL shell
@@ -18,11 +18,22 @@ Pre-built images are available from GitHub Container Registry (GHCR). This is th
 
 ### Available Images
 
-| Cassandra Version | Image |
-|-------------------|-------|
-| 5.0.6 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0` |
-| 5.0.5 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.5-1.0.0` |
-| 5.0.4 | `ghcr.io/axonops/axonops-cassandra-containers:5.0.4-1.0.0` |
+Images are tagged with both specific versions and major-version latest tags:
+
+| Tag Pattern | Example | Description |
+|-------------|---------|-------------|
+| `<version>-<release>` | `5.0.6-1.0.0` | Specific Cassandra version with release tag |
+| `4.0-latest` | `4.0-latest` | Latest 4.0.x version (currently 4.0.19) |
+| `4.1-latest` | `4.1-latest` | Latest 4.1.x version (currently 4.1.10) |
+| `5.0-latest` | `5.0-latest` | Latest 5.0.x version (currently 5.0.6) |
+| `latest` | `latest` | Latest overall version (currently 5.0.6) |
+
+**Supported Cassandra Versions:**
+- **4.0.x:** 4.0.5, 4.0.6, 4.0.7, 4.0.8, 4.0.9, 4.0.10, 4.0.11, 4.0.12, 4.0.13, 4.0.14, 4.0.15, 4.0.17, 4.0.18, 4.0.19 (14 versions)
+- **4.1.x:** 4.1.4, 4.1.5, 4.1.6, 4.1.7, 4.1.8, 4.1.9, 4.1.10 (7 versions)
+- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
+
+**Total:** 27 versions available
 
 Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
 
@@ -80,10 +91,24 @@ See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instruction
 
 ### Cassandra 5.0
 - Base Image: `k8ssandra/cass-management-api:5.0-ubi`
-- Supported versions: 5.0.4, 5.0.5, 5.0.6
+- Supported versions: 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
 - JDK: JDK17
-- Includes: AxonOps Agent, cqlai
+- Includes: AxonOps Agent, cqlai, jemalloc
 - Location: `k8ssandra/5.0/` directory
+
+### Cassandra 4.1
+- Base Image: `k8ssandra/cass-management-api:4.1-ubi`
+- Supported versions: 4.1.4, 4.1.5, 4.1.6, 4.1.7, 4.1.8, 4.1.9, 4.1.10 (7 versions)
+- JDK: JDK11
+- Includes: AxonOps Agent, cqlai, jemalloc
+- Location: `k8ssandra/4.1/` directory
+
+### Cassandra 4.0
+- Base Image: `k8ssandra/cass-management-api:4.0-ubi`
+- Supported versions: 4.0.5-4.0.19 (14 versions, missing 4.0.16)
+- JDK: JDK11
+- Includes: AxonOps Agent, cqlai, jemalloc
+- Location: `k8ssandra/4.0/` directory
 
 ## Getting Started
 
@@ -424,10 +449,13 @@ The repository includes a GitHub Actions workflow that automatically builds and 
 
 **Test Suite:**
 The CI pipeline includes comprehensive testing:
+- Tests run in parallel for latest of each major version (4.0.19, 4.1.10, 5.0.6)
 - Management API health checks (liveness, readiness)
 - Management API Java agent operations (create keyspace, table, flush, compact)
 - CQL operations using cqlai (CREATE, INSERT, SELECT, DROP)
 - AxonOps agent process verification
+- jemalloc verification (no warnings, successful loading)
+- Java version verification (JDK11 for 4.x, JDK17 for 5.x)
 - Trivy container security scanning
   - Known upstream CVEs are documented in `.trivyignore`
   - See [.trivyignore](./.trivyignore) for list of suppressed vulnerabilities
@@ -436,22 +464,29 @@ The CI pipeline includes comprehensive testing:
 1. Developer creates git tag (e.g., `git tag 1.0.0 && git push origin 1.0.0`)
 2. Developer triggers publish workflow via GitHub UI or `gh workflow run`
 3. Workflow validates version doesn't exist in GHCR
-4. Full test suite runs on tagged code
-5. Multi-arch images (amd64, arm64) built for all versions (5.0.4, 5.0.5, 5.0.6)
-6. Images pushed to GHCR
+4. Full test suite runs on tagged code for all three major versions
+5. Multi-arch images (amd64, arm64) built for all 27 versions in parallel (max 5 concurrent)
+6. Images pushed to GHCR with version-specific and latest tags
 7. GitHub Release created automatically
 
 For complete release instructions, see [RELEASE.md](./RELEASE.md)
 
 **Image Tags:**
+Each release publishes 27 version-specific images plus 4 latest tags:
 ```
 ghcr.io/axonops/axonops-cassandra-containers:<cassandra-version>-<release-tag>
+ghcr.io/axonops/axonops-cassandra-containers:4.0-latest
+ghcr.io/axonops/axonops-cassandra-containers:4.1-latest
+ghcr.io/axonops/axonops-cassandra-containers:5.0-latest
+ghcr.io/axonops/axonops-cassandra-containers:latest
 ```
 
-Example: For release tag `1.0.0`:
-- `ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.0`
-- `ghcr.io/axonops/axonops-cassandra-containers:5.0.5-1.0.0`
-- `ghcr.io/axonops/axonops-cassandra-containers:5.0.4-1.0.0`
+Example: For release tag `1.0.0`, 31 total tags published:
+- 27 version-specific tags (e.g., `4.0.5-1.0.0`, `4.1.4-1.0.0`, `5.0.1-1.0.0`, ...)
+- `4.0-latest` → `4.0.19-1.0.0`
+- `4.1-latest` → `4.1.10-1.0.0`
+- `5.0-latest` → `5.0.6-1.0.0`
+- `latest` → `5.0.6-1.0.0`
 
 ## Monitoring with AxonOps
 
