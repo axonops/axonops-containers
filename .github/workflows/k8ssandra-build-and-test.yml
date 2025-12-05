@@ -39,8 +39,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Test latest of each major version in parallel
-        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["4.0.19", "4.1.10", "5.0.6"]') }}
+        # Currently only testing 5.0 (4.0/4.1 support pending AxonOps agent fixes)
+        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.6"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

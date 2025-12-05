@@ -5,12 +5,14 @@ Docker containers for Apache Cassandra with integrated AxonOps monitoring and ma
 ## Overview
 
 This repository provides pre-configured Docker images that combine:
-- Apache Cassandra (4.0.x, 4.1.x, 5.0.x)
+- Apache Cassandra 5.0.x
 - K8ssandra Management API
 - AxonOps Agent for monitoring and management
 - [cqlai](https://github.com/axonops/cqlai) - Modern CQL shell
 
 These containers are optimized for Kubernetes deployments using the K8ssandra Operator and include automated CI/CD pipelines for building and publishing to GitHub Container Registry.
+
+**Note:** Currently only Cassandra 5.0 versions are published. Cassandra 4.0 and 4.1 support is available in the repository but not yet published due to AxonOps agent compatibility issues. Please reach out if you need 4.0 or 4.1 support.
 
 ## Pre-built Docker Images
 
@@ -35,20 +37,13 @@ When version `5.0.6-1.0.1` is built, it gets tagged as:
 - `5.0-latest` (retag, because 5.0.6 is the highest 5.0.x patch)
 - `latest` (retag, because 5.0.6 is the highest overall version)
 
-When version `4.0.12-1.0.1` is built, it gets tagged as:
-- `4.0.12-1.0.1` (immutable)
-- `4.0.12-latest` (retag)
-- `4.0-latest` (retag, because 4.0.19 is the highest 4.0.x patch) - **only if this is 4.0.19**
-- `latest` - **not tagged** (5.0.6 is higher)
-
 **Important:** Kubernetes performs controlled rolling updates when image tags change. Updates happen one pod at a time with zero cluster downtime. Data is preserved; only the container image changes.
 
-**Supported Cassandra Versions:**
-- **4.0.x:** 4.0.5, 4.0.6, 4.0.7, 4.0.8, 4.0.9, 4.0.10, 4.0.11, 4.0.12, 4.0.13, 4.0.14, 4.0.15, 4.0.17, 4.0.18, 4.0.19 (14 versions)
-- **4.1.x:** 4.1.4, 4.1.5, 4.1.6, 4.1.7, 4.1.8, 4.1.9, 4.1.10 (7 versions)
+**Currently Supported Cassandra Versions:**
 - **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
 
-**Total:** 27 versions available
+**Future Support:**
+- **4.0.x and 4.1.x:** Available in repository but not yet published due to AxonOps agent compatibility issues. Reach out if you need these versions.
 
 Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
 
@@ -104,26 +99,24 @@ See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instruction
 
 ## Supported Cassandra Versions
 
-### Cassandra 5.0
+### Cassandra 5.0 (Currently Supported)
 - Base Image: `k8ssandra/cass-management-api:5.0-ubi`
 - Supported versions: 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
 - JDK: JDK17
 - Includes: AxonOps Agent, cqlai, jemalloc
 - Location: `k8ssandra/5.0/` directory
 
-### Cassandra 4.1
+### Cassandra 4.1 (Available but not published)
 - Base Image: `k8ssandra/cass-management-api:4.1-ubi`
-- Supported versions: 4.1.4, 4.1.5, 4.1.6, 4.1.7, 4.1.8, 4.1.9, 4.1.10 (7 versions)
+- Status: Code ready in `k8ssandra/4.1/` but not published due to AxonOps agent compatibility issues
 - JDK: JDK11
-- Includes: AxonOps Agent, cqlai, jemalloc
-- Location: `k8ssandra/4.1/` directory
+- Contact us if you need 4.1 support
 
-### Cassandra 4.0
+### Cassandra 4.0 (Available but not published)
 - Base Image: `k8ssandra/cass-management-api:4.0-ubi`
-- Supported versions: 4.0.5-4.0.19 (14 versions, missing 4.0.16)
+- Status: Code ready in `k8ssandra/4.0/` but not published due to AxonOps agent compatibility issues
 - JDK: JDK11
-- Includes: AxonOps Agent, cqlai, jemalloc
-- Location: `k8ssandra/4.0/` directory
+- Contact us if you need 4.0 support
 
 ## Getting Started
 
@@ -464,13 +457,13 @@ The repository includes a GitHub Actions workflow that automatically builds and 
 
 **Test Suite:**
 The CI pipeline includes comprehensive testing:
-- Tests run in parallel for latest of each major version (4.0.19, 4.1.10, 5.0.6)
+- Tests run for Cassandra 5.0.6 (currently only 5.0 published)
 - Management API health checks (liveness, readiness)
 - Management API Java agent operations (create keyspace, table, flush, compact)
 - CQL operations using cqlai (CREATE, INSERT, SELECT, DROP)
 - AxonOps agent process verification
 - jemalloc verification (no warnings, successful loading)
-- Java version verification (JDK11 for 4.x, JDK17 for 5.x)
+- Java version verification (JDK17 for 5.0)
 - Trivy container security scanning
   - Known upstream CVEs are documented in `.trivyignore`
   - See [.trivyignore](./.trivyignore) for list of suppressed vulnerabilities
@@ -479,8 +472,8 @@ The CI pipeline includes comprehensive testing:
 1. Developer creates git tag (e.g., `git tag 1.0.0 && git push origin 1.0.0`)
 2. Developer triggers publish workflow via GitHub UI or `gh workflow run`
 3. Workflow validates version doesn't exist in GHCR
-4. Full test suite runs on tagged code for all three major versions
-5. Multi-arch images (amd64, arm64) built for all 27 versions in parallel (max 5 concurrent)
+4. Full test suite runs on tagged code for 5.0.6
+5. Multi-arch images (amd64, arm64) built for all 6 versions of 5.0 (max 3 concurrent)
 6. Images pushed to GHCR with version-specific and latest tags
 7. GitHub Release created automatically
 
@@ -492,31 +485,30 @@ Each release uses multi-dimensional tagging:
 ```
 ghcr.io/axonops/axonops-cassandra-containers:{CASSANDRA_VERSION}-{AXONOPS_VERSION}  # Immutable
 ghcr.io/axonops/axonops-cassandra-containers:{CASSANDRA_VERSION}-latest             # Patch-level latest
-ghcr.io/axonops/axonops-cassandra-containers:{CASSANDRA_MINOR}-latest               # Minor-level latest
+ghcr.io/axonops/axonops-cassandra-containers:5.0-latest                             # Minor-level latest
 ghcr.io/axonops/axonops-cassandra-containers:latest                                 # Global latest
 ```
 
-**Example:** For AxonOps release `1.0.1`, a total of 85 tags published:
+**Example:** For AxonOps release `1.0.1`, a total of 14 tags published:
 
-**Immutable tags** (27):
-- `4.0.5-1.0.1`, `4.0.6-1.0.1`, ..., `4.0.19-1.0.1` (14 tags)
-- `4.1.4-1.0.1`, `4.1.5-1.0.1`, ..., `4.1.10-1.0.1` (7 tags)
-- `5.0.1-1.0.1`, `5.0.2-1.0.1`, ..., `5.0.6-1.0.1` (6 tags)
+**Immutable tags** (6):
+- `5.0.1-1.0.1`, `5.0.2-1.0.1`, `5.0.3-1.0.1`, `5.0.4-1.0.1`, `5.0.5-1.0.1`, `5.0.6-1.0.1`
 
-**Patch-level latest tags** (27):
-- `4.0.5-latest` → `4.0.5-1.0.1`
-- `4.0.6-latest` → `4.0.6-1.0.1`
-- ... (all 27 Cassandra versions)
+**Patch-level latest tags** (6):
+- `5.0.1-latest` → `5.0.1-1.0.1`
+- `5.0.2-latest` → `5.0.2-1.0.1`
+- `5.0.3-latest` → `5.0.3-1.0.1`
+- `5.0.4-latest` → `5.0.4-1.0.1`
+- `5.0.5-latest` → `5.0.5-1.0.1`
+- `5.0.6-latest` → `5.0.6-1.0.1`
 
-**Minor-level latest tags** (3):
-- `4.0-latest` → `4.0.19-1.0.1`
-- `4.1-latest` → `4.1.10-1.0.1`
+**Minor-level latest tag** (1):
 - `5.0-latest` → `5.0.6-1.0.1`
 
 **Global latest tag** (1):
 - `latest` → `5.0.6-1.0.1`
 
-**Total:** 58 tags (27 immutable + 27 patch-latest + 3 minor-latest + 1 global-latest)
+**Total:** 14 tags (6 immutable + 6 patch-latest + 1 minor-latest + 1 global-latest)
 
 ## Monitoring with AxonOps
 

@@ -54,7 +54,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cassandra_version: [4.0.19, 4.1.10, 5.0.6]
+        # Currently only testing 5.0 (4.0/4.1 support pending AxonOps agent fixes)
+        cassandra_version: [5.0.6]
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
@@ -151,13 +152,10 @@ jobs:
     needs: k8ssandra-test
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 5
+      max-parallel: 3
       matrix:
-        cassandra_version: [
-          4.0.5, 4.0.6, 4.0.7, 4.0.8, 4.0.9, 4.0.10, 4.0.11, 4.0.12, 4.0.13, 4.0.14, 4.0.15, 4.0.17, 4.0.18, 4.0.19,
-          4.1.4, 4.1.5, 4.1.6, 4.1.7, 4.1.8, 4.1.9, 4.1.10,
-          5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6
-        ]
+        # Currently only building 5.0 (4.0/4.1 support pending AxonOps agent fixes)
+        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6]
     permissions:
       contents: read
       packages: write
@@ -195,8 +193,6 @@ jobs:
           tags: |
             ghcr.io/axonops/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
             ghcr.io/axonops/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-latest
-            ${{ matrix.cassandra_version == '4.0.19' && format('ghcr.io/axonops/{0}:4.0-latest', env.IMAGE_NAME) || '' }}
-            ${{ matrix.cassandra_version == '4.1.10' && format('ghcr.io/axonops/{0}:4.1-latest', env.IMAGE_NAME) || '' }}
             ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/axonops/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
             ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/axonops/{0}:latest', env.IMAGE_NAME) || '' }}
           labels: |
