@@ -7,6 +7,16 @@ ARG TARGETARCH
 
 USER root
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
+
+# Replace Red Hat OpenJDK with Azul Zulu OpenJDK 17 (supports Shenandoah GC)
+RUN microdnf remove -y java-17-openjdk-headless && \
+    rpm -ivh https://cdn.azul.com/zulu/bin/zulu-repo-1.0.0-2.noarch.rpm && \
+    microdnf install -y zulu17-jdk && \
+    microdnf remove -y zulu-repo && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
+
+# Install AxonOps agents and configure
 RUN groupadd --gid 9988 axonops && \
     useradd --gid 9988 --uid 9988 --shell /bin/bash -c "AxonOps" -G cassandra axonops && \
     usermod -aG axonops cassandra && \
