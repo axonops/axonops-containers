@@ -93,7 +93,7 @@ jobs:
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
           subject: '[AxonOps Containers] Nightly Security Scan Failed - New CVEs Detected'
-          to: ${{ secrets.SECURITY_EMAIL }}
+          to: ${{ env.SECURITY_EMAIL }}
           from: ${{ secrets.SMTP_USERNAME }}
           body: |
             Nightly security scan detected new CRITICAL or HIGH severity CVEs in K8ssandra containers.
