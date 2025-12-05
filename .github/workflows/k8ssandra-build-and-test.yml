@@ -68,6 +68,8 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Verify correct base image
         uses: ./.github/actions/k8ssandra-verify-base-image
@@ -176,6 +178,8 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Verify correct base image
         uses: ./.github/actions/k8ssandra-verify-base-image
