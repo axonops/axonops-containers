@@ -54,7 +54,7 @@ runs:
       run: |
         echo "=== Verifying Java version ==="
 
-        JAVA_VERSION=$(docker exec ${{ inputs.container_name }} java -version 2>&1 | head -1)
+        JAVA_VERSION=$(docker exec ${{ inputs.container_name }} java -version 2>&1 | head -n 1)
         echo "Java version: ${JAVA_VERSION}"
 
         CASSANDRA_MAJOR=$(echo "${{ inputs.cassandra_version }}" | cut -d. -f1)
