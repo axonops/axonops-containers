@@ -37,7 +37,20 @@ When version `5.0.6-1.0.1` is built, it gets tagged as:
 - `5.0-latest` (retag, because 5.0.6 is the highest 5.0.x patch)
 - `latest` (retag, because 5.0.6 is the highest overall version)
 
-**Important:** Kubernetes performs controlled rolling updates when image tags change. Updates happen one pod at a time with zero cluster downtime. Data is preserved; only the container image changes.
+**Production Best Practice:**
+
+Using `latest`, `5.0-latest`, or `{VERSION}-latest` tags in production is an **anti-pattern** because:
+- **No audit trail**: You cannot determine which exact version was deployed at a given time
+- **Unexpected updates**: Kubernetes may pull a new image during pod restarts, causing unintended version changes
+- **Rollback difficulties**: You cannot reliably roll back to a previous version
+- **Compliance issues**: Many compliance frameworks require immutable version tracking
+
+**Always use immutable tags in production** (e.g., `5.0.6-1.0.1`). Use latest tags only for:
+- Local development and testing
+- Documentation examples
+- Quick proof-of-concept deployments
+
+**Kubernetes Rolling Updates:** When you DO update to a new immutable tag, Kubernetes performs controlled rolling updates one pod at a time with zero cluster downtime. Data is preserved; only the container image changes.
 
 **Currently Supported Cassandra Versions:**
 - **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
