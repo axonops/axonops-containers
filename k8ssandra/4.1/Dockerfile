@@ -8,6 +8,11 @@ ARG TARGETARCH
 USER root
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
 
+# Update Java to latest version (security patches)
+RUN microdnf update -y java-11-openjdk-headless && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
+
 # Install jemalloc for memory allocation optimization
 RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     microdnf install -y jemalloc && \
