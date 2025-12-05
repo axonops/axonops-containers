@@ -1,0 +1,40 @@
+name: 'K8ssandra Collect Logs'
+description: 'Collects all container logs as artifacts'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'cassandra-test'
+  cassandra_version:
+    description: 'Cassandra version for artifact naming'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Collect container logs for artifacts
+      shell: bash
+      run: |
+        echo "=== Collecting logs from container ==="
+        mkdir -p /tmp/cassandra-logs
+
+        # Collect Cassandra logs
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log > /tmp/cassandra-logs/system.log 2>/dev/null || echo "system.log not found" > /tmp/cassandra-logs/system.log
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/gc.log > /tmp/cassandra-logs/gc.log 2>/dev/null || echo "gc.log not found" > /tmp/cassandra-logs/gc.log
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/debug.log > /tmp/cassandra-logs/debug.log 2>/dev/null || echo "debug.log not found" > /tmp/cassandra-logs/debug.log
+
+        # Collect AxonOps agent logs
+        docker exec ${{ inputs.container_name }} cat /var/log/axonops/axon-agent.log > /tmp/cassandra-logs/axon-agent.log 2>/dev/null || echo "axon-agent.log not found" > /tmp/cassandra-logs/axon-agent.log
+
+        # Collect docker container logs (stdout/stderr)
+        docker logs ${{ inputs.container_name }} > /tmp/cassandra-logs/docker-stdout.log 2>&1 || true
+
+        echo "Logs collected to /tmp/cassandra-logs"
+        ls -lh /tmp/cassandra-logs
+
+    - name: Upload logs as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: cassandra-logs-${{ inputs.cassandra_version }}
+        path: /tmp/cassandra-logs/
+        retention-days: 7

@@ -1,0 +1,36 @@
+name: 'K8ssandra Verify Base Image Version'
+description: 'Verifies the correct k8ssandra base image version was used during build'
+inputs:
+  cassandra_version:
+    description: 'Expected Cassandra version (e.g., 5.0.6)'
+    required: true
+  base_version:
+    description: 'Base version for directory path (e.g., 5.0)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify correct base image version in build
+      shell: bash
+      run: |
+        echo "=== Verifying base image version in build ==="
+
+        # Rebuild with output to capture logs
+        docker build \
+          --build-arg CASSANDRA_VERSION=${{ inputs.cassandra_version }} \
+          --build-arg MAJOR_VERSION=${{ inputs.base_version }} \
+          -t axonops-cassandra:verify \
+          ./k8ssandra/${{ inputs.base_version }} 2>&1 | tee /tmp/build-output.log
+
+        # Check for version echo in build output
+        if ! grep -q "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi" /tmp/build-output.log; then
+          echo "ERROR: Build did not use correct base image!"
+          echo "Expected: k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi"
+          echo ""
+          echo "AXONOPS_BUILD logs:"
+          grep "AXONOPS_BUILD" /tmp/build-output.log || echo "(no AXONOPS_BUILD messages found)"
+          exit 1
+        fi
+
+        echo "✓ Verified building from k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi"

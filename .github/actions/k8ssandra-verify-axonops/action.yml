@@ -1,0 +1,52 @@
+name: 'K8ssandra Verify AxonOps'
+description: 'Verifies AxonOps agent is running and processes run as correct user'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'cassandra-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify AxonOps agent is running
+      shell: bash
+      run: |
+        echo "Checking AxonOps agent process..."
+        if docker exec ${{ inputs.container_name }} pgrep -f "axon-agent" > /dev/null; then
+          echo "AxonOps agent is running"
+        else
+          echo "WARNING: AxonOps agent process not found"
+          docker exec ${{ inputs.container_name }} ps aux
+          exit 1
+        fi
+
+    - name: Verify processes run as cassandra user (not root)
+      shell: bash
+      run: |
+        echo "Checking process ownership..."
+        docker exec ${{ inputs.container_name }} ps aux
+
+        echo ""
+        echo "Verifying Cassandra process runs as cassandra user..."
+        JAVA_USER=$(docker exec ${{ inputs.container_name }} ps -o user= -C java | head -1 | tr -d ' ')
+        echo "Java process running as: $JAVA_USER"
+        if [ "$JAVA_USER" != "cassandr" ] && [ "$JAVA_USER" != "cassandra" ]; then
+          echo "ERROR: Java/Cassandra process is not running as cassandra user!"
+          exit 1
+        fi
+        echo "✓ Cassandra is running as cassandra user"
+
+        echo ""
+        echo "Verifying axon-agent process runs as cassandra user..."
+        AGENT_PID=$(docker exec ${{ inputs.container_name }} pgrep -x "axon-agent")
+        AGENT_USER=$(docker exec ${{ inputs.container_name }} ps -o user= -p $AGENT_PID | tr -d ' ')
+        echo "axon-agent process (PID $AGENT_PID) running as: $AGENT_USER"
+        if [ "$AGENT_USER" != "cassandr" ] && [ "$AGENT_USER" != "cassandra" ]; then
+          echo "ERROR: axon-agent process is not running as cassandra user!"
+          exit 1
+        fi
+        echo "✓ axon-agent is running as cassandra user"
+
+        echo ""
+        echo "=== All process ownership checks passed ==="
