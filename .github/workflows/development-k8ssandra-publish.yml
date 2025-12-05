@@ -87,61 +87,10 @@ jobs:
           cassandra_version: ${{ matrix.cassandra_version }}
           base_version: ${{ steps.version.outputs.base_version }}
 
-      - name: Start container
-        run: |
-          docker run -d --name cassandra-test \
-            -e AXON_AGENT_KEY=test-key \
-            -e AXON_AGENT_ORG=test-org \
-            -e AXON_AGENT_HOST=localhost \
-            -p 8080:8080 \
-            -p 9042:9042 \
-            axonops-cassandra:test
-          echo "Container started, waiting for services..."
-
-      - name: Wait for Management API liveness
-        run: |
-          echo "Waiting for Management API to be live..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8080/api/v0/probes/liveness | grep -q "OK"; then
-              echo "Management API is live"
-              exit 0
-            fi
-            echo "Attempt $i/30 - waiting 10s..."
-            sleep 10
-          done
-          echo "Management API failed to become live"
-          docker logs cassandra-test
-          exit 1
-
-      - name: Wait for Cassandra readiness
-        run: |
-          echo "Waiting for Cassandra to be ready..."
-          for i in {1..60}; do
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v0/probes/readiness | grep -q "200"; then
-              echo "Cassandra is ready"
-              exit 0
-            fi
-            echo "Attempt $i/60 - waiting 10s..."
-            sleep 10
-          done
-          echo "Cassandra failed to become ready"
-          docker logs cassandra-test
-          exit 1
-
-      - name: Wait for Cassandra CQL port 9042
-        run: |
-          echo "Waiting for Cassandra CQL port 9042..."
-          for i in {1..30}; do
-            if nc -z localhost 9042 2>/dev/null; then
-              echo "Cassandra CQL port 9042 is open"
-              exit 0
-            fi
-            echo "Attempt $i/30 - waiting 10s..."
-            sleep 10
-          done
-          echo "Cassandra CQL port 9042 failed to open"
-          docker logs cassandra-test
-          exit 1
+      - name: Start container and wait for services
+        uses: ./.github/actions/k8ssandra-start-and-wait
+        with:
+          container_name: cassandra-test
 
       - name: Verify versions (jemalloc, Cassandra, Java)
         uses: ./.github/actions/k8ssandra-verify-versions
