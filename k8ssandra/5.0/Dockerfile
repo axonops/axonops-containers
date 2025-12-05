@@ -1,11 +1,20 @@
 ARG CASSANDRA_VERSION=5.0
 FROM docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi
 
+RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi"
+
 ENV AXON_AGENT_LOG_OUTPUT=std
 ARG MAJOR_VERSION=5.0
 ARG TARGETARCH
 
 USER root
+
+# Update all packages to latest versions (security patches)
+RUN echo "Updating all packages to latest versions..." && \
+    microdnf update -y && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
+
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
 
 # Install jemalloc for memory allocation optimization
@@ -32,7 +41,8 @@ RUN groupadd --gid 9988 axonops && \
 # Install cqlai (latest release)
 RUN RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64") && \
     CQLAI_VERSION=$(curl -s https://api.github.com/repos/axonops/cqlai/releases/latest | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') && \
-    rpm -i https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}/cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm
+    rpm -i https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}/cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm && \
+    rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
 COPY axonops-entrypoint.sh /axonops-entrypoint.sh
 RUN chmod 755 /axonops-entrypoint.sh
