@@ -53,7 +53,7 @@ jobs:
           echo "Checking if any image with version ${{ inputs.container_version }} already exists..."
 
           # Check for any tag matching *-${{ inputs.container_version }}
-          VERSIONS="5.0.4 5.0.5 5.0.6"
+          VERSIONS="5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6"
           for VERSION in $VERSIONS; do
             TAG="${VERSION}-${{ inputs.container_version }}"
             echo "Checking for tag: $TAG"
@@ -75,7 +75,9 @@ jobs:
       contents: read
       security-events: write
     strategy:
+      fail-fast: false
       matrix:
+        # Test 5.0.6 first (4.0/4.1 support pending AxonOps agent fixes)
         cassandra_version: [5.0.6]
     steps:
       - name: Checkout code at tag
@@ -103,6 +105,8 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Verify correct base image
         uses: ./.github/actions/k8ssandra-verify-base-image
@@ -194,7 +198,7 @@ jobs:
               repo: context.repo.repo,
               tag_name: '${{ inputs.main_git_tag }}',
               name: `k8ssandra-${{ inputs.container_version }}`,
-              body: `K8ssandra container images release ${{ inputs.container_version }}\n\nBuilt from git tag: ${{ inputs.main_git_tag }}\n\nPublished images:\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.6-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.5-${{ inputs.container_version }}\n- ghcr.io/${{ env.IMAGE_NAME }}:5.0.4-${{ inputs.container_version }}`,
+              body: `K8ssandra container images release ${{ inputs.container_version }}\n\nBuilt from git tag: ${{ inputs.main_git_tag }}\n\n**Published:** 14 total tags across 6 Cassandra 5.0 versions\n\n**Cassandra versions:**\n- 5.0.x: 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)\n\n**Note:** Cassandra 4.0 and 4.1 support is available in the repository but not yet published due to AxonOps agent compatibility issues. Reach out if you need 4.x support.\n\n**Tagging strategy:**\nEach version gets multi-dimensional tags:\n- Immutable: {version}-${{ inputs.container_version }} (6 tags)\n- Patch-latest: {version}-latest (6 tags)\n- Minor-latest: 5.0-latest (1 tag)\n- Global-latest: latest (1 tag)\n\n**Latest tags point to:**\n- 5.0-latest → 5.0.6-${{ inputs.container_version }}\n- latest → 5.0.6-${{ inputs.container_version }}`,
               draft: false,
               prerelease: false
             });
@@ -207,7 +211,8 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        cassandra_version: [5.0.4, 5.0.5, 5.0.6]
+        # Currently only building 5.0 (4.0/4.1 support pending AxonOps agent fixes)
+        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6]
     permissions:
       contents: read
       packages: write
@@ -244,6 +249,8 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-latest
+            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
             ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           labels: |
             org.opencontainers.image.title=AxonOps K8ssandra Container

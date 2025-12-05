@@ -1,10 +1,10 @@
-ARG CASSANDRA_VERSION=5.0
+ARG CASSANDRA_VERSION=4.0
 FROM docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi
 
 RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi"
 
 ENV AXON_AGENT_LOG_OUTPUT=std
-ARG MAJOR_VERSION=5.0
+ARG MAJOR_VERSION=4.0
 ARG TARGETARCH
 
 USER root
@@ -31,12 +31,13 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.
 RUN groupadd --gid 9988 axonops && \
     useradd --gid 9988 --uid 9988 --shell /bin/bash -c "AxonOps" -G cassandra axonops && \
     usermod -aG axonops cassandra && \
-    microdnf -y install axon-cassandra5.0-agent-jdk17 axon-agent gettext && \
+    microdnf -y install axon-cassandra4.0-agent axon-agent gettext && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
     chmod 755 /usr/share/axonops/axon-agent && \
     rm -f /etc/axonops/axon-agent.yml && \
     touch /var/run/utmp && \
-    microdnf clean all
+    microdnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
 
 # Install cqlai (latest release)
 RUN RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64") && \
@@ -45,14 +46,8 @@ RUN RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64") &
     rpm -i https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}/cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
+ENV JVM_EXTRA_OPTS="-javaagent:/usr/share/axonops/axon-cassandra${MAJOR_VERSION}-agent.jar=/etc/axonops/axon-agent.yml"
 COPY axonops-entrypoint.sh /axonops-entrypoint.sh
 RUN chmod 755 /axonops-entrypoint.sh
-
-# Health check using Management API liveness endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:8080/api/v0/probes/liveness || exit 1
-
-# Switch back to cassandra user (base image default)
-USER cassandra
 
 CMD ["/axonops-entrypoint.sh"]

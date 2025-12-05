@@ -9,6 +9,7 @@ on:
       - 'fix/**'
     paths:
       - 'k8ssandra/**'
+      - '!k8ssandra/**/*.md'
       - '.github/workflows/k8ssandra-build-and-test.yml'
       - '.github/actions/k8ssandra-*/**'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - development
     paths:
       - 'k8ssandra/**'
+      - '!k8ssandra/**/*.md'
       - '.github/workflows/k8ssandra-build-and-test.yml'
       - '.github/actions/k8ssandra-*/**'
   workflow_call:
@@ -37,7 +39,9 @@ jobs:
       contents: read
       security-events: write
     strategy:
+      fail-fast: false
       matrix:
+        # Currently only testing 5.0 (4.0/4.1 support pending AxonOps agent fixes)
         cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.6"]') }}
     steps:
       - name: Checkout code
@@ -64,6 +68,118 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify correct base image
+        uses: ./.github/actions/k8ssandra-verify-base-image
+        with:
+          cassandra_version: ${{ matrix.cassandra_version }}
+          base_version: ${{ steps.version.outputs.base_version }}
+
+      - name: Start container and wait for services
+        uses: ./.github/actions/k8ssandra-start-and-wait
+        with:
+          container_name: cassandra-test
+
+      - name: Verify versions (jemalloc, Cassandra, Java)
+        uses: ./.github/actions/k8ssandra-verify-versions
+        with:
+          cassandra_version: ${{ matrix.cassandra_version }}
+          container_name: cassandra-test
+
+      - name: Test Management API
+        uses: ./.github/actions/k8ssandra-test-management-api
+        with:
+          container_name: cassandra-test
+
+      - name: Verify AxonOps
+        uses: ./.github/actions/k8ssandra-verify-axonops
+        with:
+          container_name: cassandra-test
+
+      - name: Test cqlai
+        uses: ./.github/actions/k8ssandra-test-cqlai
+        with:
+          container_name: cassandra-test
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'axonops-cassandra:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'k8ssandra/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'axonops-cassandra:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'k8ssandra/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Collect logs
+        if: always()
+        uses: ./.github/actions/k8ssandra-collect-logs
+        with:
+          container_name: cassandra-test
+          cassandra_version: ${{ matrix.cassandra_version }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop cassandra-test || true
+          docker rm cassandra-test || true
+
+  k8ssandra-test-other-versions:
+    needs: k8ssandra-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Test other 5.0 versions after 5.0.6 passes
+        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract base version
+        id: version
+        run: |
+          BASE_VERSION=$(echo "${{ matrix.cassandra_version }}" | cut -d. -f1,2)
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Build image for testing
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-cassandra:test
+          build-args: |
+            CASSANDRA_VERSION=${{ matrix.cassandra_version }}
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Verify correct base image
         uses: ./.github/actions/k8ssandra-verify-base-image

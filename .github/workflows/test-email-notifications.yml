@@ -1,0 +1,31 @@
+name: Test Email Notifications
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send test email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: '[AxonOps Containers] Test Email Notification'
+          to: ${{ vars.SECURITY_EMAIL }}
+          from: ${{ secrets.SMTP_USERNAME }}
+          body: |
+            This is a test email from GitHub Actions to verify SMTP configuration.
+
+            If you receive this email, the email notification system is working correctly.
+
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Configuration:
+            - SMTP Server: smtp.gmail.com:465 (SSL)
+            - From: ${{ secrets.SMTP_USERNAME }}
+            - To: ${{ vars.SECURITY_EMAIL }}

@@ -1,0 +1,104 @@
+name: K8ssandra Nightly Security Scan
+
+on:
+  schedule:
+    # Run at 2 AM UTC daily
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Scan all published versions
+        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract base version
+        id: version
+        run: |
+          BASE_VERSION=$(echo "${{ matrix.cassandra_version }}" | cut -d. -f1,2)
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-cassandra:scan-${{ matrix.cassandra_version }}
+          build-args: |
+            CASSANDRA_VERSION=${{ matrix.cassandra_version }}
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy container security scan
+        id: trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'axonops-cassandra:scan-${{ matrix.cassandra_version }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'k8ssandra/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'axonops-cassandra:scan-${{ matrix.cassandra_version }}'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.cassandra_version }}.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'k8ssandra/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results-${{ matrix.cassandra_version }}.sarif'
+
+  notify:
+    needs: security-scan
+    runs-on: ubuntu-latest
+    # Only notify if security-scan failed (Trivy found CVEs with exit-code: 1)
+    if: failure()
+    steps:
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: '[AxonOps Containers] Nightly Security Scan Failed - New CVEs Detected'
+          to: ${{ vars.SECURITY_EMAIL }}
+          from: ${{ secrets.SMTP_USERNAME }}
+          body: |
+            Nightly security scan detected new CRITICAL or HIGH severity CVEs in K8ssandra containers.
+
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Review the scan results in GitHub Security tab and update k8ssandra/.trivyignore if needed.
+
+            Scanned versions: 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6

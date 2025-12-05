@@ -52,7 +52,9 @@ jobs:
       contents: read
       security-events: write
     strategy:
+      fail-fast: false
       matrix:
+        # Test 5.0.6 first (4.0/4.1 support pending AxonOps agent fixes)
         cassandra_version: [5.0.6]
     steps:
       - name: Checkout code at tag
@@ -80,6 +82,8 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Verify correct base image
         uses: ./.github/actions/k8ssandra-verify-base-image
@@ -152,7 +156,8 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        cassandra_version: [5.0.4, 5.0.5, 5.0.6]
+        # Currently only building 5.0 (4.0/4.1 support pending AxonOps agent fixes)
+        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6]
     permissions:
       contents: read
       packages: write
@@ -187,7 +192,11 @@ jobs:
           file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/axonops/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+          tags: |
+            ghcr.io/axonops/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+            ghcr.io/axonops/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-latest
+            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/axonops/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/axonops/{0}:latest', env.IMAGE_NAME) || '' }}
           labels: |
             org.opencontainers.image.title=AxonOps K8ssandra Development Container
             org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with AxonOps integration (DEVELOPMENT)

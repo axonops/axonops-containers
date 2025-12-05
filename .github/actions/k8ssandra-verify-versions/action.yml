@@ -37,13 +37,13 @@ runs:
       shell: bash
       run: |
         echo "=== Verifying Cassandra version ==="
-
-        LOGS=$(docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log 2>/dev/null || echo "")
         echo "Expected: ${{ inputs.cassandra_version }}"
 
-        if ! echo "$LOGS" | grep -iq ".*INFO.*Cassandra version: ${{ inputs.cassandra_version }}"; then
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log > /tmp/cassandra-system.log 2>/dev/null || true
+
+        if ! grep -iq ".*INFO.*Cassandra version: ${{ inputs.cassandra_version }}" /tmp/cassandra-system.log; then
           echo "ERROR: Cassandra version ${{ inputs.cassandra_version }} not found!"
-          docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log | grep -i "Cassandra version:" || echo "(not found)"
+          grep -i "Cassandra version:" /tmp/cassandra-system.log || echo "(not found)"
           exit 1
         fi
 
