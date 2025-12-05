@@ -17,6 +17,12 @@ on:
     paths:
       - 'k8ssandra/**'
       - '.github/workflows/k8ssandra-build-and-test.yml'
+  workflow_call:
+    inputs:
+      cassandra_version:
+        description: 'Cassandra version to test'
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -30,7 +36,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        cassandra_version: [5.0.6]
+        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.6"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,6 +51,7 @@ jobs:
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build image for testing
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./k8ssandra/${{ steps.version.outputs.base_version }}
@@ -55,6 +62,29 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+
+      - name: Verify correct base image version in build
+        run: |
+          echo "=== Verifying base image version in build ==="
+
+          # Rebuild with output to capture logs
+          docker build \
+            --build-arg CASSANDRA_VERSION=${{ matrix.cassandra_version }} \
+            --build-arg MAJOR_VERSION=${{ steps.version.outputs.base_version }} \
+            -t axonops-cassandra:verify \
+            ./k8ssandra/${{ steps.version.outputs.base_version }} 2>&1 | tee /tmp/build-output.log
+
+          # Check for version echo in build output
+          if ! grep -q "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${{ matrix.cassandra_version }}-ubi" /tmp/build-output.log; then
+            echo "ERROR: Build did not use correct base image!"
+            echo "Expected: k8ssandra/cass-management-api:${{ matrix.cassandra_version }}-ubi"
+            echo ""
+            echo "AXONOPS_BUILD logs:"
+            grep "AXONOPS_BUILD" /tmp/build-output.log || echo "(no AXONOPS_BUILD messages found)"
+            exit 1
+          fi
+
+          echo "✓ Verified building from k8ssandra/cass-management-api:${{ matrix.cassandra_version }}-ubi"
 
       - name: Start container
         run: |
