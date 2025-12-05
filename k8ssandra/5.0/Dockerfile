@@ -7,6 +7,20 @@ ARG TARGETARCH
 
 USER root
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
+
+# Install jemalloc for memory allocation optimization
+RUN microdnf -y install jemalloc && \
+    microdnf clean all
+
+# Create jemalloc symlink for Cassandra
+# Cassandra looks for libjemalloc.so but UBI provides versioned library
+RUN libjemalloc="$(find /usr/lib64 /usr/lib -name 'libjemalloc.so.*' 2>/dev/null | head -1)" && \
+    if [ -n "$libjemalloc" ]; then \
+        ln -sT "$libjemalloc" /usr/local/lib/libjemalloc.so && \
+        ldconfig; \
+    fi
+
+# Install AxonOps agents and configure
 RUN groupadd --gid 9988 axonops && \
     useradd --gid 9988 --uid 9988 --shell /bin/bash -c "AxonOps" -G cassandra axonops && \
     usermod -aG axonops cassandra && \
@@ -14,7 +28,8 @@ RUN groupadd --gid 9988 axonops && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
     chmod 755 /usr/share/axonops/axon-agent && \
     rm -f /etc/axonops/axon-agent.yml && \
-    touch /var/run/utmp
+    touch /var/run/utmp && \
+    microdnf clean all
 
 # Install cqlai (latest release)
 RUN RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64") && \
