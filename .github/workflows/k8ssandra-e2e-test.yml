@@ -13,7 +13,6 @@ on:
         default: '5.0.6'
 
 env:
-  CLUSTER_NAME: test-cluster
   NAMESPACE: k8ssandra-operator
 
 jobs:
@@ -24,6 +23,15 @@ jobs:
       # Phase 1: Setup k3s cluster
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Generate cluster name
+        id: cluster
+        run: |
+          # Extract version from container image (e.g., 5.0.6-1.0.3 -> 5-0-6-1-0-3)
+          IMAGE_TAG=$(echo "${{ inputs.container_image }}" | sed 's/.*://; s/\./-/g')
+          CLUSTER_NAME="github-ci-${IMAGE_TAG}"
+          echo "cluster_name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
+          echo "Cluster name: ${CLUSTER_NAME}"
 
       - name: Setup k3s cluster
         uses: AbsaOSS/k3d-action@v2
@@ -82,7 +90,7 @@ jobs:
           apiVersion: k8ssandra.io/v1alpha1
           kind: K8ssandraCluster
           metadata:
-            name: ${{ env.CLUSTER_NAME }}
+            name: ${{ steps.cluster.outputs.cluster_name }}
             namespace: ${{ env.NAMESPACE }}
           spec:
             cassandra:
@@ -142,7 +150,7 @@ jobs:
 
           # Wait for pod to exist
           for i in {1..60}; do
-            if kubectl get pod ${{ env.CLUSTER_NAME }}-dc1-default-sts-0 -n ${{ env.NAMESPACE }} 2>/dev/null; then
+            if kubectl get pod ${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0 -n ${{ env.NAMESPACE }} 2>/dev/null; then
               echo "Pod exists"
               break
             fi
@@ -152,7 +160,7 @@ jobs:
 
           # Wait for pod to be ready (Cassandra startup can take 5-10 minutes)
           echo "Waiting for pod to be ready (this may take 5-10 minutes)..."
-          kubectl wait --for=condition=ready pod/${{ env.CLUSTER_NAME }}-dc1-default-sts-0 \
+          kubectl wait --for=condition=ready pod/${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0 \
             -n ${{ env.NAMESPACE }} \
             --timeout=600s
 
@@ -166,7 +174,7 @@ jobs:
 
           # Wait for superuser secret to be created
           for i in {1..30}; do
-            if kubectl get secret ${{ env.CLUSTER_NAME }}-superuser -n ${{ env.NAMESPACE }} 2>/dev/null; then
+            if kubectl get secret ${{ steps.cluster.outputs.cluster_name }}-superuser -n ${{ env.NAMESPACE }} 2>/dev/null; then
               echo "Secret exists"
               break
             fi
@@ -174,8 +182,8 @@ jobs:
             sleep 2
           done
 
-          CASS_USER=$(kubectl get secret ${{ env.CLUSTER_NAME }}-superuser -n ${{ env.NAMESPACE }} -o jsonpath='{.data.username}' | base64 -d)
-          CASS_PASS=$(kubectl get secret ${{ env.CLUSTER_NAME }}-superuser -n ${{ env.NAMESPACE }} -o jsonpath='{.data.password}' | base64 -d)
+          CASS_USER=$(kubectl get secret ${{ steps.cluster.outputs.cluster_name }}-superuser -n ${{ env.NAMESPACE }} -o jsonpath='{.data.username}' | base64 -d)
+          CASS_PASS=$(kubectl get secret ${{ steps.cluster.outputs.cluster_name }}-superuser -n ${{ env.NAMESPACE }} -o jsonpath='{.data.password}' | base64 -d)
 
           echo "cassandra_user=$CASS_USER" >> $GITHUB_OUTPUT
           echo "cassandra_pass=$CASS_PASS" >> $GITHUB_OUTPUT
@@ -184,7 +192,7 @@ jobs:
       - name: Run CQL smoke tests
         run: |
           echo "=== Running CQL smoke tests ==="
-          POD_NAME="${{ env.CLUSTER_NAME }}-dc1-default-sts-0"
+          POD_NAME="${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0"
 
           # Test 1: Create keyspace
           echo "Test 1: Creating keyspace..."
@@ -235,7 +243,7 @@ jobs:
       - name: Verify AxonOps agent process
         run: |
           echo "=== Verifying AxonOps agent ==="
-          POD_NAME="${{ env.CLUSTER_NAME }}-dc1-default-sts-0"
+          POD_NAME="${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0"
 
           # Check agent process is running
           echo "Checking for AxonOps agent process..."
@@ -250,7 +258,7 @@ jobs:
       - name: Check AxonOps agent logs
         run: |
           echo "=== Checking AxonOps agent logs ==="
-          POD_NAME="${{ env.CLUSTER_NAME }}-dc1-default-sts-0"
+          POD_NAME="${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0"
 
           echo "Container logs (looking for AxonOps agent):"
           kubectl logs -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra --tail=100 | grep -i axon || echo "No AxonOps logs found in last 100 lines"
@@ -262,7 +270,7 @@ jobs:
       - name: Verify AxonOps configuration
         run: |
           echo "=== Verifying AxonOps environment variables ==="
-          POD_NAME="${{ env.CLUSTER_NAME }}-dc1-default-sts-0"
+          POD_NAME="${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0"
 
           echo "Checking environment variables in pod..."
           kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra -- env | grep AXON || echo "No AXON environment variables found"
@@ -286,16 +294,16 @@ jobs:
 
           echo ""
           echo "Cassandra pod describe:"
-          kubectl describe pod ${{ env.CLUSTER_NAME }}-dc1-default-sts-0 -n ${{ env.NAMESPACE }} || true
+          kubectl describe pod ${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0 -n ${{ env.NAMESPACE }} || true
 
           echo ""
           echo "Cassandra pod logs:"
-          kubectl logs ${{ env.CLUSTER_NAME }}-dc1-default-sts-0 -n ${{ env.NAMESPACE }} -c cassandra --tail=200 || true
+          kubectl logs ${{ steps.cluster.outputs.cluster_name }}-dc1-default-sts-0 -n ${{ env.NAMESPACE }} -c cassandra --tail=200 || true
 
       - name: Cleanup resources
         if: always()
         run: |
           echo "=== Cleaning up resources ==="
-          kubectl delete k8ssandracluster ${{ env.CLUSTER_NAME }} -n ${{ env.NAMESPACE }} --wait=false || true
+          kubectl delete k8ssandracluster ${{ steps.cluster.outputs.cluster_name }} -n ${{ env.NAMESPACE }} --wait=false || true
           kubectl delete namespace ${{ env.NAMESPACE }} --wait=false || true
           echo "✓ Cleanup initiated"
