@@ -16,7 +16,7 @@ env:
   NAMESPACE: k8ssandra-operator
 
 jobs:
-  e2e-test:
+  k8ssandra-e2e-test:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
