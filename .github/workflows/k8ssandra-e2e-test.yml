@@ -160,8 +160,8 @@ jobs:
       # - Query metrics from AxonOps SaaS
 
       # Cleanup
-      - name: Collect debug logs on failure
-        if: failure()
+      - name: Collect logs and diagnostics
+        if: always()
         run: |
           echo "=== Collecting debug information ==="
 
