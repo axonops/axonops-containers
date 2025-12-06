@@ -38,7 +38,6 @@ runs:
           name: ${{ inputs.cluster_name }}
           namespace: ${{ inputs.namespace }}
         spec:
-          auth: false
           cassandra:
             serverVersion: "${{ inputs.cassandra_version }}"
             serverImage: "${{ inputs.container_image }}"
