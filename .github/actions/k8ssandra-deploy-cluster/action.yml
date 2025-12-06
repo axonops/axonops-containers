@@ -1,0 +1,122 @@
+name: 'Deploy K8ssandra Cluster'
+description: 'Deploys K8ssandraCluster with AxonOps agent configuration'
+inputs:
+  cluster_name:
+    description: 'Name of the K8ssandra cluster'
+    required: true
+  namespace:
+    description: 'Namespace for the cluster'
+    required: false
+    default: 'k8ssandra-operator'
+  container_image:
+    description: 'Container image to use'
+    required: true
+  cassandra_version:
+    description: 'Cassandra version'
+    required: true
+  axon_agent_key:
+    description: 'AxonOps agent key (secret)'
+    required: true
+  axon_agent_org:
+    description: 'AxonOps organization'
+    required: true
+  axon_agent_host:
+    description: 'AxonOps server host'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create K8ssandraCluster manifest
+      shell: bash
+      run: |
+        echo "=== Creating K8ssandraCluster manifest ==="
+        cat <<EOF > k8ssandra-cluster.yaml
+        apiVersion: k8ssandra.io/v1alpha1
+        kind: K8ssandraCluster
+        metadata:
+          name: ${{ inputs.cluster_name }}
+          namespace: ${{ inputs.namespace }}
+        spec:
+          cassandra:
+            serverVersion: "${{ inputs.cassandra_version }}"
+            serverImage: "${{ inputs.container_image }}"
+            resources:
+              requests:
+                cpu: 500m
+                memory: 2Gi
+              limits:
+                cpu: 1000m
+                memory: 3Gi
+            datacenters:
+              - metadata:
+                  name: dc1
+                size: 1
+                containers:
+                  - name: cassandra
+                    env:
+                      - name: AXON_AGENT_KEY
+                        value: "${{ inputs.axon_agent_key }}"
+                      - name: AXON_AGENT_ORG
+                        value: "${{ inputs.axon_agent_org }}"
+                      - name: AXON_AGENT_HOST
+                        value: "${{ inputs.axon_agent_host }}"
+                config:
+                  jvmOptions:
+                    heap_initial_size: 1G
+                    heap_max_size: 1G
+                storageConfig:
+                  cassandraDataVolumeClaimSpec:
+                    accessModes:
+                      - ReadWriteOnce
+                    resources:
+                      requests:
+                        storage: 2Gi
+                extraVolumes:
+                  pvcs:
+                    - name: axonops-data
+                      mountPath: /var/lib/axonops
+                      pvcSpec:
+                        accessModes:
+                          - ReadWriteOnce
+                        resources:
+                          requests:
+                            storage: 512Mi
+        EOF
+
+        echo "Manifest created"
+
+    - name: Deploy K8ssandraCluster
+      shell: bash
+      run: |
+        echo "=== Deploying K8ssandraCluster ==="
+        kubectl apply -f k8ssandra-cluster.yaml
+
+        echo "Waiting for Cassandra pod to be created..."
+        sleep 10
+        kubectl get pods -n ${{ inputs.namespace }}
+
+    - name: Wait for Cassandra pod to be ready
+      shell: bash
+      run: |
+        echo "=== Waiting for Cassandra to be ready ==="
+
+        POD_NAME="${{ inputs.cluster_name }}-dc1-default-sts-0"
+
+        # Wait for pod to exist
+        for i in {1..60}; do
+          if kubectl get pod $POD_NAME -n ${{ inputs.namespace }} 2>/dev/null; then
+            echo "Pod exists"
+            break
+          fi
+          echo "Waiting for pod to be created... ($i/60)"
+          sleep 5
+        done
+
+        # Wait for pod to be ready (Cassandra startup can take time)
+        echo "Waiting for pod to be ready (this may take 10-15 minutes)..."
+        kubectl wait --for=condition=ready pod/$POD_NAME \
+          -n ${{ inputs.namespace }} \
+          --timeout=1200s
+
+        echo "✓ Cassandra pod ready"

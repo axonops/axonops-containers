@@ -1,0 +1,205 @@
+name: K8ssandra E2E Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      container_image:
+        description: 'Container image to test (e.g., ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.3)'
+        required: false
+        default: 'ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.3'
+      cassandra_version:
+        description: 'Cassandra version (e.g., 5.0.6)'
+        required: false
+        default: '5.0.6'
+
+env:
+  NAMESPACE: k8ssandra-operator
+
+jobs:
+  k8ssandra-e2e-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get cache date
+        id: cache_date
+        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Setup Helm cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/helm
+          key: helm-${{ runner.os }}-${{ steps.cache_date.outputs.date }}
+          restore-keys: |
+            helm-${{ runner.os }}-
+
+      - name: Generate cluster name
+        id: cluster
+        run: |
+          # Extract version from container image (e.g., 5.0.6-1.0.3 -> 5-0-6-1-0-3)
+          IMAGE_TAG=$(echo "${{ inputs.container_image }}" | sed 's/.*://; s/\./-/g')
+          CLUSTER_NAME="github-ci-${IMAGE_TAG}-${{ github.run_id }}"
+          POD_NAME="${CLUSTER_NAME}-dc1-default-sts-0"
+          echo "cluster_name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
+          echo "pod_name=${POD_NAME}" >> $GITHUB_OUTPUT
+          echo "Cluster name: ${CLUSTER_NAME}"
+          echo "Pod name: ${POD_NAME}"
+
+      # Phase 1: Setup k3s cluster
+      - name: Setup k3s cluster
+        uses: ./.github/actions/k8ssandra-setup-k3s
+        with:
+          cluster_name: e2e-test
+
+      # Phase 2: Install K8ssandra operator
+      - name: Install K8ssandra operator
+        uses: ./.github/actions/k8ssandra-install-operator
+        with:
+          namespace: ${{ env.NAMESPACE }}
+
+      # Phase 3: Deploy K8ssandraCluster with AxonOps
+      - name: Deploy K8ssandraCluster
+        uses: ./.github/actions/k8ssandra-deploy-cluster
+        with:
+          cluster_name: ${{ steps.cluster.outputs.cluster_name }}
+          namespace: ${{ env.NAMESPACE }}
+          container_image: ${{ inputs.container_image }}
+          cassandra_version: ${{ inputs.cassandra_version }}
+          axon_agent_key: ${{ secrets.AXONOPS_AGENT_KEY }}
+          axon_agent_org: ${{ vars.AXONOPS_AGENT_ORG }}
+          axon_agent_host: ${{ vars.AXONOPS_SERVER }}
+
+      # Phase 4: Get credentials and verify cluster is fully functional
+      - name: Get Cassandra credentials
+        id: creds
+        run: |
+          echo "=== Getting Cassandra credentials ==="
+
+          # Wait for superuser secret to be created
+          for i in {1..30}; do
+            if kubectl get secret ${{ steps.cluster.outputs.cluster_name }}-superuser -n ${{ env.NAMESPACE }} 2>/dev/null; then
+              echo "Secret exists"
+              break
+            fi
+            echo "Waiting for superuser secret... ($i/30)"
+            sleep 2
+          done
+
+          CASS_USER=$(kubectl get secret ${{ steps.cluster.outputs.cluster_name }}-superuser -n ${{ env.NAMESPACE }} -o jsonpath='{.data.username}' | base64 -d)
+          CASS_PASS=$(kubectl get secret ${{ steps.cluster.outputs.cluster_name }}-superuser -n ${{ env.NAMESPACE }} -o jsonpath='{.data.password}' | base64 -d)
+
+          echo "cassandra_user=$CASS_USER" >> $GITHUB_OUTPUT
+          echo "cassandra_pass=$CASS_PASS" >> $GITHUB_OUTPUT
+          echo "✓ Credentials retrieved"
+
+      - name: Verify Management API
+        uses: ./.github/actions/k8ssandra-k3s-test-management-api
+        with:
+          pod_name: ${{ steps.cluster.outputs.pod_name }}
+          namespace: ${{ env.NAMESPACE }}
+
+      - name: Verify AxonOps agent
+        uses: ./.github/actions/k8ssandra-k3s-verify-axonops
+        with:
+          pod_name: ${{ steps.cluster.outputs.pod_name }}
+          namespace: ${{ env.NAMESPACE }}
+
+      - name: Test cqlai
+        uses: ./.github/actions/k8ssandra-k3s-test-cqlai
+        with:
+          pod_name: ${{ steps.cluster.outputs.pod_name }}
+          namespace: ${{ env.NAMESPACE }}
+          username: ${{ steps.creds.outputs.cassandra_user }}
+          password: ${{ steps.creds.outputs.cassandra_pass }}
+
+      # Phase 5: CQL smoke tests with cqlsh
+      - name: Run CQL smoke tests with authentication
+        run: |
+          echo "=== Running CQL smoke tests ==="
+          POD_NAME="${{ steps.cluster.outputs.pod_name }}"
+
+          # Test 1: Create keyspace
+          echo "Test 1: Creating keyspace..."
+          kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra -- \
+            cqlsh -u "${{ steps.creds.outputs.cassandra_user }}" -p "${{ steps.creds.outputs.cassandra_pass }}" \
+            -e "CREATE KEYSPACE IF NOT EXISTS test_ks WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};" 2>&1 | grep -v "Using a password on the command line"
+          echo "✓ Keyspace created"
+
+          # Test 2: Create table
+          echo "Test 2: Creating table..."
+          kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra -- \
+            cqlsh -u "${{ steps.creds.outputs.cassandra_user }}" -p "${{ steps.creds.outputs.cassandra_pass }}" \
+            -e "CREATE TABLE IF NOT EXISTS test_ks.test_table (id int PRIMARY KEY, value text, created_at timestamp);"
+          echo "✓ Table created"
+
+          # Test 3: Insert data
+          echo "Test 3: Inserting data..."
+          kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra -- \
+            cqlsh -u "${{ steps.creds.outputs.cassandra_user }}" -p "${{ steps.creds.outputs.cassandra_pass }}" \
+            -e "INSERT INTO test_ks.test_table (id, value, created_at) VALUES (1, 'test_value', toTimestamp(now()));"
+          echo "✓ Data inserted"
+
+          # Test 4: Query data
+          echo "Test 4: Querying data..."
+          RESULT=$(kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra -- \
+            cqlsh -u "${{ steps.creds.outputs.cassandra_user }}" -p "${{ steps.creds.outputs.cassandra_pass }}" \
+            -e "SELECT * FROM test_ks.test_table WHERE id = 1;" | grep "test_value" || echo "")
+
+          if [ -z "$RESULT" ]; then
+            echo "ERROR: Query did not return expected data!"
+            exit 1
+          fi
+          echo "✓ Query successful, data verified"
+
+          # Test 5: Drop table and keyspace (cleanup)
+          echo "Test 5: Cleanup..."
+          kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra -- \
+            cqlsh -u "${{ steps.creds.outputs.cassandra_user }}" -p "${{ steps.creds.outputs.cassandra_pass }}" \
+            -e "DROP TABLE test_ks.test_table;"
+          kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -c cassandra -- \
+            cqlsh -u "${{ steps.creds.outputs.cassandra_user }}" -p "${{ steps.creds.outputs.cassandra_pass }}" \
+            -e "DROP KEYSPACE test_ks;"
+          echo "✓ Cleanup complete"
+
+          echo "=== All CQL smoke tests passed ==="
+
+      # Future: Phase 6 - AxonOps SaaS API tests
+      # - Query AxonOps SaaS API to verify cluster registered
+      # - Trigger repair via AxonOps API
+      # - Trigger backup via AxonOps API
+      # - Query metrics from AxonOps SaaS
+
+      # Cleanup
+      - name: Collect logs and diagnostics
+        if: always()
+        run: |
+          echo "=== Collecting debug information ==="
+
+          echo "Cluster info:"
+          kubectl cluster-info || true
+
+          echo ""
+          echo "All pods:"
+          kubectl get pods -A || true
+
+          echo ""
+          echo "K8ssandraCluster status:"
+          kubectl get k8ssandracluster -n ${{ env.NAMESPACE }} -o yaml || true
+
+          echo ""
+          echo "Cassandra pod describe:"
+          kubectl describe pod ${{ steps.cluster.outputs.pod_name }} -n ${{ env.NAMESPACE }} || true
+
+          echo ""
+          echo "Cassandra pod logs:"
+          kubectl logs ${{ steps.cluster.outputs.pod_name }} -n ${{ env.NAMESPACE }} -c cassandra --tail=500 || true
+
+      - name: Cleanup resources
+        if: always()
+        run: |
+          echo "=== Cleaning up resources ==="
+          kubectl delete k8ssandracluster ${{ steps.cluster.outputs.cluster_name }} -n ${{ env.NAMESPACE }} --wait=false || true
+          kubectl delete namespace ${{ env.NAMESPACE }} --wait=false || true
+          echo "✓ Cleanup initiated"

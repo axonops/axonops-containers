@@ -1,6 +1,27 @@
 # AxonOps K8ssandra Containers
 
+[![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axonops-cassandra-containers)
+
 Docker containers for Apache Cassandra with integrated AxonOps monitoring and management agent, designed for deployment on Kubernetes using K8ssandra Operator.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Pre-built Docker Images](#pre-built-docker-images)
+- [Production Best Practice](#-production-best-practice)
+- [Quick Start with Docker/Podman](#quick-start-with-dockerpodman)
+- [Prerequisites](#prerequisites)
+- [Supported Cassandra Versions](#supported-cassandra-versions)
+- [Getting Started](#getting-started)
+- [Building Docker Images](#building-docker-images)
+- [Deploying to Kubernetes](#deploying-to-kubernetes)
+- [Configuration](#configuration)
+- [Scripts Reference](#scripts-reference)
+- [Examples](#examples)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Monitoring with AxonOps](#monitoring-with-axonops)
+- [Troubleshooting](#troubleshooting)
+- [Production Considerations](#production-considerations)
 
 ## Overview
 
@@ -45,7 +66,7 @@ When version `5.0.6-1.0.1` is built, it gets tagged as:
 **Future Support:**
 - **4.0.x and 4.1.x:** Available in repository but not yet published due to AxonOps agent compatibility issues. Reach out if you need these versions.
 
-Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-cassandra-containers/pkgs/container/axonops-cassandra-containers)
+Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-containers/pkgs/container/axonops-cassandra-containers)
 
 ## 💡 Production Best Practice
 

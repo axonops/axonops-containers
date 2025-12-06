@@ -1,0 +1,60 @@
+name: 'Install K8ssandra Operator'
+description: 'Installs cert-manager and K8ssandra operator in Kubernetes cluster'
+inputs:
+  namespace:
+    description: 'Namespace for K8ssandra operator'
+    required: false
+    default: 'k8ssandra-operator'
+  cert_manager_version:
+    description: 'cert-manager version'
+    required: false
+    default: 'v1.15.3'
+  k8ssandra_version:
+    description: 'K8ssandra operator version'
+    required: false
+    default: '1.29.0'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install cert-manager
+      shell: bash
+      run: |
+        echo "=== Installing cert-manager ${{ inputs.cert_manager_version }} ==="
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/${{ inputs.cert_manager_version }}/cert-manager.yaml
+
+        echo "Waiting for cert-manager to be ready..."
+        kubectl wait --for=condition=ready pod \
+          -l app.kubernetes.io/instance=cert-manager \
+          -n cert-manager \
+          --timeout=600s
+
+        echo "✓ cert-manager ready"
+
+    - name: Install K8ssandra operator
+      shell: bash
+      run: |
+        echo "=== Installing K8ssandra operator ${{ inputs.k8ssandra_version }} ==="
+
+        helm repo add k8ssandra https://helm.k8ssandra.io/stable
+        helm repo update
+
+        helm install k8ssandra-operator k8ssandra/k8ssandra-operator \
+          -n ${{ inputs.namespace }} \
+          --create-namespace \
+          --version ${{ inputs.k8ssandra_version }} \
+          --wait \
+          --timeout 10m
+
+        echo "✓ K8ssandra operator installed"
+
+    - name: Verify K8ssandra operator
+      shell: bash
+      run: |
+        echo "=== Verifying K8ssandra operator ==="
+        kubectl get pods -n ${{ inputs.namespace }}
+        kubectl wait --for=condition=ready pod \
+          -l app.kubernetes.io/name=k8ssandra-operator \
+          -n ${{ inputs.namespace }} \
+          --timeout=600s
+        echo "✓ K8ssandra operator ready"

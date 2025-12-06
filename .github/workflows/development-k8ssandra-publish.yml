@@ -82,6 +82,9 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -205,6 +208,9 @@ jobs:
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

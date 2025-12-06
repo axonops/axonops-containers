@@ -1,8 +1,8 @@
 # AxonOps Container Images
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![GitHub Issues](https://img.shields.io/github/issues/axonops/axonops-cassandra-containers)](https://github.com/axonops/axonops-cassandra-containers/issues)
-[![Multi-Architecture](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-brightgreen)](https://github.com/axonops/axonops-cassandra-containers)
+[![GitHub Issues](https://img.shields.io/github/issues/axonops/axonops-containers)](https://github.com/axonops/axonops-containers/issues)
+[![Multi-Architecture](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-brightgreen)](https://github.com/axonops/axonops-containers)
 
 Container build definitions and CI/CD pipelines for AxonOps container images.
 

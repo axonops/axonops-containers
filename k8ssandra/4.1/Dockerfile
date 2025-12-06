@@ -3,6 +3,34 @@ FROM docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi
 
 RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi"
 
+# Build arguments for OCI labels
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# Legacy labels (for backward compatibility)
+LABEL maintainer="AxonOps"
+LABEL name="AxonOps K8ssandra Apache Cassandra"
+LABEL vendor="AxonOps"
+LABEL url="https://axonops.com"
+LABEL release="${CASSANDRA_VERSION}"
+LABEL summary="Apache Cassandra with integrated AxonOps monitoring and management agent, designed for deployment on Kubernetes using K8ssandra Operator."
+LABEL description="Docker container combining Apache Cassandra ${CASSANDRA_VERSION}, K8ssandra Management API, AxonOps Agent for monitoring and management, and cqlai modern CQL shell. Optimized for Kubernetes deployments with jemalloc memory optimization."
+
+# OCI standard labels
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.authors="AxonOps"
+LABEL org.opencontainers.image.url="https://axonops.com"
+LABEL org.opencontainers.image.documentation="https://github.com/axonops/axonops-containers/blob/main/k8ssandra/README.md"
+LABEL org.opencontainers.image.source="https://github.com/axonops/axonops-containers"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.vendor="AxonOps"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.title="AxonOps K8ssandra Apache Cassandra ${CASSANDRA_VERSION}"
+LABEL org.opencontainers.image.description="Docker container combining Apache Cassandra ${CASSANDRA_VERSION}, K8ssandra Management API, AxonOps Agent for monitoring and management, and cqlai modern CQL shell. Optimized for Kubernetes deployments with jemalloc memory optimization."
+LABEL org.opencontainers.image.base.name="docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi"
+
 ENV AXON_AGENT_LOG_OUTPUT=std
 ARG MAJOR_VERSION=4.1
 ARG TARGETARCH
@@ -45,6 +73,21 @@ RUN RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64") &
     if [ -z "$CQLAI_VERSION" ]; then echo "ERROR: Failed to fetch cqlai version" && exit 1; fi && \
     rpm -i https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}/cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
+
+# Write build information to file for runtime access (after all packages installed)
+# Values are quoted for safe sourcing in bash
+RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
+    echo "CONTAINER_REVISION=\"${VCS_REF}\"" >> /etc/axonops/build-info.txt && \
+    echo "CONTAINER_BUILD_DATE=\"${BUILD_DATE}\"" >> /etc/axonops/build-info.txt && \
+    echo "CASSANDRA_VERSION=\"${CASSANDRA_VERSION}\"" >> /etc/axonops/build-info.txt && \
+    echo "JAVA_VERSION=\"$(java -version 2>&1 | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
+    echo "AXON_AGENT_VERSION=\"$(/usr/share/axonops/axon-agent --version 2>&1 | head -1 || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
+    echo "AXON_JAVA_AGENT_VERSION=\"$(rpm -q axon-cassandra4.1-agent 2>/dev/null || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
+    echo "CQLAI_VERSION=\"$(cqlai --version 2>&1 | head -1 || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
+    echo "JEMALLOC_VERSION=\"$(rpm -q jemalloc 2>/dev/null || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
+    echo "OS_VERSION=\"$(grep PRETTY_NAME /etc/os-release 2>/dev/null | sed 's/.*="\(.*\)"/\1/' || echo 'unknown') (UBI - Universal Base Image, freely redistributable)\"" >> /etc/axonops/build-info.txt && \
+    echo "PLATFORM=\"$(uname -m || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
+    chown cassandra:cassandra /etc/axonops/build-info.txt || true
 
 ENV JVM_EXTRA_OPTS="-javaagent:/usr/share/axonops/axon-cassandra${MAJOR_VERSION}-agent.jar=/etc/axonops/axon-agent.yml"
 COPY axonops-entrypoint.sh /axonops-entrypoint.sh

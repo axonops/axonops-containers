@@ -252,14 +252,12 @@ jobs:
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-latest
             ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
             ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
-          labels: |
-            org.opencontainers.image.title=AxonOps K8ssandra Container
-            org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with AxonOps integration
-            org.opencontainers.image.version=${{ inputs.container_version }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

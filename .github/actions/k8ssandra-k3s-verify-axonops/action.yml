@@ -1,0 +1,65 @@
+name: 'K8ssandra K3s Verify AxonOps'
+description: 'Verifies AxonOps agent is running in Kubernetes pod'
+inputs:
+  pod_name:
+    description: 'Name of the Cassandra pod'
+    required: true
+  namespace:
+    description: 'Namespace of the pod'
+    required: false
+    default: 'k8ssandra-operator'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify AxonOps agent is running
+      shell: bash
+      run: |
+        echo "=== Verifying AxonOps agent ==="
+
+        echo "Checking AxonOps agent process..."
+        if kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- pgrep -f "axon-agent" > /dev/null; then
+          echo "✓ AxonOps agent is running"
+        else
+          echo "ERROR: AxonOps agent process not found"
+          kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- ps aux
+          exit 1
+        fi
+
+    - name: Verify AxonOps environment variables
+      shell: bash
+      run: |
+        echo "=== Verifying AxonOps configuration ==="
+
+        echo "Checking AXON environment variables..."
+        kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- env | grep AXON || echo "No AXON variables found"
+
+    - name: Check AxonOps agent logs
+      shell: bash
+      run: |
+        echo "=== Checking AxonOps agent logs ==="
+
+        echo "Recent AxonOps-related log entries:"
+        kubectl logs -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra --tail=200 | grep -i axon || echo "No AxonOps logs in last 200 lines"
+
+    - name: Verify processes run as cassandra user
+      shell: bash
+      run: |
+        echo "=== Verifying process ownership ==="
+
+        echo "Checking process ownership..."
+        kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- ps aux | head -20
+
+        echo ""
+        echo "Verifying axon-agent process runs as cassandra user..."
+        AGENT_PID=$(kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- pgrep -x "axon-agent")
+        AGENT_USER=$(kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- ps -o user= -p $AGENT_PID | tr -d ' ')
+        echo "axon-agent process (PID $AGENT_PID) running as: $AGENT_USER"
+
+        if [ "$AGENT_USER" != "cassandr" ] && [ "$AGENT_USER" != "cassandra" ]; then
+          echo "ERROR: axon-agent process is not running as cassandra user!"
+          exit 1
+        fi
+
+        echo "✓ axon-agent is running as cassandra user"
+        echo "=== All AxonOps verification checks passed ==="

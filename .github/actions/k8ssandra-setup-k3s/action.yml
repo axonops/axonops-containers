@@ -1,0 +1,28 @@
+name: 'Setup k3s Cluster'
+description: 'Sets up a lightweight k3s Kubernetes cluster for testing'
+inputs:
+  cluster_name:
+    description: 'Name of the k3s cluster'
+    required: false
+    default: 'test-cluster'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup k3s cluster
+      uses: AbsaOSS/k3d-action@v2
+      with:
+        cluster-name: ${{ inputs.cluster_name }}
+        args: >-
+          --agents 1
+          --no-lb
+          --k3s-arg "--disable=traefik,servicelb@server:*"
+
+    - name: Verify k3s cluster
+      shell: bash
+      run: |
+        echo "=== Verifying k3s cluster ==="
+        kubectl cluster-info
+        kubectl get nodes
+        kubectl version 2>/dev/null || kubectl version --client
+        echo "✓ k3s cluster ready"
