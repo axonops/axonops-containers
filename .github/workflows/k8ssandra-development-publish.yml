@@ -1,4 +1,4 @@
-name: Development K8ssandra Publish to GHCR
+name: K8ssandra Development Publish to GHCR
 
 on:
   workflow_dispatch:
