@@ -23,13 +23,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get cache date
+        id: cache_date
+        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
       - name: Setup Helm cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/helm
-          key: helm-${{ runner.os }}-certmanager-v1.15.3-k8ssandra-1.29.0
+          key: helm-${{ runner.os }}-${{ steps.cache_date.outputs.date }}
           restore-keys: |
-            helm-${{ runner.os }}-certmanager-v1.15.3-
             helm-${{ runner.os }}-
 
       - name: Generate cluster name
