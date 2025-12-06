@@ -8,6 +8,14 @@ inputs:
     description: 'Namespace of the pod'
     required: false
     default: 'k8ssandra-operator'
+  username:
+    description: 'Cassandra username (optional, defaults to cassandra)'
+    required: false
+    default: 'cassandra'
+  password:
+    description: 'Cassandra password (optional, defaults to cassandra)'
+    required: false
+    default: 'cassandra'
 
 runs:
   using: 'composite'
@@ -43,31 +51,31 @@ runs:
 
         echo "Creating keyspace..."
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "CREATE KEYSPACE IF NOT EXISTS cqlai_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "CREATE KEYSPACE IF NOT EXISTS cqlai_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
 
         echo "Creating table..."
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "CREATE TABLE IF NOT EXISTS cqlai_test.users (id UUID PRIMARY KEY, name TEXT, email TEXT, created_at TIMESTAMP);"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "CREATE TABLE IF NOT EXISTS cqlai_test.users (id UUID PRIMARY KEY, name TEXT, email TEXT, created_at TIMESTAMP);"
 
         echo "Inserting test data..."
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Alice', 'alice@example.com', toTimestamp(now()));"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Alice', 'alice@example.com', toTimestamp(now()));"
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Bob', 'bob@example.com', toTimestamp(now()));"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Bob', 'bob@example.com', toTimestamp(now()));"
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Charlie', 'charlie@example.com', toTimestamp(now()));"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Charlie', 'charlie@example.com', toTimestamp(now()));"
 
         echo "Selecting data..."
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "SELECT * FROM cqlai_test.users;"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "SELECT * FROM cqlai_test.users;"
 
         echo "Verifying data..."
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "SELECT * FROM cqlai_test.users;" | grep -q "example.com"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "SELECT * FROM cqlai_test.users;" | grep -q "example.com"
         echo "Data verified"
 
         echo "Cleanup test keyspace..."
         kubectl exec -n ${{ inputs.namespace }} ${{ inputs.pod_name }} -c cassandra -- \
-          cqlai -u cassandra -p cassandra -e "DROP KEYSPACE cqlai_test;"
+          cqlai -u ${{ inputs.username }} -p ${{ inputs.password }} -e "DROP KEYSPACE cqlai_test;"
 
         echo "=== All cqlai CQL tests passed ==="

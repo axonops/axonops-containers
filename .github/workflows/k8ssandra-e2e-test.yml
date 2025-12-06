@@ -59,26 +59,7 @@ jobs:
           axon_agent_org: ${{ vars.AXONOPS_AGENT_ORG }}
           axon_agent_host: ${{ vars.AXONOPS_SERVER }}
 
-      # Phase 4: Verify cluster is fully functional BEFORE any other tests
-      - name: Verify Management API
-        uses: ./.github/actions/k8ssandra-k3s-test-management-api
-        with:
-          pod_name: ${{ steps.cluster.outputs.pod_name }}
-          namespace: ${{ env.NAMESPACE }}
-
-      - name: Verify AxonOps agent
-        uses: ./.github/actions/k8ssandra-k3s-verify-axonops
-        with:
-          pod_name: ${{ steps.cluster.outputs.pod_name }}
-          namespace: ${{ env.NAMESPACE }}
-
-      - name: Test cqlai
-        uses: ./.github/actions/k8ssandra-k3s-test-cqlai
-        with:
-          pod_name: ${{ steps.cluster.outputs.pod_name }}
-          namespace: ${{ env.NAMESPACE }}
-
-      # Phase 5: CQL smoke tests (only after cluster verified)
+      # Phase 4: Get credentials and verify cluster is fully functional
       - name: Get Cassandra credentials
         id: creds
         run: |
@@ -101,6 +82,27 @@ jobs:
           echo "cassandra_pass=$CASS_PASS" >> $GITHUB_OUTPUT
           echo "✓ Credentials retrieved"
 
+      - name: Verify Management API
+        uses: ./.github/actions/k8ssandra-k3s-test-management-api
+        with:
+          pod_name: ${{ steps.cluster.outputs.pod_name }}
+          namespace: ${{ env.NAMESPACE }}
+
+      - name: Verify AxonOps agent
+        uses: ./.github/actions/k8ssandra-k3s-verify-axonops
+        with:
+          pod_name: ${{ steps.cluster.outputs.pod_name }}
+          namespace: ${{ env.NAMESPACE }}
+
+      - name: Test cqlai
+        uses: ./.github/actions/k8ssandra-k3s-test-cqlai
+        with:
+          pod_name: ${{ steps.cluster.outputs.pod_name }}
+          namespace: ${{ env.NAMESPACE }}
+          username: ${{ steps.creds.outputs.cassandra_user }}
+          password: ${{ steps.creds.outputs.cassandra_pass }}
+
+      # Phase 5: CQL smoke tests with cqlsh
       - name: Run CQL smoke tests with authentication
         run: |
           echo "=== Running CQL smoke tests ==="
