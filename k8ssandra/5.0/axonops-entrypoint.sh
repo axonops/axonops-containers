@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 touch /var/log/axonops/axon-agent.log
 
@@ -88,21 +88,27 @@ echo ". /usr/share/axonops/axonops-jvm.options" >> /config/cassandra-env.sh
 print_startup_banner
 
 # Start Management API + Cassandra in background
+echo "Starting Cassandra management API"
 /docker-entrypoint.sh mgmtapi &
 MGMTAPI_PID=$!
 
 # Wait for the axonops socket file to appear (created by Java agent)
 SOCKET_FILE="/var/lib/axonops/6868681090314641335.socket"
-echo "Waiting for socket file: $SOCKET_FILE"
-while [ ! -S "$SOCKET_FILE" ]; do
-    sleep 1
+CQL_PORT=$(sed -E '/^native_transport_port:[[:space:]]+[[:digit:]]+[[:space:]]*$/!d; s/^native_transport_port:[[:space:]]+([[:digit:]]+)[[:space:]]*$/\1/' /opt/cassandra/conf/cassandra.yaml)
+echo "Waiting for Cassandra to start up. Detected CQL port $CQL_PORT"
+while true; do
+    echo "Waiting for Cassandra to be ready before starting axon-agent..."
+    sleep 5
     # Check if Management API is still running
     if ! kill -0 $MGMTAPI_PID 2>/dev/null; then
-        echo "Management API died while waiting for socket file"
+        echo "Management API died while waiting for Cassandra to be ready"
         exit 1
     fi
+    if [ -S "$SOCKET_FILE" ] && (ss -ln | grep -qE "^tcp .*:$CQL_PORT .*$"); then
+      break
+    fi
 done
-echo "Socket file found, starting axon-agent"
+echo "Cassandra is ready, starting axon-agent"
 
 # Start axon-agent in background
 /usr/share/axonops/axon-agent $AXON_AGENT_ARGS 2>&1 | tee /var/log/axonops/axon-agent.log &
