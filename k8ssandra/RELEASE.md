@@ -60,8 +60,9 @@ git pull origin development
 git tag dev-1.0.0
 git push origin dev-1.0.0
 
-# Trigger development publish workflow
+# Trigger development publish workflow (--ref development ensures correct branch)
 gh workflow run k8ssandra-development-publish-signed.yml \
+  --ref development \
   -f dev_git_tag=dev-1.0.0 \
   -f container_version=dev-1.0.0
 ```
@@ -138,8 +139,13 @@ git push origin 1.0.0
 # Authenticate
 gh auth login
 
-# Trigger the signed workflow
+# IMPORTANT: Ensure you're on main branch first
+git checkout main
+git pull origin main
+
+# Trigger the signed workflow (--ref main ensures correct branch)
 gh workflow run k8ssandra-publish-signed.yml \
+  --ref main \
   -f main_git_tag=1.0.0 \
   -f container_version=1.0.0
 
