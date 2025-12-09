@@ -38,13 +38,23 @@ jobs:
       - name: Generate cluster name
         id: cluster
         run: |
-          # Use timestamp for short cluster name (avoids StatefulSet name length limit)
+          # Extract version info from image tag and create identifiable cluster name
+          # Format: c{CASS}-{AXON}-{TIMESTAMP} (e.g., c5-0-6-1-0-8-1733761234)
+          IMAGE_TAG="${{ inputs.container_image }}"
+
+          # Extract Cassandra version from input
+          CASS_VERSION=$(echo "${{ inputs.cassandra_version }}" | tr '.' '-')
+
+          # Extract AxonOps version from image tag (e.g., 5.0.6-v0.1.110-1.0.8 -> 1.0.8)
+          AXON_VERSION=$(echo "$IMAGE_TAG" | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+$' | tr '.' '-' || echo "unknown")
+
           TIMESTAMP=$(date +%s)
-          CLUSTER_NAME="ci-${TIMESTAMP}"
+          CLUSTER_NAME="c${CASS_VERSION}-${AXON_VERSION}-${TIMESTAMP}"
           POD_NAME="${CLUSTER_NAME}-dc1-default-sts-0"
+
           echo "cluster_name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
           echo "pod_name=${POD_NAME}" >> $GITHUB_OUTPUT
-          echo "Cluster name: ${CLUSTER_NAME}"
+          echo "Cluster name: ${CLUSTER_NAME} (Cassandra ${{ inputs.cassandra_version }}, AxonOps ${AXON_VERSION})"
           echo "Pod name: ${POD_NAME}"
           echo "Testing image: ${{ inputs.container_image }}"
 
