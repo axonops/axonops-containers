@@ -83,7 +83,7 @@ This document covers k8ssandra-specific development practices, workflows, and te
 
 ---
 
-### Production Publish (`k8ssandra-publish.yml`)
+### Production Publish (`k8ssandra-publish-signed.yml`)
 **Purpose:** Build and publish production container images to GHCR
 
 **Triggers:**
@@ -104,7 +104,7 @@ See [RELEASE.md](./RELEASE.md) for complete instructions.
 
 ---
 
-### Development Publish (`development-k8ssandra-publish.yml`)
+### Development Publish (`k8ssandra-development-publish-signed.yml`)
 **Purpose:** Publish development builds for testing before production
 
 **Triggers:**
@@ -244,7 +244,7 @@ When k8ssandra releases a new Cassandra version:
 
 3. **Update workflows:**
    - Add version to test matrix in `k8ssandra-build-and-test.yml`
-   - Add version to publish matrix in `k8ssandra-publish.yml`
+   - Add version to publish matrix in `k8ssandra-publish-signed.yml`
    - Add version to security scan matrix
 
 4. **Update documentation:**
