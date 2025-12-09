@@ -2,6 +2,8 @@
 
 This document describes how to create and publish K8ssandra container releases for both development and production.
 
+**Important:** All images are cryptographically signed with Sigstore Cosign using keyless signing. Use the `-signed` workflows for all new releases.
+
 ## Overview
 
 The release process uses separate workflows for development and production:
@@ -136,8 +138,8 @@ git push origin 1.0.0
 # Authenticate
 gh auth login
 
-# Trigger the workflow
-gh workflow run k8ssandra-publish.yml \
+# Trigger the signed workflow
+gh workflow run k8ssandra-publish-signed.yml \
   -f main_git_tag=1.0.0 \
   -f container_version=1.0.0
 
@@ -147,7 +149,7 @@ gh run watch
 
 ### 4. Workflow Execution
 
-The publish workflow performs these steps:
+The signed publish workflow performs these steps:
 
 1. **Validate** - Checks if `container_version` already exists in GHCR
    - Fails if any image tag `*-container_version` exists
@@ -168,11 +170,19 @@ The publish workflow performs these steps:
    - Platforms: `linux/amd64`, `linux/arm64`
 
 5. **Publish** - Pushes images to GHCR
-   - Tags: `5.0.6-1.0.0`, `5.0.5-1.0.0`, `5.0.4-1.0.0`
+   - Multi-dimensional tags: immutable, patch-latest, minor-latest, global-latest
    - Registry: `ghcr.io/axonops/k8ssandra/cassandra`
 
-6. **Create Release** - Creates GitHub Release
-   - Name: `k8ssandra-<container_version>` (e.g., `k8ssandra-1.0.0`)
+6. **Sign** - Cryptographically sign images with Cosign
+   - Keyless signing using GitHub OIDC token
+   - Signatures pushed to GHCR
+   - Transparency log entries created
+
+7. **Re-push Tags** - Update tag references for proper GHCR UI display
+
+8. **Create Release** - Creates GitHub Release
+   - Name: `k8ssandra-signed-<container_version>` (e.g., `k8ssandra-signed-1.0.4`)
+   - Includes signature verification instructions
    - Lists all published image tags
 
 ### 5. Verify Release
@@ -201,8 +211,25 @@ Check GitHub Release:
 gh release list
 
 # View specific release
-gh release view k8ssandra-1.0.0
+gh release view k8ssandra-signed-1.0.0
 ```
+
+**Verify Signatures:**
+
+All production images are signed. Verify before deployment:
+
+```bash
+# Verify signature
+cosign verify \
+  --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
+  --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+
+# Check signature exists
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+```
+
+See [Security Documentation](../README.md#security) for more on signature verification and digest-based deployment.
 
 ## Inputs Reference
 

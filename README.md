@@ -375,9 +375,9 @@ brew install gh
 gh auth login
 ```
 
-Trigger the workflow:
+Trigger the signed publish workflow:
 ```bash
-gh workflow run <component>-publish.yml \
+gh workflow run <component>-publish-signed.yml \
   -f main_git_tag=1.0.0 \
   -f container_version=1.0.0
 ```
@@ -385,6 +385,8 @@ gh workflow run <component>-publish.yml \
 **Arguments explained:**
 - `-f main_git_tag=1.0.0` - The git tag on main branch to checkout and build (the tag you created in Step 1)
 - `-f container_version=1.0.0` - The container version for GHCR images (e.g., creates `5.0.6-1.0.0`)
+
+**Note:** Use the `-signed` workflows (`k8ssandra-publish-signed.yml`) for new releases. These publish to the new image paths with cryptographic signatures. Old workflows remain for backward compatibility but are deprecated.
 
 Monitor progress:
 ```bash
@@ -406,24 +408,39 @@ gh run watch
 
 **Step 3: Workflow Execution**
 
-The workflow will:
+The signed publish workflow will:
 - Validate tag is on main branch (fails if not)
 - Validate `container_version` doesn't exist in GHCR (fails if duplicate)
 - Checkout the `main_git_tag` commit (exact code snapshot)
 - Run full test suite
 - Build multi-arch images (amd64, arm64)
-- Publish to GHCR with tags like `5.0.6-<container_version>`
-- Create GitHub Release named `<component>-<container_version>`
+- Push to GHCR with multi-dimensional tags
+- **Sign images** with Sigstore Cosign (keyless, GitHub OIDC)
+- Re-push tags to ensure proper GHCR UI display
+- Create GitHub Release named `<component>-signed-<container_version>`
+
+**Images are signed** using keyless signing with transparency log entries. Signatures can be verified with `cosign verify` (see [Verifying Signatures](#verifying-signatures)).
 
 **Step 4: Verify Release**
 
 ```bash
 # View GitHub Release
-gh release view k8ssandra-1.0.0
+gh release view k8ssandra-signed-1.0.0
 
 # Pull and test image
 docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+
+# Verify signature
+cosign verify \
+  --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
+  --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+
+# Or check signature exists
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
 ```
+
+All production images are cryptographically signed. Signature verification proves the image was built by official workflows and has not been tampered with. See [Gold Standard Security Deployment](#gold-standard-security-deployment) for more details.
 
 ### Component Release Documentation
 
