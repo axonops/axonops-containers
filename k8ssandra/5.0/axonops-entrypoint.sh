@@ -13,9 +13,9 @@ print_startup_banner() {
       source /etc/axonops/build-info.txt 2>/dev/null || true
     fi
 
-    # Title with all key versions
-    echo "AxonOps K8ssandra Apache Cassandra ${CASSANDRA_VERSION:-unknown} + ${AXON_AGENT_VERSION:-unknown}"
-    echo "Container v${CONTAINER_VERSION:-unknown}"
+    # Title
+    echo "AxonOps K8ssandra Apache Cassandra ${CASSANDRA_VERSION:-unknown}"
+    echo "Container v${CONTAINER_VERSION:-unknown} - Built: ${CONTAINER_BUILD_DATE:-unknown}"
 
     # Show release/tag link if available (CI builds)
     if [ -n "${CONTAINER_GIT_TAG}" ] && [ "${CONTAINER_GIT_TAG}" != "unknown" ] && [ "${CONTAINER_GIT_TAG}" != "" ]; then
