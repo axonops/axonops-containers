@@ -122,6 +122,7 @@ jobs:
           cassandra_version: ${{ matrix.cassandra_version }}
           base_version: ${{ steps.version.outputs.base_version }}
           cqlai_version: ${{ vars.K8SSANDRA_CQLAI_VERSION }}
+          k8ssandra_digests_json: ${{ vars.K8SSANDRA_BASE_DIGESTS }}
 
       - name: Start container and wait for services
         uses: ./.github/actions/k8ssandra-start-and-wait

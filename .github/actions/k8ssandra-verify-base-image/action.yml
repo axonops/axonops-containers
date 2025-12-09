@@ -10,6 +10,9 @@ inputs:
   cqlai_version:
     description: 'cqlai version to install'
     required: true
+  k8ssandra_digests_json:
+    description: 'JSON mapping of Cassandra versions to k8ssandra base image digests'
+    required: true
 
 runs:
   using: 'composite'
@@ -20,7 +23,7 @@ runs:
         echo "=== Verifying base image version in build ==="
 
         # Get the k8ssandra base image digest for this version
-        DIGEST=$(echo '${{ vars.K8SSANDRA_BASE_DIGESTS }}' | jq -r '.["${{ inputs.cassandra_version }}"]')
+        DIGEST=$(echo '${{ inputs.k8ssandra_digests_json }}' | jq -r '.["${{ inputs.cassandra_version }}"]')
         if [ "$DIGEST" = "null" ] || [ -z "$DIGEST" ]; then
           echo "ERROR: No digest found for Cassandra version ${{ inputs.cassandra_version }}"
           exit 1
