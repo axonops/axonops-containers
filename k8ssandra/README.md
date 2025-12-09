@@ -240,9 +240,27 @@ If you prefer to build images yourself instead of using the [pre-built images](#
 
 ```bash
 cd 5.0
-docker build -t your-registry/axonops-cassandra:5.0.6 .
+
+# Build with required build args
+docker build \
+  --build-arg CASSANDRA_VERSION=5.0.6 \
+  --build-arg MAJOR_VERSION=5.0 \
+  --build-arg CQLAI_VERSION=0.0.31 \
+  -t your-registry/axonops-cassandra:5.0.6 \
+  .
+
 docker push your-registry/axonops-cassandra:5.0.6
 ```
+
+**Required build arguments:**
+- `CASSANDRA_VERSION` - Full Cassandra version (e.g., 5.0.6)
+- `MAJOR_VERSION` - Major.minor version matching the directory (e.g., 5.0)
+- `CQLAI_VERSION` - Version of cqlai to install (see [latest release](https://github.com/axonops/cqlai/releases))
+
+**Optional build arguments:**
+- `BUILD_DATE` - Build timestamp (default: current time)
+- `VCS_REF` - Git commit SHA (default: current commit)
+- `VERSION` - Container version label (default: dev)
 
 ## Deploying to Kubernetes
 
