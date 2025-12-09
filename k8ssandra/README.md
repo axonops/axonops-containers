@@ -69,9 +69,9 @@ Images use a 3-dimensional tagging strategy with k8ssandra API version tracking:
 | `{CASS}-v{K8S_API}-{AXON}` | `5.0.6-v0.1.110-1.0.0` | Fully immutable (all 3 versions) | **Production**: Pin exact versions for complete auditability |
 | `@sha256:<digest>` | `@sha256:412c852...` | Digest-based (immutable) | **Highest Security**: Cryptographically guaranteed image (see [Gold Standard Security](../README.md#gold-standard-security-deployment)) |
 | `{CASS}-v{K8S_API}` | `5.0.6-v0.1.110` | Latest AxonOps for this Cassandra + k8ssandra combo | Track AxonOps updates for specific Cassandra + k8ssandra versions |
-| `{CASS}` | `5.0.6` | Latest k8ssandra API + AxonOps for this Cassandra patch | Track k8ssandra + AxonOps updates for a Cassandra version |
-| `{CASS_MINOR}-latest` | `5.0-latest` | Latest patch in this Cassandra minor line | Track latest Cassandra 5.0.x patch + components |
-| `latest` | `latest` | Latest across all Cassandra versions | Quick trials (migrates to 5.1 when released) |
+| `{CASS}` | `5.0.6` | Latest k8ssandra API + AxonOps for this Cassandra minor | Track k8ssandra + AxonOps updates for a Cassandra minor |
+| `{MAJOR}-latest` | `5.0-latest` | Latest minor in Cassandra major 5.0 | Track latest Cassandra 5.0.x minor + components |
+| `latest` | `latest` | Latest across all Cassandra majors | Quick trials (migrates to 5.1, 5.2, 6.0 when released) |
 
 **Versioning Dimensions:**
 - **CASS** - Cassandra version (e.g., 5.0.6)
@@ -84,8 +84,8 @@ When `5.0.6-v0.1.110-1.0.0` is built (and it's the latest of everything):
 - `5.0.6-v0.1.110-1.0.0` (immutable - never changes)
 - `5.0.6-v0.1.110` (floating - retags to newer AxonOps builds)
 - `5.0.6` (floating - retags when k8ssandra API or AxonOps updates)
-- `5.0-latest` (floating - retags when newer 5.0.x patch released)
-- `latest` (floating - **moves to 5.1.x when Cassandra 5.1 released**)
+- `5.0-latest` (floating - retags when newer 5.0.x minor released, e.g., 5.0.7)
+- `latest` (floating - **moves to 5.1, 5.2, 6.0 when new Cassandra major released**)
 
 ### Supported Cassandra Versions
 
