@@ -256,6 +256,26 @@ jobs:
         with:
           image: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
 
+      - name: Re-push tags after signing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-latest
+            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
+          build-args: |
+            CASSANDRA_VERSION=${{ matrix.cassandra_version }}
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+          cache-from: type=gha
+
       - name: Image published and signed
         run: |
           echo "✓ Image pushed and signed"
