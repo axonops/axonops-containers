@@ -44,7 +44,6 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.envVars }}
           env:
             - name: POD_IP
               valueFrom:
@@ -54,6 +53,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: MAX_HEAP_SIZE
+              value: "{{ .Values.maxHeapSize }}"
+            - name: HEAP_NEWSIZE
+              value: "{{ .Values.minHeapSize }}"
+          {{- if .Values.envVars }}
             {{- toYaml .Values.envVars | nindent 12 }}
           {{- end }}
           {{- if .Values.envVarsSecret }}

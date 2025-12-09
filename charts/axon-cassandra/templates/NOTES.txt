@@ -23,7 +23,7 @@
 {{- else if contains "ClusterIP" .Values.service.type }}
    To connect from within the cluster:
    kubectl run --namespace {{ .Release.Namespace }} cassandra-client --rm --tty -i --restart='Never' \
-     --image cassandra:4.1 \
+     --image cassandra:5 \
      -- cqlsh {{ include "axon-cassandra.fullname" . }} {{ .Values.service.port | default 9042 }}
 
    To connect from outside the cluster, run a port-forward:

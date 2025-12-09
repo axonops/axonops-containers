@@ -5,7 +5,7 @@ nodeGroup: "master"
 # If discovery.type in the opensearch configuration is set to "single-node",
 # this should be set to "true"
 # If "true", replicas will be forced to 1
-singleNode: false
+singleNode: true
 
 # The service that non master groups will try to connect to when joining the cluster
 # This should be set to clusterName + "-" + nodeGroup for your master group
@@ -99,16 +99,18 @@ config:
     ######## End OpenSearch Security Demo Configuration ########
   # log4j2.properties:
 
+# OpenSearch initial admin password
+# Chart version 2.18.0 and App Version OpenSearch 2.12.0 onwards a custom strong password needs to be provided in order to setup demo admin user.
+# Cluster will not spin-up without this unless demo config install is disabled.
+# This value will be stored in a Kubernetes Secret and passed as an environment variable to the pod
+opensearchInitialAdminPassword: ""
+
 # Extra environment variables to append to this nodeGroup
 # This will be appended to the current 'env:' key. You can use any of the kubernetes env
 # syntax here
 extraEnvs: []
 #  - name: MY_ENVIRONMENT_VAR
 #    value: the_value_goes_here
-# Chart version 2.18.0 and App Version OpenSearch 2.12.0 onwards a custom strong password needs to be provided in order to setup demo admin user.
-# Cluster will not spin-up without this unless demo config install is disabled.
-#  - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
-#    value: <strong-password>
 
 # Allows you to load environment variables from kubernetes secret or config map
 envFrom: []

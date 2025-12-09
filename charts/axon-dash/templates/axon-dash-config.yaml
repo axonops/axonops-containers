@@ -6,11 +6,13 @@ metadata:
     {{- include "axon-dash.labels" . | nindent 4 }}
 data:
   axon-dash.yml: |
+    axon-server:
+      private_endpoints: {{ default "http://axon-server-api:8080" .Values.config.axonServerUrl }}
+      context_path: "{{ default "" .Values.config.contextPath }}"
+
     axon-dash:
 {{ toYaml .Values.config.listener | indent 6 }}
+
 {{- if .Values.config.extraConfig }}
 {{ toYaml .Values.config.extraConfig | indent 6 }}
 {{- end }}
-    axon-server:
-      private_endpoints: {{ .Values.config.axonServerUrl }}
-      context_path: "{{ default "" .Values.config.contextPath }}"

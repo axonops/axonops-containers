@@ -428,10 +428,17 @@ spec:
           value: "{{ .Values.opensearchJavaOpts }}"
         - name: node.roles
           value: "{{ template "opensearch.roles" . }}"
-        {{- if .Values.singleNode }}
+{{- if .Values.opensearchInitialAdminPassword }}
+        - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "opensearch.uname" . }}-admin-password
+              key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+{{- end }}
+{{- if .Values.singleNode }}
         - name: discovery.type
           value: "single-node"
-        {{- end }}
+{{- end }}
 {{- if .Values.extraEnvs }}
 {{ toYaml .Values.extraEnvs | indent 8 }}
 {{- end }}

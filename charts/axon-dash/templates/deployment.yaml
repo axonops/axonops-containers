@@ -44,6 +44,10 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+          env:
+          {{- with .Values.envVars }}
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
@@ -58,7 +62,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /etc/axon-dash
+              mountPath: /etc/axonops
               readOnly: true
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}

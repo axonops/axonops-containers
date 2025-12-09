@@ -5,7 +5,7 @@
 # Image configuration
 image:
   repository: registry.axonops.com/axonops-public/axonops-docker/axon-server
-  tag: latest
+  tag: ""
   pullPolicy: IfNotPresent
 
 # Configure imagePullSecrets if you have mirrored the container images to a private repository
@@ -21,6 +21,7 @@ searchDb:
     - http://axonops-elastic:9200
   username: ""
   password: ""
+  skip_verify: true
 
 # dashboardUrl should be set to the publicly-accessible URL for the AxonOps Dashboard
 dashboardUrl: https://axonops.example.com
@@ -239,7 +240,7 @@ resources: {}
 # Probes configuration
 livenessProbe:
   httpGet:
-    path: /health
+    path: /api/v1/healthz
     port: api
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -248,7 +249,7 @@ livenessProbe:
 
 readinessProbe:
   httpGet:
-    path: /health
+    path: /api/v1/healthz
     port: api
   initialDelaySeconds: 10
   periodSeconds: 5
@@ -257,7 +258,7 @@ readinessProbe:
 
 startupProbe:
   httpGet:
-    path: /health
+    path: /api/v1/healthz
     port: api
   initialDelaySeconds: 0
   periodSeconds: 2
@@ -294,7 +295,7 @@ extraVolumeMounts: []
 
 # StatefulSet specific configuration
 persistence:
-  enabled: false
+  enabled: true
   storageClass: ""
   accessMode: ReadWriteOnce
   size: 10Gi
