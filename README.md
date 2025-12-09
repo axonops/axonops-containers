@@ -19,11 +19,13 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - [Releasing](#releasing)
   - [Development Publishing](#development-publishing)
   - [Production Publishing](#production-publishing)
+  - [Component Release Documentation](#component-release-documentation)
 - [Acknowledgements](#acknowledgements)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
 - [License](#license)
 - [Legal Notices](#legal-notices)
+  - [Trademarks](#trademarks)
 
 ## Components
 
