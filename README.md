@@ -309,12 +309,6 @@ git add . && git commit -S -m "Add feature" && git push origin development
    - Automated startup error detection
    - Security scanning with Trivy before publishing
 
-**This pattern is MANDATORY for:**
-- ✅ k8ssandra containers (implemented)
-- 🔲 Future kafka containers
-- 🔲 Future opensearch containers
-- 🔲 Any other component we add
-
 **Why these standards matter:**
 - Prevents supply chain attacks (malicious base images)
 - Ensures image authenticity (Cosign signatures)
