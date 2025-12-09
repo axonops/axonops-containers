@@ -812,35 +812,44 @@ The CI pipeline includes comprehensive testing:
 For complete release instructions, see [RELEASE.md](./RELEASE.md)
 
 **Image Tags:**
-Each release uses multi-dimensional tagging:
+Each release uses 3-dimensional tagging with k8ssandra API version tracking:
 
 ```
-ghcr.io/axonops/k8ssandra/cassandra:{CASSANDRA_VERSION}-{AXONOPS_VERSION}  # Immutable
-ghcr.io/axonops/k8ssandra/cassandra:{CASSANDRA_VERSION}-latest             # Patch-level latest
-ghcr.io/axonops/k8ssandra/cassandra:5.0-latest                             # Minor-level latest
-ghcr.io/axonops/k8ssandra/cassandra:latest                                 # Global latest
+ghcr.io/axonops/k8ssandra/cassandra:{CASS}-v{K8S_API}-{AXON}  # Fully immutable (all 3 versions)
+ghcr.io/axonops/k8ssandra/cassandra:{CASS}-v{K8S_API}         # Latest AxonOps for this Cassandra + k8ssandra combo
+ghcr.io/axonops/k8ssandra/cassandra:{CASS}                    # Latest k8ssandra API + AxonOps for this Cassandra minor
+ghcr.io/axonops/k8ssandra/cassandra:{MAJOR}-latest            # Latest minor in Cassandra major
+ghcr.io/axonops/k8ssandra/cassandra:latest                    # Latest across all Cassandra majors
 ```
 
-**Example:** For AxonOps release `1.0.1`, a total of 14 tags published:
+**Example:** For Cassandra `5.0.6`, k8ssandra API `v0.1.110`, and AxonOps `1.0.0` release:
 
-**Immutable tags** (6):
-- `5.0.1-1.0.1`, `5.0.2-1.0.1`, `5.0.3-1.0.1`, `5.0.4-1.0.1`, `5.0.5-1.0.1`, `5.0.6-1.0.1`
+**Fully immutable tags** (1 per Cassandra version, 6 total):
+- `5.0.1-v0.1.110-1.0.0`, `5.0.2-v0.1.110-1.0.0`, `5.0.3-v0.1.110-1.0.0`, `5.0.4-v0.1.110-1.0.0`, `5.0.5-v0.1.110-1.0.0`, `5.0.6-v0.1.110-1.0.0`
 
-**Patch-level latest tags** (6):
-- `5.0.1-latest` → `5.0.1-1.0.1`
-- `5.0.2-latest` → `5.0.2-1.0.1`
-- `5.0.3-latest` → `5.0.3-1.0.1`
-- `5.0.4-latest` → `5.0.4-1.0.1`
-- `5.0.5-latest` → `5.0.5-1.0.1`
-- `5.0.6-latest` → `5.0.6-1.0.1`
+**Floating tags** (track latest AxonOps for Cassandra + k8ssandra combo, 6 total):
+- `5.0.1-v0.1.110` → `5.0.1-v0.1.110-1.0.0`
+- `5.0.2-v0.1.110` → `5.0.2-v0.1.110-1.0.0`
+- `5.0.3-v0.1.110` → `5.0.3-v0.1.110-1.0.0`
+- `5.0.4-v0.1.110` → `5.0.4-v0.1.110-1.0.0`
+- `5.0.5-v0.1.110` → `5.0.5-v0.1.110-1.0.0`
+- `5.0.6-v0.1.110` → `5.0.6-v0.1.110-1.0.0`
+
+**Floating tags** (track latest k8ssandra + AxonOps for each Cassandra minor, 6 total):
+- `5.0.1` → `5.0.1-v0.1.110-1.0.0`
+- `5.0.2` → `5.0.2-v0.1.110-1.0.0`
+- `5.0.3` → `5.0.3-v0.1.110-1.0.0`
+- `5.0.4` → `5.0.4-v0.1.110-1.0.0`
+- `5.0.5` → `5.0.5-v0.1.110-1.0.0`
+- `5.0.6` → `5.0.6-v0.1.110-1.0.0`
 
 **Minor-level latest tag** (1):
-- `5.0-latest` → `5.0.6-1.0.1`
+- `5.0-latest` → `5.0.6-v0.1.110-1.0.0`
 
 **Global latest tag** (1):
-- `latest` → `5.0.6-1.0.1`
+- `latest` → `5.0.6-v0.1.110-1.0.0`
 
-**Total:** 14 tags (6 immutable + 6 patch-latest + 1 minor-latest + 1 global-latest)
+**Total:** 20 tags (6 immutable + 6 k8ssandra-floating + 6 cassandra-floating + 1 minor-latest + 1 global-latest)
 
 ## Container Features
 
