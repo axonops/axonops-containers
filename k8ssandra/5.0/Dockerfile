@@ -1,8 +1,9 @@
 ARG CASSANDRA_VERSION=5.0
 ARG K8SSANDRA_BASE_DIGEST
+ARG K8SSANDRA_API_VERSION
 FROM docker.io/k8ssandra/cass-management-api@${K8SSANDRA_BASE_DIGEST}
 
-RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi (digest: ${K8SSANDRA_BASE_DIGEST})"
+RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi-v${K8SSANDRA_API_VERSION} (digest: ${K8SSANDRA_BASE_DIGEST})"
 
 # Build arguments for OCI labels
 ARG BUILD_DATE
@@ -30,7 +31,7 @@ LABEL org.opencontainers.image.vendor="AxonOps"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.title="AxonOps K8ssandra Apache Cassandra ${CASSANDRA_VERSION}"
 LABEL org.opencontainers.image.description="Docker container combining Apache Cassandra ${CASSANDRA_VERSION}, K8ssandra Management API, AxonOps Agent for monitoring and management, and cqlai modern CQL shell. Optimized for Kubernetes deployments with jemalloc memory optimization."
-LABEL org.opencontainers.image.base.name="docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi"
+LABEL org.opencontainers.image.base.name="docker.io/k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi-v${K8SSANDRA_API_VERSION}"
 LABEL org.opencontainers.image.base.digest="${K8SSANDRA_BASE_DIGEST}"
 
 ENV AXON_AGENT_LOG_OUTPUT=std
@@ -99,6 +100,8 @@ RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
     echo "CONTAINER_REVISION=\"${VCS_REF}\"" >> /etc/axonops/build-info.txt && \
     echo "CONTAINER_BUILD_DATE=\"${BUILD_DATE}\"" >> /etc/axonops/build-info.txt && \
     echo "CASSANDRA_VERSION=\"${CASSANDRA_VERSION}\"" >> /etc/axonops/build-info.txt && \
+    echo "K8SSANDRA_API_VERSION=\"${K8SSANDRA_API_VERSION}\"" >> /etc/axonops/build-info.txt && \
+    echo "K8SSANDRA_BASE_DIGEST=\"${K8SSANDRA_BASE_DIGEST}\"" >> /etc/axonops/build-info.txt && \
     echo "JAVA_VERSION=\"$(java -version 2>&1 | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
     echo "AXON_AGENT_VERSION=\"$(/usr/share/axonops/axon-agent --version 2>&1 | head -1 || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
     echo "AXON_JAVA_AGENT_VERSION=\"$(rpm -q axon-cassandra5.0-agent-jdk17 2>/dev/null || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \

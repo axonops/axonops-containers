@@ -16,12 +16,14 @@ print_startup_banner() {
     # Title with all key versions
     echo "AxonOps K8ssandra Apache Cassandra ${CASSANDRA_VERSION:-unknown} + ${AXON_AGENT_VERSION:-unknown}"
     echo "Container v${CONTAINER_VERSION:-unknown} (git: ${CONTAINER_REVISION:-unknown})"
+    echo "Base: k8ssandra/cass-management-api v${K8SSANDRA_API_VERSION:-unknown}"
     echo "================================================================================"
     echo ""
 
     # Component versions (from build-info.txt)
     echo "Component Versions:"
     echo "  Cassandra:          ${CASSANDRA_VERSION:-unknown}"
+    echo "  k8ssandra API:      v${K8SSANDRA_API_VERSION:-unknown}"
     echo "  Java:               ${JAVA_VERSION:-unknown}"
     echo "  AxonOps Agent:      ${AXON_AGENT_VERSION:-unknown}"
     echo "  AxonOps Java Agent: ${AXON_JAVA_AGENT_VERSION:-unknown}"
@@ -29,6 +31,11 @@ print_startup_banner() {
     echo "  jemalloc:           ${JEMALLOC_VERSION:-unknown}"
     echo "  OS:                 ${OS_VERSION:-unknown}"
     echo "  Platform:           ${PLATFORM:-unknown}"
+    echo ""
+
+    # Supply chain verification (digests for security audit)
+    echo "Supply Chain Security:"
+    echo "  Base image digest:  ${K8SSANDRA_BASE_DIGEST:-unknown}"
     echo ""
 
     # Runtime environment (dynamic - only knowable at runtime)

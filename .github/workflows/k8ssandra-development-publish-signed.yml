@@ -78,6 +78,7 @@ jobs:
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
             K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}
@@ -234,6 +235,7 @@ jobs:
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
             K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}
@@ -262,6 +264,7 @@ jobs:
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
             K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}

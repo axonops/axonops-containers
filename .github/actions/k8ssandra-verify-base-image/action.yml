@@ -22,12 +22,20 @@ runs:
       run: |
         echo "=== Verifying base image version in build ==="
 
-        # Get the k8ssandra base image digest for this version
-        DIGEST=$(echo '${{ inputs.k8ssandra_digests_json }}' | jq -r '.["${{ inputs.cassandra_version }}"]')
-        if [ "$DIGEST" = "null" ] || [ -z "$DIGEST" ]; then
-          echo "ERROR: No digest found for Cassandra version ${{ inputs.cassandra_version }}"
+        # Find the composite key for this Cassandra version
+        COMPOSITE_KEY=$(echo '${{ inputs.k8ssandra_digests_json }}' | jq -r 'keys[] | select(startswith("${{ inputs.cassandra_version }}+"))')
+
+        if [ -z "$COMPOSITE_KEY" ]; then
+          echo "ERROR: No k8ssandra version found for Cassandra ${{ inputs.cassandra_version }}"
+          echo "Available versions:"
+          echo '${{ inputs.k8ssandra_digests_json }}' | jq -r 'keys[]'
           exit 1
         fi
+
+        # Get digest for this composite key
+        DIGEST=$(echo '${{ inputs.k8ssandra_digests_json }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+
+        echo "Using composite key: $COMPOSITE_KEY"
         echo "Using k8ssandra base digest: $DIGEST"
 
         # Rebuild with output to capture logs
@@ -39,14 +47,17 @@ runs:
           -t axonops-cassandra:verify \
           ./k8ssandra/${{ inputs.base_version }} 2>&1 | tee /tmp/build-output.log
 
-        # Check for version echo in build output
-        if ! grep -q "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi" /tmp/build-output.log; then
+        # Extract k8ssandra API version from composite key
+        K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
+
+        # Check for version echo in build output (now includes k8ssandra API version)
+        if ! grep -q "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi-v${K8S_API_VERSION}" /tmp/build-output.log; then
           echo "ERROR: Build did not use correct base image!"
-          echo "Expected: k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi"
+          echo "Expected: k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi-v${K8S_API_VERSION}"
           echo ""
           echo "AXONOPS_BUILD logs:"
           grep "AXONOPS_BUILD" /tmp/build-output.log || echo "(no AXONOPS_BUILD messages found)"
           exit 1
         fi
 
-        echo "✓ Verified building from k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi"
+        echo "✓ Verified building from k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi-v${K8S_API_VERSION}"
