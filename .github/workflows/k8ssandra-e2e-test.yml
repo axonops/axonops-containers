@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       container_image:
-        description: 'Container image to test (e.g., ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.3)'
-        required: false
-        default: 'ghcr.io/axonops/axonops-cassandra-containers:5.0.6-1.0.3'
+        description: 'Container image to test (e.g., ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0)'
+        required: true
+        type: string
       cassandra_version:
         description: 'Cassandra version (e.g., 5.0.6)'
         required: false
