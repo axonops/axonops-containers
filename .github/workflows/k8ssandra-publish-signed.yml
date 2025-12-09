@@ -311,10 +311,24 @@ jobs:
             ${{ steps.version.outputs.is_minor_latest == 'true' && format('ghcr.io/{0}:{1}-latest', env.IMAGE_NAME, steps.version.outputs.base_version) || '' }}
             ${{ steps.version.outputs.is_global_latest == 'true' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           annotations: |
-            index:org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with k8ssandra Management API v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}, AxonOps monitoring agents, cqlai v${{ vars.K8SSANDRA_CQLAI_VERSION }}, and jemalloc memory optimization. Optimized for Kubernetes with K8ssandra Operator.
-            index:org.opencontainers.image.title=AxonOps K8ssandra Apache Cassandra ${{ matrix.cassandra_version }}
+            index:org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            index:org.opencontainers.image.authors=AxonOps
+            index:org.opencontainers.image.url=https://axonops.com
+            index:org.opencontainers.image.documentation=https://github.com/axonops/axonops-containers/blob/main/k8ssandra/README.md
+            index:org.opencontainers.image.source=https://github.com/axonops/axonops-containers
+            index:org.opencontainers.image.version=${{ inputs.container_version }}
+            index:org.opencontainers.image.revision=${{ github.sha }}
             index:org.opencontainers.image.vendor=AxonOps
             index:org.opencontainers.image.licenses=Apache-2.0
+            index:org.opencontainers.image.title=AxonOps K8ssandra Apache Cassandra ${{ matrix.cassandra_version }}
+            index:org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with k8ssandra Management API v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}, AxonOps monitoring agents, cqlai v${{ vars.K8SSANDRA_CQLAI_VERSION }}, and jemalloc memory optimization. Base: k8ssandra/cass-management-api:${{ matrix.cassandra_version }}-ubi-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}@${{ steps.k8ssandra.outputs.digest }}. Optimized for Kubernetes with K8ssandra Operator.
+            index:org.opencontainers.image.ref.name=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
+            index:org.opencontainers.image.base.name=docker.io/k8ssandra/cass-management-api:${{ matrix.cassandra_version }}-ubi-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            index:org.opencontainers.image.base.digest=${{ steps.k8ssandra.outputs.digest }}
+            index:com.axonops.cassandra.version=${{ matrix.cassandra_version }}
+            index:com.axonops.k8ssandra-api.version=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            index:com.axonops.cqlai.version=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            index:com.axonops.build.actor=${{ github.actor }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
@@ -394,10 +408,24 @@ jobs:
             ${{ steps.version.outputs.is_minor_latest == 'true' && format('ghcr.io/{0}:{1}-latest', env.IMAGE_NAME, steps.version.outputs.base_version) || '' }}
             ${{ steps.version.outputs.is_global_latest == 'true' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           annotations: |
-            index:org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with k8ssandra Management API v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}, AxonOps monitoring agents, cqlai v${{ vars.K8SSANDRA_CQLAI_VERSION }}, and jemalloc memory optimization. Optimized for Kubernetes with K8ssandra Operator.
-            index:org.opencontainers.image.title=AxonOps K8ssandra Apache Cassandra ${{ matrix.cassandra_version }}
+            index:org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            index:org.opencontainers.image.authors=AxonOps
+            index:org.opencontainers.image.url=https://axonops.com
+            index:org.opencontainers.image.documentation=https://github.com/axonops/axonops-containers/blob/main/k8ssandra/README.md
+            index:org.opencontainers.image.source=https://github.com/axonops/axonops-containers
+            index:org.opencontainers.image.version=${{ inputs.container_version }}
+            index:org.opencontainers.image.revision=${{ github.sha }}
             index:org.opencontainers.image.vendor=AxonOps
             index:org.opencontainers.image.licenses=Apache-2.0
+            index:org.opencontainers.image.title=AxonOps K8ssandra Apache Cassandra ${{ matrix.cassandra_version }}
+            index:org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with k8ssandra Management API v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}, AxonOps monitoring agents, cqlai v${{ vars.K8SSANDRA_CQLAI_VERSION }}, and jemalloc memory optimization. Base: k8ssandra/cass-management-api:${{ matrix.cassandra_version }}-ubi-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}@${{ steps.k8ssandra.outputs.digest }}. Optimized for Kubernetes with K8ssandra Operator.
+            index:org.opencontainers.image.ref.name=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
+            index:org.opencontainers.image.base.name=docker.io/k8ssandra/cass-management-api:${{ matrix.cassandra_version }}-ubi-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            index:org.opencontainers.image.base.digest=${{ steps.k8ssandra.outputs.digest }}
+            index:com.axonops.cassandra.version=${{ matrix.cassandra_version }}
+            index:com.axonops.k8ssandra-api.version=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            index:com.axonops.cqlai.version=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            index:com.axonops.build.actor=${{ github.actor }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
