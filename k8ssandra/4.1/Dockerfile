@@ -3,6 +3,11 @@ ARG K8SSANDRA_BASE_DIGEST
 ARG K8SSANDRA_API_VERSION
 FROM docker.io/k8ssandra/cass-management-api@${K8SSANDRA_BASE_DIGEST}
 
+# Re-declare ARGs after FROM (Docker ARG scope rule - ARGs before FROM only available in FROM line)
+ARG CASSANDRA_VERSION
+ARG K8SSANDRA_BASE_DIGEST
+ARG K8SSANDRA_API_VERSION
+
 RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi-v${K8SSANDRA_API_VERSION} (digest: ${K8SSANDRA_BASE_DIGEST})"
 
 # Build arguments for OCI labels
