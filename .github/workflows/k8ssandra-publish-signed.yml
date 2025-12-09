@@ -128,6 +128,8 @@ jobs:
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -319,6 +321,8 @@ jobs:
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -350,6 +354,8 @@ jobs:
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
           cache-from: type=gha
 
       - name: Image published and signed
