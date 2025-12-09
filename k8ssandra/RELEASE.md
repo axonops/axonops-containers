@@ -10,11 +10,11 @@ The release process uses separate workflows for development and production:
 
 **Development Workflow:**
 1. **k8ssandra-build-and-test.yml** - Automatic testing on pushes/PRs to `development`
-2. **development-k8ssandra-publish.yml** - Manual publishing to development registry
+2. **k8ssandra-development-publish-signed.yml** - Manual publishing to development registry (Cosign signed)
 
 **Production Workflow:**
 1. **k8ssandra-build-and-test.yml** - Automatic testing on pushes/PRs to `main`
-2. **k8ssandra-publish.yml** - Manual publishing to production registry
+2. **k8ssandra-publish-signed.yml** - Manual publishing to production registry (Cosign signed)
 
 This approach ensures:
 - Testing happens on both development and main branches
@@ -61,19 +61,19 @@ git tag dev-1.0.0
 git push origin dev-1.0.0
 
 # Trigger development publish workflow
-gh workflow run development-k8ssandra-publish.yml \
+gh workflow run k8ssandra-development-publish-signed.yml \
   -f dev_git_tag=dev-1.0.0 \
   -f container_version=dev-1.0.0
 ```
 
-**Images published to:**
-- `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-dev-1.0.0`
-- `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.5-dev-1.0.0`
-- `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.4-dev-1.0.0`
+**Images published to (with 3D versioning):**
+- `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-v0.1.110-dev-1.0.0`
+- `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.5-v0.1.110-dev-1.0.0`
+- `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.4-v0.1.110-dev-1.0.0`
 
 **Testing development images:**
 ```bash
-docker pull ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-dev-1.0.0
+docker pull ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-v0.1.110-dev-1.0.0
 # Run tests, validate functionality
 ```
 
@@ -195,13 +195,13 @@ gh api /orgs/axonops/packages/container/k8ssandra%2Fcassandra/versions | \
   jq '.[] | select(.metadata.container.tags[] | contains("1.0.0"))'
 
 # Pull and test an image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 docker run -d \
   -e AXON_AGENT_KEY=your-key \
   -e AXON_AGENT_ORG=your-org \
   -e AXON_AGENT_HOST=agents.axonops.cloud \
   -p 9042:9042 \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 ```
 
 Check GitHub Release:
@@ -223,10 +223,10 @@ All production images are signed. Verify before deployment:
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 
 # Check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 ```
 
 See [Security Documentation](../README.md#security) for more on signature verification and digest-based deployment.

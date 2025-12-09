@@ -117,11 +117,11 @@ Browse all available tags: [GitHub Container Registry](https://github.com/axonop
 
 2. **🥈 Immutable Tag** (Production Standard)
    ```yaml
-   serverImage: "ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.4"
+   serverImage: "ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5"
    ```
-   - Pinned to specific version
+   - Pinned to specific version (Cassandra 5.0.6 + k8ssandra API v0.1.110 + AxonOps 1.0.5)
    - Easy to read and manage
-   - Audit trail maintained
+   - Full audit trail maintained
 
 3. **🥉 Latest Tags** (Development/Testing Only)
    ```yaml
@@ -137,11 +137,12 @@ Browse all available tags: [GitHub Container Registry](https://github.com/axonop
 
 ## Quick Start with Docker/Podman
 
-Run a single-node Cassandra instance locally:
+Run a single-node Cassandra instance locally for testing:
 
 ```bash
-# Pull the image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+# Pull the latest 5.0 image (TESTING ONLY - not for production!)
+# Note: 5.0-latest is a floating tag that points to the latest 5.0.x minor + components
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0-latest
 
 # Run with AxonOps agent (replace with your credentials)
 docker run -d --name cassandra \
@@ -150,7 +151,7 @@ docker run -d --name cassandra \
   -e AXON_AGENT_HOST="agents.axonops.cloud" \
   -p 9042:9042 \
   -p 8080:8080 \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0
+  ghcr.io/axonops/k8ssandra/cassandra:5.0-latest
 
 # Wait for Cassandra to be ready (check Management API)
 curl http://localhost:8080/api/v0/probes/readiness
@@ -159,12 +160,17 @@ curl http://localhost:8080/api/v0/probes/readiness
 docker exec -it cassandra cqlai
 ```
 
+**⚠️ For production use, pin to a specific immutable version:**
+```bash
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+```
+
 ### Using with Kubernetes (K8ssandra)
 
 For Kubernetes deployments, use the image with K8ssandra Operator:
 
 ```bash
-export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-1.0.0"
+export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5"
 export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
 export AXON_AGENT_HOST="agents.axonops.cloud"
@@ -484,7 +490,7 @@ for version in 5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6; do
 done
 ```
 
-Once you have the digest, update the `K8SSANDRA_BASE_DIGESTS` repository variable with the new version mapping.
+Once you have the digest, update the `K8SSANDRA_VERSIONS` repository variable with the new version+digest composite key.
 
 ## Deploying to Kubernetes
 
