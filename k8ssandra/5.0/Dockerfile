@@ -14,6 +14,7 @@ RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSAND
 ARG BUILD_DATE
 ARG VCS_REF
 ARG VERSION
+ARG GIT_TAG
 
 # Legacy labels (for backward compatibility)
 LABEL maintainer="AxonOps"
@@ -103,6 +104,7 @@ RUN if [ -z "$CQLAI_VERSION" ]; then \
 # Values are quoted for safe sourcing in bash
 RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
     echo "CONTAINER_REVISION=\"${VCS_REF}\"" >> /etc/axonops/build-info.txt && \
+    echo "CONTAINER_GIT_TAG=\"${GIT_TAG}\"" >> /etc/axonops/build-info.txt && \
     echo "CONTAINER_BUILD_DATE=\"${BUILD_DATE}\"" >> /etc/axonops/build-info.txt && \
     echo "CASSANDRA_VERSION=\"${CASSANDRA_VERSION}\"" >> /etc/axonops/build-info.txt && \
     echo "K8SSANDRA_API_VERSION=\"${K8SSANDRA_API_VERSION}\"" >> /etc/axonops/build-info.txt && \

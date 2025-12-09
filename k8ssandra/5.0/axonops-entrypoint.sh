@@ -16,7 +16,10 @@ print_startup_banner() {
     # Title with all key versions
     echo "AxonOps K8ssandra Apache Cassandra ${CASSANDRA_VERSION:-unknown} + ${AXON_AGENT_VERSION:-unknown}"
     echo "Container v${CONTAINER_VERSION:-unknown}"
-    echo "Build: https://github.com/axonops/axonops-containers/commit/${CONTAINER_REVISION:-unknown}"
+    if [ -n "${CONTAINER_GIT_TAG}" ] && [ "${CONTAINER_GIT_TAG}" != "unknown" ]; then
+      echo "Tag:    https://github.com/axonops/axonops-containers/releases/tag/${CONTAINER_GIT_TAG}"
+    fi
+    echo "Commit: https://github.com/axonops/axonops-containers/commit/${CONTAINER_REVISION:-unknown}"
     echo "================================================================================"
     echo ""
 
