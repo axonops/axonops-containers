@@ -889,9 +889,9 @@ Component Versions:
   Cassandra:          5.0.6
   k8ssandra API:      v0.1.110
   Java:               17.0.17
-  AxonOps Agent:      AxonOps agent 2.0.11
+  AxonOps Agent:      2.0.11
   AxonOps Java Agent: axon-cassandra5.0-agent-jdk17-1.0.12-1.noarch
-  cqlai:              cqlai version v0.0.31
+  cqlai:              v0.0.31
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)
   Platform:           x86_64
