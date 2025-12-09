@@ -35,7 +35,11 @@ runs:
         # Get digest for this composite key
         DIGEST=$(echo '${{ inputs.k8ssandra_digests_json }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
 
+        # Extract k8ssandra API version from composite key FIRST
+        K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
+
         echo "Using composite key: $COMPOSITE_KEY"
+        echo "Using k8ssandra API version: v$K8S_API_VERSION"
         echo "Using k8ssandra base digest: $DIGEST"
 
         # Rebuild with output to capture logs
@@ -43,12 +47,10 @@ runs:
           --build-arg CASSANDRA_VERSION=${{ inputs.cassandra_version }} \
           --build-arg MAJOR_VERSION=${{ inputs.base_version }} \
           --build-arg K8SSANDRA_BASE_DIGEST=$DIGEST \
+          --build-arg K8SSANDRA_API_VERSION=$K8S_API_VERSION \
           --build-arg CQLAI_VERSION=${{ inputs.cqlai_version }} \
           -t axonops-cassandra:verify \
           ./k8ssandra/${{ inputs.base_version }} 2>&1 | tee /tmp/build-output.log
-
-        # Extract k8ssandra API version from composite key
-        K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
 
         # Check for version echo in build output (now includes k8ssandra API version)
         if ! grep -q "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${{ inputs.cassandra_version }}-ubi-v${K8S_API_VERSION}" /tmp/build-output.log; then
