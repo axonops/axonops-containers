@@ -658,7 +658,8 @@ A complete K8ssandraCluster resource definition showcasing:
 **Cluster Specifications:**
 - Name: `axonops-k8ssandra-50`
 - Namespace: `k8ssandra-operator`
-- Cassandra Version: 5.0.5
+- Cassandra Version: 5.0.6
+- Image: `ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0` (default)
 - Datacenter: `dc1` with 3 nodes
 
 **Resource Allocation:**
@@ -727,10 +728,16 @@ To use this example:
    export AXON_AGENT_KEY="your-key"
    export AXON_AGENT_ORG="your-org"
    export AXON_AGENT_HOST="agents.axonops.cloud"
-   export IMAGE_NAME="your-image"
+   # Optional: Override default image
+   export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0"
 
    cat my-cluster.yml | envsubst | kubectl apply -f -
    ```
+
+**Note:** The example uses the new image format `5.0.6-v0.1.110-1.0.0` which includes:
+- Cassandra version: 5.0.6
+- k8ssandra API version: v0.1.110
+- AxonOps container version: 1.0.0
 
 ## CI/CD Pipeline
 
@@ -742,8 +749,8 @@ The repository includes comprehensive GitHub Actions workflows for building, tes
 - **Build and Test:** `.github/workflows/k8ssandra-build-and-test.yml` - Docker build tests with full validation
 - **E2E Testing:** `.github/workflows/k8ssandra-e2e-test.yml` - End-to-end Kubernetes deployment testing
 - **Security Scanning:** `.github/workflows/k8ssandra-nightly-security-scan.yml` - Daily CVE scanning with email alerts
-- **Production Publish:** `.github/workflows/k8ssandra-publish.yml` - Manual production releases
-- **Development Publish:** `.github/workflows/development-k8ssandra-publish.yml` - Automatic development builds
+- **Production Publish (Signed):** `.github/workflows/k8ssandra-publish-signed.yml` - Manual production releases with Cosign signing
+- **Development Publish (Signed):** `.github/workflows/k8ssandra-development-publish-signed.yml` - Development builds with Cosign signing
 
 **Build and Test Workflow Triggers:**
 - Push to `development` or `main` branch (with `k8ssandra/**` changes)

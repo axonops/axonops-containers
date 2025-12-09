@@ -1,12 +1,13 @@
 ARG CASSANDRA_VERSION=4.0
-ARG K8SSANDRA_BASE_DIGEST
-ARG K8SSANDRA_API_VERSION
+ARG K8SSANDRA_BASE_DIGEST=required
+ARG K8SSANDRA_API_VERSION=required
 FROM docker.io/k8ssandra/cass-management-api@${K8SSANDRA_BASE_DIGEST}
 
 # Re-declare ARGs after FROM (Docker ARG scope rule - ARGs before FROM only available in FROM line)
 ARG CASSANDRA_VERSION
 ARG K8SSANDRA_BASE_DIGEST
 ARG K8SSANDRA_API_VERSION
+ARG CQLAI_VERSION
 
 RUN echo "AXONOPS_BUILD: Inheriting from k8ssandra/cass-management-api:${CASSANDRA_VERSION}-ubi-v${K8SSANDRA_API_VERSION} (digest: ${K8SSANDRA_BASE_DIGEST})"
 
@@ -17,6 +18,7 @@ ARG VERSION
 ARG GIT_TAG
 ARG GITHUB_ACTOR
 ARG IS_PRODUCTION_RELEASE=false
+ARG IMAGE_FULL_NAME
 
 # Legacy labels (for backward compatibility)
 LABEL maintainer="AxonOps"
@@ -106,6 +108,7 @@ RUN if [ -z "$CQLAI_VERSION" ]; then \
 # Write build information to file for runtime access (after all packages installed)
 # Values are quoted for safe sourcing in bash
 RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
+    echo "CONTAINER_IMAGE=\"${IMAGE_FULL_NAME}\"" >> /etc/axonops/build-info.txt && \
     echo "CONTAINER_REVISION=\"${VCS_REF}\"" >> /etc/axonops/build-info.txt && \
     echo "CONTAINER_GIT_TAG=\"${GIT_TAG}\"" >> /etc/axonops/build-info.txt && \
     echo "CONTAINER_BUILD_DATE=\"${BUILD_DATE}\"" >> /etc/axonops/build-info.txt && \

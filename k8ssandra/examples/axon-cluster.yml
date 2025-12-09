@@ -5,8 +5,8 @@ metadata:
   namespace: k8ssandra-operator
 spec:
   cassandra:
-    serverVersion: "5.0.5"
-    serverImage: ${IMAGE_NAME}
+    serverVersion: "5.0.6"
+    serverImage: ${IMAGE_NAME:-ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0}
     softPodAntiAffinity: true
     resources:
       limits:

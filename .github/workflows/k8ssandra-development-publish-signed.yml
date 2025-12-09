@@ -84,6 +84,7 @@ jobs:
             VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.dev_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -249,6 +250,7 @@ jobs:
             VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.dev_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -280,6 +282,7 @@ jobs:
             VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.dev_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
           cache-from: type=gha
 
