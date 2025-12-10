@@ -117,7 +117,14 @@ done
 echo "✓ Configuration applied to cassandra.yaml"
 echo ""
 
-# jemalloc LD_PRELOAD is set via ENV in Dockerfile
+# Enable jemalloc for memory optimization (UBI path)
+if [ -f /usr/lib64/libjemalloc.so.2 ]; then
+    export LD_PRELOAD=/usr/lib64/libjemalloc.so.2
+    echo "✓ jemalloc enabled"
+else
+    echo "⚠ jemalloc not found, continuing without it"
+fi
+
 # JVM options are set in jvm17-server.options (including Shenandoah GC)
 
 echo ""

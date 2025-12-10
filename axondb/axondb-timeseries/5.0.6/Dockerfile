@@ -114,9 +114,6 @@ RUN mkdir -p /etc/axonops && \
     echo "JEMALLOC_VERSION=\"$(rpm -q jemalloc)\"" >> /etc/axonops/build-info.txt && \
     chown -R cassandra:root /etc/axonops
 
-# Set jemalloc preload
-ENV LD_PRELOAD=/usr/lib64/libjemalloc.so.2
-
 # AxonDB entrypoint (our working version from Ubuntu build)
 COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
