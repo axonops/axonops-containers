@@ -3,10 +3,23 @@ set -euo pipefail
 
 # ============================================================================
 # AxonOps System Keyspace Initialization Script
-# Purpose: Automatically convert system_auth, system_distributed, and 
+# Purpose: Automatically convert system_auth, system_distributed, and
 #          system_traces from SimpleStrategy to NetworkTopologyStrategy
 #          on first-time cluster bootstrap (ONLY if safe to do so)
 # ============================================================================
+
+# Semaphore file for healthcheck coordination
+SEMAPHORE_FILE="/etc/axonops/init-system-keyspaces.done"
+
+# Helper function to write semaphore on exit
+write_semaphore() {
+  local result="$1"
+  local reason="${2:-}"
+  mkdir -p /etc/axonops
+  echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$SEMAPHORE_FILE"
+  echo "RESULT=$result" >> "$SEMAPHORE_FILE"
+  [ -n "$reason" ] && echo "REASON=$reason" >> "$SEMAPHORE_FILE"
+}
 
 echo "AxonOps System Keyspace Initialization (Cassandra 5.0.6)"
 echo "=========================================================="
@@ -18,12 +31,14 @@ echo "=========================================================="
 CQL_PORT=$(grep '^native_transport_port:' /etc/cassandra/cassandra.yaml | awk '{print $2}' || echo "9042")
 
 echo "Waiting for CQL port $CQL_PORT to be listening..."
-MAX_WAIT=300  # 5 minutes
+MAX_WAIT=600  # 10 minutes
 ELAPSED=0
 
+echo "Waiting ${MAX_WAIT}s, for CQL port to open..."
 until nc -z localhost "$CQL_PORT" 2>/dev/null; do
   if [ $ELAPSED -gt $MAX_WAIT ]; then
     echo "⚠ CQL port did not open within ${MAX_WAIT}s, skipping system keyspace init"
+    write_semaphore "skipped" "cql_port_timeout"
     exit 0
   fi
   sleep 2
@@ -42,6 +57,7 @@ until nodetool info 2>/dev/null | grep -q "Native Transport active: true" && \
       nodetool info 2>/dev/null | grep -q "Gossip active: true"; do
   if [ $ELAPSED -gt $MAX_WAIT ]; then
     echo "⚠ Native transport/gossip did not become ready within ${MAX_WAIT}s, skipping"
+    write_semaphore "skipped" "native_transport_timeout"
     exit 0
   fi
   sleep 2
@@ -56,6 +72,7 @@ echo "✓ Native transport and gossip are active"
 echo "Verifying CQL connectivity..."
 if ! cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; then
   echo "⚠ CQL connectivity check failed, skipping system keyspace init"
+  write_semaphore "skipped" "cql_connectivity_failed"
   exit 0
 fi
 
@@ -70,6 +87,7 @@ NODE_COUNT=$(nodetool status 2>/dev/null | grep -c '^[UD][NLJM]' || echo "0")
 
 if [ "$NODE_COUNT" -gt 1 ]; then
   echo "✓ Cluster has $NODE_COUNT nodes, skipping system keyspace initialization"
+  write_semaphore "skipped" "multi_node_cluster"
   exit 0
 fi
 
@@ -85,16 +103,19 @@ CLUSTER_INFO=$(nodetool describecluster 2>/dev/null)
 # Check if any of the 3 keyspaces already use NetworkTopologyStrategy
 if echo "$CLUSTER_INFO" | grep -q "system_auth -> Replication class: NetworkTopologyStrategy"; then
   echo "✓ system_auth already uses NetworkTopologyStrategy, skipping initialization"
+  write_semaphore "skipped" "already_nts"
   exit 0
 fi
 
 if echo "$CLUSTER_INFO" | grep -q "system_distributed -> Replication class: NetworkTopologyStrategy"; then
   echo "✓ system_distributed already uses NetworkTopologyStrategy, skipping initialization"
+  write_semaphore "skipped" "already_nts"
   exit 0
 fi
 
 if echo "$CLUSTER_INFO" | grep -q "system_traces -> Replication class: NetworkTopologyStrategy"; then
   echo "✓ system_traces already uses NetworkTopologyStrategy, skipping initialization"
+  write_semaphore "skipped" "already_nts"
   exit 0
 fi
 
@@ -105,6 +126,7 @@ SYSTEM_AUTH_RF=$(echo "$CLUSTER_INFO" | grep "system_auth" | grep -oP 'replicati
 if [ "$SYSTEM_AUTH_RF" != "1" ]; then
   echo "⚠ system_auth uses SimpleStrategy with RF=$SYSTEM_AUTH_RF (not 1), skipping initialization"
   echo "   User may have already customized this. Aborting to prevent misconfiguration."
+  write_semaphore "skipped" "custom_rf"
   exit 0
 fi
 
@@ -143,14 +165,8 @@ cqlsh -u cassandra -p cassandra -e "ALTER KEYSPACE system_traces WITH replicatio
 }
 
 # ============================================================================
-# 8. Run repair to propagate changes
+# 9. Write success semaphore
 # ============================================================================
-# Not run as not necessary as only on initalisation
-# echo ""
-# echo "Running repair to propagate replication changes..."
-# nodetool repair -full system_auth system_distributed system_traces 2>/dev/null || {
-#   echo "⚠ Repair encountered issues but initialization completed"
-# }
-
-# echo ""
-# echo "✓ System keyspace initialization complete"
+echo ""
+echo "✓ System keyspace initialization complete"
+write_semaphore "success" "initialized_to_nts"
