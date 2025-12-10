@@ -70,7 +70,6 @@ fi
 
 # JVM heap settings
 export CASSANDRA_HEAP_SIZE="${CASSANDRA_HEAP_SIZE:-8G}"
-export CASSANDRA_HEAP_NEWSIZE="${CASSANDRA_HEAP_NEWSIZE:-2G}"
 
 echo "Configuration:"
 echo "  Cluster Name:       ${CASSANDRA_CLUSTER_NAME}"
@@ -79,7 +78,6 @@ echo "  Num Tokens:         ${CASSANDRA_NUM_TOKENS}"
 echo "  Listen Address:     ${CASSANDRA_LISTEN_ADDRESS}"
 echo "  RPC Address:        ${CASSANDRA_RPC_ADDRESS}"
 echo "  Heap Size:          ${CASSANDRA_HEAP_SIZE}"
-echo "  Heap New Size:      ${CASSANDRA_HEAP_NEWSIZE}"
 echo ""
 
 # Apply environment variable substitutions to cassandra.yaml
@@ -114,13 +112,10 @@ for rackdc in dc rack; do
     fi
 done
 
-# Apply heap size overrides to jvm17-server.options if env vars set
+# Apply heap size override to jvm17-server.options if env var set
 if [ -n "$CASSANDRA_HEAP_SIZE" ]; then
     _sed-in-place "/etc/cassandra/jvm17-server.options" -r 's/^-Xms[0-9]+[GgMm]$/-Xms'"$CASSANDRA_HEAP_SIZE"'/'
     _sed-in-place "/etc/cassandra/jvm17-server.options" -r 's/^-Xmx[0-9]+[GgMm]$/-Xmx'"$CASSANDRA_HEAP_SIZE"'/'
-fi
-if [ -n "$CASSANDRA_HEAP_NEWSIZE" ]; then
-    _sed-in-place "/etc/cassandra/jvm17-server.options" -r 's/^-Xmn[0-9]+[GgMm]$/-Xmn'"$CASSANDRA_HEAP_NEWSIZE"'/'
 fi
 
 echo "✓ Configuration applied to cassandra.yaml"
