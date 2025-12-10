@@ -11,35 +11,29 @@ else
     echo "⚠ jemalloc not found, continuing without it"
 fi
 
-# Config generation
+# AXON_AGENT_SERVER_HOST
+# AXON_AGENT_SERVER_PORT
+# AXON_AGENT_NTP_HOST
+# AXON_AGENT_KEY
+# AXON_AGENT_ORG
+# AXON_AGENT_CLUSTER_NAME
+# AXON_AGENT_TMP_PATH
+# AXON_AGENT_TLS_MODE
+
+if [ -z "$AXON_AGENT_SERVER_HOST" ]; then
+  AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+fi
+if [ -z "$AXON_AGENT_SERVER_PORT" ]; then
+  AXON_AGENT_SERVER_PORT="443"
+fi
+if [ -z "$AXON_AGENT_ORG" ]; then
+  echo "ERROR: AXON_AGENT_ORG environment variable is not set. Exiting."
+  exit 1
+fi
+
+# Ensure the config file exists to avoid axon-agent startup errors
 if [ ! -f /etc/axonops/axon-agent.yml ]; then
-cat > /etc/axonops/axon-agent.yml <<END
-axon-server:
-    hosts: "${AXON_AGENT_HOST:-agents.axonops.cloud}"
-    port: ${AXON_AGENT_PORT:-443}
-axon-agent:
-    org: ${AXON_AGENT_ORG}
-END
-    if [ -n "${AXON_AGENT_KEY}" ]; then
-cat >> /etc/axonops/axon-agent.yml <<END
-    key: ${AXON_AGENT_KEY}
-END
-    fi
-
-    if [ "$AXON_AGENT_TLS_MODE" != "" ]; then
-cat >> /etc/axonops/axon-agent.yml <<END
-    tls:
-      mode: "${AXON_AGENT_TLS_MODE}"
-END
-    fi
-
-    if [ "$AXON_NTP_HOST" != "" ]; then
-cat >> /etc/axonops/axon-agent.yml <<END
-NTP:
-    hosts:
-      - ${AXON_NTP_HOST}
-END
-    fi
+  touch /etc/axonops/axon-agent.yml
 fi
 
 /usr/share/axonops/axon-agent $AXON_AGENT_ARGS | tee /var/log/axonops/axon-agent.log 2>&1 &
