@@ -28,6 +28,12 @@
 
 
 
+### Heap Settings
+## Set production defaults (8GB heap) for time-series workloads
+## Override with MAX_HEAP_SIZE env var if needed
+-Xms8G
+-Xmx8G
+
 ### Shenandoah GC Settings
 ## Changed from G1GC to Shenandoah for better latency with time-series workloads
 -XX:+UseShenandoahGC
