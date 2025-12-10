@@ -92,15 +92,12 @@ RUN echo "Installing jemalloc..." && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install gettext-base for envsubst (environment variable substitution)
-RUN apt-get update && \
-    apt-get install -y gettext-base && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# No need for gettext-base - base image's docker-entrypoint.sh handles env var substitution
 
 # Copy customized Cassandra configuration files
-# These will be used as templates and processed by entrypoint script
-COPY config/cassandra.yaml /etc/cassandra/cassandra.yaml.template
+# Our custom cassandra.yaml becomes the default config
+# Base image's docker-entrypoint.sh will handle environment variable substitution
+COPY config/cassandra.yaml /etc/cassandra/cassandra.yaml
 COPY config/jvm-server.options /etc/cassandra/jvm-server.options
 COPY config/jvm17-server.options /etc/cassandra/jvm17-server.options
 

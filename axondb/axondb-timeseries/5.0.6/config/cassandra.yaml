@@ -26,7 +26,7 @@
 
 # The name of the cluster. This is mainly used to prevent machines in
 # one logical cluster from joining another.
-cluster_name: 'Test Cluster'
+cluster_name: 'axonopsdb-timeseries'
 
 # This defines the number of tokens randomly assigned to this node on the ring
 # The more tokens, relative to other nodes, the larger the proportion of data
@@ -42,7 +42,7 @@ cluster_name: 'Test Cluster'
 # See https://cassandra.apache.org/doc/latest/getting-started/production.html#tokens for
 # best practice information about num_tokens.
 #
-num_tokens: 16
+num_tokens: 8
 
 # Triggers automatic allocation of num_tokens tokens for this node. The allocation
 # algorithm attempts to choose tokens in a way that optimizes replicated load over
@@ -199,7 +199,7 @@ batchlog_endpoint_strategy: dynamic_remote
 #   Please increase system_auth keyspace replication factor if you use this authenticator.
 #   If using PasswordAuthenticator, CassandraRoleManager must also be used (see below)
 authenticator:
-  class_name: AllowAllAuthenticator
+  class_name: PasswordAuthenticator
 # MutualTlsAuthenticator can be configured using the following configuration. One can add their own validator
 # which implements MutualTlsCertificateValidator class and provide logic for extracting identity out of certificates
 # and validating certificates.
@@ -219,7 +219,7 @@ authenticator:
 # - CassandraAuthorizer stores permissions in system_auth.role_permissions table. Please
 #   increase system_auth keyspace replication factor if you use this authorizer.
 authorizer:
-  class_name: AllowAllAuthorizer
+  class_name: CassandraAuthorizer
 
 # Part of the Authentication & Authorization backend, implementing IRoleManager; used
 # to maintain grants and memberships between roles.
@@ -668,7 +668,7 @@ commitlog_sync_period: 10000ms
 # be set to at least twice the size of max_mutation_size
 #
 # Min unit: MiB
-commitlog_segment_size: 32MiB
+commitlog_segment_size: 16MiB
 
 # Compression to apply to the commit log. If omitted, the commit log
 # will be written uncompressed.  LZ4, Snappy, and Deflate compressors
@@ -732,11 +732,11 @@ seed_provider:
 # your system; (8 * number_of_cores) is a good rule of thumb.
 concurrent_reads: 32
 concurrent_writes: 32
-concurrent_counter_writes: 32
+concurrent_counter_writes: 1
 
 # For materialized view writes, as there is a read involved, so this should
 # be limited by the less of concurrent reads or concurrent writes.
-concurrent_materialized_view_writes: 32
+concurrent_materialized_view_writes: 1
 
 # Maximum memory to use for inter-node and client-server networking buffers.
 #
@@ -1145,7 +1145,7 @@ auto_snapshot: true
 # By default, auto snapshots *do not* have TTL, uncomment the property below
 # to enable TTL on auto snapshots.
 # Accepted units: d (days), h (hours) or m (minutes)
-# auto_snapshot_ttl: 30d
+auto_snapshot_ttl: 7d
 
 # The act of creating or clearing a snapshot involves creating or removing
 # potentially tens of thousands of links, which can cause significant performance
@@ -1379,7 +1379,7 @@ request_timeout: 10000ms
 # this timeout to execute, will generate an aggregated log message, so that slow queries
 # can be identified. Set this value to zero to disable slow query logging.
 # Min unit: ms
-slow_query_log_timeout: 500ms
+slow_query_log_timeout: 2000ms
 
 # Enable operation timeout information exchange between nodes to accurately
 # measure request timeouts.  If disabled, replicas will assume that requests
