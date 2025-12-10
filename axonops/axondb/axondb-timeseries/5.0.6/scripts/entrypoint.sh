@@ -136,6 +136,12 @@ fi
 
 # JVM options are set in jvm17-server.options (including Shenandoah GC)
 
+# Initialize system keyspaces in background (non-blocking)
+# This will wait for Cassandra to be ready, then convert system keyspaces to NetworkTopologyStrategy
+# Only runs on fresh single-node clusters with default credentials
+echo "Starting system keyspace initialization in background..."
+(/usr/local/bin/init-system-keyspaces.sh > /var/log/cassandra/init-system-keyspaces.log 2>&1 &)
+
 echo ""
 echo "=== Starting Cassandra ==="
 echo ""
