@@ -53,8 +53,8 @@ echo "✓ CQL port $CQL_PORT is listening"
 echo "Waiting for native transport and gossip to be enabled..."
 ELAPSED=0
 
-until nodetool info 2>/dev/null | grep -q "Native Transport active: true" && \
-      nodetool info 2>/dev/null | grep -q "Gossip active: true"; do
+until nodetool info 2>/dev/null | grep -q "Native Transport active.*: true" && \
+      nodetool info 2>/dev/null | grep -q "Gossip active.*: true"; do
   if [ $ELAPSED -gt $MAX_WAIT ]; then
     echo "⚠ Native transport/gossip did not become ready within ${MAX_WAIT}s, skipping"
     write_semaphore "skipped" "native_transport_timeout"
@@ -70,11 +70,18 @@ echo "✓ Native transport and gossip are active"
 # 3. Verify CQL connectivity with default credentials
 # ============================================================================
 echo "Verifying CQL connectivity..."
-if ! cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; then
-  echo "⚠ CQL connectivity check failed, skipping system keyspace init"
-  write_semaphore "skipped" "cql_connectivity_failed"
-  exit 0
-fi
+CQL_ELAPSED=0
+CQL_MAX_WAIT=60  # Wait up to 60 seconds for CQL authentication to be ready
+
+until cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; do
+  if [ $CQL_ELAPSED -gt $CQL_MAX_WAIT ]; then
+    echo "⚠ CQL connectivity check failed after ${CQL_MAX_WAIT}s, skipping system keyspace init"
+    write_semaphore "skipped" "cql_connectivity_failed"
+    exit 0
+  fi
+  sleep 2
+  CQL_ELAPSED=$((CQL_ELAPSED + 2))
+done
 
 echo "✓ CQL is ready with default credentials"
 
