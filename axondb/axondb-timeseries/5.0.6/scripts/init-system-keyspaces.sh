@@ -44,7 +44,7 @@ fi
 # ============================================================================
 echo ""
 echo "Checking cluster state..."
-PEER_COUNT=$(cqlsh -u cassandra -p cassandra -e "SELECT count(*) FROM system.peers;" 2>/dev/null | tail -1 | tr -d ' ' || echo "unknown")
+PEER_COUNT=$(cqlsh -u cassandra -p cassandra -e "SELECT count(*) FROM system.peers;" 2>/dev/null | grep -oP '^\s*\d+' | tr -d ' ' || echo "unknown")
 
 if [ "$PEER_COUNT" != "0" ] && [ "$PEER_COUNT" != "unknown" ]; then
   echo "✓ Cluster already has peers ($PEER_COUNT), skipping system keyspace initialization"
@@ -75,35 +75,28 @@ if [[ "$SYSTEM_AUTH_REPL" == *"SimpleStrategy"* ]]; then
 fi
 
 # ============================================================================
-# 4. Check system_distributed replication
+# 4. Check system_distributed replication (only check if already NTS)
 # ============================================================================
+# Note: Cassandra 5.0 defaults system_distributed to RF=3, system_traces to RF=2
+# We only use system_auth RF=1 check as the indicator of "fresh/uncustomized" cluster
+# If system_auth is RF=1 and SimpleStrategy, we convert all 3 keyspaces to NTS
 echo "Checking system_distributed replication strategy..."
 SYSTEM_DIST_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_distributed';" 2>/dev/null | grep -oP "replication.*" || echo "unknown")
 
 if [[ "$SYSTEM_DIST_REPL" == *"NetworkTopologyStrategy"* ]]; then
-  echo "✓ system_distributed already uses NetworkTopologyStrategy"
-elif [[ "$SYSTEM_DIST_REPL" == *"SimpleStrategy"* ]]; then
-  RF=$(echo "$SYSTEM_DIST_REPL" | grep -oP "'replication_factor':\s*\d+" | grep -oP '\d+' || echo "unknown")
-  if [ "$RF" != "1" ] && [ "$RF" != "unknown" ]; then
-    echo "⚠ system_distributed uses SimpleStrategy with RF=$RF (not 1), skipping"
-    exit 0
-  fi
+  echo "✓ system_distributed already uses NetworkTopologyStrategy, skipping initialization"
+  exit 0
 fi
 
 # ============================================================================
-# 5. Check system_traces replication
+# 5. Check system_traces replication (only check if already NTS)
 # ============================================================================
 echo "Checking system_traces replication strategy..."
 SYSTEM_TRACES_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_traces';" 2>/dev/null | grep -oP "replication.*" || echo "unknown")
 
 if [[ "$SYSTEM_TRACES_REPL" == *"NetworkTopologyStrategy"* ]]; then
-  echo "✓ system_traces already uses NetworkTopologyStrategy"
-elif [[ "$SYSTEM_TRACES_REPL" == *"SimpleStrategy"* ]]; then
-  RF=$(echo "$SYSTEM_TRACES_REPL" | grep -oP "'replication_factor':\s*\d+" | grep -oP '\d+' || echo "unknown")
-  if [ "$RF" != "1" ] && [ "$RF" != "unknown" ]; then
-    echo "⚠ system_traces uses SimpleStrategy with RF=$RF (not 1), skipping"
-    exit 0
-  fi
+  echo "✓ system_traces already uses NetworkTopologyStrategy, skipping initialization"
+  exit 0
 fi
 
 # ============================================================================
