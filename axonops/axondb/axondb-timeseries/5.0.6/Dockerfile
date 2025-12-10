@@ -56,7 +56,7 @@ RUN microdnf install -y --nodocs shadow-utils && \
 # iproute: network configuration tools
 # numactl: NUMA support (auto-detected by Cassandra)
 # nmap-ncat: provides nc for init script port checks
-# curl: required for cqlai downloads
+# Note: curl-minimal is pre-installed in UBI9-minimal, sufficient for our needs
 RUN microdnf install -y --nodocs \
     java-17-openjdk-headless \
     tzdata-java \
@@ -73,7 +73,6 @@ RUN microdnf install -y --nodocs \
     tar \
     gzip \
     wget \
-    curl \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
