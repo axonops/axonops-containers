@@ -40,6 +40,12 @@ LABEL description="Apache Cassandra is an open source distributed database manag
 
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
 
+# Update all packages to latest versions (security patches)
+RUN echo "Updating all packages to latest versions..." && \
+    microdnf update -y && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
+
 ENV CASSANDRA_PATH=/opt/cassandra
 ENV PATH=${CASSANDRA_PATH}/bin:${PATH}
 ENV CASSANDRA_HOME=${CASSANDRA_PATH}
