@@ -116,6 +116,14 @@ if [ -f /config/cassandra-env.sh ]; then
     echo ". /usr/share/axonops/axonops-jvm.options" >> /config/cassandra-env.sh
 fi
 
+# Enable jemalloc for memory optimization (UBI path)
+if [ -f /usr/lib64/libjemalloc.so.2 ]; then
+    export LD_PRELOAD=/usr/lib64/libjemalloc.so.2
+    echo "✓ jemalloc enabled"
+else
+    echo "⚠ jemalloc not found, continuing without it"
+fi
+
 # Print startup banner (after config ready, before starting Cassandra)
 print_startup_banner
 
