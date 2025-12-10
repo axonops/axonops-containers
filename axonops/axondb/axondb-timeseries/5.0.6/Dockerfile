@@ -1,44 +1,33 @@
-ARG UBI_MAJOR=9
-ARG UBI_BASETAG=latest
+# Supply chain security: Use immutable digest instead of mutable tag
+# UBI 9 minimal base image digest (latest as of 2025-12-10)
+# Points to: registry.access.redhat.com/ubi9/ubi-minimal:latest
+ARG UBI9_MINIMAL_DIGEST=sha256:80f3902b6dcb47005a90e14140eef9080ccc1bb22df70ee16b27d5891524edb2
+
+# Cassandra version and SHA512 checksum (from official Apache Cassandra)
 ARG CASSANDRA_VERSION=5.0.6
-FROM cassandra:${CASSANDRA_VERSION} AS cassandra-base
+ARG CASSANDRA_SHA512=cab82049269e91ecd13e525254427d9b6139d8982fd1ddb8256ac7ebebc2fae412721750d7b30b1ee4e86f81d1960a87a2220d4a4a34d11f05c5aca0be6cd649
 
-FROM registry.access.redhat.com/ubi${UBI_MAJOR}/ubi-minimal:${UBI_BASETAG} AS builder
+FROM registry.access.redhat.com/ubi9/ubi-minimal@${UBI9_MINIMAL_DIGEST}
 
-ARG CASSANDRA_VERSION
-
-ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
-ENV CASSANDRA_HOME=/opt/cassandra
-
-# Update base layer
-RUN microdnf install -y --nodocs shadow-utils \
-    && groupadd -r cassandra --gid=999 \
-    && useradd -m -d "$CASSANDRA_HOME" -r -g cassandra -G root --uid=999 cassandra \
-# Install packages needed during install process
-    && microdnf install -y tar gzip unzip
-
-WORKDIR /
-
-###
-# Copy Cassandra from official image
-###
-COPY --from=cassandra-base /etc/cassandra /etc/cassandra
-COPY --from=cassandra-base ${CASSANDRA_HOME} ${CASSANDRA_HOME}
-
-FROM registry.access.redhat.com/ubi${UBI_MAJOR}/ubi-minimal:${UBI_BASETAG} AS cassandra
+# Re-declare ARGs after FROM (Docker ARG scope rule)
+ARG UBI9_MINIMAL_DIGEST
 ARG TARGETARCH
 ARG CASSANDRA_VERSION
+ARG CASSANDRA_SHA512
 ARG CQLAI_VERSION
+
 ENV CASSANDRA_VERSION=${CASSANDRA_VERSION}
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+
+RUN echo "AXONOPS_BUILD: Using UBI 9 minimal base image (digest: ${UBI9_MINIMAL_DIGEST})"
+RUN echo "AXONOPS_BUILD: Will download Cassandra ${CASSANDRA_VERSION} from Apache mirrors"
 
 LABEL maintainer="AxonOps"
-LABEL name="AxonOps version of Apache Cassandra for Time-Series Database for use with AxonOps self-hosting"
+LABEL name="AxonOps AxonDB Time-Series Database (Apache Cassandra ${CASSANDRA_VERSION})"
 LABEL vendor="AxonOps"
 LABEL release="${CASSANDRA_VERSION}"
-LABEL summary="Apache Cassandra is an open source distributed database management system designed to handle large amounts of data across many commodity servers, providing high availability with no single point of failure. Cassandra offers robust support for clusters spanning multiple datacenters, with asynchronous masterless replication allowing low latency operations for all clients."
-LABEL description="Apache Cassandra is an open source distributed database management system designed to handle large amounts of data across many commodity servers, providing high availability with no single point of failure. Cassandra offers robust support for clusters spanning multiple datacenters, with asynchronous masterless replication allowing low latency operations for all clients."
-
-ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+LABEL summary="Apache Cassandra ${CASSANDRA_VERSION} optimized for AxonOps self-hosted deployments with integrated monitoring and time-series workloads"
+LABEL description="Production-ready Apache Cassandra ${CASSANDRA_VERSION} container built on Red Hat UBI 9, featuring system keyspace auto-initialization, jemalloc memory optimization, cqlai modern CQL shell, and AxonOps-optimized configuration for time-series database workloads."
 
 # Update all packages to latest versions (security patches)
 RUN echo "Updating all packages to latest versions..." && \
@@ -46,22 +35,45 @@ RUN echo "Updating all packages to latest versions..." && \
     microdnf clean all && \
     rm -rf /var/cache/yum /var/cache/dnf
 
+# Cassandra environment
 ENV CASSANDRA_PATH=/opt/cassandra
 ENV PATH=${CASSANDRA_PATH}/bin:${PATH}
 ENV CASSANDRA_HOME=${CASSANDRA_PATH}
-ENV CASSANDRA_CONF=${CASSANDRA_PATH}/conf
+ENV CASSANDRA_CONF=/etc/cassandra
 ENV CASSANDRA_LOG_DIR=/var/log/cassandra
 ENV CASSANDRA_DATA_DIR=/var/lib/cassandra
-ENV CASSANDRA_FILES_PATH=/opt/cassandra_files
 
-# Update base layer
-RUN microdnf install -y --nodocs shadow-utils \
-    && groupadd -r cassandra --gid=999 \
-    && useradd -m -d "$CASSANDRA_HOME" -r -g cassandra -G root --uid=999 cassandra \
-    && rm -rf /var/cache/yum \
-# Install packages needed during install process
-    && microdnf install -y --nodocs java-17-openjdk-headless tzdata-java python3.11 zlib findutils which hostname iproute procps util-linux glibc-langpack-en wget tar nmap-ncat \
-    && microdnf clean all
+# Create cassandra user and group
+RUN microdnf install -y --nodocs shadow-utils && \
+    groupadd -r cassandra --gid=999 && \
+    useradd -m -d "$CASSANDRA_HOME" -r -g cassandra -G root --uid=999 cassandra && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum
+
+# Install runtime dependencies
+# procps-ng: provides commands Cassandra scripts use
+# python3.11: required by cqlsh
+# iproute: network configuration tools
+# numactl: NUMA support (auto-detected by Cassandra)
+# nmap-ncat: provides nc for init script port checks
+RUN microdnf install -y --nodocs \
+    java-17-openjdk-headless \
+    tzdata-java \
+    python3.11 \
+    procps-ng \
+    numactl \
+    iproute \
+    nmap-ncat \
+    findutils \
+    which \
+    hostname \
+    util-linux \
+    glibc-langpack-en \
+    tar \
+    gzip \
+    wget \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum /var/cache/dnf
 
 # Install jemalloc from EPEL
 RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
@@ -74,38 +86,48 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.
     microdnf clean all && \
     rm -rf /var/cache/yum /var/cache/dnf
 
+# Download and install Apache Cassandra with SHA512 verification
+RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
+    cd /tmp && \
+    CASSANDRA_TARBALL="apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz" && \
+    echo "Downloading Cassandra ${CASSANDRA_VERSION} from Apache mirrors..." && \
+    wget -q "https://dlcdn.apache.org/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" || \
+    wget -q "https://archive.apache.org/dist/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" && \
+    echo "${CASSANDRA_SHA512}  ${CASSANDRA_TARBALL}" | sha512sum -c - && \
+    echo "Extracting Cassandra to ${CASSANDRA_HOME}..." && \
+    tar -xzf "${CASSANDRA_TARBALL}" --strip-components=1 -C "$CASSANDRA_HOME" && \
+    rm "${CASSANDRA_TARBALL}" && \
+    cp "$CASSANDRA_HOME/LICENSE.txt" /licenses/LICENSE.txt && \
+    mv "$CASSANDRA_HOME/conf" /etc/cassandra && \
+    ln -s /etc/cassandra "$CASSANDRA_HOME/conf" && \
+    chown -R cassandra:root "$CASSANDRA_HOME" /etc/cassandra /licenses && \
+    rm -rf /tmp/*
+
 # Install cqlai
 RUN if [ -z "$CQLAI_VERSION" ]; then \
       echo "ERROR: CQLAI_VERSION build arg is required"; \
       exit 1; \
     fi && \
     echo "Installing cqlai version: $CQLAI_VERSION" && \
-    RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64") && \
+    RPM_ARCH=$(uname -m) && \
     CQLAI_RPM="cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm" && \
     CQLAI_URL="https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}" && \
-    curl -sL -o SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" && \
-    curl -sL -o "${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
-    grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - && \
+    curl -sL -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" && \
+    curl -sL -o "/tmp/${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
+    cd /tmp && grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - && \
     rpm -i "${CQLAI_RPM}" && \
     rm -f "${CQLAI_RPM}" SHA256SUMS.txt && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
-# Copy trimmed Cassandra installation from builder
-COPY --from=builder --chown=cassandra:root /etc/cassandra /etc/cassandra
-COPY --from=builder --chown=cassandra:root ${CASSANDRA_PATH} ${CASSANDRA_PATH}
-COPY --from=builder --chown=cassandra:root ${CASSANDRA_PATH}/LICENSE.txt /licenses/
-
-# Overlay our custom config files to /etc/cassandra (entrypoint.sh expects this path)
+# Overlay our custom config files to /etc/cassandra
 COPY --chown=cassandra:root config/cassandra.yaml /etc/cassandra/cassandra.yaml
 COPY --chown=cassandra:root config/jvm-server.options /etc/cassandra/jvm-server.options
 COPY --chown=cassandra:root config/jvm17-server.options /etc/cassandra/jvm17-server.options
 
-# Create directories
-RUN (for dir in ${CASSANDRA_DATA_DIR} \
-                ${CASSANDRA_LOG_DIR} ; do \
-        mkdir -p $dir && chown -R cassandra:root $dir && chmod 775 $dir ; \
-    done ) && \
-    # change mode of directories
+# Create data and log directories
+RUN mkdir -p ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
+    chown -R cassandra:root ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
+    chmod 775 ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod a+rwX ${CASSANDRA_PATH} /etc/cassandra
 
 # Copy our healthcheck script
@@ -124,21 +146,23 @@ RUN mkdir -p /etc/axonops && \
     echo "JEMALLOC_VERSION=\"$(rpm -q jemalloc)\"" >> /etc/axonops/build-info.txt && \
     chown -R cassandra:root /etc/axonops
 
-# AxonDB entrypoint (our working version from Ubuntu build)
+# AxonDB entrypoint
 COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
-  ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
-# fix for the missing mtab in the containerd
-  ln -sf /proc/mounts /etc/mtab
+    ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
+    ln -sf /proc/mounts /etc/mtab
 
-ENV TINI_VERSION=v0.19.0
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TARGETARCH} /tini
-RUN chmod +x /tini
+# Tini init system (minimal init for containers - handles signals and prevents zombies)
+RUN TINI_VERSION=v0.19.0 && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then TINI_ARCH="amd64"; elif [ "$ARCH" = "aarch64" ]; then TINI_ARCH="arm64"; else TINI_ARCH="$ARCH"; fi && \
+    wget -q -O /tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
+    chmod +x /tini
 
 # Set user to run as
 USER cassandra
 
-# Expose CASSANDRA folders
+# Expose volumes
 VOLUME ["/var/lib/cassandra", "/var/log/cassandra"]
 
 # CASSANDRA PORTS (INTRA-NODE, TLS INTRA-NODE, JMX, CQL, THRIFT)
