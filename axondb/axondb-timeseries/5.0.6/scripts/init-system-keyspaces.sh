@@ -56,7 +56,7 @@ fi
 # ============================================================================
 echo ""
 echo "Checking system_auth replication strategy..."
-SYSTEM_AUTH_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_auth';" 2>/dev/null | grep -oP "replication.*" || echo "unknown")
+SYSTEM_AUTH_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_auth';" 2>/dev/null | grep '{' || echo "unknown")
 
 if [[ "$SYSTEM_AUTH_REPL" == *"NetworkTopologyStrategy"* ]]; then
   echo "✓ system_auth already uses NetworkTopologyStrategy, skipping initialization"
@@ -81,7 +81,7 @@ fi
 # We only use system_auth RF=1 check as the indicator of "fresh/uncustomized" cluster
 # If system_auth is RF=1 and SimpleStrategy, we convert all 3 keyspaces to NTS
 echo "Checking system_distributed replication strategy..."
-SYSTEM_DIST_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_distributed';" 2>/dev/null | grep -oP "replication.*" || echo "unknown")
+SYSTEM_DIST_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_distributed';" 2>/dev/null | grep '{' || echo "unknown")
 
 if [[ "$SYSTEM_DIST_REPL" == *"NetworkTopologyStrategy"* ]]; then
   echo "✓ system_distributed already uses NetworkTopologyStrategy, skipping initialization"
@@ -92,7 +92,7 @@ fi
 # 5. Check system_traces replication (only check if already NTS)
 # ============================================================================
 echo "Checking system_traces replication strategy..."
-SYSTEM_TRACES_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_traces';" 2>/dev/null | grep -oP "replication.*" || echo "unknown")
+SYSTEM_TRACES_REPL=$(cqlsh -u cassandra -p cassandra -e "SELECT replication FROM system_schema.keyspaces WHERE keyspace_name = 'system_traces';" 2>/dev/null | grep '{' || echo "unknown")
 
 if [[ "$SYSTEM_TRACES_REPL" == *"NetworkTopologyStrategy"* ]]; then
   echo "✓ system_traces already uses NetworkTopologyStrategy, skipping initialization"
