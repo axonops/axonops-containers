@@ -16,10 +16,23 @@ if [ ! -f /etc/axonops/axon-agent.yml ]; then
 cat > /etc/axonops/axon-agent.yml <<END
 axon-server:
     hosts: "${AXON_AGENT_HOST:-agents.axonops.cloud}"
+    port: ${AXON_AGENT_PORT:-443}
 axon-agent:
-    key: ${AXON_AGENT_KEY}
     org: ${AXON_AGENT_ORG}
 END
+    if [ -n "${AXON_AGENT_KEY}" ]; then
+cat >> /etc/axonops/axon-agent.yml <<END
+    key: ${AXON_AGENT_KEY}
+END
+    fi
+
+    if [ "$AXON_AGENT_TLS_MODE" != "" ]; then
+cat >> /etc/axonops/axon-agent.yml <<END
+    tls:
+      mode: "${AXON_AGENT_TLS_MODE}"
+END
+    fi
+
     if [ "$AXON_NTP_HOST" != "" ]; then
 cat >> /etc/axonops/axon-agent.yml <<END
 NTP:
