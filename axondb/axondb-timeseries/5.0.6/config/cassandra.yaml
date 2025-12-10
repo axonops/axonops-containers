@@ -1537,7 +1537,7 @@ slow_query_log_timeout: 2000ms
 #
 # You can use a custom Snitch by setting this to the full class name
 # of the snitch, which will be assumed to be on your classpath.
-endpoint_snitch: SimpleSnitch
+endpoint_snitch: GossipingPropertyFileSnitch
 
 # controls how often to perform the more expensive part of host score
 # calculation
