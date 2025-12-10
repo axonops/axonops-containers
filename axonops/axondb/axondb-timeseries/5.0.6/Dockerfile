@@ -105,16 +105,15 @@ RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
     rm -rf /tmp/*
 
 # Install cqlai
+# Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
+# this will be set correctly by the platform-specific base image.
 RUN if [ -z "$CQLAI_VERSION" ]; then \
       echo "ERROR: CQLAI_VERSION build arg is required"; \
       exit 1; \
     fi && \
     echo "Installing cqlai version: $CQLAI_VERSION" && \
-    if [ -n "$TARGETARCH" ]; then \
-        RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64"); \
-    else \
-        RPM_ARCH=$(uname -m); \
-    fi && \
+    RPM_ARCH=$(uname -m) && \
+    echo "Detected architecture: $RPM_ARCH" && \
     CQLAI_RPM="cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm" && \
     CQLAI_URL="https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}" && \
     curl -sL -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" && \
@@ -158,24 +157,19 @@ RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
     ln -sf /proc/mounts /etc/mtab
 
 # Tini init system (minimal init for containers - handles signals and prevents zombies)
+# Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
+# this will be set correctly by the platform-specific base image.
 RUN TINI_VERSION=v0.19.0 && \
-    if [ -n "$TARGETARCH" ]; then \
-        if [ "$TARGETARCH" = "amd64" ]; then \
-            TINI_ARCH="amd64"; \
-            TINI_SHA256="93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c"; \
-        elif [ "$TARGETARCH" = "arm64" ]; then \
-            TINI_ARCH="arm64"; \
-            TINI_SHA256="07952557df20bfd2a95f9bef198b445e006171969499a1d361bd9e6f8e5e0e81"; \
-        fi; \
+    ARCH=$(uname -m) && \
+    echo "Detected architecture for Tini: $ARCH" && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        TINI_ARCH="amd64"; \
+        TINI_SHA256="93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        TINI_ARCH="arm64"; \
+        TINI_SHA256="07952557df20bfd2a95f9bef198b445e006171969499a1d361bd9e6f8e5e0e81"; \
     else \
-        ARCH=$(uname -m); \
-        if [ "$ARCH" = "x86_64" ]; then \
-            TINI_ARCH="amd64"; \
-            TINI_SHA256="93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c"; \
-        elif [ "$ARCH" = "aarch64" ]; then \
-            TINI_ARCH="arm64"; \
-            TINI_SHA256="07952557df20bfd2a95f9bef198b445e006171969499a1d361bd9e6f8e5e0e81"; \
-        fi; \
+        echo "ERROR: Unsupported architecture: $ARCH" && exit 1; \
     fi && \
     wget -q -O /tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
     echo "${TINI_SHA256}  /tini" | sha256sum -c - && \
