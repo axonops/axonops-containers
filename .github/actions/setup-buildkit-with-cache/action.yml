@@ -2,8 +2,9 @@ name: 'Setup BuildKit with Cache Persistence'
 description: 'Sets up Docker Buildx with buildkit-cache-dance for persistent RUN --mount=type=cache mounts'
 inputs:
   cache-map:
-    description: 'JSON map of cache mount IDs to container paths (e.g., {"cqlai-rpms": "/var/cache/cqlai"})'
+    description: 'JSON map of cache mount IDs to container paths (e.g., {"cqlai-rpms": "/var/cache/cqlai", "tini-binaries": "/var/cache/tini"})'
     required: true
+    default: '{}'
 
 runs:
   using: 'composite'

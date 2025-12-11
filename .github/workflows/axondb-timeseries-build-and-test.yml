@@ -63,7 +63,8 @@ jobs:
         with:
           cache-map: |
             {
-              "cqlai-rpms": "/var/cache/cqlai"
+              "cqlai-rpms": "/var/cache/cqlai",
+              "tini-binaries": "/var/cache/tini"
             }
 
       - name: Extract Cassandra version from Dockerfile

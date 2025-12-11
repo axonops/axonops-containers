@@ -215,10 +215,11 @@ RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
     ln -sf /proc/mounts /etc/mtab
 
 # Tini init system (minimal init for containers - handles signals and prevents zombies)
+# Uses cache mount + retry logic for reliability (same as cqlai)
 # Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
 # this will be set correctly by the platform-specific base image.
-# Added retry logic for reliability (same network issues as cqlai)
-RUN TINI_VERSION=v0.19.0 && \
+RUN --mount=type=cache,target=/var/cache/tini,id=tini-binaries,sharing=locked \
+    TINI_VERSION=v0.19.0 && \
     ARCH=$(uname -m) && \
     echo "Detected architecture for Tini: $ARCH" && \
     if [ "$ARCH" = "x86_64" ]; then \
@@ -231,27 +232,48 @@ RUN TINI_VERSION=v0.19.0 && \
         echo "ERROR: Unsupported architecture: $ARCH" && exit 1; \
     fi && \
     TINI_URL="https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
-    echo "[INFO] Downloading tini with retry logic..." && \
-    for attempt in 1 2 3 4 5; do \
-      echo "[INFO] Download attempt ${attempt}/5" && \
-      if wget -q -O /tini "${TINI_URL}"; then \
-        echo "[INFO] Download successful" && \
-        break; \
+    CACHE_TINI="/var/cache/tini/tini-${TINI_VERSION}-${TINI_ARCH}" && \
+    \
+    USE_CACHE=false && \
+    if [ -f "${CACHE_TINI}" ]; then \
+      echo "[CACHE] Cached tini found, verifying checksum..." && \
+      if echo "${TINI_SHA256}  ${CACHE_TINI}" | sha256sum -c - 2>&1; then \
+        echo "[CACHE] HIT - Checksum valid, using cached tini" && \
+        USE_CACHE=true; \
       else \
-        echo "[WARNING] Download failed" && \
-        rm -f /tini && \
-        if [ ${attempt} -lt 5 ]; then \
-          sleep_time=$((attempt * 5)); \
-          echo "[INFO] Retrying in ${sleep_time}s..." && \
-          sleep ${sleep_time}; \
-        else \
-          echo "[ERROR] Failed to download tini after 5 attempts"; \
-          exit 1; \
-        fi; \
+        echo "[CACHE] INVALID - Checksum failed, will re-download" && \
+        rm -f "${CACHE_TINI}"; \
       fi; \
-    done && \
-    echo "[INFO] Verifying tini checksum..." && \
-    echo "${TINI_SHA256}  /tini" | sha256sum -c - && \
+    else \
+      echo "[CACHE] MISS - Tini not in cache"; \
+    fi && \
+    \
+    if [ "$USE_CACHE" = "false" ]; then \
+      echo "[INFO] Downloading tini..." && \
+      for attempt in 1 2 3 4 5; do \
+        echo "[INFO] Download attempt ${attempt}/5" && \
+        if wget -q -O "${CACHE_TINI}.tmp" "${TINI_URL}"; then \
+          mv "${CACHE_TINI}.tmp" "${CACHE_TINI}" && \
+          echo "[INFO] Download successful" && \
+          break; \
+        else \
+          echo "[WARNING] Download failed" && \
+          rm -f "${CACHE_TINI}.tmp" && \
+          if [ ${attempt} -lt 5 ]; then \
+            sleep_time=$((attempt * 5)); \
+            echo "[INFO] Retrying in ${sleep_time}s..." && \
+            sleep ${sleep_time}; \
+          else \
+            echo "[ERROR] Failed to download tini after 5 attempts"; \
+            exit 1; \
+          fi; \
+        fi; \
+      done && \
+      echo "[INFO] Verifying downloaded tini checksum..." && \
+      echo "${TINI_SHA256}  ${CACHE_TINI}" | sha256sum -c -; \
+    fi && \
+    \
+    cp "${CACHE_TINI}" /tini && \
     chmod +x /tini && \
     echo "[INFO] Tini installation complete"
 
