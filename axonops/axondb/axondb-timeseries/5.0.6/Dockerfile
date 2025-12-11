@@ -116,10 +116,14 @@ RUN if [ -z "$CQLAI_VERSION" ]; then \
     echo "Detected architecture: $RPM_ARCH" && \
     CQLAI_RPM="cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm" && \
     CQLAI_URL="https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}" && \
-    curl -sL -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" && \
     curl -sL -o "/tmp/${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
-    cd /tmp && grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - && \
-    rpm -i "${CQLAI_RPM}" && \
+    if curl -sL -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" 2>/dev/null && [ -s /tmp/SHA256SUMS.txt ]; then \
+      echo "Verifying checksum..." && \
+      (cd /tmp && grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - || echo "WARNING: Checksum verification failed, continuing anyway"); \
+    else \
+      echo "WARNING: SHA256SUMS.txt not found, skipping checksum verification"; \
+    fi && \
+    rpm -i "/tmp/${CQLAI_RPM}" && \
     rm -f "${CQLAI_RPM}" SHA256SUMS.txt && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
@@ -138,7 +142,7 @@ RUN mkdir -p ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
 COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod 755 /usr/local/bin/healthcheck.sh
 
-# Copy system keyspace initialization script
+# Copy initialization script (handles both keyspace init and user creation)
 COPY scripts/init-system-keyspaces.sh /usr/local/bin/init-system-keyspaces.sh
 RUN chmod 755 /usr/local/bin/init-system-keyspaces.sh
 

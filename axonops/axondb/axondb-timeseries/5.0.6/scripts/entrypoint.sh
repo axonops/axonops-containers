@@ -136,11 +136,33 @@ fi
 
 # JVM options are set in jvm17-server.options (including Shenandoah GC)
 
-# Initialize system keyspaces in background (non-blocking)
-# This will wait for Cassandra to be ready, then convert system keyspaces to NetworkTopologyStrategy
+# Initialize system keyspaces and custom database user in background (non-blocking)
+# This will wait for Cassandra to be ready, then:
+#   1. Convert system keyspaces to NetworkTopologyStrategy (if INIT_SYSTEM_KEYSPACES=true)
+#   2. Create custom superuser (if AXONOPS_DB_USER and AXONOPS_DB_PASSWORD are set)
 # Only runs on fresh single-node clusters with default credentials
-echo "Starting system keyspace initialization in background..."
-(/usr/local/bin/init-system-keyspaces.sh > /var/log/cassandra/init-system-keyspaces.log 2>&1 &)
+# Can be disabled by setting INIT_SYSTEM_KEYSPACES=false
+INIT_SYSTEM_KEYSPACES="${INIT_SYSTEM_KEYSPACES:-true}"
+
+if [ "$INIT_SYSTEM_KEYSPACES" = "true" ]; then
+    echo "Starting initialization in background (keyspaces + user)..."
+    (/usr/local/bin/init-system-keyspaces.sh > /var/log/cassandra/init-system-keyspaces.log 2>&1 &)
+else
+    echo "System keyspace initialization disabled (INIT_SYSTEM_KEYSPACES=false)"
+    echo "Writing semaphore files to allow healthcheck to proceed..."
+    # Write semaphores immediately so healthcheck doesn't block
+    mkdir -p /etc/axonops
+    {
+        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "RESULT=skipped"
+        echo "REASON=disabled_by_env_var"
+    } > /etc/axonops/init-system-keyspaces.done
+    {
+        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "RESULT=skipped"
+        echo "REASON=init_disabled"
+    } > /etc/axonops/init-db-user.done
+fi
 
 echo ""
 echo "=== Starting Cassandra ==="

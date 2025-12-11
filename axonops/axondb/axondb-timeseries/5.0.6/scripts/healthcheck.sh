@@ -43,19 +43,26 @@ get_listen_address() {
 
 case "$MODE" in
   startup)
-    # Wait for init script to complete before marking startup as successful
+    # Wait for init scripts to complete before marking startup as successful
     log "Checking if Cassandra is starting"
 
-    # First check if init script semaphore exists
-    INIT_SEMAPHORE="/etc/axonops/init-system-keyspaces.done"
-    if [ ! -f "$INIT_SEMAPHORE" ]; then
-      log "Waiting for init script to complete (semaphore not found)"
+    # Check if system keyspace init script semaphore exists
+    INIT_KEYSPACE_SEMAPHORE="/etc/axonops/init-system-keyspaces.done"
+    if [ ! -f "$INIT_KEYSPACE_SEMAPHORE" ]; then
+      log "Waiting for system keyspace init script to complete (semaphore not found)"
+      exit 1
+    fi
+
+    # Check if database user init script semaphore exists
+    INIT_USER_SEMAPHORE="/etc/axonops/init-db-user.done"
+    if [ ! -f "$INIT_USER_SEMAPHORE" ]; then
+      log "Waiting for database user init script to complete (semaphore not found)"
       exit 1
     fi
 
     # Check if nodetool responds
     if timeout "$TIMEOUT" nodetool version > /dev/null 2>&1; then
-      log "Startup check passed (init complete + nodetool responsive)"
+      log "Startup check passed (init scripts complete + nodetool responsive)"
       exit 0
     else
       log "Cassandra not yet responsive"
