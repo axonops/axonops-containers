@@ -8,8 +8,8 @@ on:
       - 'feature/**'
       - 'fix/**'
     paths:
-      - 'axondb-timeseries/**'
-      - '!axondb-timeseries/**/*.md'
+      - 'axonops/axondb-timeseries/**'
+      - '!axonops/axondb-timeseries/**/*.md'
       - '.github/workflows/axondb-timeseries-build-and-test.yml'
       - '.github/actions/axondb-timeseries-*/**'
   pull_request:
@@ -17,8 +17,8 @@ on:
       - main
       - development
     paths:
-      - 'axondb-timeseries/**'
-      - '!axondb-timeseries/**/*.md'
+      - 'axonops/axondb-timeseries/**'
+      - '!axonops/axondb-timeseries/**/*.md'
       - '.github/workflows/axondb-timeseries-build-and-test.yml'
       - '.github/actions/axondb-timeseries-*/**'
   workflow_call:
@@ -60,7 +60,7 @@ jobs:
         id: version
         run: |
           # Extract CASSANDRA_VERSION from Dockerfile ARG
-          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
           echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
           echo "✓ Cassandra version from Dockerfile: ${CASSANDRA_VER}"
 
@@ -68,8 +68,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axondb-timeseries/5.0.6
-          file: ./axondb-timeseries/5.0.6/Dockerfile
+          context: ./axonops/axondb-timeseries/5.0.6
+          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
           platforms: ${{ matrix.platform }}
           load: true
           tags: axondb-timeseries:test
@@ -135,7 +135,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          trivyignores: 'axondb-timeseries/.trivyignore'
+          trivyignores: 'axonops/axondb-timeseries/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
         if: matrix.platform == 'linux/amd64'
@@ -146,7 +146,7 @@ jobs:
           output: 'trivy-results.sarif'
           ignore-unfixed: true
           vuln-type: 'os,library'
-          trivyignores: 'axondb-timeseries/.trivyignore'
+          trivyignores: 'axonops/axondb-timeseries/.trivyignore'
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: matrix.platform == 'linux/amd64'
@@ -183,8 +183,8 @@ jobs:
       - name: Build image for env var testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axondb-timeseries/5.0.6
-          file: ./axondb-timeseries/5.0.6/Dockerfile
+          context: ./axonops/axondb-timeseries/5.0.6
+          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axondb-timeseries:test
