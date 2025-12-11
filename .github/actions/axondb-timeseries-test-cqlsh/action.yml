@@ -22,27 +22,27 @@ runs:
         echo "=== Testing CQL operations with cqlsh ==="
 
         echo "Creating keyspace..."
-        docker exec ${{ inputs.container_name }} cqlsh -e "CREATE KEYSPACE IF NOT EXISTS cqlsh_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "CREATE KEYSPACE IF NOT EXISTS cqlsh_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
 
         echo "Creating table..."
-        docker exec ${{ inputs.container_name }} cqlsh -e "CREATE TABLE IF NOT EXISTS cqlsh_test.test_data (id UUID PRIMARY KEY, value TEXT, timestamp TIMESTAMP);"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "CREATE TABLE IF NOT EXISTS cqlsh_test.test_data (id UUID PRIMARY KEY, value TEXT, timestamp TIMESTAMP);"
 
         echo "Inserting test data..."
-        docker exec ${{ inputs.container_name }} cqlsh -e "INSERT INTO cqlsh_test.test_data (id, value, timestamp) VALUES (uuid(), 'test1', toTimestamp(now()));"
-        docker exec ${{ inputs.container_name }} cqlsh -e "INSERT INTO cqlsh_test.test_data (id, value, timestamp) VALUES (uuid(), 'test2', toTimestamp(now()));"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "INSERT INTO cqlsh_test.test_data (id, value, timestamp) VALUES (uuid(), 'test1', toTimestamp(now()));"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "INSERT INTO cqlsh_test.test_data (id, value, timestamp) VALUES (uuid(), 'test2', toTimestamp(now()));"
 
         echo "Selecting data..."
-        docker exec ${{ inputs.container_name }} cqlsh -e "SELECT * FROM cqlsh_test.test_data;"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT * FROM cqlsh_test.test_data;"
 
         echo "Verifying data..."
-        docker exec ${{ inputs.container_name }} cqlsh -e "SELECT value FROM cqlsh_test.test_data;" | grep -q "test1"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT value FROM cqlsh_test.test_data;" | grep -q "test1"
         echo "✓ Data verified"
 
         echo "Testing COUNT..."
-        COUNT=$(docker exec ${{ inputs.container_name }} cqlsh -e "SELECT COUNT(*) FROM cqlsh_test.test_data;" | grep -oP '\d+' | head -1)
+        COUNT=$(docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM cqlsh_test.test_data;" | grep -oP '\d+' | head -1)
         echo "Row count: $COUNT"
 
         echo "Cleanup test keyspace..."
-        docker exec ${{ inputs.container_name }} cqlsh -e "DROP KEYSPACE cqlsh_test;"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "DROP KEYSPACE cqlsh_test;"
 
         echo "✓ All cqlsh CQL tests passed"
