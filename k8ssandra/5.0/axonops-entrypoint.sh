@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 touch /var/log/axonops/axon-agent.log
 
@@ -113,7 +113,7 @@ fi
 
 # Ensure the config file exists to avoid axon-agent startup errors
 if [ ! -f /etc/axonops/axon-agent.yml ]; then
-  touch /etc/axonops/axon-agent.yml
+  echo "axon-server:" > /etc/axonops/axon-agent.yml
 fi
 
 # Add AxonOps JVM options to cassandra-env.sh
