@@ -20,9 +20,9 @@ runs:
           exit 0
         }
 
-        # Check for ERROR level log messages (match Cassandra log format: "LEVEL  [thread] ...")
-        # Exclude: OutOfMemoryError in config dumps, Simulated errors
-        if grep -E "^\w+ +\[.*\] .* ERROR " /tmp/cassandra-system.log | grep -v "Simulated"; then
+        # Check for ERROR level log messages (Cassandra format: "ERROR  [thread] timestamp ...")
+        # Exclude: Simulated errors for testing
+        if grep -E "^ERROR +\[" /tmp/cassandra-system.log | grep -v "Simulated"; then
           echo "ERROR: Found ERROR level messages in system.log"
           exit 1
         fi
