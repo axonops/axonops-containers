@@ -15,7 +15,7 @@ runs:
         docker run -d --name ${{ inputs.container_name }} \
           -e AXON_AGENT_KEY=test-key \
           -e AXON_AGENT_ORG=test-org \
-          -e AXON_AGENT_HOST=localhost \
+          -e AXON_AGENT_SERVER_HOST=localhost \
           -p 8080:8080 \
           -p 9042:9042 \
           axonops-cassandra:test

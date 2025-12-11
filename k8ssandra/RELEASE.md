@@ -205,7 +205,7 @@ docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 docker run -d \
   -e AXON_AGENT_KEY=your-key \
   -e AXON_AGENT_ORG=your-org \
-  -e AXON_AGENT_HOST=agents.axonops.cloud \
+  -e AXON_AGENT_SERVER_HOST=agents.axonops.cloud \
   -p 9042:9042 \
   ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 ```

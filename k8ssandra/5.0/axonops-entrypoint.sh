@@ -76,7 +76,7 @@ print_startup_banner() {
 
     # AxonOps config
     echo "AxonOps Configuration:"
-    echo "  Server:             ${AXON_AGENT_HOST:-agents.axonops.cloud}"
+    echo "  Server:             ${AXON_AGENT_SERVER_HOST:-agents.axonops.cloud}"
     echo "  Organization:       ${AXON_AGENT_ORG:-not configured}"
     echo "  Agent Key:          $([ -n "${AXON_AGENT_KEY}" ] && echo '***configured***' || echo 'NOT SET')"
     echo ""
@@ -101,10 +101,10 @@ print_startup_banner() {
 # AXON_AGENT_TLS_MODE
 
 if [ -z "$AXON_AGENT_SERVER_HOST" ]; then
-  AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+  export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 fi
 if [ -z "$AXON_AGENT_SERVER_PORT" ]; then
-  AXON_AGENT_SERVER_PORT="443"
+  export AXON_AGENT_SERVER_PORT="443"
 fi
 if [ -z "$AXON_AGENT_ORG" ]; then
   echo "ERROR: AXON_AGENT_ORG environment variable is not set. Exiting."
