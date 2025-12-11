@@ -39,17 +39,17 @@ runs:
     - name: Wait for Cassandra startup (healthcheck semaphores)
       shell: bash
       run: |
-        echo "Waiting for init scripts to complete..."
-        for i in {1..60}; do
+        echo "Waiting for init scripts to complete (up to 10 minutes)..."
+        for i in {1..120}; do
           if docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-system-keyspaces.done 2>/dev/null && \
              docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-db-user.done 2>/dev/null; then
-            echo "✓ Init scripts completed"
+            echo "✓ Init scripts completed (after ${i} attempts)"
             exit 0
           fi
-          echo "Attempt $i/60 - waiting 5s for init scripts..."
+          echo "Attempt $i/120 - waiting 5s for init scripts..."
           sleep 5
         done
-        echo "ERROR: Timeout waiting for init scripts to complete"
+        echo "ERROR: Timeout waiting for init scripts to complete (10 minutes)"
         echo "Checking container status..."
         docker ps -a | grep ${{ inputs.container_name }} || true
         echo "Checking logs..."
