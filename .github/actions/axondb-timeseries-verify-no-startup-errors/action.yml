@@ -44,14 +44,15 @@ runs:
     - name: Check for OutOfMemoryError
       shell: bash
       run: |
-        echo "Checking for OutOfMemoryError..."
+        echo "Checking for OutOfMemoryError exceptions..."
 
-        if docker exec ${{ inputs.container_name }} grep -i "OutOfMemoryError" /var/log/cassandra/system.log 2>/dev/null; then
-          echo "ERROR: Found OutOfMemoryError in logs"
+        # Match actual OOM exceptions, not JVM args or config properties
+        if docker exec ${{ inputs.container_name }} grep -E "^ERROR +\[.*\].*OutOfMemoryError" /var/log/cassandra/system.log 2>/dev/null; then
+          echo "ERROR: Found OutOfMemoryError exception in logs"
           exit 1
         fi
 
-        echo "✓ No OutOfMemoryError found"
+        echo "✓ No OutOfMemoryError exceptions found"
 
     - name: Verify Cassandra started successfully
       shell: bash
