@@ -146,22 +146,22 @@ jobs:
           sarif_file: 'trivy-results.sarif'
 
       - name: Collect logs
-        if: always() && matrix.platform == 'linux/amd64'
+        if: always()
         uses: ./.github/actions/axondb-timeseries-collect-logs
         with:
           container_name: axondb-test
-          artifact_name: axondb-logs-${{ matrix.cassandra_version }}-${{ matrix.platform }}
+          artifact_name: axondb-logs-${{ matrix.cassandra_version }}
 
       - name: Upload logs as artifacts
-        if: always() && matrix.platform == 'linux/amd64'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: axondb-logs-${{ matrix.cassandra_version }}-amd64
+          name: axondb-logs-${{ matrix.cassandra_version }}
           path: /tmp/axondb-logs/
           retention-days: 7
 
       - name: Cleanup
-        if: always() && matrix.platform == 'linux/amd64'
+        if: always()
         run: |
           docker stop axondb-test || true
           docker rm axondb-test || true
