@@ -21,10 +21,10 @@ fi
 # AXON_AGENT_TLS_MODE
 
 if [ -z "$AXON_AGENT_SERVER_HOST" ]; then
-  AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+  export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 fi
 if [ -z "$AXON_AGENT_SERVER_PORT" ]; then
-  AXON_AGENT_SERVER_PORT="443"
+  export AXON_AGENT_SERVER_PORT="443"
 fi
 if [ -z "$AXON_AGENT_ORG" ]; then
   echo "ERROR: AXON_AGENT_ORG environment variable is not set. Exiting."
@@ -32,8 +32,9 @@ if [ -z "$AXON_AGENT_ORG" ]; then
 fi
 
 # Ensure the config file exists to avoid axon-agent startup errors
+# But do not overwrite if it already exists (e.g., mounted config)
 if [ ! -f /etc/axonops/axon-agent.yml ]; then
-  touch /etc/axonops/axon-agent.yml
+  echo "cassandra:" > /etc/axonops/axon-agent.yml
 fi
 
 /usr/share/axonops/axon-agent $AXON_AGENT_ARGS | tee /var/log/axonops/axon-agent.log 2>&1 &
