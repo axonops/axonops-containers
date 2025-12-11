@@ -106,8 +106,8 @@ RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
     chown -R cassandra:root "$CASSANDRA_HOME" /etc/cassandra /licenses && \
     rm -rf /tmp/*
 
-# Install cqlai with BuildKit cache mount and retry logic
-# Uses cache to avoid repeated downloads across builds and provides retry logic for reliability
+# Install cqlai with BuildKit cache mount, checksum verification, and retry logic
+# Cache is version-specific and always verified against upstream checksums
 # Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
 # this will be set correctly by the platform-specific base image.
 RUN --mount=type=cache,target=/var/cache/cqlai,id=cqlai-rpms,sharing=locked \
@@ -121,10 +121,29 @@ RUN --mount=type=cache,target=/var/cache/cqlai,id=cqlai-rpms,sharing=locked \
     CQLAI_RPM="cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm" && \
     CQLAI_URL="https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}" && \
     CACHE_RPM="/var/cache/cqlai/${CQLAI_RPM}" && \
-    echo "[CACHE] Checking for cached RPM: ${CACHE_RPM}" && \
     \
-    if [ ! -f "${CACHE_RPM}" ]; then \
-      echo "[CACHE] MISS - Downloading cqlai RPM..." && \
+    echo "[INFO] Downloading checksum file..." && \
+    curl -fsSL --retry 3 -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" || { \
+      echo "[WARNING] Checksum file not available, proceeding without verification"; \
+      SKIP_CHECKSUM=true; \
+    } && \
+    \
+    USE_CACHE=false && \
+    if [ -f "${CACHE_RPM}" ]; then \
+      echo "[CACHE] Cached RPM found, verifying checksum..." && \
+      if [ "$SKIP_CHECKSUM" != "true" ] && (cd /var/cache/cqlai && grep "${CQLAI_RPM}" /tmp/SHA256SUMS.txt | sha256sum -c - 2>&1); then \
+        echo "[CACHE] HIT - Checksum valid, using cached RPM" && \
+        USE_CACHE=true; \
+      else \
+        echo "[CACHE] INVALID - Checksum failed or unavailable, will re-download" && \
+        rm -f "${CACHE_RPM}"; \
+      fi; \
+    else \
+      echo "[CACHE] MISS - RPM not in cache"; \
+    fi && \
+    \
+    if [ "$USE_CACHE" = "false" ]; then \
+      echo "[INFO] Downloading cqlai RPM..." && \
       for attempt in 1 2 3 4 5; do \
         echo "[INFO] Download attempt ${attempt}/5" && \
         if curl -fsSL --retry 3 --retry-delay 5 --retry-max-time 120 \
@@ -144,13 +163,22 @@ RUN --mount=type=cache,target=/var/cache/cqlai,id=cqlai-rpms,sharing=locked \
             exit 1; \
           fi; \
         fi; \
-      done; \
-    else \
-      echo "[CACHE] HIT - Using cached cqlai RPM (no download needed)"; \
+      done && \
+      \
+      if [ "$SKIP_CHECKSUM" != "true" ]; then \
+        echo "[INFO] Verifying downloaded RPM checksum..." && \
+        (cd /var/cache/cqlai && grep "${CQLAI_RPM}" /tmp/SHA256SUMS.txt | sha256sum -c -) || { \
+          echo "[ERROR] Checksum verification failed for downloaded RPM"; \
+          exit 1; \
+        } && \
+        echo "[INFO] Checksum verified"; \
+      fi; \
     fi && \
-    echo "[INFO] Installing RPM from: ${CACHE_RPM}" && \
+    \
+    echo "[INFO] Installing cqlai RPM" && \
     rpm -i "${CACHE_RPM}" && \
     echo "[INFO] cqlai installation complete" && \
+    rm -f /tmp/SHA256SUMS.txt && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
 # Overlay our custom config files to /etc/cassandra

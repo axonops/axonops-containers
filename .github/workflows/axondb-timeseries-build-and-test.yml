@@ -64,6 +64,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Restore BuildKit cache mounts from previous runs
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.2
+        with:
+          cache-map: |
+            {
+              "cqlai-rpms": "/var/cache/cqlai"
+            }
+
       - name: Extract Cassandra version from Dockerfile
         id: version
         run: |
