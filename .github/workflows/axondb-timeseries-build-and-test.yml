@@ -58,8 +58,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup BuildKit with cache persistence
-        uses: ./.github/actions/setup-buildkit-with-cache
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Restore BuildKit cache mounts from previous runs
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.2
         with:
           cache-map: |
             {
