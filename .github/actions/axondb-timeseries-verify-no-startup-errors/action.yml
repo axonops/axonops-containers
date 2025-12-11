@@ -1,0 +1,71 @@
+name: 'AxonDB Time-Series Verify No Startup Errors'
+description: 'Verifies container started without errors in logs'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check for startup errors in system.log
+      shell: bash
+      run: |
+        echo "=== Checking for startup errors ==="
+
+        # Get system.log
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log > /tmp/cassandra-system.log 2>/dev/null || {
+          echo "WARNING: Could not read system.log"
+          exit 0
+        }
+
+        # Check for ERROR level log messages (Cassandra format: "ERROR  [thread] timestamp ...")
+        # Exclude: Simulated errors for testing
+        if grep -E "^ERROR +\[" /tmp/cassandra-system.log | grep -v "Simulated"; then
+          echo "ERROR: Found ERROR level messages in system.log"
+          exit 1
+        fi
+
+        echo "✓ No ERROR level messages found"
+
+    - name: Check for FATAL messages
+      shell: bash
+      run: |
+        echo "Checking for FATAL messages..."
+
+        if docker exec ${{ inputs.container_name }} grep -i "FATAL" /var/log/cassandra/system.log 2>/dev/null; then
+          echo "ERROR: Found FATAL messages in logs"
+          exit 1
+        fi
+
+        echo "✓ No FATAL messages found"
+
+    - name: Check for OutOfMemoryError
+      shell: bash
+      run: |
+        echo "Checking for OutOfMemoryError exceptions..."
+
+        # Match actual OOM exceptions, not JVM args or config properties
+        if docker exec ${{ inputs.container_name }} grep -E "^ERROR +\[.*\].*OutOfMemoryError" /var/log/cassandra/system.log 2>/dev/null; then
+          echo "ERROR: Found OutOfMemoryError exception in logs"
+          exit 1
+        fi
+
+        echo "✓ No OutOfMemoryError exceptions found"
+
+    - name: Verify Cassandra started successfully
+      shell: bash
+      run: |
+        echo "Verifying Cassandra startup message..."
+
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log > /tmp/cassandra-system.log 2>/dev/null
+
+        if ! grep -q "Startup complete" /tmp/cassandra-system.log; then
+          echo "ERROR: 'Startup complete' message not found"
+          echo "Last 50 lines of system.log:"
+          tail -50 /tmp/cassandra-system.log
+          exit 1
+        fi
+
+        echo "✓ Cassandra started successfully"

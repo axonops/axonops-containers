@@ -1,0 +1,128 @@
+name: 'AxonDB Time-Series Test DC Detection'
+description: 'Tests datacenter detection logic with default and custom DCs'
+inputs:
+  image:
+    description: 'Container image to test'
+    required: true
+    default: 'axondb-timeseries:test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test default DC (axonopsdb_dc1)
+      shell: bash
+      run: |
+        echo "=== Testing default DC detection ==="
+
+        docker run -d --name axondb-dc-default \
+          -e CASSANDRA_HEAP_SIZE=2G \
+          -p 9242:9042 \
+          ${{ inputs.image }}
+
+        echo "Waiting for container to start..."
+        sleep 120
+
+        # Check actual DC from nodetool
+        ACTUAL_DC=$(docker exec axondb-dc-default nodetool status 2>/dev/null | grep "^Datacenter:" | awk '{print $2}')
+        echo "Actual DC: $ACTUAL_DC"
+
+        if [ "$ACTUAL_DC" != "axonopsdb_dc1" ]; then
+          echo "ERROR: Default DC incorrect"
+          echo "Expected: axonopsdb_dc1"
+          echo "Found: $ACTUAL_DC"
+          docker logs axondb-dc-default | tail -50
+          docker stop axondb-dc-default && docker rm axondb-dc-default
+          exit 1
+        fi
+
+        # Verify keyspaces use correct DC
+        docker exec axondb-dc-default nodetool describecluster > /tmp/cluster-default.txt 2>/dev/null
+
+        if ! grep "system_auth.*NetworkTopologyStrategy.*axonopsdb_dc1" /tmp/cluster-default.txt; then
+          echo "ERROR: system_auth not using correct DC"
+          cat /tmp/cluster-default.txt
+          docker stop axondb-dc-default && docker rm axondb-dc-default
+          exit 1
+        fi
+
+        echo "✓ Default DC (axonopsdb_dc1) working correctly"
+
+        docker stop axondb-dc-default && docker rm axondb-dc-default
+
+    - name: Test custom DC
+      shell: bash
+      run: |
+        echo "=== Testing custom DC detection ==="
+
+        docker run -d --name axondb-dc-custom \
+          -e CASSANDRA_DC=customdc1 \
+          -e CASSANDRA_RACK=customrack1 \
+          -e CASSANDRA_HEAP_SIZE=2G \
+          -p 9342:9042 \
+          ${{ inputs.image }}
+
+        echo "Waiting for container to start..."
+        sleep 120
+
+        # Check actual DC from nodetool
+        ACTUAL_DC=$(docker exec axondb-dc-custom nodetool status 2>/dev/null | grep "^Datacenter:" | awk '{print $2}')
+        echo "Actual DC: $ACTUAL_DC"
+
+        if [ "$ACTUAL_DC" != "customdc1" ]; then
+          echo "ERROR: Custom DC incorrect"
+          echo "Expected: customdc1"
+          echo "Found: $ACTUAL_DC"
+          docker logs axondb-dc-custom | tail -50
+          docker stop axondb-dc-custom && docker rm axondb-dc-custom
+          exit 1
+        fi
+
+        # Verify keyspaces use correct DC
+        docker exec axondb-dc-custom nodetool describecluster > /tmp/cluster-custom.txt 2>/dev/null
+
+        if ! grep "system_auth.*NetworkTopologyStrategy.*customdc1" /tmp/cluster-custom.txt; then
+          echo "ERROR: system_auth not using correct custom DC"
+          cat /tmp/cluster-custom.txt
+          docker stop axondb-dc-custom && docker rm axondb-dc-custom
+          exit 1
+        fi
+
+        echo "✓ Custom DC (customdc1) working correctly"
+
+        docker stop axondb-dc-custom && docker rm axondb-dc-custom
+
+    - name: Verify DC detection in init logs
+      shell: bash
+      run: |
+        echo "=== Verifying DC detection logged correctly ==="
+
+        docker run -d --name axondb-dc-log-test \
+          -e CASSANDRA_DC=logtest_dc \
+          -e CASSANDRA_HEAP_SIZE=2G \
+          ${{ inputs.image }}
+
+        sleep 120
+
+        docker exec axondb-dc-log-test cat /var/log/cassandra/init-system-keyspaces.log > /tmp/init-log.txt
+
+        if ! grep "Detected datacenter: logtest_dc" /tmp/init-log.txt; then
+          echo "ERROR: DC detection not logged correctly"
+          cat /tmp/init-log.txt
+          docker stop axondb-dc-log-test && docker rm axondb-dc-log-test
+          exit 1
+        fi
+
+        if ! grep "Using DC='logtest_dc', RF=1" /tmp/init-log.txt; then
+          echo "ERROR: DC not used correctly in ALTER statements"
+          cat /tmp/init-log.txt
+          docker stop axondb-dc-log-test && docker rm axondb-dc-log-test
+          exit 1
+        fi
+
+        echo "✓ DC detection logged and used correctly"
+
+        docker stop axondb-dc-log-test && docker rm axondb-dc-log-test
+
+        echo "========================================="
+        echo "✓ ALL DC DETECTION TESTS PASSED"
+        echo "========================================="

@@ -1,0 +1,70 @@
+name: 'AxonDB Time-Series Collect Logs'
+description: 'Collects Cassandra and init script logs for debugging'
+inputs:
+  container_name:
+    description: 'Name of the container to collect logs from'
+    required: true
+    default: 'axondb-test'
+  artifact_name:
+    description: 'Name for the log artifact'
+    required: false
+    default: 'axondb-logs'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create log directory
+      shell: bash
+      run: |
+        mkdir -p /tmp/axondb-logs
+
+    - name: Collect Cassandra logs
+      shell: bash
+      run: |
+        echo "Collecting Cassandra system.log..."
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log > /tmp/axondb-logs/system.log 2>/dev/null || echo "system.log not found" > /tmp/axondb-logs/system.log
+
+        echo "Collecting Cassandra gc.log..."
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/gc.log > /tmp/axondb-logs/gc.log 2>/dev/null || echo "gc.log not found" > /tmp/axondb-logs/gc.log
+
+        echo "Collecting Cassandra debug.log..."
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/debug.log > /tmp/axondb-logs/debug.log 2>/dev/null || echo "debug.log not found" > /tmp/axondb-logs/debug.log
+
+    - name: Collect init script logs
+      shell: bash
+      run: |
+        echo "Collecting init-system-keyspaces.log..."
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/init-system-keyspaces.log > /tmp/axondb-logs/init-system-keyspaces.log 2>/dev/null || echo "init-system-keyspaces.log not found" > /tmp/axondb-logs/init-system-keyspaces.log
+
+    - name: Collect semaphore files
+      shell: bash
+      run: |
+        echo "Collecting semaphore files..."
+        docker exec ${{ inputs.container_name }} cat /etc/axonops/init-system-keyspaces.done > /tmp/axondb-logs/init-system-keyspaces.done 2>/dev/null || echo "Semaphore not found" > /tmp/axondb-logs/init-system-keyspaces.done
+
+        docker exec ${{ inputs.container_name }} cat /etc/axonops/init-db-user.done > /tmp/axondb-logs/init-db-user.done 2>/dev/null || echo "Semaphore not found" > /tmp/axondb-logs/init-db-user.done
+
+    - name: Collect Docker container logs
+      shell: bash
+      run: |
+        echo "Collecting Docker stdout/stderr..."
+        docker logs ${{ inputs.container_name }} > /tmp/axondb-logs/docker-stdout.log 2>&1 || echo "Docker logs not available" > /tmp/axondb-logs/docker-stdout.log
+
+    - name: Collect configuration files
+      shell: bash
+      run: |
+        echo "Collecting configuration..."
+        docker exec ${{ inputs.container_name }} cat /etc/cassandra/cassandra.yaml > /tmp/axondb-logs/cassandra.yaml 2>/dev/null || echo "cassandra.yaml not found" > /tmp/axondb-logs/cassandra.yaml
+
+        docker exec ${{ inputs.container_name }} cat /etc/cassandra/cassandra-rackdc.properties > /tmp/axondb-logs/cassandra-rackdc.properties 2>/dev/null || echo "cassandra-rackdc.properties not found" > /tmp/axondb-logs/cassandra-rackdc.properties
+
+    - name: Collect cluster info
+      shell: bash
+      run: |
+        echo "Collecting cluster information..."
+        docker exec ${{ inputs.container_name }} nodetool status > /tmp/axondb-logs/nodetool-status.txt 2>/dev/null || echo "nodetool status failed" > /tmp/axondb-logs/nodetool-status.txt
+
+        docker exec ${{ inputs.container_name }} nodetool describecluster > /tmp/axondb-logs/nodetool-describecluster.txt 2>/dev/null || echo "nodetool describecluster failed" > /tmp/axondb-logs/nodetool-describecluster.txt
+
+        echo "✓ All logs collected in /tmp/axondb-logs/"
+        ls -lh /tmp/axondb-logs/

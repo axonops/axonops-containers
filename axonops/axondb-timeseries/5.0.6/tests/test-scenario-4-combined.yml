@@ -1,0 +1,35 @@
+version: '3.8'
+
+# Test Scenario 4: Combined - Skip Init + Custom User
+# - INIT_SYSTEM_KEYSPACES=false
+# - AXONOPS_DB_USER=axonops, AXONOPS_DB_PASSWORD=securepass123
+# - Expected: init skipped, user created, healthcheck passes
+
+services:
+  cassandra-test4:
+    image: axondb-timeseries:latest
+    container_name: cassandra-test4
+    hostname: cassandra-test4
+    networks:
+      - test-net
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TestCombined
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_HEAP_SIZE=2G
+      - INIT_SYSTEM_KEYSPACES=false
+      - AXONOPS_DB_USER=axonops
+      - AXONOPS_DB_PASSWORD=securepass123
+    volumes:
+      - test4-data:/var/lib/cassandra
+      - test4-logs:/var/log/cassandra
+    ports:
+      - "9042:9042"
+
+networks:
+  test-net:
+    driver: bridge
+
+volumes:
+  test4-data:
+  test4-logs:

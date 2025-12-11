@@ -1,0 +1,145 @@
+name: 'AxonDB Time-Series Start and Wait'
+description: 'Starts AxonDB Time-Series container and waits for Cassandra to be ready'
+inputs:
+  container_name:
+    description: 'Name for the container'
+    required: true
+    default: 'axondb-test'
+  cassandra_dc:
+    description: 'Cassandra datacenter name (optional, for testing)'
+    required: false
+    default: ''
+  cassandra_heap_size:
+    description: 'Heap size for testing'
+    required: false
+    default: '4G'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start container
+      shell: bash
+      run: |
+        echo "Starting AxonDB Time-Series container: ${{ inputs.container_name }}"
+
+        DOCKER_CMD="docker run -d --name ${{ inputs.container_name }} \
+          --memory=6g \
+          --memory-swap=6g \
+          -e CASSANDRA_HEAP_SIZE=${{ inputs.cassandra_heap_size }} \
+          -p 9042:9042"
+
+        # Add optional DC configuration
+        if [ -n "${{ inputs.cassandra_dc }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD -e CASSANDRA_DC=${{ inputs.cassandra_dc }} -e CASSANDRA_RACK=rack1"
+        fi
+
+        DOCKER_CMD="$DOCKER_CMD axondb-timeseries:test"
+
+        $DOCKER_CMD
+        echo "Container started, waiting for Cassandra..."
+
+    - name: Wait for Cassandra startup (healthcheck semaphores)
+      shell: bash
+      run: |
+        echo "==========================================="
+        echo "STEP 1: Waiting for init scripts semaphores"
+        echo "==========================================="
+        SEMAPHORES_FOUND=false
+        for i in {1..120}; do
+          if docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-system-keyspaces.done 2>/dev/null && \
+             docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-db-user.done 2>/dev/null; then
+            echo "✓ Init scripts semaphores found (attempt $i)"
+            echo "Semaphore contents:"
+            docker exec ${{ inputs.container_name }} cat /etc/axonops/init-system-keyspaces.done
+            docker exec ${{ inputs.container_name }} cat /etc/axonops/init-db-user.done
+            SEMAPHORES_FOUND=true
+            break
+          fi
+          if [ $((i % 10)) -eq 0 ]; then
+            echo "Still waiting... attempt $i/120 (${i}0 seconds elapsed)"
+          fi
+          sleep 5
+        done
+
+        if [ "$SEMAPHORES_FOUND" = "false" ]; then
+          echo "ERROR: Init script semaphores not found after 10 minutes!"
+          docker ps -a | grep ${{ inputs.container_name }}
+          docker logs ${{ inputs.container_name }} | tail -100
+          exit 1
+        fi
+        echo "✓ STEP 1 COMPLETE: Semaphores found"
+
+    - name: Wait for Cassandra readiness (healthcheck script)
+      shell: bash
+      run: |
+        echo "==========================================="
+        echo "STEP 2: Waiting for healthcheck readiness"
+        echo "==========================================="
+        HEALTHCHECK_READY=false
+        for i in {1..60}; do
+          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness > /dev/null 2>&1; then
+            echo "✓ STEP 2 COMPLETE: Healthcheck readiness passed (attempt $i)"
+            HEALTHCHECK_READY=true
+            break
+          fi
+          if [ $((i % 6)) -eq 0 ]; then
+            echo "Still waiting... attempt $i/60 (${i}0 seconds elapsed)"
+          fi
+          sleep 10
+        done
+
+        if [ "$HEALTHCHECK_READY" = "false" ]; then
+          echo "ERROR: Healthcheck readiness failed after 10 minutes!"
+          docker exec ${{ inputs.container_name }} nodetool status || true
+          docker logs ${{ inputs.container_name }} | tail -100
+          exit 1
+        fi
+
+    - name: Wait for Cassandra CQL port 9042
+      shell: bash
+      run: |
+        echo "==========================================="
+        echo "STEP 3: Verifying CQL port 9042"
+        echo "==========================================="
+        CQL_PORT_OPEN=false
+        for i in {1..30}; do
+          if nc -z localhost 9042 2>/dev/null; then
+            echo "✓ STEP 3 COMPLETE: CQL port 9042 is open (attempt $i)"
+            CQL_PORT_OPEN=true
+            break
+          fi
+          if [ $((i % 6)) -eq 0 ]; then
+            echo "Still waiting... attempt $i/30"
+          fi
+          sleep 5
+        done
+
+        if [ "$CQL_PORT_OPEN" = "false" ]; then
+          echo "ERROR: CQL port 9042 not open after 2.5 minutes!"
+          docker logs ${{ inputs.container_name }} | tail -50
+          exit 1
+        fi
+
+    - name: Verify Cassandra responds to CQL
+      shell: bash
+      run: |
+        echo "==========================================="
+        echo "STEP 4: Testing CQL connectivity"
+        echo "==========================================="
+        for i in {1..20}; do
+          if docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; then
+            echo "✓ STEP 4 COMPLETE: Cassandra CQL is responsive (attempt $i)"
+            echo "==========================================="
+            echo "✓✓✓ ALL STARTUP CHECKS PASSED ✓✓✓"
+            echo "==========================================="
+            exit 0
+          fi
+          if [ $((i % 5)) -eq 0 ]; then
+            echo "Still waiting... attempt $i/20"
+          fi
+          sleep 3
+        done
+        echo "ERROR: Cassandra CQL not responsive after 60 seconds"
+        echo "This step failed!"
+        docker logs ${{ inputs.container_name }} | tail -50
+        exit 1

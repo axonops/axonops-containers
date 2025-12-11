@@ -1,0 +1,65 @@
+name: 'AxonDB Time-Series Test Healthcheck'
+description: 'Tests healthcheck script functionality (startup, liveness, readiness)'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test startup healthcheck
+      shell: bash
+      run: |
+        echo "=== Testing startup healthcheck ==="
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup; then
+          echo "✓ Startup healthcheck passed"
+        else
+          echo "ERROR: Startup healthcheck failed"
+          echo "Checking semaphore files..."
+          docker exec ${{ inputs.container_name }} ls -la /etc/axonops/ || true
+          docker exec ${{ inputs.container_name }} cat /etc/axonops/init-system-keyspaces.done || true
+          docker exec ${{ inputs.container_name }} cat /etc/axonops/init-db-user.done || true
+          exit 1
+        fi
+
+    - name: Test liveness healthcheck
+      shell: bash
+      run: |
+        echo "=== Testing liveness healthcheck ==="
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh liveness; then
+          echo "✓ Liveness healthcheck passed"
+        else
+          echo "ERROR: Liveness healthcheck failed"
+          docker exec ${{ inputs.container_name }} nodetool status || true
+          exit 1
+        fi
+
+    - name: Test readiness healthcheck
+      shell: bash
+      run: |
+        echo "=== Testing readiness healthcheck ==="
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness; then
+          echo "✓ Readiness healthcheck passed"
+        else
+          echo "ERROR: Readiness healthcheck failed"
+          docker exec ${{ inputs.container_name }} nodetool status || true
+          docker exec ${{ inputs.container_name }} nodetool info || true
+          exit 1
+        fi
+
+    - name: Verify healthcheck logs
+      shell: bash
+      run: |
+        echo "=== Checking healthcheck logs ==="
+
+        # Healthcheck logs to stderr, capture container logs
+        docker logs ${{ inputs.container_name }} 2>&1 | grep "\[readiness\]" | tail -5 || echo "No readiness logs found"
+        docker logs ${{ inputs.container_name }} 2>&1 | grep "\[liveness\]" | tail -5 || echo "No liveness logs found"
+        docker logs ${{ inputs.container_name }} 2>&1 | grep "\[startup\]" | tail -5 || echo "No startup logs found"
+
+        echo "✓ Healthcheck logging verified"

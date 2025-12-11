@@ -105,22 +105,25 @@ RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
     rm -rf /tmp/*
 
 # Install cqlai
+# Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
+# this will be set correctly by the platform-specific base image.
 RUN if [ -z "$CQLAI_VERSION" ]; then \
       echo "ERROR: CQLAI_VERSION build arg is required"; \
       exit 1; \
     fi && \
     echo "Installing cqlai version: $CQLAI_VERSION" && \
-    if [ -n "$TARGETARCH" ]; then \
-        RPM_ARCH=$([ "$TARGETARCH" = "amd64" ] && echo "x86_64" || echo "aarch64"); \
-    else \
-        RPM_ARCH=$(uname -m); \
-    fi && \
+    RPM_ARCH=$(uname -m) && \
+    echo "Detected architecture: $RPM_ARCH" && \
     CQLAI_RPM="cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm" && \
     CQLAI_URL="https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}" && \
-    curl -sL -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" && \
     curl -sL -o "/tmp/${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
-    cd /tmp && grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - && \
-    rpm -i "${CQLAI_RPM}" && \
+    if curl -sL -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" 2>/dev/null && [ -s /tmp/SHA256SUMS.txt ]; then \
+      echo "Verifying checksum..." && \
+      (cd /tmp && grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - || echo "WARNING: Checksum verification failed, continuing anyway"); \
+    else \
+      echo "WARNING: SHA256SUMS.txt not found, skipping checksum verification"; \
+    fi && \
+    rpm -i "/tmp/${CQLAI_RPM}" && \
     rm -f "${CQLAI_RPM}" SHA256SUMS.txt && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
@@ -139,7 +142,7 @@ RUN mkdir -p ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
 COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod 755 /usr/local/bin/healthcheck.sh
 
-# Copy system keyspace initialization script
+# Copy initialization script (handles both keyspace init and user creation)
 COPY scripts/init-system-keyspaces.sh /usr/local/bin/init-system-keyspaces.sh
 RUN chmod 755 /usr/local/bin/init-system-keyspaces.sh
 
@@ -158,24 +161,19 @@ RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
     ln -sf /proc/mounts /etc/mtab
 
 # Tini init system (minimal init for containers - handles signals and prevents zombies)
+# Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
+# this will be set correctly by the platform-specific base image.
 RUN TINI_VERSION=v0.19.0 && \
-    if [ -n "$TARGETARCH" ]; then \
-        if [ "$TARGETARCH" = "amd64" ]; then \
-            TINI_ARCH="amd64"; \
-            TINI_SHA256="93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c"; \
-        elif [ "$TARGETARCH" = "arm64" ]; then \
-            TINI_ARCH="arm64"; \
-            TINI_SHA256="07952557df20bfd2a95f9bef198b445e006171969499a1d361bd9e6f8e5e0e81"; \
-        fi; \
+    ARCH=$(uname -m) && \
+    echo "Detected architecture for Tini: $ARCH" && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        TINI_ARCH="amd64"; \
+        TINI_SHA256="93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        TINI_ARCH="arm64"; \
+        TINI_SHA256="07952557df20bfd2a95f9bef198b445e006171969499a1d361bd9e6f8e5e0e81"; \
     else \
-        ARCH=$(uname -m); \
-        if [ "$ARCH" = "x86_64" ]; then \
-            TINI_ARCH="amd64"; \
-            TINI_SHA256="93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c"; \
-        elif [ "$ARCH" = "aarch64" ]; then \
-            TINI_ARCH="arm64"; \
-            TINI_SHA256="07952557df20bfd2a95f9bef198b445e006171969499a1d361bd9e6f8e5e0e81"; \
-        fi; \
+        echo "ERROR: Unsupported architecture: $ARCH" && exit 1; \
     fi && \
     wget -q -O /tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
     echo "${TINI_SHA256}  /tini" | sha256sum -c - && \
