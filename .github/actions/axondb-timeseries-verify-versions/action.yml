@@ -1,0 +1,97 @@
+name: 'AxonDB Time-Series Verify Runtime Versions'
+description: 'Verifies jemalloc, Cassandra version, Java version, and cqlai in running container'
+inputs:
+  cassandra_version:
+    description: 'Expected Cassandra version (e.g., 5.0.6)'
+    required: true
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify jemalloc is loaded successfully
+      shell: bash
+      run: |
+        echo "=== Verifying jemalloc configuration ==="
+
+        # Check for jemalloc warning (should NOT exist)
+        if docker exec ${{ inputs.container_name }} grep -iq ".*WARN.*jemalloc shared library could not be preloaded.*" /var/log/cassandra/system.log 2>/dev/null; then
+          echo "ERROR: jemalloc warning found in logs!"
+          docker exec ${{ inputs.container_name }} grep -i jemalloc /var/log/cassandra/system.log || true
+          exit 1
+        fi
+
+        # Check for jemalloc success message (MUST exist) - retry up to 3 times
+        RETRIES=0
+        MAX_RETRIES=3
+        while [ $RETRIES -lt $MAX_RETRIES ]; do
+          if docker exec ${{ inputs.container_name }} grep -iq ".*INFO.*jemalloc seems to be preloaded.*" /var/log/cassandra/system.log 2>/dev/null; then
+            echo "✓ jemalloc is properly configured and loaded"
+            exit 0
+          fi
+
+          RETRIES=$((RETRIES + 1))
+          if [ $RETRIES -lt $MAX_RETRIES ]; then
+            echo "jemalloc success message not found yet, waiting 2s... (attempt $RETRIES/$MAX_RETRIES)"
+            sleep 2
+          fi
+        done
+
+        echo "ERROR: jemalloc success message not found after $MAX_RETRIES attempts!"
+        docker exec ${{ inputs.container_name }} grep -i jemalloc /var/log/cassandra/system.log || echo "(no jemalloc messages found)"
+        exit 1
+
+    - name: Verify Cassandra version
+      shell: bash
+      run: |
+        echo "=== Verifying Cassandra version ==="
+        echo "Expected: ${{ inputs.cassandra_version }}"
+
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log > /tmp/cassandra-system.log 2>/dev/null || true
+
+        if ! grep -iq ".*INFO.*Cassandra version: ${{ inputs.cassandra_version }}" /tmp/cassandra-system.log; then
+          echo "ERROR: Cassandra version ${{ inputs.cassandra_version }} not found!"
+          grep -i "Cassandra version:" /tmp/cassandra-system.log || echo "(not found)"
+          exit 1
+        fi
+
+        echo "✓ Cassandra version ${{ inputs.cassandra_version }} verified"
+
+    - name: Verify Java version
+      shell: bash
+      run: |
+        echo "=== Verifying Java version ==="
+
+        docker exec ${{ inputs.container_name }} java -version > /tmp/java-ver.txt 2>&1 || true
+        JAVA_VERSION=$(head -n 1 /tmp/java-ver.txt)
+        echo "Java version: ${JAVA_VERSION}"
+
+        # Cassandra 5.0.x requires Java 17
+        EXPECTED_JAVA="17"
+
+        if ! echo "$JAVA_VERSION" | grep -q "version \"${EXPECTED_JAVA}"; then
+          echo "ERROR: Wrong Java version!"
+          echo "Expected: Java ${EXPECTED_JAVA} for Cassandra ${{ inputs.cassandra_version }}"
+          echo "Found: ${JAVA_VERSION}"
+          exit 1
+        fi
+
+        echo "✓ Java ${EXPECTED_JAVA} verified"
+
+    - name: Verify cqlai version
+      shell: bash
+      run: |
+        echo "=== Verifying cqlai installation ==="
+
+        CQLAI_VERSION=$(docker exec ${{ inputs.container_name }} cqlai --version 2>&1 || echo "NOT FOUND")
+        echo "cqlai version: ${CQLAI_VERSION}"
+
+        if echo "$CQLAI_VERSION" | grep -q "NOT FOUND"; then
+          echo "ERROR: cqlai not installed"
+          exit 1
+        fi
+
+        echo "✓ cqlai installed and working"
