@@ -127,8 +127,7 @@ jobs:
           container_name: axondb-test
 
       - name: Run Trivy container security scan (strict)
-        continue-on-error: true  # Temporary: Trivy action broken (v0.68.1 install issue)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.65.0
         with:
           image-ref: 'axondb-timeseries:test'
           format: 'table'
@@ -139,7 +138,7 @@ jobs:
           trivyignores: 'axonops/axondb-timeseries/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.65.0
         with:
           image-ref: 'axondb-timeseries:test'
           format: 'sarif'
