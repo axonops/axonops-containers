@@ -22,3 +22,6 @@ CVE-2024-7254   # protobuf-java
 CVE-2024-47554  # commons-io
 CVE-2022-1471   # snakeyaml
 CVE-2022-25857  # snakeyaml (DoS - nested depth limitation)
+
+# Go stdlib (no axonops binaries in this container, only Cassandra)
+CVE-2025-61729  # stdlib HostnameError (HIGH - fixed in Go 1.24.11, 1.25.5)
