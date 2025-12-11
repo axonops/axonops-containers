@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 touch /var/log/axonops/axon-agent.log
 
