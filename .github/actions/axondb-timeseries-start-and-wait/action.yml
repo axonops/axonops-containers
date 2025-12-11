@@ -12,7 +12,7 @@ inputs:
   cassandra_heap_size:
     description: 'Heap size for testing'
     required: false
-    default: '2G'
+    default: '4G'
 
 runs:
   using: 'composite'
