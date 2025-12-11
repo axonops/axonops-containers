@@ -161,6 +161,14 @@ jobs:
           container_name: axondb-test
           artifact_name: axondb-logs-${{ matrix.cassandra_version }}-${{ matrix.platform }}
 
+      - name: Upload logs as artifacts
+        if: always() && matrix.platform == 'linux/amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: axondb-logs-${{ matrix.cassandra_version }}-amd64
+          path: /tmp/axondb-logs/
+          retention-days: 7
+
       - name: Cleanup
         if: always() && matrix.platform == 'linux/amd64'
         run: |
