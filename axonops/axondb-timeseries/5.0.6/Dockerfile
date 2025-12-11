@@ -217,6 +217,7 @@ RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
 # Tini init system (minimal init for containers - handles signals and prevents zombies)
 # Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
 # this will be set correctly by the platform-specific base image.
+# Added retry logic for reliability (same network issues as cqlai)
 RUN TINI_VERSION=v0.19.0 && \
     ARCH=$(uname -m) && \
     echo "Detected architecture for Tini: $ARCH" && \
@@ -229,9 +230,30 @@ RUN TINI_VERSION=v0.19.0 && \
     else \
         echo "ERROR: Unsupported architecture: $ARCH" && exit 1; \
     fi && \
-    wget -q -O /tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
+    TINI_URL="https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
+    echo "[INFO] Downloading tini with retry logic..." && \
+    for attempt in 1 2 3 4 5; do \
+      echo "[INFO] Download attempt ${attempt}/5" && \
+      if wget -q -O /tini "${TINI_URL}"; then \
+        echo "[INFO] Download successful" && \
+        break; \
+      else \
+        echo "[WARNING] Download failed" && \
+        rm -f /tini && \
+        if [ ${attempt} -lt 5 ]; then \
+          sleep_time=$((attempt * 5)); \
+          echo "[INFO] Retrying in ${sleep_time}s..." && \
+          sleep ${sleep_time}; \
+        else \
+          echo "[ERROR] Failed to download tini after 5 attempts"; \
+          exit 1; \
+        fi; \
+      fi; \
+    done && \
+    echo "[INFO] Verifying tini checksum..." && \
     echo "${TINI_SHA256}  /tini" | sha256sum -c - && \
-    chmod +x /tini
+    chmod +x /tini && \
+    echo "[INFO] Tini installation complete"
 
 # Set user to run as
 USER cassandra
