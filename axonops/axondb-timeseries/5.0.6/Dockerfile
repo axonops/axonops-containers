@@ -180,6 +180,10 @@ RUN --mount=type=cache,target=/var/cache/cqlai,id=cqlai-rpms,sharing=locked \
     echo "[INFO] Installing cqlai RPM" && \
     rpm -i "${CACHE_RPM}" && \
     echo "[INFO] cqlai installation complete" && \
+    echo "[DEBUG] Cache directory contents:" && \
+    ls -lah /var/cache/cqlai/ && \
+    echo "[DEBUG] Cache directory size:" && \
+    du -sh /var/cache/cqlai/ && \
     rm -f /tmp/SHA256SUMS.txt && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
@@ -277,7 +281,11 @@ RUN --mount=type=cache,target=/var/cache/tini,id=tini-binaries,sharing=locked \
     \
     cp "${CACHE_TINI}" /tini && \
     chmod +x /tini && \
-    echo "[INFO] Tini installation complete"
+    echo "[INFO] Tini installation complete" && \
+    echo "[DEBUG] Tini cache directory contents:" && \
+    ls -lah /var/cache/tini/ && \
+    echo "[DEBUG] Tini cache directory size:" && \
+    du -sh /var/cache/tini/
 
 # Set user to run as
 USER cassandra
