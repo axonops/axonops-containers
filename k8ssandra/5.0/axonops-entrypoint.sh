@@ -113,7 +113,11 @@ fi
 
 # Ensure the config file exists to avoid axon-agent startup errors
 if [ ! -f /etc/axonops/axon-agent.yml ]; then
-  echo "axon-server:" > /etc/axonops/axon-agent.yml
+  cat > /etc/axonops/axon-agent.yml <<EOL
+    axon-server:
+      hosts: ${AXON_AGENT_SERVER_HOST}
+      port: ${AXON_AGENT_SERVER_PORT}
+EOL
 fi
 
 # Add AxonOps JVM options to cassandra-env.sh
