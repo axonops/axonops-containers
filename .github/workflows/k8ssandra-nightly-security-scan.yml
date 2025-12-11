@@ -81,7 +81,7 @@ jobs:
 
       - name: Run Trivy container security scan
         id: trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.0
         with:
           image-ref: 'axonops-cassandra:scan-${{ matrix.cassandra_version }}'
           format: 'table'
@@ -93,7 +93,7 @@ jobs:
 
       - name: Run Trivy scan and upload to GitHub Security
         if: always()
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.0
         with:
           image-ref: 'axonops-cassandra:scan-${{ matrix.cassandra_version }}'
           format: 'sarif'
