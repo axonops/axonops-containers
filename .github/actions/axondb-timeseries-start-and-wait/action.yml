@@ -43,12 +43,18 @@ runs:
         for i in {1..60}; do
           if docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-system-keyspaces.done 2>/dev/null && \
              docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-db-user.done 2>/dev/null; then
-            echo "Init scripts completed"
-            break
+            echo "✓ Init scripts completed"
+            exit 0
           fi
           echo "Attempt $i/60 - waiting 5s for init scripts..."
           sleep 5
         done
+        echo "ERROR: Timeout waiting for init scripts to complete"
+        echo "Checking container status..."
+        docker ps -a | grep ${{ inputs.container_name }} || true
+        echo "Checking logs..."
+        docker logs ${{ inputs.container_name }} | tail -100
+        exit 1
 
     - name: Wait for Cassandra readiness (healthcheck script)
       shell: bash
