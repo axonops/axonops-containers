@@ -127,7 +127,7 @@ jobs:
           container_name: axondb-test
 
       - name: Run Trivy container security scan (strict)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'axondb-timeseries:test'
           format: 'table'
@@ -138,7 +138,7 @@ jobs:
           trivyignores: 'axonops/axondb-timeseries/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'axondb-timeseries:test'
           format: 'sarif'
