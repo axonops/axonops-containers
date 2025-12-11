@@ -89,6 +89,16 @@ jobs:
             VERSION=test
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Capture build logs
+          outputs: type=docker
+
+      - name: Save build metadata
+        run: |
+          mkdir -p /tmp/build-logs
+          echo "Build completed at: $(date)" > /tmp/build-logs/build-info.txt
+          echo "Image: axondb-timeseries:test" >> /tmp/build-logs/build-info.txt
+          echo "Commit: ${{ github.sha }}" >> /tmp/build-logs/build-info.txt
+          docker images axondb-timeseries:test >> /tmp/build-logs/build-info.txt
 
       - name: Start container and wait for services
         uses: ./.github/actions/axondb-timeseries-start-and-wait
@@ -158,6 +168,13 @@ jobs:
         with:
           container_name: axondb-test
           artifact_name: axondb-logs-${{ matrix.cassandra_version }}
+
+      - name: Collect build metadata
+        if: always()
+        run: |
+          if [ -d /tmp/build-logs ]; then
+            cp -r /tmp/build-logs/* /tmp/axondb-logs/ || true
+          fi
 
       - name: Upload logs as artifacts
         if: always()
