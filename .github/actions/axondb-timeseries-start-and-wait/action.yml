@@ -42,6 +42,7 @@ runs:
         echo "==========================================="
         echo "STEP 1: Waiting for init scripts semaphores"
         echo "==========================================="
+        SEMAPHORES_FOUND=false
         for i in {1..120}; do
           if docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-system-keyspaces.done 2>/dev/null && \
              docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-db-user.done 2>/dev/null; then
@@ -49,6 +50,7 @@ runs:
             echo "Semaphore contents:"
             docker exec ${{ inputs.container_name }} cat /etc/axonops/init-system-keyspaces.done
             docker exec ${{ inputs.container_name }} cat /etc/axonops/init-db-user.done
+            SEMAPHORES_FOUND=true
             break
           fi
           if [ $((i % 10)) -eq 0 ]; then
@@ -56,6 +58,13 @@ runs:
           fi
           sleep 5
         done
+
+        if [ "$SEMAPHORES_FOUND" = "false" ]; then
+          echo "ERROR: Init script semaphores not found after 10 minutes!"
+          docker ps -a | grep ${{ inputs.container_name }}
+          docker logs ${{ inputs.container_name }} | tail -100
+          exit 1
+        fi
         echo "✓ STEP 1 COMPLETE: Semaphores found"
 
     - name: Wait for Cassandra readiness (healthcheck script)
@@ -64,9 +73,11 @@ runs:
         echo "==========================================="
         echo "STEP 2: Waiting for healthcheck readiness"
         echo "==========================================="
+        HEALTHCHECK_READY=false
         for i in {1..60}; do
           if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness > /dev/null 2>&1; then
             echo "✓ STEP 2 COMPLETE: Healthcheck readiness passed (attempt $i)"
+            HEALTHCHECK_READY=true
             break
           fi
           if [ $((i % 6)) -eq 0 ]; then
@@ -75,15 +86,24 @@ runs:
           sleep 10
         done
 
+        if [ "$HEALTHCHECK_READY" = "false" ]; then
+          echo "ERROR: Healthcheck readiness failed after 10 minutes!"
+          docker exec ${{ inputs.container_name }} nodetool status || true
+          docker logs ${{ inputs.container_name }} | tail -100
+          exit 1
+        fi
+
     - name: Wait for Cassandra CQL port 9042
       shell: bash
       run: |
         echo "==========================================="
         echo "STEP 3: Verifying CQL port 9042"
         echo "==========================================="
+        CQL_PORT_OPEN=false
         for i in {1..30}; do
           if nc -z localhost 9042 2>/dev/null; then
             echo "✓ STEP 3 COMPLETE: CQL port 9042 is open (attempt $i)"
+            CQL_PORT_OPEN=true
             break
           fi
           if [ $((i % 6)) -eq 0 ]; then
@@ -91,6 +111,12 @@ runs:
           fi
           sleep 5
         done
+
+        if [ "$CQL_PORT_OPEN" = "false" ]; then
+          echo "ERROR: CQL port 9042 not open after 2.5 minutes!"
+          docker logs ${{ inputs.container_name }} | tail -50
+          exit 1
+        fi
 
     - name: Verify Cassandra responds to CQL
       shell: bash
