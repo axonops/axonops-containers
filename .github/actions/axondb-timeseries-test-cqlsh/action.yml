@@ -41,7 +41,9 @@ runs:
         echo "✓ Data verified"
 
         echo "Testing COUNT..."
-        COUNT=$(docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM cqlsh_test.test_data;" | grep -oP '\d+' | head -1)
+        # Capture output first to avoid SIGPIPE when head exits early
+        COUNT_OUTPUT=$(docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM cqlsh_test.test_data;")
+        COUNT=$(echo "$COUNT_OUTPUT" | grep -oP '\d+' | head -1)
         echo "Row count: $COUNT"
 
         echo "Cleanup test keyspace..."
