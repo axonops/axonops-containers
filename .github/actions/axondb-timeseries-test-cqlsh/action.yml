@@ -35,7 +35,9 @@ runs:
         docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT * FROM cqlsh_test.test_data;"
 
         echo "Verifying data..."
-        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT value FROM cqlsh_test.test_data;" | grep -q "test1"
+        # Save output to avoid SIGPIPE (exit 141) when grep exits early
+        OUTPUT=$(docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT value FROM cqlsh_test.test_data;")
+        echo "$OUTPUT" | grep -q "test1"
         echo "✓ Data verified"
 
         echo "Testing COUNT..."

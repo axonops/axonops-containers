@@ -36,7 +36,9 @@ runs:
         docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "SELECT * FROM cqlai_test.users;"
 
         echo "Verifying data..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "SELECT * FROM cqlai_test.users;" | grep -q "example.com"
+        # Save output to avoid SIGPIPE (exit 141) when grep exits early
+        OUTPUT=$(docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "SELECT * FROM cqlai_test.users;")
+        echo "$OUTPUT" | grep -q "example.com"
         echo "✓ Data verified"
 
         echo "Testing UPDATE..."
