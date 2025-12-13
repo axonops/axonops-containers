@@ -11,7 +11,7 @@ Production-ready Apache Cassandra 5.0.6 container optimized for time-series work
   - [Available Images](#available-images)
   - [Tagging Strategy](#tagging-strategy)
 - [Production Best Practice](#-production-best-practice)
-- [Quick Start with Docker/Podman](#quick-start-with-dockerpodman)
+- [Deployment](#deployment)
 - [Building Docker Images](#building-docker-images)
 - [Environment Variables](#environment-variables)
   - [Cassandra Configuration](#cassandra-configuration)
@@ -34,8 +34,9 @@ Production-ready Apache Cassandra 5.0.6 container optimized for time-series work
 
 ## Overview
 
-AxonDB Time-Series is a production-ready Apache Cassandra container built for AxonOps self-hosted deployments, specifically optimized for time-series database workloads. It extends Apache Cassandra 5.0.6 with:
+AxonDB Time-Series is a production-ready Apache Cassandra container specifically designed for AxonOps self-hosted deployments. This container is optimized for time-series database workloads and is deployed as part of the complete AxonOps stack using AxonOps Helm charts.
 
+**Container Features:**
 - **Modern CQL Shell**: [cqlai](https://github.com/axonops/cqlai) v0.0.31 for enhanced database interaction
 - **Memory Optimization**: jemalloc for improved memory management
 - **Automated Setup**: System keyspace initialization and custom user creation
@@ -43,12 +44,7 @@ AxonDB Time-Series is a production-ready Apache Cassandra container built for Ax
 - **Supply Chain Security**: Digest-pinned base images for immutable builds
 - **Production Monitoring**: Integrated healthcheck probes (startup, liveness, readiness)
 
-**Key Differences from K8ssandra Containers:**
-- Designed for standalone Docker/Podman deployments (not Kubernetes-focused)
-- No Management API or AxonOps agent pre-installed (single-purpose database container)
-- 2D versioning (Cassandra + AxonOps version) instead of 3D versioning
-- Automated system keyspace conversion on first boot
-- Smaller footprint focused on database functionality
+**Important:** This container is designed exclusively for AxonOps self-hosted deployments. It is deployed and configured via AxonOps Helm charts, which handle all orchestration, networking, and integration with the AxonOps monitoring and management platform. For more information about AxonOps, see [axonops.com](https://axonops.com).
 
 ## Pre-built Docker Images
 
@@ -133,54 +129,11 @@ cosign verify \
 cosign tree ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
 ```
 
-## Quick Start with Docker/Podman
+## Deployment
 
-Run a single-node Cassandra instance for testing:
+This container is deployed exclusively through **AxonOps Helm charts** as part of the AxonOps self-hosted stack. The Helm charts handle all configuration, orchestration, and integration with AxonOps monitoring and management components.
 
-```bash
-# Pull the latest 5.0.6 image
-docker pull ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
-
-# Run with default configuration
-docker run -d --name axondb \
-  -p 9042:9042 \
-  -p 7199:7199 \
-  ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
-
-# Wait for Cassandra to be ready (~60 seconds)
-docker logs -f axondb
-
-# Connect using cqlai (included in the image)
-docker exec -it axondb cqlai
-
-# Or use cqlsh
-docker exec -it axondb cqlsh
-```
-
-**⚠️ Production Deployment:**
-For production use, always:
-1. Use persistent volumes for data
-2. Pin to immutable tags (e.g., `5.0.6-1.0.0`)
-3. Configure proper cluster settings
-4. Set appropriate resource limits
-
-Example production deployment:
-
-```bash
-# Production example with persistent storage
-docker run -d --name axondb \
-  -p 9042:9042 \
-  -p 7199:7199 \
-  -e CASSANDRA_CLUSTER_NAME=production-cluster \
-  -e CASSANDRA_DC=dc1 \
-  -e CASSANDRA_RACK=rack1 \
-  -e CASSANDRA_HEAP_SIZE=8G \
-  -v /data/cassandra:/var/lib/cassandra \
-  -v /logs/cassandra:/var/log/cassandra \
-  --memory=16g \
-  --cpus=4 \
-  ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
-```
+For deployment instructions, refer to the AxonOps self-hosted deployment documentation (available when Helm charts are released).
 
 ## Building Docker Images
 
@@ -241,7 +194,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ### Cassandra Configuration
 
-Configure Cassandra behavior through environment variables:
+Configure Cassandra behavior through environment variables (10 configurable variables):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -254,8 +207,9 @@ Configure Cassandra behavior through environment variables:
 | `CASSANDRA_RPC_ADDRESS` | CQL native transport address | `0.0.0.0` (all interfaces) |
 | `CASSANDRA_BROADCAST_RPC_ADDRESS` | Broadcast RPC address to clients | Same as `CASSANDRA_LISTEN_ADDRESS` |
 | `CASSANDRA_SEEDS` | Seed node addresses (comma-separated) | Own IP (for single-node) |
-| `CASSANDRA_ENDPOINT_SNITCH` | Endpoint snitch class | `GossipingPropertyFileSnitch` |
 | `CASSANDRA_HEAP_SIZE` | JVM heap size (both -Xms and -Xmx) | `8G` |
+
+**Note:** The endpoint snitch is automatically set to `GossipingPropertyFileSnitch` when `CASSANDRA_DC` or `CASSANDRA_RACK` are configured (recommended for all deployments). For custom snitch configuration, modify `cassandra.yaml` directly in a derived container.
 
 **Example with custom configuration:**
 
@@ -304,15 +258,17 @@ docker run -d --name axondb \
   -p 9042:9042 \
   ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
 
-# Connect with new credentials
+# Connect with new credentials (after ~2 minutes for initialization)
 docker exec -it axondb cqlai -u admin -p SecurePassword123
 ```
 
 **Important:**
-- Custom user creation only works on fresh clusters
-- Default `cassandra` user is disabled after custom user is created
-- User creation runs after system keyspace initialization
-- Both operations log to `/var/log/cassandra/init-system-keyspaces.log`
+- Custom user creation only works on fresh clusters with default credentials
+- Default `cassandra` user is disabled after custom user is created (sets `can_login=false`)
+- User creation runs after system keyspace initialization completes
+- Both operations are handled by the same script: `init-system-keyspaces.sh`
+- Progress logs: `/var/log/cassandra/init-system-keyspaces.log`
+- Completion markers: `/etc/axonops/init-system-keyspaces.done` and `/etc/axonops/init-db-user.done`
 
 ## Container Features
 
@@ -394,35 +350,7 @@ docker exec axondb /usr/local/bin/healthcheck.sh liveness
 docker exec axondb /usr/local/bin/healthcheck.sh readiness
 ```
 
-**Kubernetes example:**
-```yaml
-livenessProbe:
-  exec:
-    command:
-      - /usr/local/bin/healthcheck.sh
-      - liveness
-  initialDelaySeconds: 120
-  periodSeconds: 30
-  timeoutSeconds: 10
-
-readinessProbe:
-  exec:
-    command:
-      - /usr/local/bin/healthcheck.sh
-      - readiness
-  initialDelaySeconds: 60
-  periodSeconds: 10
-  timeoutSeconds: 10
-
-startupProbe:
-  exec:
-    command:
-      - /usr/local/bin/healthcheck.sh
-      - startup
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  failureThreshold: 60
-```
+**Note:** Healthcheck probe configuration is handled automatically by AxonOps Helm charts. The above modes are available for custom deployments if needed.
 
 ### Automated System Keyspace Initialization
 
@@ -497,7 +425,10 @@ docker exec -it axondb cqlai -u dbadmin -p MySecurePassword123!
 The repository includes comprehensive GitHub Actions workflows:
 
 **Build and Test** (`.github/workflows/axondb-timeseries-build-and-test.yml`)
-- **Triggers:** Push/PR to main/development (when `axonops/axondb-timeseries/**` changes)
+- **Triggers:** Push/PR to main/development/feature/*/fix/* branches
+  - When `axonops/axondb-timeseries/**` changes (excluding `*.md` files)
+  - When workflows (`.github/workflows/axondb-timeseries-*.yml`) change
+  - When actions (`.github/actions/axondb-timeseries-*/**`) change
 - **Tests:** Docker build, version verification, healthcheck, cqlai, cqlsh, security scanning
 - **Runtime:** ~10 minutes
 
@@ -542,7 +473,7 @@ Located in `.github/actions/axondb-timeseries-*/`:
 - `verify-init-scripts` - Verify initialization completed
 - `test-cqlai` - Test cqlai functionality
 - `test-cqlsh` - Test cqlsh functionality
-- `test-all-env-vars` - Comprehensive env var testing
+- `test-all-env-vars` - Test environment variable configuration (10 Cassandra + 3 initialization variables)
 - `test-dc-detection` - Test datacenter detection
 - `sign-container` - Cosign signing
 - `verify-published-image` - Post-publish verification

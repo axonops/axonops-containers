@@ -8,8 +8,11 @@ This document covers development practices, workflows, testing, and contribution
 **Purpose:** Docker build verification and comprehensive functional testing
 
 **Triggers:**
-- Push to `main` or `development` branch (when `axonops/axondb-timeseries/**` changes)
-- Pull requests to `main` or `development`
+- Push to `main`, `development`, `feature/**`, or `fix/**` branches
+  - When `axonops/axondb-timeseries/**` changes (excluding `*.md` files)
+  - When `.github/workflows/axondb-timeseries-*.yml` changes
+  - When `.github/actions/axondb-timeseries-*/**` changes
+- Pull requests to `main` or `development` (same path filters)
 - Manual workflow dispatch
 
 **What it tests:**
@@ -94,10 +97,10 @@ Located in `.github/actions/axondb-timeseries-*/`
 
 **Testing:**
 - `test-healthcheck` - Test startup, liveness, readiness probes
-- `verify-init-scripts` - Verify system keyspace init and user creation
+- `verify-init-scripts` - Verify system keyspace init and user creation (both handled by `init-system-keyspaces.sh`)
 - `test-cqlai` - Test cqlai (CREATE/INSERT/SELECT/DROP operations)
 - `test-cqlsh` - Test cqlsh (same operations)
-- `test-all-env-vars` - Test all 13 environment variables
+- `test-all-env-vars` - Test environment variables (10 CASSANDRA_* + 3 initialization = 13 total)
 - `test-dc-detection` - Test datacenter detection from nodetool
 
 **Publishing:**
@@ -166,8 +169,11 @@ See README.md "Container Features" section for example output.
 6. Detect datacenter name from `nodetool status`
 7. Convert system keyspaces to NetworkTopologyStrategy
 8. Run repair on updated keyspaces
-9. Create custom database user if requested
-10. Write semaphore files
+9. Write `/etc/axonops/init-system-keyspaces.done` semaphore
+10. If `AXONOPS_DB_USER` and `AXONOPS_DB_PASSWORD` are set:
+    - Create custom superuser with specified credentials
+    - Disable default `cassandra` user (sets `can_login=false`)
+    - Write `/etc/axonops/init-db-user.done` semaphore
 
 **Safety Checks:**
 - Only runs on single-node clusters
@@ -477,8 +483,8 @@ axonops/axondb-timeseries/
 │   │   └── jvm17-server.options
 │   └── scripts/                    # Container scripts
 │       ├── entrypoint.sh           # Main entrypoint
-│       ├── healthcheck.sh          # Healthcheck probe script
-│       └── init-system-keyspaces.sh # Init script
+│       ├── healthcheck.sh          # Healthcheck probe script (3 modes)
+│       └── init-system-keyspaces.sh # Init script (keyspace conversion + user creation)
 ├── .trivyignore                    # Known CVE suppressions
 ├── README.md                       # This file
 ├── DEVELOPMENT.md                  # Development guide
@@ -504,7 +510,9 @@ Repository variables (`.github` → Settings → Secrets and variables → Actio
 - **Dockerfile** - Container build definition with supply chain security
 - **entrypoint.sh** - Environment variable processing and Cassandra startup
 - **healthcheck.sh** - Three-mode healthcheck (startup/liveness/readiness)
-- **init-system-keyspaces.sh** - System keyspace conversion and user creation
+- **init-system-keyspaces.sh** - Combined script handling both:
+  - System keyspace conversion to NetworkTopologyStrategy
+  - Custom database user creation (if AXONOPS_DB_USER/PASSWORD set)
 
 ### External Dependencies
 
