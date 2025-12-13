@@ -59,40 +59,6 @@ jobs:
     needs: axondb-timeseries-validate
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-    steps:
-      - name: Checkout code at tag
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.main_git_tag }}
-
-      - name: Extract Cassandra version
-        id: version
-        run: |
-          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
-          echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const release = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: '${{ inputs.main_git_tag }}',
-              name: `axondb-timeseries-${{ inputs.container_version }}`,
-              body: `AxonDB Time-Series release ${{ inputs.container_version }}\n\nImage: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}\nCassandra: ${{ steps.version.outputs.cassandra_version }}\nSigned with Cosign`,
-              draft: false,
-              prerelease: false
-            });
-            console.log(`Release created: ${release.data.html_url}`);
-            return release.data.id;
-
-  axondb-timeseries-create-release:
-    needs: axondb-timeseries-test
-    runs-on: ubuntu-latest
-    permissions:
       contents: read
       security-events: write
     steps:
@@ -203,6 +169,40 @@ jobs:
           docker logs axondb-test || true
           docker stop axondb-test || true
           docker rm axondb-test || true
+
+  axondb-timeseries-create-release:
+    needs: axondb-timeseries-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Extract Cassandra version
+        id: version
+        run: |
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ inputs.main_git_tag }}',
+              name: `axondb-timeseries-${{ inputs.container_version }}`,
+              body: `AxonDB Time-Series release ${{ inputs.container_version }}\n\nImage: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}\nCassandra: ${{ steps.version.outputs.cassandra_version }}\nSigned with Cosign`,
+              draft: false,
+              prerelease: false
+            });
+            console.log(`Release created: ${release.data.html_url}`);
+            return release.data.id;
 
   axondb-timeseries-build-push-sign:
     needs: [axondb-timeseries-test, axondb-timeseries-create-release]
