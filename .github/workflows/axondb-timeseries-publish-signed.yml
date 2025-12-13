@@ -218,6 +218,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout code at tag
@@ -300,29 +302,27 @@ jobs:
 
       - name: Production image published and signed
         run: |
-          echo "================================================================================"
           echo "✓ Production image published and signed to GHCR"
-          echo "================================================================================"
-          echo ""
           echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}"
-          echo ""
-          echo "Tags created:"
-          echo "  - ${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }} (immutable - recommended for production)"
-          echo "  - ${{ steps.version.outputs.cassandra_version }} (floating - latest for this Cassandra version)"
-          echo "  - latest (floating - latest release)"
-          echo ""
-          echo "================================================================================"
-          echo "Verification"
-          echo "================================================================================"
-          echo ""
-          echo "Pull image:"
-          echo "  docker pull ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}"
-          echo ""
-          echo "Verify signature:"
-          echo "  cosign verify ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }} \\"
-          echo "    --certificate-identity-regexp='https://github.com/${{ github.repository }}' \\"
-          echo "    --certificate-oidc-issuer=https://token.actions.githubusercontent.com"
-          echo ""
-          echo "================================================================================"
-          echo "Release: https://github.com/${{ github.repository }}/releases/tag/${{ inputs.main_git_tag }}"
-          echo "================================================================================"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
+
+  axondb-timeseries-verify-published:
+    needs: axondb-timeseries-build-push-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract Cassandra version
+        id: version
+        run: |
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
+
+      - name: Verify published image
+        uses: ./.github/actions/axondb-timeseries-verify-published-image
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}
+          image_digest: ${{ needs.axondb-timeseries-build-push-sign.outputs.digest }}
