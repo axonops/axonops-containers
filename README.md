@@ -29,7 +29,12 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 ## Components
 
+### Kubernetes Distributions
 - **[k8ssandra/](./k8ssandra/)** - Apache Cassandra with AxonOps integration for K8ssandra Operator
+
+### AxonOps Self-Hosted Components
+- **[axonops/](./axonops/)** - AxonOps self-hosted infrastructure components
+  - **[axondb-timeseries/](./axonops/axondb-timeseries/)** - Time-series optimized Apache Cassandra database
 
 ## Repository Conventions
 
@@ -43,7 +48,12 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 Each component has its own documentation with detailed instructions:
 
+### Kubernetes Distributions
 - [K8ssandra Documentation](./k8ssandra/README.md)
+
+### AxonOps Self-Hosted
+- [AxonOps Components Overview](./axonops/README.md)
+- [AxonDB Time-Series Documentation](./axonops/axondb-timeseries/README.md)
 
 ## Security
 
