@@ -1,0 +1,214 @@
+name: AxonDB Time-Series Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'axonops/axondb-timeseries/**'
+      - '!axonops/axondb-timeseries/**/*.md'
+      - '.github/workflows/axondb-timeseries-build-and-test.yml'
+      - '.github/actions/axondb-timeseries-*/**'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'axonops/axondb-timeseries/**'
+      - '!axonops/axondb-timeseries/**/*.md'
+      - '.github/workflows/axondb-timeseries-build-and-test.yml'
+      - '.github/actions/axondb-timeseries-*/**'
+  workflow_call:
+    inputs:
+      cassandra_version:
+        description: 'Cassandra version to test'
+        required: false
+        type: string
+        default: '5.0.6'
+  workflow_dispatch:
+    inputs:
+      cassandra_version:
+        description: 'Cassandra version to test'
+        required: false
+        type: string
+        default: '5.0.6'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  CASSANDRA_VERSION: 5.0.6
+
+jobs:
+  axondb-timeseries-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Currently only Cassandra 5.0.6 (may add 5.0.7, 5.1.x later)
+        cassandra_version: ['5.0.6']
+        # Note: Multi-arch builds (amd64 + arm64) are done in publish workflow
+        # Testing only on amd64 for speed and simplicity
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Cassandra version from Dockerfile
+        id: version
+        run: |
+          # Extract CASSANDRA_VERSION from Dockerfile ARG
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
+          echo "✓ Cassandra version from Dockerfile: ${CASSANDRA_VER}"
+
+      - name: Build image for testing
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-timeseries/5.0.6
+          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axondb-timeseries:test
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.version.outputs.cassandra_version }}
+            CQLAI_VERSION=${{ vars.AXONDB_TIMESERIES_CQLAI_VERSION }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=test
+            GIT_TAG=test-build
+            GITHUB_ACTOR=${{ github.actor }}
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=axondb-timeseries:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container and wait for services
+        uses: ./.github/actions/axondb-timeseries-start-and-wait
+        with:
+          container_name: axondb-test
+
+      - name: Verify no startup errors
+        uses: ./.github/actions/axondb-timeseries-verify-no-startup-errors
+        with:
+          container_name: axondb-test
+
+      - name: Verify versions (jemalloc, Cassandra, Java, cqlai)
+        uses: ./.github/actions/axondb-timeseries-verify-versions
+        with:
+          cassandra_version: ${{ steps.version.outputs.cassandra_version }}
+          container_name: axondb-test
+
+      - name: Test healthcheck script
+        uses: ./.github/actions/axondb-timeseries-test-healthcheck
+        with:
+          container_name: axondb-test
+
+      - name: Verify init scripts
+        uses: ./.github/actions/axondb-timeseries-verify-init-scripts
+        with:
+          container_name: axondb-test
+
+      - name: Test cqlai
+        uses: ./.github/actions/axondb-timeseries-test-cqlai
+        with:
+          container_name: axondb-test
+
+      - name: Test cqlsh
+        uses: ./.github/actions/axondb-timeseries-test-cqlsh
+        with:
+          container_name: axondb-test
+
+      - name: Run Trivy container security scan (strict)
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-timeseries:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'axonops/axondb-timeseries/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-timeseries:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'axonops/axondb-timeseries/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Collect logs
+        if: always()
+        uses: ./.github/actions/axondb-timeseries-collect-logs
+        with:
+          container_name: axondb-test
+          artifact_name: axondb-logs-${{ matrix.cassandra_version }}
+
+      - name: Upload logs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: axondb-logs-${{ matrix.cassandra_version }}
+          path: /tmp/axondb-logs/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop axondb-test || true
+          docker rm axondb-test || true
+
+  # Comprehensive environment variable test (runs separately)
+  axondb-timeseries-env-var-test:
+    needs: axondb-timeseries-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for env var testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-timeseries/5.0.6
+          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axondb-timeseries:test
+          build-args: |
+            CASSANDRA_VERSION=5.0.6
+            CQLAI_VERSION=${{ vars.AXONDB_TIMESERIES_CQLAI_VERSION }}
+          cache-from: type=gha
+
+      - name: Test all environment variables
+        uses: ./.github/actions/axondb-timeseries-test-all-env-vars
+        with:
+          image: axondb-timeseries:test
+
+      - name: Test DC detection
+        uses: ./.github/actions/axondb-timeseries-test-dc-detection
+        with:
+          image: axondb-timeseries:test

@@ -4,29 +4,82 @@ set -e
 # AxonDB Time-Series Entrypoint Script
 # Processes cassandra.yaml template with environment variables and starts Cassandra
 
-echo "=== AxonDB Time-Series Starting ==="
-echo ""
+# Display comprehensive startup banner
+print_startup_banner() {
+    if [ -f /etc/axonops/build-info.txt ]; then
+      source /etc/axonops/build-info.txt 2>/dev/null || true
+    fi
 
-# JAVA_HOME and PATH are already set correctly by the base image
+    echo "================================================================================"
+    # Title
+    echo "AxonOps AxonDB Time-Series (Apache Cassandra ${CASSANDRA_VERSION:-unknown})"
 
-# Source build info if available
-if [ -f /etc/axonops/build-info.txt ]; then
-    source /etc/axonops/build-info.txt
-    echo "Container Information:"
-    echo "  Version:            ${CONTAINER_VERSION:-unknown}"
-    echo "  Image:              ${CONTAINER_IMAGE:-unknown}"
-    echo "  Build Date:         ${CONTAINER_BUILD_DATE:-unknown}"
-    echo "  Production Release: ${IS_PRODUCTION_RELEASE:-false}"
+    # Image and build info (CI builds only - not shown for local/unknown builds)
+    if [ -n "${CONTAINER_IMAGE}" ] && [ "${CONTAINER_IMAGE}" != "unknown" ] && [ "${CONTAINER_IMAGE}" != "" ]; then
+      echo "Image: ${CONTAINER_IMAGE}"
+    fi
+    if [ -n "${CONTAINER_BUILD_DATE}" ] && [ "${CONTAINER_BUILD_DATE}" != "unknown" ] && [ "${CONTAINER_BUILD_DATE}" != "" ]; then
+      echo "Built: ${CONTAINER_BUILD_DATE}"
+    fi
+
+    # Show release/tag link if available (CI builds)
+    if [ -n "${CONTAINER_GIT_TAG}" ] && [ "${CONTAINER_GIT_TAG}" != "unknown" ] && [ "${CONTAINER_GIT_TAG}" != "" ]; then
+      if [ "${IS_PRODUCTION_RELEASE:-false}" = "true" ]; then
+        # Production build - link to release page (has release notes)
+        echo "Release: https://github.com/axonops/axonops-containers/releases/tag/${CONTAINER_GIT_TAG}"
+      else
+        # Development build - link to tag/tree
+        echo "Tag:     https://github.com/axonops/axonops-containers/tree/${CONTAINER_GIT_TAG}"
+      fi
+    fi
+
+    # Show who built it if available (CI builds)
+    if [ -n "${CONTAINER_BUILT_BY}" ] && [ "${CONTAINER_BUILT_BY}" != "unknown" ] && [ "${CONTAINER_BUILT_BY}" != "" ]; then
+      if [ "${CONTAINER_BUILT_BY}" = "GitHub Actions" ] || [ "${IS_PRODUCTION_RELEASE:-false}" = "true" ]; then
+        echo "Built by: ${CONTAINER_BUILT_BY}"
+      fi
+    fi
+
+    echo "================================================================================"
     echo ""
+
+    # Component versions (from build-info.txt)
     echo "Component Versions:"
     echo "  Cassandra:          ${CASSANDRA_VERSION:-unknown}"
     echo "  Java:               ${JAVA_VERSION:-unknown}"
     echo "  cqlai:              ${CQLAI_VERSION:-unknown}"
-    echo "  Jemalloc:           ${JEMALLOC_VERSION:-unknown}"
+    echo "  jemalloc:           ${JEMALLOC_VERSION:-unknown}"
     echo "  OS:                 ${OS_VERSION:-unknown}"
     echo "  Platform:           ${PLATFORM:-unknown}"
     echo ""
-fi
+
+    # Supply chain verification (base image digest for security audit)
+    echo "Supply Chain Security:"
+    echo "  Base image:         registry.access.redhat.com/ubi9/ubi-minimal:latest"
+    echo "  Base image digest:  ${UBI9_BASE_DIGEST:-unknown}"
+    echo ""
+
+    # Runtime environment (dynamic - only knowable at runtime)
+    echo "Runtime Environment:"
+    echo "  Hostname:           $(hostname 2>/dev/null || echo 'unknown')"
+
+    # Kubernetes detection (safe - only if vars exist)
+    if [ -n "${KUBERNETES_SERVICE_HOST}" ]; then
+      echo "  Kubernetes:         Yes"
+      echo "    API Server:       ${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+      if [ -n "${HOSTNAME}" ]; then
+        echo "    Pod:              ${HOSTNAME}"
+      fi
+    fi
+    echo ""
+
+    echo "================================================================================"
+    echo "Starting Cassandra..."
+    echo "================================================================================"
+    echo ""
+}
+
+print_startup_banner
 
 # Helper function to get container IP address
 _ip_address() {
@@ -135,6 +188,34 @@ else
 fi
 
 # JVM options are set in jvm17-server.options (including Shenandoah GC)
+
+# Initialize system keyspaces and custom database user in background (non-blocking)
+# This will wait for Cassandra to be ready, then:
+#   1. Convert system keyspaces to NetworkTopologyStrategy (if INIT_SYSTEM_KEYSPACES=true)
+#   2. Create custom superuser (if AXONOPS_DB_USER and AXONOPS_DB_PASSWORD are set)
+# Only runs on fresh single-node clusters with default credentials
+# Can be disabled by setting INIT_SYSTEM_KEYSPACES=false
+INIT_SYSTEM_KEYSPACES="${INIT_SYSTEM_KEYSPACES:-true}"
+
+if [ "$INIT_SYSTEM_KEYSPACES" = "true" ]; then
+    echo "Starting initialization in background (keyspaces + user)..."
+    (/usr/local/bin/init-system-keyspaces.sh > /var/log/cassandra/init-system-keyspaces.log 2>&1 &)
+else
+    echo "System keyspace initialization disabled (INIT_SYSTEM_KEYSPACES=false)"
+    echo "Writing semaphore files to allow healthcheck to proceed..."
+    # Write semaphores immediately so healthcheck doesn't block
+    mkdir -p /etc/axonops
+    {
+        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "RESULT=skipped"
+        echo "REASON=disabled_by_env_var"
+    } > /etc/axonops/init-system-keyspaces.done
+    {
+        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "RESULT=skipped"
+        echo "REASON=init_disabled"
+    } > /etc/axonops/init-db-user.done
+fi
 
 echo ""
 echo "=== Starting Cassandra ==="

@@ -1,0 +1,74 @@
+name: 'AxonDB Time-Series Determine Latest Tags'
+description: 'Determines which latest tags to apply based on version hierarchy'
+inputs:
+  current_version:
+    description: 'Current Cassandra version being built (e.g., 5.0.6)'
+    required: true
+  all_versions:
+    description: 'Space-separated list of all Cassandra versions (e.g., "5.0.6" for now, "5.0.6 5.0.7" later)'
+    required: true
+
+outputs:
+  is_minor_latest:
+    description: 'true if this is the highest patch for its minor version (e.g., 5.0.6 is highest 5.0.x)'
+    value: ${{ steps.check.outputs.is_minor_latest }}
+  is_global_latest:
+    description: 'true if this is the absolute highest version across all minors'
+    value: ${{ steps.check.outputs.is_global_latest }}
+  base_version:
+    description: 'Base version (major.minor, e.g., 5.0)'
+    value: ${{ steps.check.outputs.base_version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine latest tags
+      id: check
+      shell: bash
+      run: |
+        CURRENT="${{ inputs.current_version }}"
+        BASE_VERSION=$(echo "$CURRENT" | cut -d. -f1,2)
+        echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT"
+        echo "Base version: $BASE_VERSION"
+
+        # Convert space-separated string to array
+        IFS=' ' read -ra ALL_VERSIONS <<< "${{ inputs.all_versions }}"
+        echo "All versions: ${ALL_VERSIONS[@]}"
+
+        # Find highest version in the same minor line (e.g., highest 5.0.x)
+        MINOR_VERSIONS=()
+        for v in "${ALL_VERSIONS[@]}"; do
+          V_BASE=$(echo "$v" | cut -d. -f1,2)
+          if [ "$V_BASE" == "$BASE_VERSION" ]; then
+            MINOR_VERSIONS+=("$v")
+          fi
+        done
+
+        echo "Versions in ${BASE_VERSION} line: ${MINOR_VERSIONS[@]}"
+        MINOR_HIGHEST=$(printf '%s\n' "${MINOR_VERSIONS[@]}" | sort -V | tail -1)
+
+        if [ "$CURRENT" == "$MINOR_HIGHEST" ]; then
+          echo "is_minor_latest=true" >> $GITHUB_OUTPUT
+          echo "✓ Highest in ${BASE_VERSION} minor line ($CURRENT)"
+        else
+          echo "is_minor_latest=false" >> $GITHUB_OUTPUT
+          echo "Not highest in ${BASE_VERSION} line (highest is $MINOR_HIGHEST)"
+        fi
+
+        # Find absolute highest version across all minors
+        GLOBAL_HIGHEST=$(printf '%s\n' "${ALL_VERSIONS[@]}" | sort -V | tail -1)
+
+        if [ "$CURRENT" == "$GLOBAL_HIGHEST" ]; then
+          echo "is_global_latest=true" >> $GITHUB_OUTPUT
+          echo "✓ Absolute highest version overall ($CURRENT)"
+        else
+          echo "is_global_latest=false" >> $GITHUB_OUTPUT
+          echo "Not absolute highest (highest is $GLOBAL_HIGHEST)"
+        fi
+
+        echo "========================================="
+        echo "Tagging strategy:"
+        echo "  Minor-latest tag (${BASE_VERSION}-latest): $([ "$CURRENT" == "$MINOR_HIGHEST" ] && echo "YES" || echo "NO")"
+        echo "  Global-latest tag (latest): $([ "$CURRENT" == "$GLOBAL_HIGHEST" ] && echo "YES" || echo "NO")"
+        echo "========================================="

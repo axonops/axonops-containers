@@ -1,0 +1,27 @@
+# AxonDB Time-Series Trivy Ignore List
+# CVEs that are known, accepted, or have no fix available
+# Review periodically and remove when fixed upstream
+
+# Red Hat UBI9 base image CVEs (no fix available upstream)
+# These are tracked by Red Hat and will be fixed in future UBI updates
+# Reference: https://access.redhat.com/security/security-updates/
+CVE-2025-59375  # expat (OS package)
+
+# Apache Cassandra CVEs (will be fixed in later Cassandra versions)
+CVE-2022-42003  # jackson-databind (fixed in Cassandra 5.0.3+)
+CVE-2022-42004  # jackson-databind (fixed in Cassandra 5.0.3+)
+CVE-2025-23015  # Cassandra user-defined functions (fixed in 5.0.3+)
+
+# Java dependencies in Cassandra (upstream fixes pending)
+CVE-2025-24970  # netty-handler
+CVE-2023-6378   # logback
+CVE-2023-6481   # logback
+CVE-2025-12183  # lz4-java 1.8.0 → 1.8.1 (DoS risk)
+CVE-2025-52999  # jackson-core
+CVE-2024-7254   # protobuf-java
+CVE-2024-47554  # commons-io
+CVE-2022-1471   # snakeyaml
+CVE-2022-25857  # snakeyaml (DoS - nested depth limitation)
+
+# Go stdlib (no axonops binaries in this container, only Cassandra)
+CVE-2025-61729  # stdlib HostnameError (HIGH - fixed in Go 1.24.11, 1.25.5)

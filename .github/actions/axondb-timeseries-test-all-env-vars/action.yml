@@ -1,0 +1,297 @@
+name: 'AxonDB Time-Series Test All Environment Variables'
+description: 'Comprehensive test of ALL environment variables'
+inputs:
+  image:
+    description: 'Container image to test'
+    required: true
+    default: 'axondb-timeseries:test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test comprehensive environment configuration
+      shell: bash
+      run: |
+        echo "=== Comprehensive Environment Variable Test ==="
+        echo "Testing ALL environment variables in single container"
+
+        # Start container with ALL environment variables set
+        docker run -d --name axondb-env-test \
+          -e CASSANDRA_CLUSTER_NAME=env_test_cluster \
+          -e CASSANDRA_NUM_TOKENS=16 \
+          -e CASSANDRA_DC=test_dc1 \
+          -e CASSANDRA_RACK=test_rack1 \
+          -e CASSANDRA_LISTEN_ADDRESS=127.0.0.1 \
+          -e CASSANDRA_RPC_ADDRESS=0.0.0.0 \
+          -e CASSANDRA_BROADCAST_ADDRESS=127.0.0.1 \
+          -e CASSANDRA_BROADCAST_RPC_ADDRESS=127.0.0.1 \
+          -e CASSANDRA_HEAP_SIZE=4G \
+          -e CASSANDRA_SEEDS=127.0.0.1 \
+          -e INIT_SYSTEM_KEYSPACES=true \
+          -e AXONOPS_DB_USER=testuser \
+          -e AXONOPS_DB_PASSWORD=testpass123 \
+          -p 9142:9042 \
+          ${{ inputs.image }}
+
+        echo "Container started, waiting for readiness..."
+        sleep 120
+
+    - name: Validate CASSANDRA_CLUSTER_NAME
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_CLUSTER_NAME ==="
+
+        CLUSTER_NAME=$(docker exec axondb-env-test grep "^cluster_name:" /etc/cassandra/cassandra.yaml | awk '{print $2}')
+        echo "Configured cluster_name: $CLUSTER_NAME"
+
+        if [ "$CLUSTER_NAME" != "env_test_cluster" ]; then
+          echo "ERROR: cluster_name not set correctly"
+          echo "Expected: env_test_cluster"
+          echo "Found: $CLUSTER_NAME"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_CLUSTER_NAME applied correctly"
+
+    - name: Validate CASSANDRA_NUM_TOKENS
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_NUM_TOKENS ==="
+
+        NUM_TOKENS=$(docker exec axondb-env-test grep "^num_tokens:" /etc/cassandra/cassandra.yaml | awk '{print $2}')
+        echo "Configured num_tokens: $NUM_TOKENS"
+
+        if [ "$NUM_TOKENS" != "16" ]; then
+          echo "ERROR: num_tokens not set correctly"
+          echo "Expected: 16"
+          echo "Found: $NUM_TOKENS"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_NUM_TOKENS applied correctly"
+
+    - name: Validate CASSANDRA_DC and CASSANDRA_RACK
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_DC and CASSANDRA_RACK ==="
+
+        docker exec axondb-env-test cat /etc/cassandra/cassandra-rackdc.properties > /tmp/rackdc.properties
+
+        DC=$(grep "^dc=" /tmp/rackdc.properties | cut -d'=' -f2 | tr -d '[:space:]')
+        RACK=$(grep "^rack=" /tmp/rackdc.properties | cut -d'=' -f2 | tr -d '[:space:]')
+
+        echo "Configured DC: $DC"
+        echo "Configured RACK: $RACK"
+
+        if [ "$DC" != "test_dc1" ]; then
+          echo "ERROR: DC not set correctly"
+          echo "Expected: test_dc1"
+          echo "Found: $DC"
+          exit 1
+        fi
+
+        if [ "$RACK" != "test_rack1" ]; then
+          echo "ERROR: RACK not set correctly"
+          echo "Expected: test_rack1"
+          echo "Found: $RACK"
+          exit 1
+        fi
+
+        # Verify from nodetool status
+        ACTUAL_DC=$(docker exec axondb-env-test nodetool status 2>/dev/null | grep "^Datacenter:" | awk '{print $2}')
+        echo "Actual DC from nodetool: $ACTUAL_DC"
+
+        if [ "$ACTUAL_DC" != "test_dc1" ]; then
+          echo "ERROR: DC not reflected in running cluster"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_DC and CASSANDRA_RACK applied correctly"
+
+    - name: Validate CASSANDRA_LISTEN_ADDRESS
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_LISTEN_ADDRESS ==="
+
+        LISTEN_ADDR=$(docker exec axondb-env-test grep "^listen_address:" /etc/cassandra/cassandra.yaml | awk '{print $2}')
+        echo "Configured listen_address: $LISTEN_ADDR"
+
+        if [ "$LISTEN_ADDR" != "127.0.0.1" ]; then
+          echo "ERROR: listen_address not set correctly"
+          echo "Expected: 127.0.0.1"
+          echo "Found: $LISTEN_ADDR"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_LISTEN_ADDRESS applied correctly"
+
+    - name: Validate CASSANDRA_RPC_ADDRESS
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_RPC_ADDRESS ==="
+
+        RPC_ADDR=$(docker exec axondb-env-test grep "^rpc_address:" /etc/cassandra/cassandra.yaml | awk '{print $2}')
+        echo "Configured rpc_address: $RPC_ADDR"
+
+        if [ "$RPC_ADDR" != "0.0.0.0" ]; then
+          echo "ERROR: rpc_address not set correctly"
+          echo "Expected: 0.0.0.0"
+          echo "Found: $RPC_ADDR"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_RPC_ADDRESS applied correctly"
+
+    - name: Validate CASSANDRA_BROADCAST_ADDRESS
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_BROADCAST_ADDRESS ==="
+
+        BROADCAST_ADDR=$(docker exec axondb-env-test grep "^broadcast_address:" /etc/cassandra/cassandra.yaml | awk '{print $2}')
+        echo "Configured broadcast_address: $BROADCAST_ADDR"
+
+        if [ "$BROADCAST_ADDR" != "127.0.0.1" ]; then
+          echo "ERROR: broadcast_address not set correctly"
+          echo "Expected: 127.0.0.1"
+          echo "Found: $BROADCAST_ADDR"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_BROADCAST_ADDRESS applied correctly"
+
+    - name: Validate CASSANDRA_BROADCAST_RPC_ADDRESS
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_BROADCAST_RPC_ADDRESS ==="
+
+        BROADCAST_RPC=$(docker exec axondb-env-test grep "^broadcast_rpc_address:" /etc/cassandra/cassandra.yaml | awk '{print $2}')
+        echo "Configured broadcast_rpc_address: $BROADCAST_RPC"
+
+        if [ "$BROADCAST_RPC" != "127.0.0.1" ]; then
+          echo "ERROR: broadcast_rpc_address not set correctly"
+          echo "Expected: 127.0.0.1"
+          echo "Found: $BROADCAST_RPC"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_BROADCAST_RPC_ADDRESS applied correctly"
+
+    - name: Validate CASSANDRA_HEAP_SIZE
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_HEAP_SIZE ==="
+
+        XMS=$(docker exec axondb-env-test grep "^-Xms" /etc/cassandra/jvm17-server.options)
+        XMX=$(docker exec axondb-env-test grep "^-Xmx" /etc/cassandra/jvm17-server.options)
+
+        echo "Configured Xms: $XMS"
+        echo "Configured Xmx: $XMX"
+
+        if [ "$XMS" != "-Xms4G" ] || [ "$XMX" != "-Xmx4G" ]; then
+          echo "ERROR: Heap size not set correctly"
+          echo "Expected: -Xms4G and -Xmx4G"
+          echo "Found: $XMS and $XMX"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_HEAP_SIZE applied correctly"
+
+    - name: Validate CASSANDRA_SEEDS
+      shell: bash
+      run: |
+        echo "=== Validating CASSANDRA_SEEDS ==="
+
+        SEEDS=$(docker exec axondb-env-test grep "^\s*- seeds:" /etc/cassandra/cassandra.yaml | sed 's/.*"\(.*\)".*/\1/')
+        echo "Configured seeds: $SEEDS"
+
+        if [ "$SEEDS" != "127.0.0.1" ]; then
+          echo "ERROR: seeds not set correctly"
+          echo "Expected: 127.0.0.1"
+          echo "Found: $SEEDS"
+          exit 1
+        fi
+
+        echo "✓ CASSANDRA_SEEDS applied correctly"
+
+    - name: Validate INIT_SYSTEM_KEYSPACES (enabled)
+      shell: bash
+      run: |
+        echo "=== Validating INIT_SYSTEM_KEYSPACES ==="
+
+        # Should have run the init
+        docker exec axondb-env-test cat /etc/axonops/init-system-keyspaces.done
+
+        RESULT=$(docker exec axondb-env-test grep "^RESULT=" /etc/axonops/init-system-keyspaces.done | cut -d'=' -f2)
+
+        if [ "$RESULT" != "success" ]; then
+          echo "ERROR: Init should have run but got result: $RESULT"
+          docker exec axondb-env-test cat /var/log/cassandra/init-system-keyspaces.log
+          exit 1
+        fi
+
+        echo "✓ INIT_SYSTEM_KEYSPACES=true worked correctly"
+
+    - name: Validate AXONOPS_DB_USER and AXONOPS_DB_PASSWORD
+      shell: bash
+      run: |
+        echo "=== Validating AXONOPS_DB_USER and AXONOPS_DB_PASSWORD ==="
+
+        # Custom user should have been created
+        docker exec axondb-env-test cat /etc/axonops/init-db-user.done
+
+        USER_RESULT=$(docker exec axondb-env-test grep "^RESULT=" /etc/axonops/init-db-user.done | cut -d'=' -f2)
+
+        if [ "$USER_RESULT" != "success" ]; then
+          echo "ERROR: User creation should have succeeded but got: $USER_RESULT"
+          exit 1
+        fi
+
+        # Test authentication with custom user
+        echo "Testing authentication with testuser..."
+        if ! docker exec axondb-env-test cqlsh -u testuser -p testpass123 -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; then
+          echo "ERROR: Custom user authentication failed"
+          exit 1
+        fi
+
+        echo "✓ Custom user created and working"
+
+        # Verify default user disabled
+        echo "Verifying default cassandra user is disabled..."
+        if docker exec axondb-env-test cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; then
+          echo "ERROR: Default cassandra user should be disabled"
+          exit 1
+        fi
+
+        echo "✓ Default cassandra user correctly disabled"
+        echo "✓ AXONOPS_DB_USER and AXONOPS_DB_PASSWORD applied correctly"
+
+    - name: Cleanup test container
+      shell: bash
+      if: always()
+      run: |
+        echo "Cleaning up test container..."
+        docker stop axondb-env-test 2>/dev/null || true
+        docker rm axondb-env-test 2>/dev/null || true
+        echo "✓ Cleanup complete"
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "========================================="
+        echo "✓ ALL ENVIRONMENT VARIABLES VALIDATED"
+        echo "========================================="
+        echo "Tested and verified:"
+        echo "  ✓ CASSANDRA_CLUSTER_NAME"
+        echo "  ✓ CASSANDRA_NUM_TOKENS"
+        echo "  ✓ CASSANDRA_DC"
+        echo "  ✓ CASSANDRA_RACK"
+        echo "  ✓ CASSANDRA_LISTEN_ADDRESS"
+        echo "  ✓ CASSANDRA_RPC_ADDRESS"
+        echo "  ✓ CASSANDRA_BROADCAST_ADDRESS"
+        echo "  ✓ CASSANDRA_BROADCAST_RPC_ADDRESS"
+        echo "  ✓ CASSANDRA_HEAP_SIZE"
+        echo "  ✓ CASSANDRA_SEEDS"
+        echo "  ✓ INIT_SYSTEM_KEYSPACES"
+        echo "  ✓ AXONOPS_DB_USER"
+        echo "  ✓ AXONOPS_DB_PASSWORD"
+        echo "========================================="

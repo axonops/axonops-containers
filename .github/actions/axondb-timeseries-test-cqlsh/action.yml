@@ -1,0 +1,52 @@
+name: 'AxonDB Time-Series Test cqlsh'
+description: 'Tests cqlsh installation and CQL operations'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify cqlsh is installed
+      shell: bash
+      run: |
+        echo "Checking cqlsh installation..."
+        docker exec ${{ inputs.container_name }} cqlsh --version
+        echo "✓ cqlsh is installed"
+
+    - name: Test CQL operations with cqlsh
+      shell: bash
+      run: |
+        echo "=== Testing CQL operations with cqlsh ==="
+
+        echo "Creating keyspace..."
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "CREATE KEYSPACE IF NOT EXISTS cqlsh_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+
+        echo "Creating table..."
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "CREATE TABLE IF NOT EXISTS cqlsh_test.test_data (id UUID PRIMARY KEY, value TEXT, timestamp TIMESTAMP);"
+
+        echo "Inserting test data..."
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "INSERT INTO cqlsh_test.test_data (id, value, timestamp) VALUES (uuid(), 'test1', toTimestamp(now()));"
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "INSERT INTO cqlsh_test.test_data (id, value, timestamp) VALUES (uuid(), 'test2', toTimestamp(now()));"
+
+        echo "Selecting data..."
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT * FROM cqlsh_test.test_data;"
+
+        echo "Verifying data..."
+        # Save output to avoid SIGPIPE (exit 141) when grep exits early
+        OUTPUT=$(docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT value FROM cqlsh_test.test_data;")
+        echo "$OUTPUT" | grep -q "test1"
+        echo "✓ Data verified"
+
+        echo "Testing COUNT..."
+        # Capture output first to avoid SIGPIPE when head exits early
+        COUNT_OUTPUT=$(docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM cqlsh_test.test_data;")
+        COUNT=$(echo "$COUNT_OUTPUT" | grep -oP '\d+' | head -1)
+        echo "Row count: $COUNT"
+
+        echo "Cleanup test keyspace..."
+        docker exec ${{ inputs.container_name }} cqlsh -u cassandra -p cassandra -e "DROP KEYSPACE cqlsh_test;"
+
+        echo "✓ All cqlsh CQL tests passed"

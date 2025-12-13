@@ -1,0 +1,79 @@
+name: 'AxonDB Time-Series Start and Wait'
+description: 'Starts AxonDB Time-Series container and waits for Cassandra to be ready'
+inputs:
+  container_name:
+    description: 'Name for the container'
+    required: true
+    default: 'axondb-test'
+  cassandra_dc:
+    description: 'Cassandra datacenter name (optional, for testing)'
+    required: false
+    default: ''
+  cassandra_heap_size:
+    description: 'Heap size for testing'
+    required: false
+    default: '4G'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start container
+      shell: bash
+      run: |
+        echo "Starting AxonDB Time-Series container: ${{ inputs.container_name }}"
+
+        DOCKER_CMD="docker run -d --name ${{ inputs.container_name }} \
+          --memory=6g \
+          --memory-swap=6g \
+          -e CASSANDRA_HEAP_SIZE=${{ inputs.cassandra_heap_size }} \
+          -p 9042:9042"
+
+        # Add optional DC configuration
+        if [ -n "${{ inputs.cassandra_dc }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD -e CASSANDRA_DC=${{ inputs.cassandra_dc }} -e CASSANDRA_RACK=rack1"
+        fi
+
+        DOCKER_CMD="$DOCKER_CMD axondb-timeseries:test"
+
+        $DOCKER_CMD
+        echo "Container started, waiting for Cassandra..."
+
+    - name: Wait for Cassandra using healthcheck script
+      shell: bash
+      run: |
+        echo "Waiting for Cassandra using healthcheck.sh (startup probe)..."
+
+        for i in {1..120}; do
+          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup > /dev/null 2>&1; then
+            echo "✓ Cassandra startup complete (attempt $i, ~$((i*5)) seconds)"
+            docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup
+            break
+          fi
+          if [ $((i % 12)) -eq 0 ]; then
+            echo "Still waiting... attempt $i/120 (~$((i*5)) seconds elapsed)"
+          fi
+          sleep 5
+        done
+
+        # Final verification
+        if ! docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup; then
+          echo "ERROR: Startup healthcheck failed after 10 minutes"
+          docker logs ${{ inputs.container_name }} | tail -100
+          exit 1
+        fi
+
+        echo "✓ Startup probe passed"
+
+    - name: Verify readiness using healthcheck script
+      shell: bash
+      run: |
+        echo "Verifying Cassandra readiness..."
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness; then
+          echo "✓ Readiness probe passed"
+          echo "✓ Container ready - all healthchecks passed"
+        else
+          echo "ERROR: Readiness check failed"
+          docker exec ${{ inputs.container_name }} nodetool status || true
+          exit 1
+        fi

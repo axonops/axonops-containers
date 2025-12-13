@@ -135,7 +135,7 @@ jobs:
           container_name: cassandra-test
 
       - name: Run Trivy container security scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.0
         with:
           image-ref: 'axonops-cassandra:test'
           format: 'table'
@@ -146,7 +146,7 @@ jobs:
           trivyignores: 'k8ssandra/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.0
         with:
           image-ref: 'axonops-cassandra:test'
           format: 'sarif'

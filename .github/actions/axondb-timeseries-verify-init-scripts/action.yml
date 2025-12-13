@@ -1,0 +1,126 @@
+name: 'AxonDB Time-Series Verify Init Scripts'
+description: 'Verifies init scripts completed successfully and system keyspaces converted'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-test'
+  expected_dc:
+    description: 'Expected datacenter name (optional)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check semaphore files exist
+      shell: bash
+      run: |
+        echo "=== Checking semaphore files ==="
+
+        if ! docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-system-keyspaces.done; then
+          echo "ERROR: init-system-keyspaces.done semaphore not found"
+          exit 1
+        fi
+
+        if ! docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-db-user.done; then
+          echo "ERROR: init-db-user.done semaphore not found"
+          exit 1
+        fi
+
+        echo "✓ Both semaphore files exist"
+
+    - name: Verify keyspace init semaphore status
+      shell: bash
+      run: |
+        echo "=== Verifying keyspace init semaphore ==="
+
+        docker exec ${{ inputs.container_name }} cat /etc/axonops/init-system-keyspaces.done
+
+        RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /etc/axonops/init-system-keyspaces.done | cut -d'=' -f2)
+        echo "Init result: $RESULT"
+
+        if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
+          echo "ERROR: Unexpected init result: $RESULT"
+          docker exec ${{ inputs.container_name }} cat /var/log/cassandra/init-system-keyspaces.log || true
+          exit 1
+        fi
+
+        echo "✓ Keyspace init semaphore valid (result: $RESULT)"
+
+    - name: Verify user init semaphore status
+      shell: bash
+      run: |
+        echo "=== Verifying user init semaphore ==="
+
+        docker exec ${{ inputs.container_name }} cat /etc/axonops/init-db-user.done
+
+        RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /etc/axonops/init-db-user.done | cut -d'=' -f2)
+        echo "User init result: $RESULT"
+
+        if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
+          echo "ERROR: Unexpected user init result: $RESULT"
+          exit 1
+        fi
+
+        echo "✓ User init semaphore valid (result: $RESULT)"
+
+    - name: Verify system keyspaces use NetworkTopologyStrategy
+      shell: bash
+      run: |
+        echo "=== Verifying system keyspaces replication ==="
+
+        docker exec ${{ inputs.container_name }} nodetool describecluster > /tmp/cluster-info.txt 2>/dev/null
+
+        # Check each system keyspace
+        for ks in system_auth system_distributed system_traces; do
+          if ! grep "$ks.*NetworkTopologyStrategy" /tmp/cluster-info.txt; then
+            echo "WARNING: $ks may not be using NetworkTopologyStrategy"
+            echo "This is OK if INIT_SYSTEM_KEYSPACES was set to false"
+            echo "Checking init result..."
+            INIT_RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /etc/axonops/init-system-keyspaces.done | cut -d'=' -f2)
+            if [ "$INIT_RESULT" = "success" ]; then
+              echo "ERROR: Init reported success but $ks is not NTS!"
+              cat /tmp/cluster-info.txt
+              exit 1
+            fi
+            echo "Init was skipped, this is expected"
+            exit 0
+          fi
+        done
+
+        echo "✓ All system keyspaces use NetworkTopologyStrategy"
+        grep -E "system_auth|system_distributed|system_traces" /tmp/cluster-info.txt
+
+    - name: Verify DC detection (if expected_dc provided)
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.expected_dc }}" ]; then
+          echo "=== Verifying datacenter detection ==="
+          echo "Expected DC: ${{ inputs.expected_dc }}"
+
+          docker exec ${{ inputs.container_name }} nodetool status > /tmp/nodetool-status.txt 2>/dev/null
+
+          ACTUAL_DC=$(grep "^Datacenter:" /tmp/nodetool-status.txt | awk '{print $2}')
+          echo "Actual DC: $ACTUAL_DC"
+
+          if [ "$ACTUAL_DC" != "${{ inputs.expected_dc }}" ]; then
+            echo "ERROR: DC mismatch!"
+            cat /tmp/nodetool-status.txt
+            exit 1
+          fi
+
+          echo "✓ Datacenter verified: $ACTUAL_DC"
+        else
+          echo "Skipping DC verification (no expected_dc provided)"
+        fi
+
+    - name: Check init script logs
+      shell: bash
+      run: |
+        echo "=== Init script logs ==="
+
+        echo "--- init-system-keyspaces.log ---"
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/init-system-keyspaces.log || echo "Log file not found"
+
+        echo "✓ Init scripts verification complete"
