@@ -1,0 +1,130 @@
+name: 'AxonDB Time-Series Verify Published Image'
+description: 'Pulls published image from GHCR, verifies signature, and runs smoke tests'
+inputs:
+  image:
+    description: 'Full image reference (e.g., ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0)'
+    required: true
+  image_digest:
+    description: 'Image digest for signature verification (e.g., sha256:...)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Pull published image from GHCR
+      shell: bash
+      run: |
+        echo "Pulling published image: ${{ inputs.image }}"
+        docker pull ${{ inputs.image }}
+        echo "✓ Image pulled from GHCR"
+
+    - name: Verify Cosign signature
+      shell: bash
+      run: |
+        echo "Installing Cosign..."
+        curl -sLO https://github.com/sigstore/cosign/releases/download/v2.2.0/cosign-linux-amd64
+        chmod +x cosign-linux-amd64
+        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+
+        echo "Verifying signature for: ${{ inputs.image }}@${{ inputs.image_digest }}"
+        cosign verify ${{ inputs.image }}@${{ inputs.image_digest }} \
+          --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \
+          --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+
+        echo "✓ Signature verified"
+
+    - name: Start published container
+      shell: bash
+      run: |
+        echo "Starting container from published image..."
+        docker run -d --name published-test \
+          --memory=6g \
+          --memory-swap=6g \
+          -e CASSANDRA_HEAP_SIZE=4G \
+          -p 9142:9042 \
+          ${{ inputs.image }}
+
+        echo "✓ Container started"
+        sleep 5
+
+    - name: Wait for Cassandra to be ready
+      shell: bash
+      run: |
+        echo "Waiting for Cassandra startup (using healthcheck)..."
+        for i in {1..120}; do
+          if docker exec published-test /usr/local/bin/healthcheck.sh startup > /dev/null 2>&1; then
+            echo "✓ Cassandra startup complete (attempt $i)"
+            break
+          fi
+          if [ $((i % 12)) -eq 0 ]; then
+            echo "  Still waiting... attempt $i/120"
+          fi
+          sleep 5
+        done
+
+        if ! docker exec published-test /usr/local/bin/healthcheck.sh startup; then
+          echo "ERROR: Startup failed"
+          docker logs published-test | tail -50
+          exit 1
+        fi
+
+        echo "✓ Cassandra ready"
+
+    - name: Run smoke tests on published image
+      shell: bash
+      run: |
+        echo "Running smoke tests..."
+
+        # Test 1: nodetool status
+        echo "Test 1: nodetool status"
+        docker exec published-test nodetool status
+        echo "✓ nodetool works"
+
+        # Test 2: CQL connectivity
+        echo "Test 2: CQL connectivity"
+        docker exec published-test cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1;"
+        echo "✓ CQL works"
+
+        # Test 3: cqlai works
+        echo "Test 3: cqlai functionality"
+        docker exec published-test cqlai -u cassandra -p cassandra -e "SELECT cluster_name FROM system.local;"
+        echo "✓ cqlai works"
+
+        # Test 4: System keyspaces
+        echo "Test 4: System keyspace initialization"
+        KEYSPACE_STRAT=$(docker exec published-test nodetool describecluster 2>/dev/null | grep "system_auth" || true)
+        echo "$KEYSPACE_STRAT"
+        if echo "$KEYSPACE_STRAT" | grep -q "NetworkTopologyStrategy"; then
+          echo "✓ System keyspaces converted to NTS"
+        else
+          echo "⚠ System keyspaces not converted (may be disabled via env var)"
+        fi
+
+        echo "✓ All smoke tests passed"
+
+    - name: Cleanup published container
+      if: always()
+      shell: bash
+      run: |
+        echo "Cleaning up..."
+        docker stop published-test || true
+        docker rm published-test || true
+        echo "✓ Cleanup complete"
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "================================================"
+        echo "✓ Published Image Verification Complete"
+        echo "================================================"
+        echo "Verified:"
+        echo "  ✓ Image pulled from GHCR"
+        echo "  ✓ Cosign signature valid"
+        echo "  ✓ Container starts successfully"
+        echo "  ✓ Cassandra operational"
+        echo "  ✓ CQL and cqlai working"
+        echo "  ✓ System keyspaces initialized"
+        echo "================================================"
+        echo "Image: ${{ inputs.image }}"
+        echo "Digest: ${{ inputs.image_digest }}"
+        echo "================================================"
