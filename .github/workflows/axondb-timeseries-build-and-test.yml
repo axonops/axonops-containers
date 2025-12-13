@@ -10,7 +10,7 @@ on:
     paths:
       - 'axonops/axondb-timeseries/**'
       - '!axonops/axondb-timeseries/**/*.md'
-      - '.github/workflows/axondb-timeseries-build-and-test.yml'
+      - '.github/workflows/axondb-timeseries-*.yml'
       - '.github/actions/axondb-timeseries-*/**'
   pull_request:
     branches:
@@ -19,7 +19,7 @@ on:
     paths:
       - 'axonops/axondb-timeseries/**'
       - '!axonops/axondb-timeseries/**/*.md'
-      - '.github/workflows/axondb-timeseries-build-and-test.yml'
+      - '.github/workflows/axondb-timeseries-*.yml'
       - '.github/actions/axondb-timeseries-*/**'
   workflow_call:
     inputs:
