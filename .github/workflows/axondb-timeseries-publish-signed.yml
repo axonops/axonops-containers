@@ -106,6 +106,13 @@ jobs:
         with:
           container_name: axondb-test
 
+      - name: Verify startup banner
+        uses: ./.github/actions/axondb-timeseries-verify-startup-banner
+        with:
+          container_name: axondb-test
+          expected_image: ghcr.io/axonops/axondb-timeseries
+          is_production: 'true'
+
       - name: Verify no startup errors
         uses: ./.github/actions/axondb-timeseries-verify-no-startup-errors
         with:
