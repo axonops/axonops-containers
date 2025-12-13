@@ -1,0 +1,114 @@
+name: 'AxonDB Time-Series Verify Startup Banner'
+description: 'Validates startup banner contains all required metadata fields'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-test'
+  expected_image:
+    description: 'Expected image name to appear in banner (optional)'
+    required: false
+  is_production:
+    description: 'Whether this is a production build (checks for Release link vs Tag link)'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Capture startup banner
+      shell: bash
+      run: |
+        echo "Capturing startup banner from container logs..."
+        docker logs ${{ inputs.container_name }} > /tmp/startup-banner.log 2>&1
+        echo "=== STARTUP BANNER ==="
+        head -50 /tmp/startup-banner.log | head -30
+        echo "======================"
+
+    - name: Verify banner structure
+      shell: bash
+      run: |
+        echo "Verifying startup banner contains required fields..."
+
+        BANNER=$(head -50 /tmp/startup-banner.log)
+
+        # Required fields
+        echo "$BANNER" | grep -q "AxonOps AxonDB Time-Series" || { echo "ERROR: Title missing"; exit 1; }
+        echo "✓ Title present"
+
+        echo "$BANNER" | grep -q "Cassandra:" || { echo "ERROR: Cassandra version missing"; exit 1; }
+        echo "✓ Cassandra version present"
+
+        echo "$BANNER" | grep -q "Java:" || { echo "ERROR: Java version missing"; exit 1; }
+        echo "✓ Java version present"
+
+        echo "$BANNER" | grep -q "cqlai:" || { echo "ERROR: cqlai version missing"; exit 1; }
+        echo "✓ cqlai version present"
+
+        echo "$BANNER" | grep -q "jemalloc:" || { echo "ERROR: jemalloc version missing"; exit 1; }
+        echo "✓ jemalloc version present"
+
+        echo "$BANNER" | grep -q "Supply Chain Security:" || { echo "ERROR: Supply chain section missing"; exit 1; }
+        echo "✓ Supply chain section present"
+
+        echo "$BANNER" | grep -q "Base image digest:" || { echo "ERROR: Base digest missing"; exit 1; }
+        echo "✓ Base image digest present"
+
+        echo "$BANNER" | grep -q "Runtime Environment:" || { echo "ERROR: Runtime section missing"; exit 1; }
+        echo "✓ Runtime environment section present"
+
+    - name: Verify production vs development indicators
+      shell: bash
+      run: |
+        echo "Checking production/development differentiation..."
+
+        BANNER=$(head -50 /tmp/startup-banner.log)
+
+        if [ "${{ inputs.is_production }}" = "true" ]; then
+          echo "Expecting production indicators..."
+          if echo "$BANNER" | grep -q "Release: https://github.com"; then
+            echo "✓ Production release link found"
+          else
+            echo "ERROR: Production build should show 'Release:' link, not 'Tag:' link"
+            exit 1
+          fi
+        else
+          echo "Expecting development indicators..."
+          if echo "$BANNER" | grep -q "Tag: https://github.com" || ! echo "$BANNER" | grep -q "Release:\|Tag:"; then
+            echo "✓ Development tag link or no link (local build)"
+          else
+            echo "WARNING: Development build has 'Release:' link (should be 'Tag:')"
+          fi
+        fi
+
+    - name: Verify image name if provided
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.expected_image }}" ]; then
+          echo "Verifying image name: ${{ inputs.expected_image }}"
+          BANNER=$(head -50 /tmp/startup-banner.log)
+          if echo "$BANNER" | grep -q "${{ inputs.expected_image }}"; then
+            echo "✓ Expected image name found in banner"
+          else
+            echo "ERROR: Expected image name not found: ${{ inputs.expected_image }}"
+            echo "$BANNER" | grep "Image:"
+            exit 1
+          fi
+        fi
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "================================================"
+        echo "✓ Startup banner validation complete"
+        echo "================================================"
+        echo "All required fields present:"
+        echo "  ✓ Title and Cassandra version"
+        echo "  ✓ Component versions (Java, cqlai, jemalloc)"
+        echo "  ✓ Supply chain security (base digest)"
+        echo "  ✓ Runtime environment"
+        echo "  ✓ Production/development differentiation"
+        if [ -n "${{ inputs.expected_image }}" ]; then
+          echo "  ✓ Correct image name"
+        fi
+        echo "================================================"
