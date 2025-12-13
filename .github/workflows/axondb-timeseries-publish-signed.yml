@@ -55,7 +55,7 @@ jobs:
           fi
           echo "✓ Container version ${{ inputs.container_version }} is available"
 
-  axondb-timeseries-create-release:
+  axondb-timeseries-test:
     needs: axondb-timeseries-validate
     runs-on: ubuntu-latest
     permissions:
@@ -89,8 +89,8 @@ jobs:
             console.log(`Release created: ${release.data.html_url}`);
             return release.data.id;
 
-  axondb-timeseries-test:
-    needs: axondb-timeseries-create-release
+  axondb-timeseries-create-release:
+    needs: axondb-timeseries-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -205,7 +205,7 @@ jobs:
           docker rm axondb-test || true
 
   axondb-timeseries-build-push-sign:
-    needs: axondb-timeseries-test
+    needs: [axondb-timeseries-test, axondb-timeseries-create-release]
     runs-on: ubuntu-latest
     permissions:
       contents: read
