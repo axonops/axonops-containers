@@ -250,9 +250,10 @@ echo "✓ User '${AXONOPS_DB_USER}' does not exist, proceeding with creation"
 # Create custom superuser
 echo "Creating superuser '${AXONOPS_DB_USER}'..."
 cqlsh -u cassandra -p cassandra -e "CREATE ROLE IF NOT EXISTS '${AXONOPS_DB_USER}' WITH PASSWORD = '${AXONOPS_DB_PASSWORD}' AND SUPERUSER = true AND LOGIN = true;" || {
-  echo "⚠ Failed to create user '${AXONOPS_DB_USER}', skipping user initialization"
+  echo "⚠ ERROR: Failed to create user '${AXONOPS_DB_USER}'"
+  echo "  This is a fatal error - user credentials were provided but creation failed"
   write_user_semaphore "failed" "create_user_failed"
-  exit 0
+  exit 1
 }
 
 echo "✓ User '${AXONOPS_DB_USER}' created successfully"
@@ -260,11 +261,12 @@ echo "✓ User '${AXONOPS_DB_USER}' created successfully"
 # Test new user authentication
 echo "Testing authentication with new user '${AXONOPS_DB_USER}'..."
 if ! cqlsh -u "${AXONOPS_DB_USER}" -p "${AXONOPS_DB_PASSWORD}" -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; then
-  echo "⚠ Failed to authenticate with new user '${AXONOPS_DB_USER}'"
+  echo "⚠ ERROR: Failed to authenticate with new user '${AXONOPS_DB_USER}'"
+  echo "  User was created but authentication test failed - possible CQL issue"
   echo "  Rolling back: deleting user '${AXONOPS_DB_USER}'"
   cqlsh -u cassandra -p cassandra -e "DROP ROLE IF EXISTS '${AXONOPS_DB_USER}';" 2>/dev/null || true
   write_user_semaphore "failed" "new_user_auth_failed"
-  exit 0
+  exit 1
 fi
 
 echo "✓ Successfully authenticated with new user '${AXONOPS_DB_USER}'"

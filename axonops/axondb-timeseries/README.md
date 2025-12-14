@@ -654,14 +654,26 @@ REASON=initialized_to_nts
 **RESULT values for init-db-user.done:**
 - `success` - Custom user created successfully
   - `user_initialized` - User created and cassandra user disabled
-  - `user_created_cassandra_disable_failed` - User created but failed to disable cassandra user (non-fatal)
+  - `user_created_cassandra_disable_failed` - User created but failed to disable cassandra user (non-fatal, container continues)
 - `skipped` - User creation skipped (with REASON)
   - `no_custom_user_requested` - AXONOPS_DB_USER not set
   - `user_already_exists` - Custom user already exists
   - `init_disabled` - INIT_SYSTEM_KEYSPACES=false
-- `failed` - User creation failed (with REASON)
-  - `create_user_failed` - Failed to create user
-  - `new_user_auth_failed` - New user authentication test failed
+- `failed` - User creation failed (with REASON) - **Init script exits with code 1**
+  - `create_user_failed` - Failed to create user (CQL CREATE ROLE failed)
+  - `new_user_auth_failed` - User created but authentication test failed
+
+**When failures occur:**
+- `create_user_failed` - Can happen if:
+  - CQL connection fails during user creation
+  - Invalid username/password format
+  - Cassandra internal error during role creation
+- `new_user_auth_failed` - Can happen if:
+  - User created but authentication system is misconfigured
+  - Password not set correctly in system_auth
+  - CQL authentication protocol issue
+
+**Important:** When `RESULT=failed` is written, the init script exits with code 1 (failure), and the healthcheck startup probe will fail, preventing the container from being marked "Started" in Kubernetes.
 
 **Guarantee:** Both semaphore files are **ALWAYS** written in all code paths. The healthcheck startup probe:
 1. Requires both semaphore files to exist
