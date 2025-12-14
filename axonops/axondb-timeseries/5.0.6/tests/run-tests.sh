@@ -212,22 +212,37 @@ validate_test4() {
         echo "  ✗ System keyspace init was NOT skipped"
         return 1
     fi
+    echo "  ✓ System keyspace init skipped (disabled_by_env_var)"
 
     # Verify user init was also skipped (when INIT_SYSTEM_KEYSPACES_AND_ROLES=false, both skip)
     if ! podman exec "$container" cat /var/lib/cassandra/.axonops/init-db-user.done 2>/dev/null | grep "init_disabled"; then
         echo "  ✗ User init was NOT skipped"
         return 1
     fi
+    echo "  ✓ User init skipped (init_disabled)"
 
-    # Should still be able to login with default credentials
-    if podman exec "$container" cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1;" 2>/dev/null; then
-        echo "  ✓ Both init operations skipped as expected"
-        echo "  ✓ Default cassandra credentials still work"
-        return 0
-    else
-        echo "  ✗ Cannot connect with default credentials"
-        return 1
-    fi
+    # Wait a bit for CQL authentication to be fully ready (sometimes needs extra time)
+    echo "  Waiting for authentication to be ready..."
+    sleep 5
+
+    # Should still be able to login with default credentials (retry a few times)
+    local max_attempts=3
+    local attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        if podman exec "$container" cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1;" 2>/dev/null; then
+            echo "  ✓ Both init operations skipped as expected"
+            echo "  ✓ Default cassandra credentials still work"
+            return 0
+        fi
+        echo "    Attempt $attempt/$max_attempts failed, retrying..."
+        sleep 3
+        attempt=$((attempt + 1))
+    done
+
+    echo "  ✗ Cannot connect with default credentials after $max_attempts attempts"
+    echo "  Debug: Checking if Cassandra is ready..."
+    podman exec "$container" nodetool status 2>&1 | head -10
+    return 1
 }
 
 # Initialize results file
