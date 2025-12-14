@@ -200,12 +200,13 @@ See README.md "Container Features" section for example output.
 5. Check if system keyspaces already use NetworkTopologyStrategy
 6. Detect datacenter name from `nodetool status`
 7. Convert system keyspaces to NetworkTopologyStrategy
-8. Run repair on updated keyspaces
-9. Write `/etc/axonops/init-system-keyspaces.done` semaphore
-10. If `AXONOPS_DB_USER` and `AXONOPS_DB_PASSWORD` are set:
-    - Create custom superuser with specified credentials
-    - Disable default `cassandra` user (sets `can_login=false`)
-    - Write `/etc/axonops/init-db-user.done` semaphore
+8. Write `/etc/axonops/init-system-keyspaces.done` semaphore
+9. If `AXONOPS_DB_USER` and `AXONOPS_DB_PASSWORD` are set:
+   - Create custom superuser with specified credentials
+   - Disable default `cassandra` user (sets `can_login=false`)
+   - Write `/etc/axonops/init-db-user.done` semaphore
+
+**Note:** Repair is NOT run because this is a single-node deployment (repair requires multiple replicas to be meaningful).
 
 **Safety Checks:**
 - Only runs on single-node clusters

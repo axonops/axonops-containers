@@ -534,8 +534,9 @@ The initialization uses an **asynchronous background process** coordinated by **
 2. Verifies this is a single-node cluster with default credentials
 3. Detects datacenter name from running Cassandra instance
 4. Converts `system_auth`, `system_distributed`, `system_traces` to `NetworkTopologyStrategy`
-5. Runs repair on updated keyspaces
-6. Writes completion semaphore: `/etc/axonops/init-system-keyspaces.done`
+5. Writes completion semaphore: `/etc/axonops/init-system-keyspaces.done`
+
+**Note:** Repair is NOT run because this is a single-node deployment (repair is only meaningful with multiple replicas).
 
 **Safety checks:**
 - Only runs on single-node clusters (skips multi-node)
