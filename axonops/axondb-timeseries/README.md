@@ -275,7 +275,33 @@ docker exec -it axondb cqlai -u admin -p SecurePassword123
 
 ### Entrypoint Script
 
-The entrypoint script (`/usr/local/bin/docker-entrypoint.sh`) is the main orchestrator that configures Cassandra and manages container startup. It runs as PID 1 (via tini) and performs critical initialization before starting Cassandra.
+The entrypoint script (`/usr/local/bin/docker-entrypoint.sh`) is the main orchestrator that configures Cassandra and manages container startup. It runs as PID 1 via [tini](https://github.com/krallin/tini) and performs critical initialization before starting Cassandra.
+
+#### tini - A Minimal Init System
+
+The container uses **tini** as its init system (PID 1). Tini is a minimal init system specifically designed for containers that:
+
+- **Handles signals properly** - Forwards signals (SIGTERM, SIGINT) to child processes for graceful shutdown
+- **Reaps zombie processes** - Cleans up terminated child processes that would otherwise accumulate
+- **Extremely lightweight** - Single static binary (~10KB), minimal overhead
+- **Industry standard** - Used by Docker as the default init when `--init` flag is specified
+
+The Dockerfile sets tini as the entrypoint wrapper:
+```dockerfile
+ENTRYPOINT ["/tini", "-g", "--", "/docker-entrypoint.sh"]
+CMD ["cassandra", "-f"]
+```
+
+This means the actual process tree is:
+```
+tini (PID 1)
+  └─► docker-entrypoint.sh
+       └─► cassandra -f (after exec)
+```
+
+After `exec cassandra -f`, Cassandra replaces the shell script but tini remains as PID 1, ensuring proper signal handling for the entire container.
+
+**Learn more:** [github.com/krallin/tini](https://github.com/krallin/tini)
 
 #### What It Does
 
@@ -370,11 +396,15 @@ The entrypoint modifies these Cassandra configuration files based on environment
 - Non-blocking startup - container doesn't hang during init
 - Healthcheck startup probe enforces completion before traffic routing
 
-**Why tini?**
-- Minimal init system that properly handles signals
-- Reaps zombie processes
-- Ensures clean shutdown of all child processes
-- Industry best practice for containers
+**Why tini as the init system?**
+- **Signal forwarding** - Ensures SIGTERM/SIGINT reach Cassandra for graceful shutdown
+- **Zombie reaping** - Cleans up terminated child processes (important for background init script)
+- **Container best practice** - Prevents issues when container engine sends stop signals
+- **Minimal overhead** - Tiny static binary (~10KB) with no dependencies
+- **Industry standard** - Same init system Docker uses with `--init` flag
+- Without tini, shell scripts (PID 1) don't forward signals properly, causing forced kills
+
+**More info:** [Why you need an init system](https://github.com/krallin/tini#why-tini) in containers
 
 ### Startup Version Banner
 
