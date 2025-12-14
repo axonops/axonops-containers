@@ -1,7 +1,7 @@
 version: '3.8'
 
-# Test Scenario 2: Skip Keyspace Init
-# - INIT_SYSTEM_KEYSPACES=false
+# Test Scenario 2: Skip Keyspace and Role Init
+# - INIT_SYSTEM_KEYSPACES_AND_ROLES=false
 # - Expected: semaphore written immediately, healthcheck passes
 
 services:
@@ -16,7 +16,7 @@ services:
       - CASSANDRA_DC=dc1
       - CASSANDRA_RACK=rack1
       - CASSANDRA_HEAP_SIZE=2G
-      - INIT_SYSTEM_KEYSPACES=false
+      - INIT_SYSTEM_KEYSPACES_AND_ROLES=false
     volumes:
       - test2-data:/var/lib/cassandra
       - test2-logs:/var/log/cassandra

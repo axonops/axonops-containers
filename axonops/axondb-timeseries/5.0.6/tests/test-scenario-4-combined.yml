@@ -1,9 +1,9 @@
 version: '3.8'
 
 # Test Scenario 4: Combined - Skip Init + Custom User
-# - INIT_SYSTEM_KEYSPACES=false
+# - INIT_SYSTEM_KEYSPACES_AND_ROLES=false
 # - AXONOPS_DB_USER=axonops, AXONOPS_DB_PASSWORD=securepass123
-# - Expected: init skipped, user created, healthcheck passes
+# - Expected: init skipped, user not created (init disabled), healthcheck passes
 
 services:
   cassandra-test4:
@@ -17,7 +17,7 @@ services:
       - CASSANDRA_DC=dc1
       - CASSANDRA_RACK=rack1
       - CASSANDRA_HEAP_SIZE=2G
-      - INIT_SYSTEM_KEYSPACES=false
+      - INIT_SYSTEM_KEYSPACES_AND_ROLES=false
       - AXONOPS_DB_USER=axonops
       - AXONOPS_DB_PASSWORD=securepass123
     volumes:

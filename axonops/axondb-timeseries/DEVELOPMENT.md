@@ -312,7 +312,7 @@ podman run --rm axondb-timeseries:local 2>&1 | head -40
 ```bash
 # Start container
 docker run -d --name axondb-local \
-  -e INIT_SYSTEM_KEYSPACES=true \
+  -e INIT_SYSTEM_KEYSPACES_AND_ROLES=true \
   -p 9042:9042 \
   axondb-timeseries:local
 
@@ -344,7 +344,7 @@ docker run -d --name axondb-test \
   -e CASSANDRA_DC=testdc \
   -e CASSANDRA_RACK=rack1 \
   -e CASSANDRA_HEAP_SIZE=4G \
-  -e INIT_SYSTEM_KEYSPACES=true \
+  -e INIT_SYSTEM_KEYSPACES_AND_ROLES=true \
   -e AXONOPS_DB_USER=testadmin \
   -e AXONOPS_DB_PASSWORD=TestPass123! \
   -p 9042:9042 \
@@ -429,8 +429,8 @@ docker exec axondb-local cat /etc/axonops/init-system-keyspaces.done
 # Check init script log
 docker exec axondb-local cat /var/log/cassandra/init-system-keyspaces.log
 
-# Verify INIT_SYSTEM_KEYSPACES setting
-docker exec axondb-local env | grep INIT_SYSTEM_KEYSPACES
+# Verify INIT_SYSTEM_KEYSPACES_AND_ROLES setting
+docker exec axondb-local env | grep INIT_SYSTEM_KEYSPACES_AND_ROLES
 
 # Check if semaphore was written
 docker exec axondb-local cat /etc/axonops/init-system-keyspaces.done

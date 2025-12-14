@@ -10,10 +10,10 @@ Automated test suite for validating container initialization and configuration.
 - **Expected**: System keyspace init runs, no custom user creation
 - **Validates**: Default DC detection, NetworkTopologyStrategy conversion
 
-### Scenario 2: Skip Keyspace Init
+### Scenario 2: Skip Keyspace and Role Init
 - **File**: `test-scenario-2-skip-init.yml`
-- **Config**: `INIT_SYSTEM_KEYSPACES=false`
-- **Expected**: Keyspace init skipped, semaphore written immediately
+- **Config**: `INIT_SYSTEM_KEYSPACES_AND_ROLES=false`
+- **Expected**: Keyspace and role init skipped, semaphores written immediately
 - **Validates**: Init script can be disabled
 
 ### Scenario 3: Custom User Creation
@@ -24,9 +24,9 @@ Automated test suite for validating container initialization and configuration.
 
 ### Scenario 4: Combined (Skip Init + Custom User)
 - **File**: `test-scenario-4-combined.yml`
-- **Config**: `INIT_SYSTEM_KEYSPACES=false`, custom user credentials
-- **Expected**: Keyspace init skipped, custom user still created
-- **Validates**: Independent control of init features
+- **Config**: `INIT_SYSTEM_KEYSPACES_AND_ROLES=false`, custom user credentials
+- **Expected**: Both keyspace init and user creation skipped (init disabled)
+- **Validates**: When init is disabled, both operations are skipped
 
 ### Scenario 5: Multi-Node Cluster
 - **File**: `test-compose.yml`
@@ -77,7 +77,7 @@ To test a specific scenario:
 podman-compose -f test-scenario-1-default.yml up -d
 podman logs cassandra-test1 -f
 podman exec cassandra-test1 nodetool status
-podman exec cassandra-test1 cat /etc/axonops/init-system-keyspaces.done
+podman exec cassandra-test1 cat /var/lib/cassandra/.axonops/init-system-keyspaces.done
 podman-compose -f test-scenario-1-default.yml down -v
 ```
 

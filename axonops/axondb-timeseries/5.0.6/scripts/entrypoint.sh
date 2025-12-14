@@ -189,17 +189,17 @@ fi
 
 # Initialize system keyspaces and custom database user in background (non-blocking)
 # This will wait for Cassandra to be ready, then:
-#   1. Convert system keyspaces to NetworkTopologyStrategy (if INIT_SYSTEM_KEYSPACES=true)
+#   1. Convert system keyspaces to NetworkTopologyStrategy (if INIT_SYSTEM_KEYSPACES_AND_ROLES=true)
 #   2. Create custom superuser (if AXONOPS_DB_USER and AXONOPS_DB_PASSWORD are set)
 # Only runs on fresh single-node clusters with default credentials
-# Can be disabled by setting INIT_SYSTEM_KEYSPACES=false
-INIT_SYSTEM_KEYSPACES="${INIT_SYSTEM_KEYSPACES:-true}"
+# Can be disabled by setting INIT_SYSTEM_KEYSPACES_AND_ROLES=false
+INIT_SYSTEM_KEYSPACES_AND_ROLES="${INIT_SYSTEM_KEYSPACES_AND_ROLES:-true}"
 
-if [ "$INIT_SYSTEM_KEYSPACES" = "true" ]; then
-    echo "Starting initialization in background (keyspaces + user)..."
+if [ "$INIT_SYSTEM_KEYSPACES_AND_ROLES" = "true" ]; then
+    echo "Starting initialization in background (keyspaces + roles)..."
     (/usr/local/bin/init-system-keyspaces.sh > /var/log/cassandra/init-system-keyspaces.log 2>&1 &)
 else
-    echo "System keyspace initialization disabled (INIT_SYSTEM_KEYSPACES=false)"
+    echo "System keyspace and role initialization disabled (INIT_SYSTEM_KEYSPACES_AND_ROLES=false)"
     echo "Writing semaphore files to allow healthcheck to proceed..."
     # Write semaphores immediately so healthcheck doesn't block
     # Located in /var/lib/cassandra (persistent volume) not /etc (ephemeral)

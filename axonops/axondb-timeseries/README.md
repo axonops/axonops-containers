@@ -206,7 +206,7 @@ The container supports 14 environment variables for configuration:
 | `CASSANDRA_BROADCAST_RPC_ADDRESS` | Broadcast RPC address to clients | Same as `CASSANDRA_LISTEN_ADDRESS` | Cassandra |
 | `CASSANDRA_SEEDS` | Seed node addresses (comma-separated) | Own IP (for single-node) | Cassandra |
 | `CASSANDRA_HEAP_SIZE` | JVM heap size (both -Xms and -Xmx) | `8G` | Cassandra |
-| `INIT_SYSTEM_KEYSPACES` | Auto-convert system keyspaces to NetworkTopologyStrategy | `true` | Initialization |
+| `INIT_SYSTEM_KEYSPACES_AND_ROLES_AND_ROLES` | Auto-convert system keyspaces and create custom roles | `true` | Initialization |
 | `INIT_TIMEOUT` | Timeout in seconds for initialization script to wait for Cassandra | `600` (10 min) | Initialization |
 | `AXONOPS_DB_USER` | Create custom superuser with this username (optional) | - | Initialization |
 | `AXONOPS_DB_PASSWORD` | Password for custom superuser (required if `AXONOPS_DB_USER` set) | - | Initialization |
@@ -243,7 +243,7 @@ docker run -d --name axondb \
 
 ### Initialization Control
 
-The last 4 variables (`INIT_SYSTEM_KEYSPACES`, `INIT_TIMEOUT`, `AXONOPS_DB_USER`, `AXONOPS_DB_PASSWORD`) control automatic initialization behavior that occurs after Cassandra starts.
+The last 4 variables (`INIT_SYSTEM_KEYSPACES_AND_ROLES_AND_ROLES`, `INIT_TIMEOUT`, `AXONOPS_DB_USER`, `AXONOPS_DB_PASSWORD`) control automatic initialization behavior that occurs after Cassandra starts.
 
 **System Keyspace Initialization:**
 
@@ -266,7 +266,7 @@ docker run -d --name axondb \
 - Writes semaphore files for healthcheck coordination
 - Skips if already converted or if multi-node cluster detected
 
-To disable: `INIT_SYSTEM_KEYSPACES=false`
+To disable: `INIT_SYSTEM_KEYSPACES_AND_ROLES_AND_ROLES=false`
 
 **Custom Database User:**
 
@@ -276,7 +276,7 @@ Automatically create a custom superuser and disable the default `cassandra` user
 docker run -d --name axondb \
   -e AXONOPS_DB_USER=admin \
   -e AXONOPS_DB_PASSWORD=SecurePassword123 \
-  -e INIT_SYSTEM_KEYSPACES=true \
+  -e INIT_SYSTEM_KEYSPACES_AND_ROLES_AND_ROLES=true \
   -p 9042:9042 \
   ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
 
@@ -354,7 +354,7 @@ After `exec cassandra -f`, Cassandra replaces the shell script but tini remains 
 
 **5. Launches Background Initialization**
 - Starts `init-system-keyspaces.sh` in background (non-blocking)
-- Or writes skip semaphores if `INIT_SYSTEM_KEYSPACES=false`
+- Or writes skip semaphores if `INIT_SYSTEM_KEYSPACES_AND_ROLES=false`
 - Allows Cassandra to start immediately while init waits for readiness
 
 **6. Starts Cassandra**
@@ -598,7 +598,7 @@ The second phase creates a custom superuser and disables the default `cassandra`
 docker run -d --name axondb \
   -e AXONOPS_DB_USER=dbadmin \
   -e AXONOPS_DB_PASSWORD=MySecurePassword123! \
-  -e INIT_SYSTEM_KEYSPACES=true \
+  -e INIT_SYSTEM_KEYSPACES_AND_ROLES_AND_ROLES=true \
   ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
 
 # Wait for initialization (~2 minutes)
@@ -620,7 +620,7 @@ docker exec -it axondb cqlai -u dbadmin -p MySecurePassword123!
 **Disable all initialization:**
 ```bash
 docker run -d --name axondb \
-  -e INIT_SYSTEM_KEYSPACES=false \
+  -e INIT_SYSTEM_KEYSPACES_AND_ROLES_AND_ROLES=false \
   ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
 ```
 
@@ -658,7 +658,7 @@ REASON=initialized_to_nts
   - `multi_node_cluster` - Multi-node cluster detected (can't safely init)
   - `already_nts` - Already using NetworkTopologyStrategy (already done)
   - `custom_rf` - Replication factor != 1 (already customized by user)
-  - `disabled_by_env_var` - INIT_SYSTEM_KEYSPACES=false (user disabled)
+  - `disabled_by_env_var` - INIT_SYSTEM_KEYSPACES_AND_ROLES=false (user disabled)
 - `failed` - Initialization failed (with REASON) - **Init script exits with code 1**
   - `cql_port_timeout` - CQL port didn't open within timeout (default: 10 min, configurable via `INIT_TIMEOUT`)
   - `native_transport_timeout` - Native transport didn't activate within timeout
@@ -682,7 +682,7 @@ REASON=initialized_to_nts
 - `skipped` - User creation skipped (with REASON)
   - `no_custom_user_requested` - AXONOPS_DB_USER not set
   - `user_already_exists` - Custom user already exists
-  - `init_disabled` - INIT_SYSTEM_KEYSPACES=false
+  - `init_disabled` - INIT_SYSTEM_KEYSPACES_AND_ROLES=false
 - `failed` - User creation failed (with REASON) - **Init script exits with code 1**
   - `create_user_failed` - Failed to create user (CQL CREATE ROLE failed)
   - `new_user_auth_failed` - User created but authentication test failed
