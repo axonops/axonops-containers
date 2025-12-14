@@ -258,7 +258,7 @@ docker run -d --name axondb \
   ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
 ```
 
-**The initialization process:
+**The initialization process:**
 
 - Only runs on single-node clusters with default `cassandra/cassandra` credentials
 - Detects datacenter name from running Cassandra instance
