@@ -18,12 +18,12 @@ runs:
       run: |
         echo "=== Checking semaphore files ==="
 
-        if ! docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-system-keyspaces.done; then
+        if ! docker exec ${{ inputs.container_name }} test -f /var/lib/cassandra/.axonops/init-system-keyspaces.done; then
           echo "ERROR: init-system-keyspaces.done semaphore not found"
           exit 1
         fi
 
-        if ! docker exec ${{ inputs.container_name }} test -f /etc/axonops/init-db-user.done; then
+        if ! docker exec ${{ inputs.container_name }} test -f /var/lib/cassandra/.axonops/init-db-user.done; then
           echo "ERROR: init-db-user.done semaphore not found"
           exit 1
         fi
@@ -35,9 +35,9 @@ runs:
       run: |
         echo "=== Verifying keyspace init semaphore ==="
 
-        docker exec ${{ inputs.container_name }} cat /etc/axonops/init-system-keyspaces.done
+        docker exec ${{ inputs.container_name }} cat /var/lib/cassandra/.axonops/init-system-keyspaces.done
 
-        RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /etc/axonops/init-system-keyspaces.done | cut -d'=' -f2)
+        RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /var/lib/cassandra/.axonops/init-system-keyspaces.done | cut -d'=' -f2)
         echo "Init result: $RESULT"
 
         if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
@@ -53,9 +53,9 @@ runs:
       run: |
         echo "=== Verifying user init semaphore ==="
 
-        docker exec ${{ inputs.container_name }} cat /etc/axonops/init-db-user.done
+        docker exec ${{ inputs.container_name }} cat /var/lib/cassandra/.axonops/init-db-user.done
 
-        RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /etc/axonops/init-db-user.done | cut -d'=' -f2)
+        RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /var/lib/cassandra/.axonops/init-db-user.done | cut -d'=' -f2)
         echo "User init result: $RESULT"
 
         if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
@@ -78,7 +78,7 @@ runs:
             echo "WARNING: $ks may not be using NetworkTopologyStrategy"
             echo "This is OK if INIT_SYSTEM_KEYSPACES was set to false"
             echo "Checking init result..."
-            INIT_RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /etc/axonops/init-system-keyspaces.done | cut -d'=' -f2)
+            INIT_RESULT=$(docker exec ${{ inputs.container_name }} grep "^RESULT=" /var/lib/cassandra/.axonops/init-system-keyspaces.done | cut -d'=' -f2)
             if [ "$INIT_RESULT" = "success" ]; then
               echo "ERROR: Init reported success but $ks is not NTS!"
               cat /tmp/cluster-info.txt
