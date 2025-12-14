@@ -193,27 +193,42 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ## Environment Variables
 
+The container supports 13 environment variables for configuration:
+
+| Variable | Description | Default | Category |
+|----------|-------------|---------|----------|
+| `CASSANDRA_CLUSTER_NAME` | Cluster name | `axonopsdb-timeseries` | Cassandra |
+| `CASSANDRA_NUM_TOKENS` | Number of tokens per node (vnodes) | `8` | Cassandra |
+| `CASSANDRA_DC` | Datacenter name | `axonopsdb_dc1` | Cassandra |
+| `CASSANDRA_RACK` | Rack name | `rack1` | Cassandra |
+| `CASSANDRA_LISTEN_ADDRESS` | IP address to listen on (`auto` = auto-detect) | `auto` | Cassandra |
+| `CASSANDRA_BROADCAST_ADDRESS` | IP address to broadcast to other nodes | Same as `CASSANDRA_LISTEN_ADDRESS` | Cassandra |
+| `CASSANDRA_RPC_ADDRESS` | CQL native transport address | `0.0.0.0` (all interfaces) | Cassandra |
+| `CASSANDRA_BROADCAST_RPC_ADDRESS` | Broadcast RPC address to clients | Same as `CASSANDRA_LISTEN_ADDRESS` | Cassandra |
+| `CASSANDRA_SEEDS` | Seed node addresses (comma-separated) | Own IP (for single-node) | Cassandra |
+| `CASSANDRA_HEAP_SIZE` | JVM heap size (both -Xms and -Xmx) | `8G` | Cassandra |
+| `INIT_SYSTEM_KEYSPACES` | Auto-convert system keyspaces to NetworkTopologyStrategy | `true` | Initialization |
+| `AXONOPS_DB_USER` | Create custom superuser with this username (optional) | - | Initialization |
+| `AXONOPS_DB_PASSWORD` | Password for custom superuser (required if `AXONOPS_DB_USER` set) | - | Initialization |
+
 ### Cassandra Configuration
 
-Configure Cassandra behavior through environment variables (10 configurable variables):
+The first 10 variables configure Cassandra's core behavior. These are processed by the entrypoint script and applied to Cassandra configuration files before Cassandra starts.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `CASSANDRA_CLUSTER_NAME` | Cluster name | `axonopsdb-timeseries` |
-| `CASSANDRA_NUM_TOKENS` | Number of tokens per node (vnodes) | `8` |
-| `CASSANDRA_DC` | Datacenter name | `axonopsdb_dc1` |
-| `CASSANDRA_RACK` | Rack name | `rack1` |
-| `CASSANDRA_LISTEN_ADDRESS` | IP address to listen on (`auto` = auto-detect) | `auto` |
-| `CASSANDRA_BROADCAST_ADDRESS` | IP address to broadcast to other nodes | Same as `CASSANDRA_LISTEN_ADDRESS` |
-| `CASSANDRA_RPC_ADDRESS` | CQL native transport address | `0.0.0.0` (all interfaces) |
-| `CASSANDRA_BROADCAST_RPC_ADDRESS` | Broadcast RPC address to clients | Same as `CASSANDRA_LISTEN_ADDRESS` |
-| `CASSANDRA_SEEDS` | Seed node addresses (comma-separated) | Own IP (for single-node) |
-| `CASSANDRA_HEAP_SIZE` | JVM heap size (both -Xms and -Xmx) | `8G` |
+**Network Configuration:**
+- `CASSANDRA_LISTEN_ADDRESS` - Set to `auto` for automatic IP detection, or specify an IP address
+- `CASSANDRA_BROADCAST_ADDRESS` - Defaults to listen address, override for NAT/firewall scenarios
+- `CASSANDRA_RPC_ADDRESS` - Set to `0.0.0.0` to listen on all interfaces
+- `CASSANDRA_SEEDS` - Comma-separated list for multi-node clusters
 
-**Note:** The endpoint snitch is automatically set to `GossipingPropertyFileSnitch` when `CASSANDRA_DC` or `CASSANDRA_RACK` are configured (recommended for all deployments). For custom snitch configuration, modify `cassandra.yaml` directly in a derived container.
+**Topology Configuration:**
+- `CASSANDRA_DC` and `CASSANDRA_RACK` - Define datacenter and rack for proper replication
+- Automatically sets endpoint snitch to `GossipingPropertyFileSnitch` when configured
 
-**Example with custom configuration:**
+**Resource Configuration:**
+- `CASSANDRA_HEAP_SIZE` - Controls JVM heap (both -Xms and -Xmx set to same value)
 
+**Example:**
 ```bash
 docker run -d --name axondb \
   -e CASSANDRA_CLUSTER_NAME=production-cluster \
@@ -227,13 +242,7 @@ docker run -d --name axondb \
 
 ### Initialization Control
 
-Control automatic initialization behavior:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `INIT_SYSTEM_KEYSPACES` | Auto-convert system keyspaces to NetworkTopologyStrategy | `true` |
-| `AXONOPS_DB_USER` | Create custom superuser with this username (optional) | - |
-| `AXONOPS_DB_PASSWORD` | Password for custom superuser (required if `AXONOPS_DB_USER` set) | - |
+The last 3 variables control automatic initialization behavior that occurs after Cassandra starts.
 
 **System Keyspace Initialization:**
 
