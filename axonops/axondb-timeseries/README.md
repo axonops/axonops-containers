@@ -316,10 +316,13 @@ docker logs axondb | head -30
 The container includes a sophisticated healthcheck script supporting three probe types:
 
 **1. Startup Probe** (`healthcheck.sh startup`)
-- Waits for initialization scripts to complete
-- Checks for semaphore files from init scripts
+- **Waits for initialization scripts to complete** (critical for async init pattern)
+- Checks for semaphore files:
+  - `/etc/axonops/init-system-keyspaces.done` (system keyspace conversion)
+  - `/etc/axonops/init-db-user.done` (custom user creation)
 - Verifies nodetool responds
-- Use for: Kubernetes `startupProbe` or Docker healthcheck during startup
+- **Blocks pod "Started" status until init completes**
+- Use for: Kubernetes `startupProbe` (ensures init finishes before traffic routing)
 
 **2. Liveness Probe** (`healthcheck.sh liveness`)
 - Checks if nodetool/JMX is responsive
@@ -354,7 +357,43 @@ docker exec axondb /usr/local/bin/healthcheck.sh readiness
 
 ### Automated System Keyspace Initialization
 
-On first boot, the container automatically converts system keyspaces to `NetworkTopologyStrategy`:
+On first boot, the container automatically converts system keyspaces to `NetworkTopologyStrategy` using a background initialization pattern.
+
+#### How It Works (Execution Flow)
+
+The initialization uses an **asynchronous background process** coordinated by **semaphore files** to ensure proper ordering:
+
+```
+1. entrypoint.sh starts (PID 1 via tini)
+   │
+   ├─► 2. Launches init-system-keyspaces.sh in background (&)
+   │      - Does NOT block Cassandra startup
+   │      - Runs in parallel with Cassandra
+   │
+   └─► 3. Starts Cassandra (exec cassandra -f)
+        │
+        ├─► Cassandra starts and begins accepting connections
+        │
+        ├─► init-system-keyspaces.sh waits for Cassandra to be ready
+        │   - Waits for CQL port (9042) to be listening
+        │   - Waits for native transport + gossip active
+        │   - Converts system keyspaces to NetworkTopologyStrategy
+        │   - Creates custom database user (if AXONOPS_DB_USER set)
+        │   - Writes semaphore files: /etc/axonops/init-system-keyspaces.done
+        │                             /etc/axonops/init-db-user.done
+        │
+        └─► healthcheck.sh (startup probe) checks for semaphores
+            - Blocks until BOTH semaphore files exist
+            - Only then marks container as "Started"
+            - Kubernetes won't route traffic until this succeeds
+```
+
+**Why This Pattern is Safe:**
+
+1. **Cassandra must run first** - Init script needs CQL access, so Cassandra must be running
+2. **Background execution** - Init doesn't block Cassandra startup
+3. **Semaphore coordination** - Healthcheck waits for init completion before marking ready
+4. **Kubernetes enforcement** - Pod not marked "Started" until semaphores exist
 
 **What it does:**
 1. Waits for Cassandra to be ready (CQL port listening, native transport active)
@@ -362,7 +401,7 @@ On first boot, the container automatically converts system keyspaces to `Network
 3. Detects datacenter name from running Cassandra instance
 4. Converts `system_auth`, `system_distributed`, `system_traces` to `NetworkTopologyStrategy`
 5. Runs repair on updated keyspaces
-6. Writes completion semaphore for healthcheck coordination
+6. Writes completion semaphore: `/etc/axonops/init-system-keyspaces.done`
 
 **Safety checks:**
 - Only runs on single-node clusters (skips multi-node)
