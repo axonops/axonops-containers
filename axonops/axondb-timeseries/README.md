@@ -192,7 +192,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ## Environment Variables
 
-The container supports 13 environment variables for configuration:
+The container supports 14 environment variables for configuration:
 
 | Variable | Description | Default | Category |
 |----------|-------------|---------|----------|
@@ -207,6 +207,7 @@ The container supports 13 environment variables for configuration:
 | `CASSANDRA_SEEDS` | Seed node addresses (comma-separated) | Own IP (for single-node) | Cassandra |
 | `CASSANDRA_HEAP_SIZE` | JVM heap size (both -Xms and -Xmx) | `8G` | Cassandra |
 | `INIT_SYSTEM_KEYSPACES` | Auto-convert system keyspaces to NetworkTopologyStrategy | `true` | Initialization |
+| `INIT_TIMEOUT` | Timeout in seconds for initialization script to wait for Cassandra | `600` (10 min) | Initialization |
 | `AXONOPS_DB_USER` | Create custom superuser with this username (optional) | - | Initialization |
 | `AXONOPS_DB_PASSWORD` | Password for custom superuser (required if `AXONOPS_DB_USER` set) | - | Initialization |
 
@@ -242,11 +243,22 @@ docker run -d --name axondb \
 
 ### Initialization Control
 
-The last 3 variables (`INIT_SYSTEM_KEYSPACES`, `AXONOPS_DB_USER`, `AXONOPS_DB_PASSWORD`) control automatic initialization behavior that occurs after Cassandra starts.
+The last 4 variables (`INIT_SYSTEM_KEYSPACES`, `INIT_TIMEOUT`, `AXONOPS_DB_USER`, `AXONOPS_DB_PASSWORD`) control automatic initialization behavior that occurs after Cassandra starts.
 
 **System Keyspace Initialization:**
 
-On first boot of a fresh single-node cluster, the container automatically converts system keyspaces from `SimpleStrategy` to `NetworkTopologyStrategy` for production readiness. This process:
+On first boot of a fresh single-node cluster, the container automatically converts system keyspaces from `SimpleStrategy` to `NetworkTopologyStrategy` for production readiness.
+
+**Timeout Configuration:**
+The initialization script waits up to `INIT_TIMEOUT` seconds (default: 600 = 10 minutes) for Cassandra to become ready. If your environment has slow startup (large heap, slow disks), increase this value:
+
+```bash
+docker run -d --name axondb \
+  -e INIT_TIMEOUT=1200 \
+  ghcr.io/axonops/axondb-timeseries:5.0.6-1.0.0
+```
+
+**The initialization process:
 
 - Only runs on single-node clusters with default `cassandra/cassandra` credentials
 - Detects datacenter name from running Cassandra instance
@@ -621,10 +633,12 @@ The initialization process uses semaphore files to coordinate between the backgr
 **Location:** `/var/lib/cassandra/.axonops/`
 
 Semaphore files are stored in the Cassandra data directory (not `/etc`) because:
-- `/var/lib/cassandra` is a persistent volume (survives container restarts)
-- `/etc` is ephemeral (lost on container restart)
-- Persistent semaphores prevent re-initialization on pod restarts
-- Allows healthcheck to immediately pass after container restart
+- `/var/lib/cassandra` is typically configured as a persistent volume in Kubernetes
+- When persistent, semaphores survive container/pod restarts
+- Prevents re-initialization on pod restarts (e.g., during rolling updates)
+- Allows healthcheck to immediately pass after restart without re-running init
+
+**Important:** Configure `/var/lib/cassandra` as a persistent volume (PersistentVolumeClaim) in your Kubernetes deployment. AxonOps Helm charts handle this automatically.
 
 **Files Created:**
 - `init-system-keyspaces.done` - System keyspace conversion status
@@ -640,17 +654,26 @@ REASON=initialized_to_nts
 **RESULT values for init-system-keyspaces.done:**
 - `success` - System keyspaces converted successfully
   - `initialized_to_nts` - Converted to NetworkTopologyStrategy
-- `skipped` - Conversion skipped (with REASON explaining why)
-  - `multi_node_cluster` - Multi-node cluster detected
-  - `already_nts` - Already using NetworkTopologyStrategy
-  - `custom_rf` - Replication factor != 1 (already customized)
-  - `disabled_by_env_var` - INIT_SYSTEM_KEYSPACES=false
-  - `cql_port_timeout` - CQL port didn't open within 10 minutes
-  - `native_transport_timeout` - Native transport didn't activate
-  - `cql_connectivity_failed` - CQL connectivity check failed
-  - `dc_detection_failed` - Could not detect datacenter name
+- `skipped` - Conversion skipped safely (with REASON explaining why)
+  - `multi_node_cluster` - Multi-node cluster detected (can't safely init)
+  - `already_nts` - Already using NetworkTopologyStrategy (already done)
+  - `custom_rf` - Replication factor != 1 (already customized by user)
+  - `disabled_by_env_var` - INIT_SYSTEM_KEYSPACES=false (user disabled)
+- `failed` - Initialization failed (with REASON) - **Init script exits with code 1**
+  - `cql_port_timeout` - CQL port didn't open within timeout (default: 10 min, configurable via `INIT_TIMEOUT`)
+  - `native_transport_timeout` - Native transport didn't activate within timeout
+  - `cql_connectivity_failed` - Cannot connect with cassandra/cassandra credentials
+  - `dc_detection_failed` - Could not detect datacenter name from nodetool or cassandra-rackdc.properties
 
-**Note:** System keyspace conversion never writes `RESULT=failed` - it only skips if conditions aren't met. This is safe because keyspace conversion failures would prevent Cassandra from starting.
+**When failures occur:**
+- `cql_port_timeout` / `native_transport_timeout` - Cassandra not starting properly (check logs)
+- `cql_connectivity_failed` - Default credentials changed or authentication misconfigured
+- `dc_detection_failed` - Cassandra not reporting datacenter name (configuration issue)
+
+**Timeout Configuration:**
+- Default timeout: 600 seconds (10 minutes)
+- Configurable via `INIT_TIMEOUT` environment variable
+- Example: `-e INIT_TIMEOUT=1200` for 20 minutes if Cassandra startup is slow
 
 **RESULT values for init-db-user.done:**
 - `success` - Custom user created successfully
@@ -754,7 +777,7 @@ Located in `.github/actions/axondb-timeseries-*/`:
 - `verify-init-scripts` - Verify initialization completed
 - `test-cqlai` - Test cqlai functionality
 - `test-cqlsh` - Test cqlsh functionality
-- `test-all-env-vars` - Test environment variable configuration (10 Cassandra + 3 initialization variables)
+- `test-all-env-vars` - Test environment variable configuration (10 Cassandra + 4 initialization = 14 total)
 - `test-dc-detection` - Test datacenter detection
 - `sign-container` - Cosign signing
 - `verify-published-image` - Post-publish verification

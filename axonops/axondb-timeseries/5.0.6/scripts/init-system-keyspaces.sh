@@ -32,16 +32,19 @@ echo "=========================================================="
 # Get native transport port from cassandra.yaml (default 9042)
 CQL_PORT=$(grep '^native_transport_port:' /etc/cassandra/cassandra.yaml | awk '{print $2}' || echo "9042")
 
-echo "Waiting for CQL port $CQL_PORT to be listening..."
-MAX_WAIT=600  # 10 minutes
+# Timeout configurable via environment variable (default: 10 minutes)
+MAX_WAIT="${INIT_TIMEOUT:-600}"
+
+echo "Waiting for CQL port $CQL_PORT to be listening (timeout: ${MAX_WAIT}s)..."
 ELAPSED=0
 
-echo "Waiting ${MAX_WAIT}s, for CQL port to open..."
 until nc -z localhost "$CQL_PORT" 2>/dev/null; do
   if [ $ELAPSED -gt $MAX_WAIT ]; then
-    echo "⚠ CQL port did not open within ${MAX_WAIT}s, skipping system keyspace init"
-    write_semaphore "skipped" "cql_port_timeout"
-    exit 0
+    echo "⚠ ERROR: CQL port did not open within ${MAX_WAIT}s"
+    echo "  This is a fatal error - Cassandra should have started by now"
+    echo "  Increase INIT_TIMEOUT env var if Cassandra needs more time to start"
+    write_semaphore "failed" "cql_port_timeout"
+    exit 1
   fi
   sleep 2
   ELAPSED=$((ELAPSED + 2))
@@ -52,15 +55,16 @@ echo "✓ CQL port $CQL_PORT is listening"
 # ============================================================================
 # 2. Wait for native transport and gossip to be enabled
 # ============================================================================
-echo "Waiting for native transport and gossip to be enabled..."
+echo "Waiting for native transport and gossip to be enabled (timeout: ${MAX_WAIT}s)..."
 ELAPSED=0
 
 until nodetool info 2>/dev/null | grep -q "Native Transport active.*: true" && \
       nodetool info 2>/dev/null | grep -q "Gossip active.*: true"; do
   if [ $ELAPSED -gt $MAX_WAIT ]; then
-    echo "⚠ Native transport/gossip did not become ready within ${MAX_WAIT}s, skipping"
-    write_semaphore "skipped" "native_transport_timeout"
-    exit 0
+    echo "⚠ ERROR: Native transport/gossip did not become ready within ${MAX_WAIT}s"
+    echo "  This is a fatal error - Cassandra internals should be active by now"
+    write_semaphore "failed" "native_transport_timeout"
+    exit 1
   fi
   sleep 2
   ELAPSED=$((ELAPSED + 2))
@@ -77,9 +81,11 @@ CQL_MAX_WAIT=60  # Wait up to 60 seconds for CQL authentication to be ready
 
 until cqlsh -u cassandra -p cassandra -e "SELECT now() FROM system.local LIMIT 1" > /dev/null 2>&1; do
   if [ $CQL_ELAPSED -gt $CQL_MAX_WAIT ]; then
-    echo "⚠ CQL connectivity check failed after ${CQL_MAX_WAIT}s, skipping system keyspace init"
-    write_semaphore "skipped" "cql_connectivity_failed"
-    exit 0
+    echo "⚠ ERROR: CQL connectivity check failed after ${CQL_MAX_WAIT}s"
+    echo "  Cannot connect with default cassandra/cassandra credentials"
+    echo "  Either authentication is not ready or credentials have been changed"
+    write_semaphore "failed" "cql_connectivity_failed"
+    exit 1
   fi
   sleep 2
   CQL_ELAPSED=$((CQL_ELAPSED + 2))
@@ -161,10 +167,11 @@ if [ -z "$DC_NAME" ]; then
 fi
 
 if [ -z "$DC_NAME" ]; then
-  echo "⚠ ERROR: Could not detect datacenter name from nodetool or cassandra-rackdc.properties"
-  echo "  Skipping system keyspace initialization to avoid misconfiguration"
-  write_semaphore "skipped" "dc_detection_failed"
-  exit 0
+  echo "⚠ ERROR: Could not detect datacenter name"
+  echo "  Tried nodetool status and cassandra-rackdc.properties"
+  echo "  Cannot convert system keyspaces without knowing the datacenter name"
+  write_semaphore "failed" "dc_detection_failed"
+  exit 1
 fi
 
 echo "✓ Detected datacenter: $DC_NAME"

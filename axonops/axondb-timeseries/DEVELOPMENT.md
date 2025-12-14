@@ -132,7 +132,7 @@ Located in `.github/actions/axondb-timeseries-*/`
 - `verify-init-scripts` - Verify system keyspace init and user creation (both handled by `init-system-keyspaces.sh`)
 - `test-cqlai` - Test cqlai (CREATE/INSERT/SELECT/DROP operations)
 - `test-cqlsh` - Test cqlsh (same operations)
-- `test-all-env-vars` - Test environment variables (10 CASSANDRA_* + 3 initialization = 13 total)
+- `test-all-env-vars` - Test environment variables (10 CASSANDRA_* + 4 initialization = 14 total)
 - `test-dc-detection` - Test datacenter detection from nodetool
 
 **Publishing:**
