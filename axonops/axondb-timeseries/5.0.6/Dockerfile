@@ -164,16 +164,14 @@ RUN if [ -z "$CQLAI_VERSION" ]; then \
 COPY --chown=cassandra:root config/cassandra.yaml /etc/cassandra/cassandra.yaml
 COPY --chown=cassandra:root config/jvm-server.options /etc/cassandra/jvm-server.options
 COPY --chown=cassandra:root config/jvm17-server.options /etc/cassandra/jvm17-server.options
+COPY --chown=cassandra:root config/cassandra-env.sh /etc/cassandra/cassandra-env.sh
+COPY --chown=cassandra:root config/logback.xml /etc/cassandra/logback.xml
 
 # Create data and log directories
 RUN mkdir -p ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chown -R cassandra:root ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod 775 ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod a+rwX ${CASSANDRA_PATH} /etc/cassandra
-
-# Copy custom Cassandra configuration files
-COPY --chown=cassandra:root config/cassandra-env.sh /etc/cassandra/cassandra-env.sh
-COPY --chown=cassandra:root config/logback.xml /etc/cassandra/logback.xml
 
 # Copy our healthcheck script
 COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
