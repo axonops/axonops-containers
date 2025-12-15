@@ -182,7 +182,7 @@ jobs:
         if: always()
         run: |
           docker stop axondb-test || true
-          docker rm axondb-test || true
+          docker rm -f axondb-test || true
 
       - name: Test SSL configuration
         uses: ./.github/actions/axondb-timeseries-test-ssl
@@ -194,7 +194,7 @@ jobs:
         if: always()
         run: |
           docker stop axondb-ssl-test || true
-          docker rm axondb-ssl-test || true
+          docker rm -f axondb-ssl-test || true
 
   # Comprehensive environment variable test (runs separately)
   axondb-timeseries-env-var-test:
