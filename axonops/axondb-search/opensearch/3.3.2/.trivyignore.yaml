@@ -1,3 +1,8 @@
+vulnerabilities:
+  - id: "CVE-2025-12183"
+    # lz4-java vulnerability - waiting for OpenSearch to update to lz4-java 1.8.1
+    # This is an upstream dependency issue
+
 secrets:
   - id: "AsymmetricPrivateKey"
     paths:
