@@ -91,6 +91,7 @@ runs:
         # Start Cassandra with SSL configuration
         docker run -d \
           -v $(pwd)/tests/certs:/etc/cassandra/certs:ro \
+          --hostname ${{ inputs.container_name }} \
           --name ${{ inputs.container_name }} \
           -p 9042:9042 \
           -e CASSANDRA_DC=ssl_test_dc \
