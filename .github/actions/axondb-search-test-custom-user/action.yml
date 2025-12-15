@@ -1,0 +1,112 @@
+name: 'AxonDB Search Test Custom User'
+description: 'Tests custom admin user creation and validates default admin is replaced'
+inputs:
+  image:
+    description: 'Container image to test'
+    required: true
+  custom_user:
+    description: 'Custom username to test'
+    required: false
+    default: 'testuser'
+  custom_password:
+    description: 'Custom password to test'
+    required: false
+    default: 'TestPassword123@Secure'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start container with custom user
+      shell: bash
+      run: |
+        echo "=== Starting Container with Custom User ==="
+        echo "Custom user: ${{ inputs.custom_user }}"
+
+        docker run -d --name axondb-custom-user-test \
+          -e AXONOPS_SEARCH_USER=${{ inputs.custom_user }} \
+          -e AXONOPS_SEARCH_PASSWORD="${{ inputs.custom_password }}" \
+          -e discovery.type=single-node \
+          -p 9202:9200 \
+          ${{ inputs.image }}
+
+        echo "Waiting for container to be ready..."
+        sleep 60
+
+    - name: Verify custom user authentication works
+      shell: bash
+      run: |
+        echo "=== Testing Custom User Authentication ==="
+
+        HTTP_CODE=$(curl -s --insecure -u "${{ inputs.custom_user }}:${{ inputs.custom_password }}" \
+          -o /dev/null -w "%{http_code}" https://localhost:9202/ 2>/dev/null || echo "000")
+
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "✓ Custom user authentication works"
+        else
+          echo "ERROR: Custom user authentication failed (HTTP $HTTP_CODE)"
+          docker logs axondb-custom-user-test | tail -50
+          exit 1
+        fi
+
+    - name: Verify default admin is BLOCKED
+      shell: bash
+      run: |
+        echo "=== Verifying Default Admin Replaced ==="
+
+        # Default admin should return 401 Unauthorized
+        HTTP_CODE=$(curl -s --insecure -u "admin:MyS3cur3P@ss2025" \
+          -o /dev/null -w "%{http_code}" https://localhost:9202/ 2>/dev/null || echo "000")
+
+        if [ "$HTTP_CODE" = "401" ]; then
+          echo "✓ Default admin BLOCKED (replaced by custom user)"
+        else
+          echo "ERROR: Default admin still works (HTTP $HTTP_CODE)"
+          echo "Default admin should be replaced when custom user is provided!"
+          exit 1
+        fi
+
+    - name: Verify semaphore contains custom user
+      shell: bash
+      run: |
+        echo "=== Verifying Semaphore ==="
+
+        docker exec axondb-custom-user-test cat /var/lib/opensearch/.axonops/init-security.done
+
+        # Check ADMIN_USER field
+        ADMIN_USER=$(docker exec axondb-custom-user-test grep "^ADMIN_USER=" /var/lib/opensearch/.axonops/init-security.done | cut -d'=' -f2)
+
+        if [ "$ADMIN_USER" = "${{ inputs.custom_user }}" ]; then
+          echo "✓ Semaphore contains custom user: $ADMIN_USER"
+        else
+          echo "ERROR: Semaphore ADMIN_USER incorrect"
+          echo "Expected: ${{ inputs.custom_user }}"
+          echo "Found: $ADMIN_USER"
+          exit 1
+        fi
+
+        # Check RESULT is success
+        RESULT=$(docker exec axondb-custom-user-test grep "^RESULT=" /var/lib/opensearch/.axonops/init-security.done | cut -d'=' -f2)
+
+        if [ "$RESULT" = "success" ]; then
+          echo "✓ RESULT=success"
+        else
+          echo "ERROR: Expected RESULT=success, got $RESULT"
+          exit 1
+        fi
+
+    - name: Cleanup
+      shell: bash
+      if: always()
+      run: |
+        docker stop axondb-custom-user-test 2>/dev/null || true
+        docker rm axondb-custom-user-test 2>/dev/null || true
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo ""
+        echo "✓ Custom user tests complete"
+        echo "  - Custom user authentication works ✓"
+        echo "  - Default admin BLOCKED ✓"
+        echo "  - Semaphore correct ✓"
+        echo "  - Admin replacement model validated ✓"

@@ -1,0 +1,107 @@
+name: 'AxonDB Search Start and Wait'
+description: 'Starts OpenSearch container and waits for it to be ready'
+inputs:
+  container_name:
+    description: 'Name for the container'
+    required: true
+    default: 'axondb-search-test'
+  image:
+    description: 'Container image to run'
+    required: true
+  port:
+    description: 'Host port to map to container port 9200'
+    required: false
+    default: '9200'
+  custom_user:
+    description: 'Custom admin username (AXONOPS_SEARCH_USER)'
+    required: false
+    default: ''
+  custom_password:
+    description: 'Custom admin password (AXONOPS_SEARCH_PASSWORD)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start OpenSearch container
+      shell: bash
+      run: |
+        echo "=== Starting AxonDB Search Container ==="
+        echo "Container: ${{ inputs.container_name }}"
+        echo "Image: ${{ inputs.image }}"
+        echo "Port: ${{ inputs.port }}:9200"
+
+        # Build docker run command
+        CMD="docker run -d --name ${{ inputs.container_name }}"
+        CMD="$CMD -e discovery.type=single-node"
+        CMD="$CMD -p ${{ inputs.port }}:9200"
+
+        # Add custom user if provided
+        if [ -n "${{ inputs.custom_user }}" ] && [ -n "${{ inputs.custom_password }}" ]; then
+          echo "Custom user: ${{ inputs.custom_user }}"
+          CMD="$CMD -e AXONOPS_SEARCH_USER=${{ inputs.custom_user }}"
+          CMD="$CMD -e AXONOPS_SEARCH_PASSWORD=${{ inputs.custom_password }}"
+        fi
+
+        CMD="$CMD ${{ inputs.image }}"
+
+        echo "Running: $CMD"
+        eval $CMD
+
+        echo "✓ Container started"
+
+    - name: Wait for container to be ready
+      shell: bash
+      run: |
+        echo "=== Waiting for OpenSearch to be Ready ==="
+
+        MAX_WAIT=120
+        ELAPSED=0
+
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          # Check if container is running
+          if ! docker inspect ${{ inputs.container_name }} --format='{{.State.Status}}' 2>/dev/null | grep -q "running"; then
+            echo "ERROR: Container is not running"
+            docker logs ${{ inputs.container_name }} | tail -50
+            exit 1
+          fi
+
+          # Test startup healthcheck
+          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup 2>/dev/null; then
+            echo "✓ Startup healthcheck passed"
+            break
+          fi
+
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
+
+          if [ $((ELAPSED % 15)) -eq 0 ]; then
+            echo "  Waiting... ${ELAPSED}s / ${MAX_WAIT}s"
+          fi
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "ERROR: Container did not become ready within ${MAX_WAIT}s"
+          echo "Last healthcheck output:"
+          docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup 2>&1 || true
+          echo "Container logs:"
+          docker logs ${{ inputs.container_name }} | tail -100
+          exit 1
+        fi
+
+        # Also wait for readiness
+        echo "Waiting for readiness healthcheck..."
+        READY_WAIT=0
+        while [ $READY_WAIT -lt 30 ]; do
+          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness 2>/dev/null; then
+            echo "✓ Readiness healthcheck passed"
+            echo "✓ Container is fully ready"
+            exit 0
+          fi
+          sleep 2
+          READY_WAIT=$((READY_WAIT + 2))
+        done
+
+        echo "⚠ Readiness check taking longer than expected, but continuing..."
+        exit 0

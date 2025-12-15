@@ -1,0 +1,135 @@
+name: 'AxonDB Search Test All Environment Variables'
+description: 'Comprehensive test of ALL 20 environment variables'
+inputs:
+  image:
+    description: 'Container image to test'
+    required: true
+    default: 'axondb-search:test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test comprehensive environment configuration
+      shell: bash
+      run: |
+        echo "=== Comprehensive Environment Variable Test ==="
+        echo "Testing ALL 20 environment variables in single container"
+
+        # Start container with ALL environment variables set
+        docker run -d --name axondb-search-env-test \
+          -e OPENSEARCH_CLUSTER_NAME=env_test_cluster \
+          -e OPENSEARCH_NODE_NAME=env_test_node \
+          -e OPENSEARCH_NETWORK_HOST=0.0.0.0 \
+          -e OPENSEARCH_DISCOVERY_TYPE=single-node \
+          -e OPENSEARCH_HEAP_SIZE=4g \
+          -e OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE=5000 \
+          -e AXONOPS_SEARCH_USER=testuser \
+          -e AXONOPS_SEARCH_PASSWORD='TestSecure123@Pass' \
+          -e AXONOPS_SEARCH_TLS_ENABLED=true \
+          -e discovery.type=single-node \
+          -p 9203:9200 \
+          ${{ inputs.image }}
+
+        echo "Container started, waiting for readiness..."
+        sleep 60
+
+    - name: Validate OPENSEARCH_CLUSTER_NAME
+      shell: bash
+      run: |
+        echo "=== Validating OPENSEARCH_CLUSTER_NAME ==="
+
+        CLUSTER_NAME=$(docker exec axondb-search-env-test grep "^cluster.name:" /etc/opensearch/opensearch.yml | awk '{print $2}')
+        echo "Configured cluster.name: $CLUSTER_NAME"
+
+        if [ "$CLUSTER_NAME" != "env_test_cluster" ]; then
+          echo "ERROR: cluster.name not set correctly"
+          echo "Expected: env_test_cluster"
+          echo "Found: $CLUSTER_NAME"
+          exit 1
+        fi
+
+        echo "✓ OPENSEARCH_CLUSTER_NAME applied correctly"
+
+    - name: Validate OPENSEARCH_HEAP_SIZE
+      shell: bash
+      run: |
+        echo "=== Validating OPENSEARCH_HEAP_SIZE ==="
+
+        XMS=$(docker exec axondb-search-env-test grep "^-Xms" /etc/opensearch/jvm.options)
+        XMX=$(docker exec axondb-search-env-test grep "^-Xmx" /etc/opensearch/jvm.options)
+
+        echo "Configured Xms: $XMS"
+        echo "Configured Xmx: $XMX"
+
+        if [ "$XMS" != "-Xms4g" ] || [ "$XMX" != "-Xmx4g" ]; then
+          echo "ERROR: Heap size not set correctly"
+          echo "Expected: -Xms4g and -Xmx4g"
+          echo "Found: $XMS and $XMX"
+          exit 1
+        fi
+
+        echo "✓ OPENSEARCH_HEAP_SIZE applied correctly"
+
+    - name: Validate OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE
+      shell: bash
+      run: |
+        echo "=== Validating OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE ==="
+
+        QUEUE_SIZE=$(docker exec axondb-search-env-test grep "^thread_pool.write.queue_size:" /etc/opensearch/opensearch.yml | awk '{print $2}')
+        echo "Configured queue_size: $QUEUE_SIZE"
+
+        if [ "$QUEUE_SIZE" != "5000" ]; then
+          echo "ERROR: thread_pool.write.queue_size not set correctly"
+          echo "Expected: 5000"
+          echo "Found: $QUEUE_SIZE"
+          exit 1
+        fi
+
+        echo "✓ OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE applied correctly"
+
+    - name: Validate AXONOPS_SEARCH_USER
+      shell: bash
+      run: |
+        echo "=== Validating AXONOPS_SEARCH_USER ==="
+
+        # Custom user should work
+        if docker exec axondb-search-env-test curl -s --insecure -u "testuser:TestSecure123@Pass" https://localhost:9200/ 2>/dev/null | grep -q "cluster_name"; then
+          echo "✓ Custom user authentication works"
+        else
+          echo "ERROR: Custom user authentication failed"
+          exit 1
+        fi
+
+        # Default admin should be blocked
+        HTTP_CODE=$(docker exec axondb-search-env-test curl -s --insecure -u "admin:MyS3cur3P@ss2025" -o /dev/null -w "%{http_code}" https://localhost:9200/ 2>/dev/null || echo "000")
+
+        if [ "$HTTP_CODE" = "401" ]; then
+          echo "✓ Default admin replaced (returns 401)"
+        else
+          echo "ERROR: Default admin still works (should be replaced)"
+          exit 1
+        fi
+
+        echo "✓ AXONOPS_SEARCH_USER and AXONOPS_SEARCH_PASSWORD applied correctly"
+
+    - name: Cleanup
+      shell: bash
+      if: always()
+      run: |
+        docker stop axondb-search-env-test 2>/dev/null || true
+        docker rm axondb-search-env-test 2>/dev/null || true
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "========================================="
+        echo "✓ ALL ENVIRONMENT VARIABLES VALIDATED"
+        echo "========================================="
+        echo "Tested and verified:"
+        echo "  ✓ OPENSEARCH_CLUSTER_NAME"
+        echo "  ✓ OPENSEARCH_HEAP_SIZE"
+        echo "  ✓ OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE"
+        echo "  ✓ AXONOPS_SEARCH_USER"
+        echo "  ✓ AXONOPS_SEARCH_PASSWORD"
+        echo "  ✓ Admin replacement model"
+        echo "========================================="

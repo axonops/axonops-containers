@@ -1,0 +1,62 @@
+name: 'AxonDB Search Verify Published Image'
+description: 'Verifies image was published to registry and signature is valid'
+inputs:
+  image:
+    description: 'Full image reference with digest'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3
+
+    - name: Verify image signature
+      shell: bash
+      run: |
+        echo "=== Verifying Image Signature ==="
+        echo "Image: ${{ inputs.image }}"
+
+        cosign verify ${{ inputs.image }} \
+          --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \
+          --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+
+        echo "✓ Image signature verified"
+
+    - name: Pull and inspect image
+      shell: bash
+      run: |
+        echo "=== Pulling and Inspecting Image ==="
+
+        docker pull ${{ inputs.image }}
+
+        # Inspect image
+        docker inspect ${{ inputs.image }} | head -50
+
+        echo "✓ Image pulled successfully from registry"
+
+    - name: Test image starts correctly
+      shell: bash
+      run: |
+        echo "=== Testing Image Starts ==="
+
+        docker run -d --name verify-image-test \
+          -e discovery.type=single-node \
+          ${{ inputs.image }}
+
+        sleep 30
+
+        # Check container is running
+        if docker inspect verify-image-test --format='{{.State.Status}}' | grep -q "running"; then
+          echo "✓ Container started successfully"
+        else
+          echo "ERROR: Container not running"
+          docker logs verify-image-test
+          exit 1
+        fi
+
+        # Cleanup
+        docker stop verify-image-test
+        docker rm verify-image-test
+
+        echo "✓ Published image verification complete"

@@ -1,0 +1,67 @@
+name: 'AxonDB Search Build and Push'
+description: 'Builds multi-arch container image and pushes to registry'
+inputs:
+  registry:
+    description: 'Container registry'
+    required: true
+  image_name:
+    description: 'Image name (without registry)'
+    required: true
+  opensearch_version:
+    description: 'OpenSearch version'
+    required: true
+  axonops_version:
+    description: 'AxonOps version'
+    required: true
+  platforms:
+    description: 'Platforms to build for'
+    required: false
+    default: 'linux/amd64,linux/arm64'
+  push:
+    description: 'Whether to push the image'
+    required: false
+    default: 'true'
+
+outputs:
+  digest:
+    description: 'Image digest'
+    value: ${{ steps.build.outputs.digest }}
+  image_ref:
+    description: 'Full image reference with digest'
+    value: ${{ steps.build.outputs.image_ref }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}
+        platforms: ${{ inputs.platforms }}
+        push: ${{ inputs.push }}
+        tags: |
+          ${{ inputs.registry }}/${{ inputs.image_name }}:${{ inputs.opensearch_version }}-${{ inputs.axonops_version }}
+          ${{ inputs.registry }}/${{ inputs.image_name }}:${{ inputs.opensearch_version }}
+          ${{ inputs.registry }}/${{ inputs.image_name }}:latest
+        build-args: |
+          BUILD_DATE=${{ github.event.repository.updated_at }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ inputs.opensearch_version }}-${{ inputs.axonops_version }}
+          GIT_TAG=${{ github.ref_name }}
+          GITHUB_ACTOR=${{ github.actor }}
+          IS_PRODUCTION_RELEASE=${{ startsWith(github.ref, 'refs/tags/axondb-search-') && 'true' || 'false' }}
+          IMAGE_FULL_NAME=${{ inputs.registry }}/${{ inputs.image_name }}:${{ inputs.opensearch_version }}-${{ inputs.axonops_version }}
+
+    - name: Output image reference
+      shell: bash
+      run: |
+        echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+        IMAGE_REF="${{ inputs.registry }}/${{ inputs.image_name }}@${{ steps.build.outputs.digest }}"
+        echo "image_ref=$IMAGE_REF" >> $GITHUB_OUTPUT
+        echo "✓ Multi-arch image built and pushed"
+        echo "  Digest: ${{ steps.build.outputs.digest }}"
+        echo "  Reference: $IMAGE_REF"

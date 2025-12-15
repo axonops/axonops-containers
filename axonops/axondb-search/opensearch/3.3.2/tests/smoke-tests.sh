@@ -102,14 +102,14 @@ else
     fail_test "Authentication required" "Expected 401, got $RESPONSE"
 fi
 
-# Test 2: Verify correct credentials work (default admin)
+# Test 2: Verify correct credentials work (custom user, since default admin is replaced)
 run_test
-echo "Test 2: Default admin credentials work"
-RESPONSE=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" -o /dev/null -w "%{http_code}" "$OPENSEARCH_URL/" 2>/dev/null || echo "000")
+echo "Test 2: Custom admin credentials work"
+RESPONSE=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" -o /dev/null -w "%{http_code}" "$OPENSEARCH_URL/" 2>/dev/null || echo "000")
 if [ "$RESPONSE" = "200" ]; then
-    pass_test "Default admin credentials work (got 200 OK)"
+    pass_test "Custom admin credentials work (got 200 OK)"
 else
-    fail_test "Default admin credentials" "Expected 200, got $RESPONSE"
+    fail_test "Custom admin credentials" "Expected 200, got $RESPONSE"
 fi
 
 # Test 3: Verify wrong credentials fail
@@ -436,14 +436,20 @@ else
     fail_test "Custom user in semaphore" "ADMIN_USER not found or incorrect"
 fi
 
-# Test 26: Init script log exists
+# Test 26: Verify pre-startup user creation (no init script needed)
 run_test
-echo "Test 26: Init script log exists and shows success"
-INIT_LOG=$(podman exec "$CONTAINER_NAME" cat /var/log/opensearch/init-opensearch.log 2>/dev/null || echo "")
-if echo "$INIT_LOG" | grep -q "Admin User Created"; then
-    pass_test "Init script log shows successful user creation"
+echo "Test 26: Pre-startup user creation"
+# With pre-startup approach, users are created in entrypoint.sh before OpenSearch starts
+# Check if custom user was created by verifying it exists in security index
+if [ -n "$CUSTOM_USER" ]; then
+    USER_CHECK=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/" 2>/dev/null)
+    if echo "$USER_CHECK" | grep -q "cluster_name"; then
+        pass_test "Pre-startup user creation successful (user authenticated)"
+    else
+        fail_test "Pre-startup user creation" "Custom user cannot authenticate"
+    fi
 else
-    fail_test "Init script log" "Success message not found"
+    pass_test "Pre-startup user creation (no custom user requested)"
 fi
 
 echo ""
@@ -455,7 +461,7 @@ echo ""
 # Test 28: Cluster name from environment variable
 run_test
 echo "Test 28: OPENSEARCH_CLUSTER_NAME applied"
-CLUSTER_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/" 2>/dev/null)
+CLUSTER_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/" 2>/dev/null)
 CLUSTER_NAME=$(echo "$CLUSTER_INFO" | grep -o '"cluster_name" : "[^"]*"' | cut -d'"' -f4)
 if [ "$CLUSTER_NAME" = "axonopsdb-search" ]; then
     pass_test "Cluster name is axonopsdb-search (default)"
@@ -466,8 +472,8 @@ fi
 # Test 29: Heap size from environment variable
 run_test
 echo "Test 29: OPENSEARCH_HEAP_SIZE applied"
-# Check JVM info for heap settings
-JVM_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_nodes/stats/jvm" 2>/dev/null)
+# Check JVM info for heap settings (use custom user credentials)
+JVM_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_nodes/stats/jvm" 2>/dev/null)
 HEAP_MAX=$(echo "$JVM_INFO" | grep -o '"heap_max_in_bytes":[0-9]*' | head -1 | cut -d':' -f2)
 # 8GB = 8589934592 bytes
 EXPECTED_HEAP=8589934592
@@ -487,7 +493,7 @@ fi
 # Test 30: Discovery type from environment variable
 run_test
 echo "Test 30: discovery.type applied"
-CLUSTER_SETTINGS=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_cluster/settings?include_defaults=true&flat_settings=true" 2>/dev/null)
+CLUSTER_SETTINGS=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_cluster/settings?include_defaults=true&flat_settings=true" 2>/dev/null)
 if echo "$CLUSTER_SETTINGS" | grep -q '"discovery.type":"single-node"'; then
     pass_test "Discovery type is single-node"
 else
@@ -497,7 +503,7 @@ fi
 # Test 31: Network host from environment variable
 run_test
 echo "Test 31: network.host applied"
-NODE_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_nodes/_local" 2>/dev/null)
+NODE_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_nodes/_local" 2>/dev/null)
 # Check for bound_address showing all interfaces ([::]:9200 or 0.0.0.0:9200)
 if echo "$NODE_INFO" | grep -qE '"bound_address".*\[::\]:9200'; then
     pass_test "Network host is 0.0.0.0 (bound to all interfaces)"
@@ -508,7 +514,8 @@ fi
 # Test 32: Custom admin user from environment variables
 run_test
 echo "Test 32: AXONOPS_SEARCH_USER created"
-USER_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_plugins/_security/api/internalusers/$CUSTOM_USER" 2>/dev/null)
+# Use custom user credentials since default admin is replaced
+USER_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_plugins/_security/api/internalusers/$CUSTOM_USER" 2>/dev/null)
 if echo "$USER_INFO" | grep -q "\"$CUSTOM_USER\""; then
     pass_test "Custom user $CUSTOM_USER exists in security index"
 else
@@ -518,8 +525,8 @@ fi
 # Test 33: TLS enabled by default (AXONOPS_SEARCH_TLS_ENABLED)
 run_test
 echo "Test 33: TLS enabled by default (HTTPS)"
-# Check if HTTPS works (TLS should be enabled by default)
-HTTPS_RESPONSE=$(curl -s --insecure -o /dev/null -w "%{http_code}" -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "https://localhost:9200/" 2>/dev/null || echo "000")
+# Check if HTTPS works (TLS should be enabled by default) - use custom user credentials
+HTTPS_RESPONSE=$(curl -s --insecure -o /dev/null -w "%{http_code}" -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "https://localhost:9200/" 2>/dev/null || echo "000")
 if [ "$HTTPS_RESPONSE" = "200" ]; then
     pass_test "HTTPS accessible (TLS enabled by default)"
 else
@@ -628,6 +635,52 @@ if [ -n "$OPENSEARCH_PID" ]; then
     fi
 else
     fail_test "Process failure detection" "Could not find OpenSearch PID"
+fi
+
+echo ""
+echo "========================================" | tee -a "$RESULTS_FILE"
+echo "ADVANCED ENVIRONMENT VARIABLE TESTS (NEW SETTINGS)" | tee -a "$RESULTS_FILE"
+echo "========================================" | tee -a "$RESULTS_FILE"
+echo ""
+
+# Test 38: Start container with advanced env vars to verify they're written to opensearch.yml
+run_test
+echo "Test 38: Advanced env vars written to opensearch.yml"
+echo "  Starting container with advanced settings..."
+
+ADV_CONTAINER="opensearch-advanced-env-test"
+podman run -d --name "$ADV_CONTAINER" \
+  -e OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE=5000 \
+  -e OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION=true \
+  -e OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE=OPTIONAL \
+  -e OPENSEARCH_SECURITY_ADMIN_DN="CN=custom.admin,O=Custom,OU=Test" \
+  -e discovery.type=single-node \
+  -p 9201:9200 \
+  axondb-search:test >/dev/null 2>&1
+
+sleep 20
+
+# Check if values are in opensearch.yml
+CONFIG_CONTENT=$(podman exec "$ADV_CONTAINER" cat /etc/opensearch/opensearch.yml 2>/dev/null)
+
+QUEUE_CHECK=$(echo "$CONFIG_CONTENT" | grep "thread_pool.write.queue_size: 5000" || echo "")
+HOSTNAME_CHECK=$(echo "$CONFIG_CONTENT" | grep "enforce_hostname_verification: true" || echo "")
+CLIENTAUTH_CHECK=$(echo "$CONFIG_CONTENT" | grep "clientauth_mode: OPTIONAL" || echo "")
+ADMIN_DN_CHECK=$(echo "$CONFIG_CONTENT" | grep "CN=custom.admin,O=Custom,OU=Test" || echo "")
+
+# Clean up
+podman stop "$ADV_CONTAINER" >/dev/null 2>&1
+podman rm "$ADV_CONTAINER" >/dev/null 2>&1
+
+if [ -n "$QUEUE_CHECK" ] && [ -n "$HOSTNAME_CHECK" ] && [ -n "$CLIENTAUTH_CHECK" ] && [ -n "$ADMIN_DN_CHECK" ]; then
+    pass_test "All 4 advanced env vars written to opensearch.yml"
+else
+    MISSING=""
+    [ -z "$QUEUE_CHECK" ] && MISSING="${MISSING} QUEUE_SIZE"
+    [ -z "$HOSTNAME_CHECK" ] && MISSING="${MISSING} HOSTNAME_VERIFICATION"
+    [ -z "$CLIENTAUTH_CHECK" ] && MISSING="${MISSING} CLIENTAUTH_MODE"
+    [ -z "$ADMIN_DN_CHECK" ] && MISSING="${MISSING} ADMIN_DN"
+    fail_test "Advanced env vars" "Missing:$MISSING"
 fi
 
 echo ""

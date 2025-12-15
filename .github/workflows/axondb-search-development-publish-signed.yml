@@ -1,0 +1,248 @@
+name: AxonDB Search Development Publish Signed to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      dev_git_tag:
+        description: 'Git tag on development branch to build (e.g., vdev-axondb-search-1.0.0)'
+        required: true
+        type: string
+      container_version:
+        description: 'Container version for GHCR (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: axonops/development/axondb-search
+
+jobs:
+  axondb-search-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dev_git_tag }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract OpenSearch version from Dockerfile
+        id: version
+        run: |
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
+          echo "✓ OpenSearch version: ${OPENSEARCH_VER}"
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axondb-search:test
+          build-args: |
+            OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
+            OPENSEARCH_VERSION=${{ vars.AXONDB_TIMESERIES_OPENSEARCH_VERSION }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.dev_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container and wait for services
+        uses: ./.github/actions/axondb-search-start-and-wait
+        with:
+          container_name: axondb-test
+
+      - name: Verify no startup errors
+        uses: ./.github/actions/axondb-search-verify-no-startup-errors
+        with:
+          container_name: axondb-test
+
+      - name: Verify versions (jemalloc, OpenSearch, Java, opensearch)
+        uses: ./.github/actions/axondb-search-verify-versions
+        with:
+          opensearch_version: ${{ steps.version.outputs.opensearch_version }}
+          container_name: axondb-test
+
+      - name: Test healthcheck script
+        uses: ./.github/actions/axondb-search-test-healthcheck
+        with:
+          container_name: axondb-test
+
+      - name: Verify init scripts
+        uses: ./.github/actions/axondb-search-verify-init-scripts
+        with:
+          container_name: axondb-test
+
+      - name: Test opensearch
+        uses: ./.github/actions/axondb-search-test-opensearch
+        with:
+          container_name: axondb-test
+
+      - name: Test cqlsh
+        uses: ./.github/actions/axondb-search-test-cqlsh
+        with:
+          container_name: axondb-test
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-search:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'axonops/axondb-search/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-search:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'axonops/axondb-search/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker logs axondb-test || true
+          docker stop axondb-test || true
+          docker rm axondb-test || true
+
+  axondb-search-build-push-sign:
+    needs: axondb-search-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dev_git_tag }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract OpenSearch version
+        id: version
+        run: |
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
+          echo "✓ OpenSearch version: ${OPENSEARCH_VER}"
+
+      - name: Build and push Docker image (multi-arch)
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
+            OPENSEARCH_VERSION=${{ vars.AXONDB_TIMESERIES_OPENSEARCH_VERSION }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.dev_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Sign container image
+        uses: ./.github/actions/axondb-search-sign-container
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Re-push tags after signing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
+            OPENSEARCH_VERSION=${{ vars.AXONDB_TIMESERIES_OPENSEARCH_VERSION }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.dev_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
+          cache-from: type=gha
+
+      - name: Development image published and signed
+        run: |
+          echo "✓ Development image pushed and signed to GHCR"
+          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
+
+  axondb-search-verify-published:
+    needs: axondb-search-build-push-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract OpenSearch version
+        id: version
+        run: |
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
+
+      - name: Verify published image
+        uses: ./.github/actions/axondb-search-verify-published-image
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
+          image_digest: ${{ needs.axondb-search-build-push-sign.outputs.digest }}

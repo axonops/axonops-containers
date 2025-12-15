@@ -1,0 +1,154 @@
+name: AxonDB Search Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'axonops/axondb-search/**'
+      - '!axonops/axondb-search/**/*.md'
+      - '.github/workflows/axondb-search-*.yml'
+      - '.github/actions/axondb-search-*/**'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'axonops/axondb-search/**'
+      - '!axonops/axondb-search/**/*.md'
+      - '.github/workflows/axondb-search-*.yml'
+      - '.github/actions/axondb-search-*/**'
+  workflow_dispatch:
+    inputs:
+      opensearch_version:
+        description: 'OpenSearch version to test'
+        required: false
+        type: string
+        default: '3.3.2'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  OPENSEARCH_VERSION: 3.3.2
+
+jobs:
+  axondb-search-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        opensearch_version: ['3.3.2']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract OpenSearch version from Dockerfile
+        id: version
+        run: |
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
+          echo "✓ OpenSearch version from Dockerfile: ${OPENSEARCH_VER}"
+
+      - name: Build image for testing
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axondb-search:test
+          build-args: |
+            OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=test
+            GIT_TAG=test-build
+            GITHUB_ACTOR=${{ github.actor }}
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=axondb-search:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container and wait
+        uses: ./.github/actions/axondb-search-start-and-wait
+        with:
+          container_name: axondb-search-test
+          image: axondb-search:test
+          custom_user: testuser
+          custom_password: TestPassword123@Secure
+
+      - name: Verify startup banner
+        uses: ./.github/actions/axondb-search-verify-startup-banner
+        with:
+          container_name: axondb-search-test
+          expected_opensearch_version: ${{ steps.version.outputs.opensearch_version }}
+
+      - name: Verify versions
+        uses: ./.github/actions/axondb-search-verify-versions
+        with:
+          container_name: axondb-search-test
+          expected_version: ${{ steps.version.outputs.opensearch_version }}
+          admin_user: testuser
+          admin_password: TestPassword123@Secure
+
+      - name: Test healthcheck probes
+        uses: ./.github/actions/axondb-search-test-healthcheck
+        with:
+          container_name: axondb-search-test
+
+      - name: Verify AxonOps certificates
+        uses: ./.github/actions/axondb-search-verify-certificates
+        with:
+          container_name: axondb-search-test
+
+      - name: Test authentication
+        uses: ./.github/actions/axondb-search-test-authentication
+        with:
+          container_name: axondb-search-test
+          admin_user: testuser
+          admin_password: TestPassword123@Secure
+
+      - name: Test REST API operations
+        uses: ./.github/actions/axondb-search-test-rest-api
+        with:
+          container_name: axondb-search-test
+          admin_user: testuser
+          admin_password: TestPassword123@Secure
+
+      - name: Cleanup test container
+        if: always()
+        run: |
+          docker stop axondb-search-test 2>/dev/null || true
+          docker rm axondb-search-test 2>/dev/null || true
+
+      - name: Test custom user replacement
+        uses: ./.github/actions/axondb-search-test-custom-user
+        with:
+          image: axondb-search:test
+
+      - name: Test all environment variables
+        uses: ./.github/actions/axondb-search-test-all-env-vars
+        with:
+          image: axondb-search:test
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "### AxonDB Search Build and Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenSearch Version: ${{ steps.version.outputs.opensearch_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: axondb-search:test" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

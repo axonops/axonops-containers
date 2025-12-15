@@ -1,0 +1,67 @@
+name: 'AxonDB Search Verify Versions'
+description: 'Verifies OpenSearch version via REST API'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-search-test'
+  expected_version:
+    description: 'Expected OpenSearch version'
+    required: false
+    default: '3.3.2'
+  admin_user:
+    description: 'Admin username for authentication'
+    required: false
+    default: 'admin'
+  admin_password:
+    description: 'Admin password for authentication'
+    required: false
+    default: 'MyS3cur3P@ss2025'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify OpenSearch version
+      shell: bash
+      run: |
+        echo "=== Verifying OpenSearch Version ==="
+
+        # Get version info from REST API
+        VERSION_INFO=$(docker exec ${{ inputs.container_name }} curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" https://localhost:9200/ 2>/dev/null)
+
+        if [ -z "$VERSION_INFO" ]; then
+          echo "ERROR: Could not get version info from REST API"
+          exit 1
+        fi
+
+        echo "Version info response:"
+        echo "$VERSION_INFO" | head -20
+
+        # Extract version number
+        ACTUAL_VERSION=$(echo "$VERSION_INFO" | grep -o '"number" : "[^"]*"' | cut -d'"' -f4)
+
+        echo ""
+        echo "Expected version: ${{ inputs.expected_version }}"
+        echo "Actual version: $ACTUAL_VERSION"
+
+        if [ "$ACTUAL_VERSION" != "${{ inputs.expected_version }}" ]; then
+          echo "ERROR: Version mismatch!"
+          exit 1
+        fi
+
+        # Verify distribution is opensearch
+        if ! echo "$VERSION_INFO" | grep -q '"distribution" : "opensearch"'; then
+          echo "ERROR: Distribution is not opensearch"
+          exit 1
+        fi
+
+        # Verify build type
+        if ! echo "$VERSION_INFO" | grep -q '"build_type" : "tar"'; then
+          echo "ERROR: Build type is not tar"
+          exit 1
+        fi
+
+        echo ""
+        echo "✓ OpenSearch version verified: $ACTUAL_VERSION"
+        echo "✓ Distribution: opensearch"
+        echo "✓ Build type: tar"

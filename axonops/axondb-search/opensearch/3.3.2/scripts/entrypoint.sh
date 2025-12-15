@@ -157,6 +157,27 @@ if [ -n "$OPENSEARCH_HEAP_SIZE" ]; then
     _sed-in-place "/etc/opensearch/jvm.options" -r 's/^-Xmx[0-9]+[GgMm]$/-Xmx'"$OPENSEARCH_HEAP_SIZE"'/'
 fi
 
+# Apply thread pool write queue size if env var set
+if [ -n "$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE" ]; then
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(thread_pool\.write\.queue_size:).*/\2 '"$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE"'/'
+fi
+
+# Apply transport SSL hostname verification if env var set
+if [ -n "$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION" ]; then
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.transport\.enforce_hostname_verification:).*/\2 '"$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION"'/'
+fi
+
+# Apply HTTP SSL client auth mode if env var set
+if [ -n "$OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE" ]; then
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.http\.clientauth_mode:).*/\2 '"$OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE"'/'
+fi
+
+# Apply security admin DN if env var set (for custom certificate scenarios)
+if [ -n "$OPENSEARCH_SECURITY_ADMIN_DN" ]; then
+    # Replace the admin_dn line (format: "  - \"DN_STRING\"")
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's|^  - ".*axondbsearch.*"|  - "'"$OPENSEARCH_SECURITY_ADMIN_DN"'"|'
+fi
+
 # Disable HTTP SSL if AXONOPS_SEARCH_TLS_ENABLED=false
 # This is useful when TLS is terminated at load balancer/ingress
 # Transport layer SSL remains enabled for node-to-node communication
@@ -184,43 +205,79 @@ if [[ "$(id -u)" == "0" ]]; then
     exit 1
 fi
 
-# Initialize OpenSearch security in background (non-blocking)
-# This will wait for OpenSearch to be ready, then:
-#   1. Install demo SSL configuration (required for security plugin)
-#   2. Create custom admin user (if AXONOPS_SEARCH_USER and AXONOPS_SEARCH_PASSWORD are set)
-# Can be disabled by setting INIT_OPENSEARCH_SECURITY=false
-INIT_OPENSEARCH_SECURITY="${INIT_OPENSEARCH_SECURITY:-true}"
-
 # Performance Analyzer - disabled by default (AxonOps provides monitoring)
 export DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI="${DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI:-true}"
+
+# Create custom admin user BEFORE starting OpenSearch (if requested)
+# This REPLACES the default admin user in internal_users.yml
+# Security: Only ONE admin user should exist (either default OR custom, never both)
+if [ -n "$AXONOPS_SEARCH_USER" ] && [ -n "$AXONOPS_SEARCH_PASSWORD" ]; then
+    echo "=== Replacing Default Admin with Custom Admin User (Pre-Startup) ==="
+    echo "  Username: $AXONOPS_SEARCH_USER"
+    echo "  Replacing default 'admin' user for security"
+    echo ""
+
+    # Generate password hash using OpenSearch security tools
+    echo "  Generating password hash..."
+    HASH_OUTPUT=$(cd "${OPENSEARCH_HOME}" && bash "${OPENSEARCH_HOME}/plugins/opensearch-security/tools/hash.sh" -p "$AXONOPS_SEARCH_PASSWORD" 2>/dev/null)
+    PASSWORD_HASH=$(echo "$HASH_OUTPUT" | tail -1)
+
+    if [ -z "$PASSWORD_HASH" ] || ! echo "$PASSWORD_HASH" | grep -q '^\$2[ayb]\$'; then
+        echo "  ⚠ ERROR: Failed to generate valid bcrypt password hash"
+        exit 1
+    fi
+
+    # REPLACE internal_users.yml with ONLY the custom user (delete default admin)
+    INTERNAL_USERS_FILE="${OPENSEARCH_PATH_CONF}/opensearch-security/internal_users.yml"
+    echo "  Writing ${INTERNAL_USERS_FILE} with ONLY custom user..."
+    cat > "$INTERNAL_USERS_FILE" <<EOF
+---
+_meta:
+  type: "internalusers"
+  config_version: 2
+
+# AxonOps custom admin user (REPLACES default admin for security)
+# Created from AXONOPS_SEARCH_USER and AXONOPS_SEARCH_PASSWORD environment variables
+${AXONOPS_SEARCH_USER}:
+  hash: "${PASSWORD_HASH}"
+  reserved: true
+  backend_roles:
+  - "admin"
+  description: "AxonOps admin user created via AXONOPS_SEARCH_USER (default admin replaced)"
+EOF
+
+    echo "  ✓ Default 'admin' user REMOVED"
+    echo "  ✓ Custom admin user created: $AXONOPS_SEARCH_USER"
+    echo "  ✓ ONLY custom user will exist (no default admin)"
+    echo ""
+fi
 
 # Display security configuration
 if [ "$DISABLE_SECURITY_PLUGIN" = "true" ]; then
     echo "⚠ WARNING: Security plugin disabled (DISABLE_SECURITY_PLUGIN=true)"
     echo "  This is NOT recommended for production!"
-elif [ -n "$AXONOPS_SEARCH_USER" ] && [ -n "$AXONOPS_SEARCH_PASSWORD" ]; then
+elif [ -n "$AXONOPS_SEARCH_USER" ]; then
     echo "✓ Security enabled with custom admin user: $AXONOPS_SEARCH_USER"
 else
-    echo "✓ Security enabled with default demo configuration"
-    echo "  Default credentials: admin / admin (change for production!)"
+    echo "✓ Security enabled with default admin user"
+    echo "  Default credentials: admin / MyS3cur3P@ss2025"
 fi
 echo ""
 
-if [ "$INIT_OPENSEARCH_SECURITY" = "true" ]; then
-    echo "Starting security initialization in background..."
-    (/usr/local/bin/init-opensearch.sh > ${OPENSEARCH_LOG_DIR}/init-opensearch.log 2>&1 &)
-else
-    echo "OpenSearch security initialization disabled (INIT_OPENSEARCH_SECURITY=false)"
-    echo "Writing semaphore file to allow healthcheck to proceed..."
-    # Write semaphore immediately so healthcheck doesn't block
-    # Located in /var/lib/opensearch (persistent volume) not /etc (ephemeral)
-    mkdir -p ${OPENSEARCH_DATA_DIR}/.axonops
-    {
-        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "RESULT=skipped"
-        echo "REASON=disabled_by_env_var"
-    } > ${OPENSEARCH_DATA_DIR}/.axonops/init-security.done
-fi
+# Write semaphore file immediately (no background init script needed)
+mkdir -p ${OPENSEARCH_DATA_DIR}/.axonops
+{
+    echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "RESULT=success"
+    if [ -n "$AXONOPS_SEARCH_USER" ]; then
+        echo "REASON=custom_user_created_prestartup"
+        echo "ADMIN_USER=${AXONOPS_SEARCH_USER}"
+    else
+        echo "REASON=default_config"
+    fi
+} > ${OPENSEARCH_DATA_DIR}/.axonops/init-security.done
+echo "✓ Semaphore written (pre-startup configuration complete)"
+echo ""
 
 # Parse Docker env vars to customize OpenSearch
 # e.g. Setting the env var cluster.name=testcluster

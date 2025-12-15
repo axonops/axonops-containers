@@ -121,25 +121,43 @@ RUN mkdir -p "$OPENSEARCH_HOME" /licenses && \
     chown -R opensearch:root "$OPENSEARCH_HOME" /etc/opensearch /licenses && \
     rm -rf /tmp/*
 
-# Overlay our custom config files to /etc/opensearch
-COPY --chown=opensearch:root config/opensearch.yml /etc/opensearch/opensearch.yml
+# Overlay our custom config files to /etc/opensearch (before SSL setup)
 COPY --chown=opensearch:root config/jvm.options /etc/opensearch/jvm.options
 COPY --chown=opensearch:root config/log4j2.properties /etc/opensearch/log4j2.properties
 
-# Install demo SSL configuration for security plugin (runs at build time, not runtime)
-# This provides TLS certificates required by the security plugin
-# Demo certificates are suitable for development; production should use proper CA-signed certificates
-# Note: Requires OPENSEARCH_INITIAL_ADMIN_PASSWORD for OpenSearch 2.12.0+ (strong password required)
-# Default admin password: MyS3cur3P@ss2025 (will be changed via AXONOPS_SEARCH_USER/PASSWORD at runtime)
+# Install demo SSL configuration (runs OpenSearch security initialization)
+# This sets up security plugin infrastructure, opensearch-security directory, and security configs
+# We'll DELETE the demo certificates and replace with AxonOps-branded ones
 RUN cd ${OPENSEARCH_HOME} && \
     DISABLE_INSTALL_DEMO_CONFIG=false \
     OPENSEARCH_INITIAL_ADMIN_PASSWORD='MyS3cur3P@ss2025' \
     bash ${OPENSEARCH_HOME}/plugins/opensearch-security/tools/install_demo_configuration.sh -y -i -s && \
     chown -R opensearch:root /etc/opensearch
 
-# Overlay our baseline security configuration files
-# These are the demo configs extracted for future customization
-# The init script will append custom users to internal_users.yml at runtime if AXONOPS_SEARCH_USER is provided
+# Generate AxonOps-branded SSL/TLS certificates
+# This creates self-signed certificates with AxonOps branding (CN: axondbsearch.axonops.com)
+COPY scripts/generate-certs.sh /tmp/generate-certs.sh
+RUN chmod +x /tmp/generate-certs.sh && \
+    OPENSEARCH_PATH_CONF=/etc/opensearch /tmp/generate-certs.sh && \
+    rm /tmp/generate-certs.sh && \
+    chown -R opensearch:root /etc/opensearch/certs
+
+# DELETE demo certificates to prevent "unsafe democertificates" detection
+# OpenSearch detects demo certs by SHA256 hash and blocks them when allow_unsafe_democertificates=false
+# We remove ALL demo certificate files installed by the demo script
+RUN rm -f /etc/opensearch/esnode.pem \
+          /etc/opensearch/esnode-key.pem \
+          /etc/opensearch/kirk.pem \
+          /etc/opensearch/kirk-key.pem \
+          /etc/opensearch/root-ca.pem \
+          /etc/opensearch/root-ca-key.pem \
+          /etc/opensearch/*.srl \
+          /etc/opensearch/securityadmin_demo.sh && \
+    echo "✓ Demo certificates removed, using only AxonOps-branded certificates"
+
+# Now overlay our customized opensearch.yml and security configs
+# This updates the security plugin to use our AxonOps certificates instead of demo certs
+COPY --chown=opensearch:root config/opensearch.yml /etc/opensearch/opensearch.yml
 COPY --chown=opensearch:root config/security/action_groups.yml /etc/opensearch/opensearch-security/action_groups.yml
 COPY --chown=opensearch:root config/security/allowlist.yml /etc/opensearch/opensearch-security/allowlist.yml
 COPY --chown=opensearch:root config/security/audit.yml /etc/opensearch/opensearch-security/audit.yml
