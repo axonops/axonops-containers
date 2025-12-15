@@ -1,9 +1,0 @@
-vulnerability:
-  - id: CVE-2025-12183
-
-secret:
-  - id: "AsymmetricPrivateKey"
-    paths:
-      - "/etc/opensearch/certs/admin-key.pem"
-      - "/etc/opensearch/certs/node-key.pem"
-      - "/etc/opensearch/certs/root-ca-key.pem"
