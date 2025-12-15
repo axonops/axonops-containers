@@ -1,6 +1,6 @@
 AxonDB Search Smoke Test Results
 =================================
-Date: Mon Dec 15 02:27:38 PM CET 2025
+Date: Mon Dec 15 03:16:24 PM CET 2025
 
 ========================================
 AUTHENTICATION TESTS
@@ -19,7 +19,7 @@ CLUSTER HEALTH TESTS
 INDEX & DOCUMENT CRUD TESTS
 ========================================
 ✓ PASS: Index created successfully
-✓ PASS: Document created (ID: Gy4xIpsBvSuHOaIj-v3F)
+✓ PASS: Document created (ID: AsheIpsBwBFanpDUoYPu)
 ✓ PASS: Document retrieved successfully
 ✓ PASS: Document found via search
 ✓ PASS: Document deleted successfully
@@ -33,9 +33,9 @@ HEALTHCHECK SCRIPT TESTS
 ========================================
 PERFORMANCE & BULK TESTS
 ========================================
-✓ PASS: Bulk indexed 1000 documents in 0s
+✓ PASS: Bulk indexed 1000 documents in 1s
 ✓ PASS: All 1000 documents indexed correctly
-✓ PASS: Search query returned 1 result in 29ms (< 1000ms)
+✓ PASS: Search query returned 1 result in 28ms (< 1000ms)
 ========================================
 DATA PERSISTENCE TESTS
 ========================================
@@ -69,10 +69,14 @@ PROCESS FAILURE DETECTION TEST (DESTRUCTIVE - RUNS LAST)
 ========================================
 ✓ PASS: Liveness healthcheck correctly detected process failure (exit code 1)
 ========================================
+ADVANCED ENVIRONMENT VARIABLE TESTS (NEW SETTINGS)
+========================================
+✓ PASS: All 4 advanced env vars written to opensearch.yml
+========================================
 TEST SUMMARY
 ========================================
-Tests Run:    36
-Tests Passed: 36
+Tests Run:    37
+Tests Passed: 37
 Tests Failed: 0
 
 [0;32m✓ ALL TESTS PASSED![0m
