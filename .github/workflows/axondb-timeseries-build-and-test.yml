@@ -137,12 +137,6 @@ jobs:
         with:
           container_name: axondb-test
 
-      - name: Test SSL configuration
-        uses: ./.github/actions/axondb-timeseries-test-ssl
-        with:
-          container_name: axondb-ssl-test
-          image: axondb-timeseries:test
-
       - name: Run Trivy container security scan (strict)
         uses: aquasecurity/trivy-action@0.33.0
         with:
@@ -189,6 +183,18 @@ jobs:
         run: |
           docker stop axondb-test || true
           docker rm axondb-test || true
+
+      - name: Test SSL configuration
+        uses: ./.github/actions/axondb-timeseries-test-ssl
+        with:
+          container_name: axondb-ssl-test
+          image: axondb-timeseries:test
+
+      - name: Cleanup SSL test container
+        if: always()
+        run: |
+          docker stop axondb-ssl-test || true
+          docker rm axondb-ssl-test || true
 
   # Comprehensive environment variable test (runs separately)
   axondb-timeseries-env-var-test:

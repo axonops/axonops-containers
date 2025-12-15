@@ -43,7 +43,7 @@ runs:
 
         [alt_names]
         DNS.1 = localhost
-        DNS.2 = axondb-ssl-test
+        DNS.2 = ${{ inputs.container_name }}
         IP.1 = 127.0.0.1
         EOF
 
@@ -90,7 +90,7 @@ runs:
         # Start Cassandra with SSL configuration
         docker run -d \
           -v $(pwd)/tests/certs:/etc/cassandra/certs:ro \
-          --name axondb-ssl-test \
+          --name ${{ inputs.container_name }} \
           -p 9042:9042 \
           -e CASSANDRA_DC=ssl_test_dc \
           -e CASSANDRA_HEAP_SIZE=1G \
@@ -111,9 +111,9 @@ runs:
         sleep 120
 
         # Check if Cassandra started successfully
-        if ! docker ps | grep -q axondb-ssl-test; then
+        if ! docker ps | grep -q ${{ inputs.container_name }}; then
           echo "ERROR: Container failed to start"
-          docker logs axondb-ssl-test
+          docker logs ${{ inputs.container_name }}
           exit 1
         fi
 
