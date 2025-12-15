@@ -51,7 +51,6 @@ jobs:
           tags: axondb-search:test
           build-args: |
             OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
-            OPENSEARCH_VERSION=${{ vars.AXONDB_TIMESERIES_OPENSEARCH_VERSION }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}
@@ -181,7 +180,6 @@ jobs:
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           build-args: |
             OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
-            OPENSEARCH_VERSION=${{ vars.AXONDB_TIMESERIES_OPENSEARCH_VERSION }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}
@@ -210,7 +208,6 @@ jobs:
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           build-args: |
             OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
-            OPENSEARCH_VERSION=${{ vars.AXONDB_TIMESERIES_OPENSEARCH_VERSION }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}
