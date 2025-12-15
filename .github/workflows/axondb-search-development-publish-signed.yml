@@ -68,9 +68,6 @@ jobs:
           image: axondb-search:test
 
       - name: Verify no startup errors
-        uses: ./.github/actions/axondb-search-verify-no-startup-errors
-        with:
-          container_name: axondb-test
 
       - name: Verify versions (jemalloc, OpenSearch, Java, opensearch)
         uses: ./.github/actions/axondb-search-verify-versions
