@@ -102,14 +102,14 @@ else
     fail_test "Authentication required" "Expected 401, got $RESPONSE"
 fi
 
-# Test 2: Verify correct credentials work (default admin)
+# Test 2: Verify correct credentials work (custom user, since default admin is replaced)
 run_test
-echo "Test 2: Default admin credentials work"
-RESPONSE=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" -o /dev/null -w "%{http_code}" "$OPENSEARCH_URL/" 2>/dev/null || echo "000")
+echo "Test 2: Custom admin credentials work"
+RESPONSE=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" -o /dev/null -w "%{http_code}" "$OPENSEARCH_URL/" 2>/dev/null || echo "000")
 if [ "$RESPONSE" = "200" ]; then
-    pass_test "Default admin credentials work (got 200 OK)"
+    pass_test "Custom admin credentials work (got 200 OK)"
 else
-    fail_test "Default admin credentials" "Expected 200, got $RESPONSE"
+    fail_test "Custom admin credentials" "Expected 200, got $RESPONSE"
 fi
 
 # Test 3: Verify wrong credentials fail
@@ -525,8 +525,8 @@ fi
 # Test 33: TLS enabled by default (AXONOPS_SEARCH_TLS_ENABLED)
 run_test
 echo "Test 33: TLS enabled by default (HTTPS)"
-# Check if HTTPS works (TLS should be enabled by default)
-HTTPS_RESPONSE=$(curl -s --insecure -o /dev/null -w "%{http_code}" -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "https://localhost:9200/" 2>/dev/null || echo "000")
+# Check if HTTPS works (TLS should be enabled by default) - use custom user credentials
+HTTPS_RESPONSE=$(curl -s --insecure -o /dev/null -w "%{http_code}" -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "https://localhost:9200/" 2>/dev/null || echo "000")
 if [ "$HTTPS_RESPONSE" = "200" ]; then
     pass_test "HTTPS accessible (TLS enabled by default)"
 else
