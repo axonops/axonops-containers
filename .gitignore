@@ -32,3 +32,8 @@ go.work.sum
 # .vscode/
 ./scripts
 *supervi*
+
+# Test output files (generated locally, not committed)
+**/tests/*-test-run.log
+**/tests/smoke-test-results.txt
+**/tests/smoke-output.log
