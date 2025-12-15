@@ -9,3 +9,5 @@ CVE-2025-12183
 # These are self-signed certificates generated during build for TLS
 # Production deployments should mount proper certificates via Kubernetes secrets
 secret:*/etc/opensearch/certs/*-key.pem
+secret:*/etc/opensearch/esnode-key.pem
+secret:*/etc/opensearch/kirk-key.pem
