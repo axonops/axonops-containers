@@ -1,3 +1,11 @@
 # Trivy Ignore File for AxonDB Search (OpenSearch 3.3.2)
 # Add specific CVEs to ignore here as needed, with justification
 # Format: CVE-YYYY-NNNNN
+
+# CVE-2025-12183 - Waiting for upstream fix in new OpenSearch release
+CVE-2025-12183
+
+# Ignore private key detection for SSL certificates (expected and necessary)
+# These are self-signed certificates generated during build for TLS
+# Production deployments should mount proper certificates via Kubernetes secrets
+secret:*/etc/opensearch/certs/*-key.pem
