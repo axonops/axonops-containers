@@ -218,10 +218,10 @@ runs:
       run: |
         echo "=== Validating INIT_SYSTEM_KEYSPACES ==="
 
-        # Should have run the init
-        docker exec axondb-env-test cat /etc/axonops/init-system-keyspaces.done
+        # Should have run the init (semaphore in persistent volume location)
+        docker exec axondb-env-test cat /var/lib/cassandra/.axonops/init-system-keyspaces.done
 
-        RESULT=$(docker exec axondb-env-test grep "^RESULT=" /etc/axonops/init-system-keyspaces.done | cut -d'=' -f2)
+        RESULT=$(docker exec axondb-env-test grep "^RESULT=" /var/lib/cassandra/.axonops/init-system-keyspaces.done | cut -d'=' -f2)
 
         if [ "$RESULT" != "success" ]; then
           echo "ERROR: Init should have run but got result: $RESULT"
@@ -236,10 +236,10 @@ runs:
       run: |
         echo "=== Validating AXONOPS_DB_USER and AXONOPS_DB_PASSWORD ==="
 
-        # Custom user should have been created
-        docker exec axondb-env-test cat /etc/axonops/init-db-user.done
+        # Custom user should have been created (semaphore in persistent volume location)
+        docker exec axondb-env-test cat /var/lib/cassandra/.axonops/init-db-user.done
 
-        USER_RESULT=$(docker exec axondb-env-test grep "^RESULT=" /etc/axonops/init-db-user.done | cut -d'=' -f2)
+        USER_RESULT=$(docker exec axondb-env-test grep "^RESULT=" /var/lib/cassandra/.axonops/init-db-user.done | cut -d'=' -f2)
 
         if [ "$USER_RESULT" != "success" ]; then
           echo "ERROR: User creation should have succeeded but got: $USER_RESULT"
