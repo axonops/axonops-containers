@@ -157,6 +157,27 @@ if [ -n "$OPENSEARCH_HEAP_SIZE" ]; then
     _sed-in-place "/etc/opensearch/jvm.options" -r 's/^-Xmx[0-9]+[GgMm]$/-Xmx'"$OPENSEARCH_HEAP_SIZE"'/'
 fi
 
+# Apply thread pool write queue size if env var set
+if [ -n "$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE" ]; then
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(thread_pool\.write\.queue_size:).*/\2 '"$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE"'/'
+fi
+
+# Apply transport SSL hostname verification if env var set
+if [ -n "$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION" ]; then
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.transport\.enforce_hostname_verification:).*/\2 '"$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION"'/'
+fi
+
+# Apply HTTP SSL client auth mode if env var set
+if [ -n "$OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE" ]; then
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.http\.clientauth_mode:).*/\2 '"$OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE"'/'
+fi
+
+# Apply security admin DN if env var set (for custom certificate scenarios)
+if [ -n "$OPENSEARCH_SECURITY_ADMIN_DN" ]; then
+    # Replace the admin_dn line (format: "  - \"DN_STRING\"")
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r 's|^  - ".*axondbsearch.*"|  - "'"$OPENSEARCH_SECURITY_ADMIN_DN"'"|'
+fi
+
 # Disable HTTP SSL if AXONOPS_SEARCH_TLS_ENABLED=false
 # This is useful when TLS is terminated at load balancer/ingress
 # Transport layer SSL remains enabled for node-to-node communication

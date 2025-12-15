@@ -14,4 +14,4 @@ admin:
 
 # NOTE: All demo users (anomalyadmin, kibanaserver, kibanaro, logstash, readall, snapshotrestore)
 # have been REMOVED for security reasons. They had weak/known passwords and are not needed.
-# Custom users will be appended by entrypoint.sh if AXONOPS_SEARCH_USER is provided.
+# Custom users will REPLACE this admin user (not append) if AXONOPS_SEARCH_USER is provided.
