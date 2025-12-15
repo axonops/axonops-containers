@@ -436,14 +436,20 @@ else
     fail_test "Custom user in semaphore" "ADMIN_USER not found or incorrect"
 fi
 
-# Test 26: Init script log exists
+# Test 26: Verify pre-startup user creation (no init script needed)
 run_test
-echo "Test 26: Init script log exists and shows success"
-INIT_LOG=$(podman exec "$CONTAINER_NAME" cat /var/log/opensearch/init-opensearch.log 2>/dev/null || echo "")
-if echo "$INIT_LOG" | grep -q "Admin User Created"; then
-    pass_test "Init script log shows successful user creation"
+echo "Test 26: Pre-startup user creation"
+# With pre-startup approach, users are created in entrypoint.sh before OpenSearch starts
+# Check if custom user was created by verifying it exists in security index
+if [ -n "$CUSTOM_USER" ]; then
+    USER_CHECK=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/" 2>/dev/null)
+    if echo "$USER_CHECK" | grep -q "cluster_name"; then
+        pass_test "Pre-startup user creation successful (user authenticated)"
+    else
+        fail_test "Pre-startup user creation" "Custom user cannot authenticate"
+    fi
 else
-    fail_test "Init script log" "Success message not found"
+    pass_test "Pre-startup user creation (no custom user requested)"
 fi
 
 echo ""
@@ -455,7 +461,7 @@ echo ""
 # Test 28: Cluster name from environment variable
 run_test
 echo "Test 28: OPENSEARCH_CLUSTER_NAME applied"
-CLUSTER_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/" 2>/dev/null)
+CLUSTER_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/" 2>/dev/null)
 CLUSTER_NAME=$(echo "$CLUSTER_INFO" | grep -o '"cluster_name" : "[^"]*"' | cut -d'"' -f4)
 if [ "$CLUSTER_NAME" = "axonopsdb-search" ]; then
     pass_test "Cluster name is axonopsdb-search (default)"
@@ -466,8 +472,8 @@ fi
 # Test 29: Heap size from environment variable
 run_test
 echo "Test 29: OPENSEARCH_HEAP_SIZE applied"
-# Check JVM info for heap settings
-JVM_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_nodes/stats/jvm" 2>/dev/null)
+# Check JVM info for heap settings (use custom user credentials)
+JVM_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_nodes/stats/jvm" 2>/dev/null)
 HEAP_MAX=$(echo "$JVM_INFO" | grep -o '"heap_max_in_bytes":[0-9]*' | head -1 | cut -d':' -f2)
 # 8GB = 8589934592 bytes
 EXPECTED_HEAP=8589934592
@@ -487,7 +493,7 @@ fi
 # Test 30: Discovery type from environment variable
 run_test
 echo "Test 30: discovery.type applied"
-CLUSTER_SETTINGS=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_cluster/settings?include_defaults=true&flat_settings=true" 2>/dev/null)
+CLUSTER_SETTINGS=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_cluster/settings?include_defaults=true&flat_settings=true" 2>/dev/null)
 if echo "$CLUSTER_SETTINGS" | grep -q '"discovery.type":"single-node"'; then
     pass_test "Discovery type is single-node"
 else
@@ -497,7 +503,7 @@ fi
 # Test 31: Network host from environment variable
 run_test
 echo "Test 31: network.host applied"
-NODE_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_nodes/_local" 2>/dev/null)
+NODE_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_nodes/_local" 2>/dev/null)
 # Check for bound_address showing all interfaces ([::]:9200 or 0.0.0.0:9200)
 if echo "$NODE_INFO" | grep -qE '"bound_address".*\[::\]:9200'; then
     pass_test "Network host is 0.0.0.0 (bound to all interfaces)"
@@ -508,7 +514,8 @@ fi
 # Test 32: Custom admin user from environment variables
 run_test
 echo "Test 32: AXONOPS_SEARCH_USER created"
-USER_INFO=$(curl -s --insecure -u "$DEFAULT_USER:$DEFAULT_PASSWORD" "$OPENSEARCH_URL/_plugins/_security/api/internalusers/$CUSTOM_USER" 2>/dev/null)
+# Use custom user credentials since default admin is replaced
+USER_INFO=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" "$OPENSEARCH_URL/_plugins/_security/api/internalusers/$CUSTOM_USER" 2>/dev/null)
 if echo "$USER_INFO" | grep -q "\"$CUSTOM_USER\""; then
     pass_test "Custom user $CUSTOM_USER exists in security index"
 else
