@@ -1,0 +1,108 @@
+name: 'AxonDB Search Test Healthcheck'
+description: 'Tests all three healthcheck modes (startup, liveness, readiness)'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-search-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test startup healthcheck
+      shell: bash
+      run: |
+        echo "=== Testing Startup Healthcheck ==="
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup 2>&1 | tee /tmp/startup-check.log; then
+          echo "✓ Startup healthcheck passed (exit code 0)"
+        else
+          echo "ERROR: Startup healthcheck failed"
+          cat /tmp/startup-check.log
+          exit 1
+        fi
+
+        # Verify output contains expected messages
+        if grep -q "Startup check passed" /tmp/startup-check.log; then
+          echo "✓ Startup check message present"
+        else
+          echo "ERROR: Expected 'Startup check passed' message not found"
+          exit 1
+        fi
+
+        # Verify checks init, process, port, and security health
+        if grep -q "process running" /tmp/startup-check.log && \
+           grep -q "port listening" /tmp/startup-check.log && \
+           grep -q "security health OK" /tmp/startup-check.log; then
+          echo "✓ All startup checks performed (init, process, port, security health)"
+        else
+          echo "ERROR: Not all startup checks performed"
+          cat /tmp/startup-check.log
+          exit 1
+        fi
+
+    - name: Test liveness healthcheck
+      shell: bash
+      run: |
+        echo "=== Testing Liveness Healthcheck ==="
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh liveness 2>&1 | tee /tmp/liveness-check.log; then
+          echo "✓ Liveness healthcheck passed (exit code 0)"
+        else
+          echo "ERROR: Liveness healthcheck failed"
+          cat /tmp/liveness-check.log
+          exit 1
+        fi
+
+        # Verify output contains expected messages
+        if grep -q "Liveness check passed" /tmp/liveness-check.log; then
+          echo "✓ Liveness check message present"
+        else
+          echo "ERROR: Expected 'Liveness check passed' message not found"
+          exit 1
+        fi
+
+        # Verify checks process, port, and security health (no heavy API calls)
+        if grep -q "process running" /tmp/liveness-check.log && \
+           grep -q "port listening" /tmp/liveness-check.log && \
+           grep -q "security health OK" /tmp/liveness-check.log; then
+          echo "✓ All liveness checks performed (process, port, security health - lightweight)"
+        else
+          echo "ERROR: Not all liveness checks performed"
+          cat /tmp/liveness-check.log
+          exit 1
+        fi
+
+    - name: Test readiness healthcheck
+      shell: bash
+      run: |
+        echo "=== Testing Readiness Healthcheck ==="
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness 2>&1 | tee /tmp/readiness-check.log; then
+          echo "✓ Readiness healthcheck passed (exit code 0)"
+        else
+          echo "ERROR: Readiness healthcheck failed"
+          cat /tmp/readiness-check.log
+          exit 1
+        fi
+
+        # Verify output contains expected messages
+        if grep -q "Readiness check passed" /tmp/readiness-check.log; then
+          echo "✓ Readiness check message present"
+        else
+          echo "ERROR: Expected 'Readiness check passed' message not found"
+          exit 1
+        fi
+
+        # Verify checks port and cluster status
+        if grep -q "port listening" /tmp/readiness-check.log && \
+           grep -q "cluster status" /tmp/readiness-check.log; then
+          echo "✓ All readiness checks performed (port, cluster health)"
+        else
+          echo "ERROR: Not all readiness checks performed"
+          cat /tmp/readiness-check.log
+          exit 1
+        fi
+
+        echo ""
+        echo "✓ All three healthcheck modes verified"

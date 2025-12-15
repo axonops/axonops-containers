@@ -1,0 +1,124 @@
+name: 'AxonDB Search Test REST API'
+description: 'Tests OpenSearch REST API operations (cluster health, index, document operations)'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-search-test'
+  port:
+    description: 'Host port mapped to container port 9200'
+    required: false
+    default: '9200'
+  admin_user:
+    description: 'Admin username'
+    required: false
+    default: 'admin'
+  admin_password:
+    description: 'Admin password'
+    required: false
+    default: 'MyS3cur3P@ss2025'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test cluster health endpoint
+      shell: bash
+      run: |
+        echo "=== Testing Cluster Health Endpoint ==="
+
+        HEALTH=$(curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" https://localhost:${{ inputs.port }}/_cluster/health 2>/dev/null)
+
+        echo "Cluster health response:"
+        echo "$HEALTH"
+
+        # Verify cluster is not red
+        STATUS=$(echo "$HEALTH" | grep -o '"status":"[^"]*"' | cut -d':' -f2 | tr -d '"')
+
+        if [ "$STATUS" = "green" ] || [ "$STATUS" = "yellow" ]; then
+          echo "✓ Cluster status: $STATUS (healthy)"
+        else
+          echo "ERROR: Cluster status is $STATUS (unhealthy)"
+          exit 1
+        fi
+
+    - name: Test index creation
+      shell: bash
+      run: |
+        echo "=== Testing Index Creation ==="
+
+        CREATE_RESPONSE=$(curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" \
+          -X PUT "https://localhost:${{ inputs.port }}/test-ci-index" \
+          -H 'Content-Type: application/json' \
+          -d '{"settings":{"number_of_shards":1,"number_of_replicas":0}}' 2>/dev/null)
+
+        if echo "$CREATE_RESPONSE" | grep -q '"acknowledged":true'; then
+          echo "✓ Index created successfully"
+        else
+          echo "ERROR: Index creation failed"
+          echo "$CREATE_RESPONSE"
+          exit 1
+        fi
+
+    - name: Test document indexing
+      shell: bash
+      run: |
+        echo "=== Testing Document Indexing ==="
+
+        DOC_RESPONSE=$(curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" \
+          -X POST "https://localhost:${{ inputs.port }}/test-ci-index/_doc?refresh=wait_for" \
+          -H 'Content-Type: application/json' \
+          -d '{"message":"CI test document","timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' 2>/dev/null)
+
+        DOC_ID=$(echo "$DOC_RESPONSE" | grep -o '"_id":"[^"]*"' | cut -d':' -f2 | tr -d '"')
+
+        if [ -n "$DOC_ID" ]; then
+          echo "✓ Document indexed (ID: $DOC_ID)"
+        else
+          echo "ERROR: Document indexing failed"
+          echo "$DOC_RESPONSE"
+          exit 1
+        fi
+
+    - name: Test document search
+      shell: bash
+      run: |
+        echo "=== Testing Document Search ==="
+
+        SEARCH_RESPONSE=$(curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" \
+          "https://localhost:${{ inputs.port }}/test-ci-index/_search" \
+          -H 'Content-Type: application/json' \
+          -d '{"query":{"match":{"message":"CI test"}}}' 2>/dev/null)
+
+        HIT_COUNT=$(echo "$SEARCH_RESPONSE" | grep -o '"total":{"value":[0-9]*' | cut -d':' -f3)
+
+        if [ "$HIT_COUNT" -ge 1 ] 2>/dev/null; then
+          echo "✓ Search returned $HIT_COUNT result(s)"
+        else
+          echo "ERROR: Search failed or returned no results"
+          echo "$SEARCH_RESPONSE"
+          exit 1
+        fi
+
+    - name: Test index deletion
+      shell: bash
+      run: |
+        echo "=== Testing Index Deletion ==="
+
+        DELETE_RESPONSE=$(curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" \
+          -X DELETE "https://localhost:${{ inputs.port }}/test-ci-index" 2>/dev/null)
+
+        if echo "$DELETE_RESPONSE" | grep -q '"acknowledged":true'; then
+          echo "✓ Index deleted successfully"
+        else
+          echo "ERROR: Index deletion failed"
+          echo "$DELETE_RESPONSE"
+          exit 1
+        fi
+
+        echo ""
+        echo "✓ REST API tests complete"
+        echo "  - Cluster health ✓"
+        echo "  - Index creation ✓"
+        echo "  - Document indexing ✓"
+        echo "  - Document search ✓"
+        echo "  - Index deletion ✓"

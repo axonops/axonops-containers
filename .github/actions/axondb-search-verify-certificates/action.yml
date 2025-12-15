@@ -1,0 +1,107 @@
+name: 'AxonDB Search Verify Certificates'
+description: 'Verifies AxonOps-branded certificates are used (NOT demo certificates)'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-search-test'
+  port:
+    description: 'Host port mapped to container port 9200'
+    required: false
+    default: '9200'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify certificate files exist
+      shell: bash
+      run: |
+        echo "=== Verifying Certificate Files ==="
+
+        # Check AxonOps certificate files exist
+        for cert in root-ca.pem node.pem node-key.pem admin.pem admin-key.pem; do
+          if docker exec ${{ inputs.container_name }} test -f /etc/opensearch/certs/$cert; then
+            echo "✓ $cert exists"
+          else
+            echo "ERROR: Certificate not found: /etc/opensearch/certs/$cert"
+            exit 1
+          fi
+        done
+
+    - name: Verify demo certificates are NOT present
+      shell: bash
+      run: |
+        echo "=== Verifying Demo Certificates Removed ==="
+
+        # Demo cert files should NOT exist
+        for demo_cert in esnode.pem kirk.pem root-ca.pem esnode-key.pem kirk-key.pem; do
+          if docker exec ${{ inputs.container_name }} test -f /etc/opensearch/$demo_cert 2>/dev/null; then
+            echo "ERROR: Demo certificate still exists: /etc/opensearch/$demo_cert"
+            echo "Demo certificates should be deleted!"
+            exit 1
+          fi
+        done
+
+        echo "✓ All demo certificates removed"
+
+    - name: Verify AxonOps certificate is served
+      shell: bash
+      run: |
+        echo "=== Verifying AxonOps Certificate Served ==="
+
+        # Get certificate from HTTPS endpoint
+        CERT_INFO=$(echo | openssl s_client -connect localhost:${{ inputs.port }} -showcerts 2>/dev/null | openssl x509 -noout -subject -issuer -text)
+
+        echo "Certificate info:"
+        echo "$CERT_INFO"
+
+        # Verify CN is axondbsearch.axonops.com
+        if ! echo "$CERT_INFO" | grep -q "CN.*axondbsearch.axonops.com"; then
+          echo "ERROR: Certificate CN is not axondbsearch.axonops.com"
+          exit 1
+        fi
+        echo "✓ Certificate CN: axondbsearch.axonops.com"
+
+        # Verify Organization is AxonOps
+        if ! echo "$CERT_INFO" | grep -q "O.*AxonOps"; then
+          echo "ERROR: Certificate Organization is not AxonOps"
+          exit 1
+        fi
+        echo "✓ Organization: AxonOps"
+
+        # Verify OU is Database
+        if ! echo "$CERT_INFO" | grep -q "OU.*Database"; then
+          echo "ERROR: Certificate OU is not Database"
+          exit 1
+        fi
+        echo "✓ Organizational Unit: Database"
+
+        # Verify RSA 3072 (or higher)
+        if echo "$CERT_INFO" | grep -q "Public-Key:.*3072 bit" || \
+           echo "$CERT_INFO" | grep -q "Public-Key:.*4096 bit"; then
+          echo "✓ Key size: RSA 3072+ bits (secure)"
+        else
+          echo "⚠ WARNING: Could not verify RSA 3072 key size"
+        fi
+
+    - name: Verify unsafe demo certificates blocked
+      shell: bash
+      run: |
+        echo "=== Verifying Demo Certificates Blocked ==="
+
+        # Check opensearch.yml has allow_unsafe_democertificates: false
+        CONFIG=$(docker exec ${{ inputs.container_name }} cat /etc/opensearch/opensearch.yml)
+
+        if echo "$CONFIG" | grep -q "plugins.security.allow_unsafe_democertificates: false"; then
+          echo "✓ allow_unsafe_democertificates: false (demo certs blocked)"
+        else
+          echo "ERROR: allow_unsafe_democertificates is not set to false"
+          echo "Demo certificates should be blocked!"
+          exit 1
+        fi
+
+        echo ""
+        echo "✓ Certificate verification complete"
+        echo "  - AxonOps-branded certificates in use"
+        echo "  - Demo certificates removed"
+        echo "  - Unsafe demo certificates blocked"

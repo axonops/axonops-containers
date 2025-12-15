@@ -1,0 +1,87 @@
+name: 'AxonDB Search Create Release'
+description: 'Creates GitHub release with notes and artifacts'
+inputs:
+  tag:
+    description: 'Git tag for the release'
+    required: true
+  opensearch_version:
+    description: 'OpenSearch version'
+    required: true
+  axonops_version:
+    description: 'AxonOps version'
+    required: true
+  is_prerelease:
+    description: 'Whether this is a pre-release'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create release notes
+      shell: bash
+      run: |
+        cat > /tmp/release-notes.md << 'EOF'
+        # AxonDB Search ${{ inputs.opensearch_version }}-${{ inputs.axonops_version }}
+
+        OpenSearch ${{ inputs.opensearch_version }} container optimized for AxonOps self-hosted deployments.
+
+        ## Features
+
+        - **OpenSearch Version:** ${{ inputs.opensearch_version }}
+        - **AxonOps Version:** ${{ inputs.axonops_version }}
+        - **Base Image:** Red Hat UBI 9 minimal (digest-pinned)
+        - **Authentication:** Enabled with AXONOPS_SEARCH_USER/PASSWORD support
+        - **Certificates:** AxonOps-branded (RSA 3072)
+        - **Architectures:** linux/amd64, linux/arm64
+        - **Signed:** Cosign keyless signing
+
+        ## Container Images
+
+        ```bash
+        # Pull specific version (immutable)
+        docker pull ghcr.io/axonops/axondb-search:${{ inputs.opensearch_version }}-${{ inputs.axonops_version }}
+
+        # Pull floating OpenSearch version tag
+        docker pull ghcr.io/axonops/axondb-search:${{ inputs.opensearch_version }}
+
+        # Pull latest
+        docker pull ghcr.io/axonops/axondb-search:latest
+        ```
+
+        ## Quick Start
+
+        ```bash
+        docker run -d \
+          -e AXONOPS_SEARCH_USER=myuser \
+          -e AXONOPS_SEARCH_PASSWORD='MySecurePassword123@' \
+          -e discovery.type=single-node \
+          -p 9200:9200 \
+          ghcr.io/axonops/axondb-search:${{ inputs.opensearch_version }}-${{ inputs.axonops_version }}
+        ```
+
+        ## Documentation
+
+        See [README.md](https://github.com/axonops/axonops-containers/blob/main/axonops/axondb-search/README.md) for complete documentation.
+
+        ## Kubernetes Requirements
+
+        **CRITICAL:** Before deploying in Kubernetes, ensure:
+        - `vm.max_map_count >= 262144` on all nodes
+        - `ulimits.nofile: 65536` in pod securityContext
+        - `IPC_LOCK` capability for memory locking
+
+        See documentation for details.
+        EOF
+
+        cat /tmp/release-notes.md
+
+    - name: Create GitHub release
+      shell: bash
+      run: |
+        gh release create ${{ inputs.tag }} \
+          --title "AxonDB Search ${{ inputs.opensearch_version }}-${{ inputs.axonops_version }}" \
+          --notes-file /tmp/release-notes.md \
+          ${{ inputs.is_prerelease == 'true' && '--prerelease' || '' }}
+
+        echo "✓ GitHub release created: ${{ inputs.tag }}"

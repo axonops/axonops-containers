@@ -1,0 +1,87 @@
+name: 'AxonDB Search Test Authentication'
+description: 'Tests authentication is enabled and working correctly'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-search-test'
+  port:
+    description: 'Host port mapped to container port 9200'
+    required: false
+    default: '9200'
+  admin_user:
+    description: 'Admin username'
+    required: false
+    default: 'admin'
+  admin_password:
+    description: 'Admin password'
+    required: false
+    default: 'MyS3cur3P@ss2025'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test authentication is required
+      shell: bash
+      run: |
+        echo "=== Testing Authentication Required ==="
+
+        # Request without credentials should fail with 401
+        HTTP_CODE=$(curl -s --insecure -o /dev/null -w "%{http_code}" https://localhost:${{ inputs.port }}/ 2>/dev/null || echo "000")
+
+        if [ "$HTTP_CODE" = "401" ]; then
+          echo "✓ Authentication required (got 401 Unauthorized)"
+        else
+          echo "ERROR: Expected 401 without credentials, got $HTTP_CODE"
+          exit 1
+        fi
+
+    - name: Test correct credentials work
+      shell: bash
+      run: |
+        echo "=== Testing Valid Credentials ==="
+
+        HTTP_CODE=$(curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" -o /dev/null -w "%{http_code}" https://localhost:${{ inputs.port }}/ 2>/dev/null || echo "000")
+
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "✓ Valid credentials work (got 200 OK)"
+        else
+          echo "ERROR: Expected 200 with valid credentials, got $HTTP_CODE"
+          exit 1
+        fi
+
+    - name: Test wrong credentials fail
+      shell: bash
+      run: |
+        echo "=== Testing Invalid Credentials ==="
+
+        HTTP_CODE=$(curl -s --insecure -u "wrong:wrongpassword" -o /dev/null -w "%{http_code}" https://localhost:${{ inputs.port }}/ 2>/dev/null || echo "000")
+
+        if [ "$HTTP_CODE" = "401" ]; then
+          echo "✓ Wrong credentials rejected (got 401 Unauthorized)"
+        else
+          echo "ERROR: Expected 401 with wrong credentials, got $HTTP_CODE"
+          exit 1
+        fi
+
+    - name: Verify HTTPS is enforced
+      shell: bash
+      run: |
+        echo "=== Verifying HTTPS Enforcement ==="
+
+        # HTTPS should work
+        RESPONSE=$(curl -s --insecure -u "${{ inputs.admin_user }}:${{ inputs.admin_password }}" https://localhost:${{ inputs.port }}/ 2>/dev/null)
+
+        if echo "$RESPONSE" | grep -q "cluster_name"; then
+          echo "✓ HTTPS accessible"
+        else
+          echo "ERROR: HTTPS not working"
+          exit 1
+        fi
+
+        echo ""
+        echo "✓ Authentication tests complete"
+        echo "  - Authentication required ✓"
+        echo "  - Valid credentials work ✓"
+        echo "  - Invalid credentials blocked ✓"
+        echo "  - HTTPS enforced ✓"

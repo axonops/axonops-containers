@@ -1,0 +1,74 @@
+name: 'AxonDB Search Verify Startup Banner'
+description: 'Verifies the startup banner displays correct version information'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'axondb-search-test'
+  expected_opensearch_version:
+    description: 'Expected OpenSearch version'
+    required: false
+    default: '3.3.2'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify startup banner
+      shell: bash
+      run: |
+        echo "=== Verifying Startup Banner ==="
+
+        docker logs ${{ inputs.container_name }} > /tmp/container-logs.txt 2>&1
+
+        # Check for AxonDB Search title
+        if ! grep -q "AxonOps AxonDB Search" /tmp/container-logs.txt; then
+          echo "ERROR: Startup banner not found"
+          cat /tmp/container-logs.txt | head -50
+          exit 1
+        fi
+        echo "✓ Startup banner found"
+
+        # Check OpenSearch version
+        if [ -n "${{ inputs.expected_opensearch_version }}" ]; then
+          if ! grep -q "OpenSearch.*${{ inputs.expected_opensearch_version }}" /tmp/container-logs.txt; then
+            echo "ERROR: OpenSearch version ${{ inputs.expected_opensearch_version }} not found in banner"
+            grep "OpenSearch" /tmp/container-logs.txt || echo "No OpenSearch version line found"
+            exit 1
+          fi
+          echo "✓ OpenSearch version ${{ inputs.expected_opensearch_version }} found"
+        fi
+
+        # Check for component versions section
+        if ! grep -q "Component Versions:" /tmp/container-logs.txt; then
+          echo "ERROR: Component Versions section not found"
+          exit 1
+        fi
+        echo "✓ Component Versions section present"
+
+        # Check for Java version
+        if ! grep -q "Java:.*openjdk" /tmp/container-logs.txt; then
+          echo "ERROR: Java version not found"
+          exit 1
+        fi
+        echo "✓ Java version present"
+
+        # Check for platform info
+        if ! grep -q "Platform:.*x86_64\|aarch64" /tmp/container-logs.txt; then
+          echo "ERROR: Platform info not found"
+          exit 1
+        fi
+        echo "✓ Platform info present"
+
+        # Check for supply chain security section
+        if ! grep -q "Supply Chain Security:" /tmp/container-logs.txt; then
+          echo "ERROR: Supply Chain Security section not found"
+          exit 1
+        fi
+        echo "✓ Supply Chain Security section present"
+
+        echo ""
+        echo "Startup Banner:"
+        grep -A20 "AxonOps AxonDB Search" /tmp/container-logs.txt | head -25
+
+        echo ""
+        echo "✓ Startup banner verification complete"
