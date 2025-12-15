@@ -639,6 +639,52 @@ fi
 
 echo ""
 echo "========================================" | tee -a "$RESULTS_FILE"
+echo "ADVANCED ENVIRONMENT VARIABLE TESTS (NEW SETTINGS)" | tee -a "$RESULTS_FILE"
+echo "========================================" | tee -a "$RESULTS_FILE"
+echo ""
+
+# Test 38: Start container with advanced env vars to verify they're written to opensearch.yml
+run_test
+echo "Test 38: Advanced env vars written to opensearch.yml"
+echo "  Starting container with advanced settings..."
+
+ADV_CONTAINER="opensearch-advanced-env-test"
+podman run -d --name "$ADV_CONTAINER" \
+  -e OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE=5000 \
+  -e OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION=true \
+  -e OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE=OPTIONAL \
+  -e OPENSEARCH_SECURITY_ADMIN_DN="CN=custom.admin,O=Custom,OU=Test" \
+  -e discovery.type=single-node \
+  -p 9201:9200 \
+  axondb-search:test >/dev/null 2>&1
+
+sleep 20
+
+# Check if values are in opensearch.yml
+CONFIG_CONTENT=$(podman exec "$ADV_CONTAINER" cat /etc/opensearch/opensearch.yml 2>/dev/null)
+
+QUEUE_CHECK=$(echo "$CONFIG_CONTENT" | grep "thread_pool.write.queue_size: 5000" || echo "")
+HOSTNAME_CHECK=$(echo "$CONFIG_CONTENT" | grep "enforce_hostname_verification: true" || echo "")
+CLIENTAUTH_CHECK=$(echo "$CONFIG_CONTENT" | grep "clientauth_mode: OPTIONAL" || echo "")
+ADMIN_DN_CHECK=$(echo "$CONFIG_CONTENT" | grep "CN=custom.admin,O=Custom,OU=Test" || echo "")
+
+# Clean up
+podman stop "$ADV_CONTAINER" >/dev/null 2>&1
+podman rm "$ADV_CONTAINER" >/dev/null 2>&1
+
+if [ -n "$QUEUE_CHECK" ] && [ -n "$HOSTNAME_CHECK" ] && [ -n "$CLIENTAUTH_CHECK" ] && [ -n "$ADMIN_DN_CHECK" ]; then
+    pass_test "All 4 advanced env vars written to opensearch.yml"
+else
+    MISSING=""
+    [ -z "$QUEUE_CHECK" ] && MISSING="${MISSING} QUEUE_SIZE"
+    [ -z "$HOSTNAME_CHECK" ] && MISSING="${MISSING} HOSTNAME_VERIFICATION"
+    [ -z "$CLIENTAUTH_CHECK" ] && MISSING="${MISSING} CLIENTAUTH_MODE"
+    [ -z "$ADMIN_DN_CHECK" ] && MISSING="${MISSING} ADMIN_DN"
+    fail_test "Advanced env vars" "Missing:$MISSING"
+fi
+
+echo ""
+echo "========================================" | tee -a "$RESULTS_FILE"
 echo "TEST SUMMARY" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
