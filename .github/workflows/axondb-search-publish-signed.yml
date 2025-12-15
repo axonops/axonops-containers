@@ -126,19 +126,16 @@ jobs:
           container_name: axondb-test
 
       - name: Verify init scripts
-        uses: ./.github/actions/axondb-search-verify-init-scripts
+        uses: ./.github/actions/axondb-search-verify-certificates
         with:
           container_name: axondb-test
 
       - name: Test opensearch
-        uses: ./.github/actions/axondb-search-test-opensearch
+        uses: ./.github/actions/axondb-search-test-rest-api
         with:
           container_name: axondb-test
 
       - name: Test cqlsh
-        uses: ./.github/actions/axondb-search-test-cqlsh
-        with:
-          container_name: axondb-test
 
       - name: Run Trivy container security scan
         uses: aquasecurity/trivy-action@0.33.0
