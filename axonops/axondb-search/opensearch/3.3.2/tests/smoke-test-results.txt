@@ -1,12 +1,12 @@
 AxonDB Search Smoke Test Results
 =================================
-Date: Mon Dec 15 10:51:23 AM CET 2025
+Date: Mon Dec 15 02:27:38 PM CET 2025
 
 ========================================
 AUTHENTICATION TESTS
 ========================================
 ✓ PASS: Authentication required (got 401 Unauthorized)
-✓ PASS: Default admin credentials work (got 200 OK)
+✓ PASS: Custom admin credentials work (got 200 OK)
 ✓ PASS: Wrong credentials fail (got 401 Unauthorized)
 ✓ PASS: Custom user credentials work (got 200 OK)
 ========================================
@@ -19,7 +19,7 @@ CLUSTER HEALTH TESTS
 INDEX & DOCUMENT CRUD TESTS
 ========================================
 ✓ PASS: Index created successfully
-✓ PASS: Document created (ID: coprIZsB2x9NIFNn_53i)
+✓ PASS: Document created (ID: Gy4xIpsBvSuHOaIj-v3F)
 ✓ PASS: Document retrieved successfully
 ✓ PASS: Document found via search
 ✓ PASS: Document deleted successfully
@@ -35,7 +35,7 @@ PERFORMANCE & BULK TESTS
 ========================================
 ✓ PASS: Bulk indexed 1000 documents in 0s
 ✓ PASS: All 1000 documents indexed correctly
-✓ PASS: Search query returned 1 result in 25ms (< 1000ms)
+✓ PASS: Search query returned 1 result in 29ms (< 1000ms)
 ========================================
 DATA PERSISTENCE TESTS
 ========================================
@@ -48,7 +48,7 @@ SEMAPHORE & INIT SCRIPT TESTS
 ✓ PASS: Semaphore file exists
 ✓ PASS: Semaphore RESULT=success
 ✓ PASS: Custom user axonops recorded in semaphore
-✓ PASS: Init script log shows successful user creation
+✓ PASS: Pre-startup user creation successful (user authenticated)
 ========================================
 ENVIRONMENT VARIABLE TESTS
 ========================================
