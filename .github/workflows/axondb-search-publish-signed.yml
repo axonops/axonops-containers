@@ -76,15 +76,15 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
           echo "✓ OpenSearch version: ${OPENSEARCH_VER}"
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/3.3.2
-          file: ./axonops/axondb-search/3.3.2/Dockerfile
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axondb-search:test
@@ -191,7 +191,7 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -243,7 +243,7 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
           echo "✓ OpenSearch version: ${OPENSEARCH_VER}"
 
@@ -251,8 +251,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/3.3.2
-          file: ./axonops/axondb-search/3.3.2/Dockerfile
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -280,8 +280,8 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/3.3.2
-          file: ./axonops/axondb-search/3.3.2/Dockerfile
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -318,7 +318,7 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
 
       - name: Verify published image
