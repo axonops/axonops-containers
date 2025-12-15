@@ -145,11 +145,17 @@ else
   SSL_ENABLED=false
 fi
 
+if [ "$CASSANDRSA_FQDN" == "" ]; then
+  CASSANDRSA_FQDN="$(hostname)"
+  echo "✓ CQLSH FQDN set to $CASSANDRSA_FQDN"
+fi
+
 if [ "$SSL_ENABLED" = true ] && [ -f "$CASSANDRA_CA_CERT_PATH" ]; then
   mkdir -p /opt/cassandra/.cassandra
   cat >> /opt/cassandra/.cassandra/cqlshrc <<EOL
 [connection]
 ssl = true
+hostname = $CASSANDRSA_FQDN
 
 [ssl]
 certfile = $CASSANDRA_CA_CERT_PATH
@@ -162,6 +168,7 @@ elif [ "$SSL_ENABLED" = true ]; then
   cat >> /opt/cassandra/.cassandra/cqlshrc <<EOL
 [connection]
 ssl = true
+hostname = $CASSANDRSA_FQDN
 
 [ssl]
 validate = false
