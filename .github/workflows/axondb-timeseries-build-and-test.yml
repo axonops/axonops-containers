@@ -140,7 +140,8 @@ jobs:
       - name: Test SSL configuration
         uses: ./.github/actions/axondb-timeseries-test-ssl
         with:
-          image: axondb-test
+          container_name: axondb-ssl-test
+          image: axondb-timeseries:test
 
       - name: Run Trivy container security scan (strict)
         uses: aquasecurity/trivy-action@0.33.0
