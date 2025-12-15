@@ -53,6 +53,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CASSANDRSA_FQDN
+              value: "{{ include "axon-cassandra.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local"
             - name: CASSANDRA_HEAP_SIZE
               value: "{{ .Values.heapSize }}"
           {{- if .Values.tls.enabled }}
