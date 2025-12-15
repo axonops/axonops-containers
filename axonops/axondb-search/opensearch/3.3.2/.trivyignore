@@ -6,8 +6,6 @@
 CVE-2025-12183
 
 # Ignore private key detection for SSL certificates (expected and necessary)
-# These are self-signed certificates generated during build for TLS
-# Production deployments should mount proper certificates via Kubernetes secrets
+# These are self-signed AxonOps-branded certificates generated during build for TLS
+# Production deployments should mount proper CA-signed certificates via Kubernetes secrets
 secret:*/etc/opensearch/certs/*-key.pem
-secret:*/etc/opensearch/esnode-key.pem
-secret:*/etc/opensearch/kirk-key.pem

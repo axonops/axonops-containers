@@ -125,27 +125,22 @@ RUN mkdir -p "$OPENSEARCH_HOME" /licenses && \
 COPY --chown=opensearch:root config/jvm.options /etc/opensearch/jvm.options
 COPY --chown=opensearch:root config/log4j2.properties /etc/opensearch/log4j2.properties
 
-# Install demo SSL configuration (runs OpenSearch security initialization)
-# This sets up security plugin infrastructure, opensearch-security directory, and security configs
-# We'll DELETE the demo certificates and replace with AxonOps-branded ones
+# Install demo SSL configuration, generate AxonOps certs, and delete demo certs in ONE layer
+# This prevents Trivy from detecting demo certificates in intermediate layers
+# Demo script sets up security infrastructure, then we replace certs and delete demos
+COPY scripts/generate-certs.sh /tmp/generate-certs.sh
 RUN cd ${OPENSEARCH_HOME} && \
     DISABLE_INSTALL_DEMO_CONFIG=false \
     OPENSEARCH_INITIAL_ADMIN_PASSWORD='MyS3cur3P@ss2025' \
     bash ${OPENSEARCH_HOME}/plugins/opensearch-security/tools/install_demo_configuration.sh -y -i -s && \
-    chown -R opensearch:root /etc/opensearch
-
-# Generate AxonOps-branded SSL/TLS certificates
-# This creates self-signed certificates with AxonOps branding (CN: axondbsearch.axonops.com)
-COPY scripts/generate-certs.sh /tmp/generate-certs.sh
-RUN chmod +x /tmp/generate-certs.sh && \
+    chown -R opensearch:root /etc/opensearch && \
+    echo "Demo SSL infrastructure created" && \
+    chmod +x /tmp/generate-certs.sh && \
     OPENSEARCH_PATH_CONF=/etc/opensearch /tmp/generate-certs.sh && \
     rm /tmp/generate-certs.sh && \
-    chown -R opensearch:root /etc/opensearch/certs
-
-# DELETE demo certificates to prevent "unsafe democertificates" detection
-# OpenSearch detects demo certs by SHA256 hash and blocks them when allow_unsafe_democertificates=false
-# We remove ALL demo certificate files installed by the demo script
-RUN rm -f /etc/opensearch/esnode.pem \
+    chown -R opensearch:root /etc/opensearch/certs && \
+    echo "AxonOps certificates generated" && \
+    rm -f /etc/opensearch/esnode.pem \
           /etc/opensearch/esnode-key.pem \
           /etc/opensearch/kirk.pem \
           /etc/opensearch/kirk-key.pem \
@@ -153,7 +148,7 @@ RUN rm -f /etc/opensearch/esnode.pem \
           /etc/opensearch/root-ca-key.pem \
           /etc/opensearch/*.srl \
           /etc/opensearch/securityadmin_demo.sh && \
-    echo "✓ Demo certificates removed, using only AxonOps-branded certificates"
+    echo "✓ Demo certificates removed in same layer (won't appear in Trivy scan)"
 
 # Now overlay our customized opensearch.yml and security configs
 # This updates the security plugin to use our AxonOps certificates instead of demo certs
