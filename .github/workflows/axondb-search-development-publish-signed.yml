@@ -64,6 +64,8 @@ jobs:
       - name: Start container and wait for services
         uses: ./.github/actions/axondb-search-start-and-wait
         with:
+          image: axondb-search:test
+        with:
           container_name: axondb-test
 
       - name: Verify no startup errors
