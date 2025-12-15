@@ -125,10 +125,3 @@ runs:
         echo "✓ ALL SSL TESTS PASSED"
         echo "========================================="
 
-    - name: Clean up test certificates
-      shell: bash
-      if: always()
-      run: |
-        echo "=== Cleaning up test certificates ==="
-        sudo rm -rf tests/certs
-        echo "✓ Test certificates removed"

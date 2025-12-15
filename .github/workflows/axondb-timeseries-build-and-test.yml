@@ -200,11 +200,16 @@ jobs:
         with:
           container_name: axondb-ssl-test
 
-      - name: Cleanup SSL test container
+      - name: Cleanup SSL test container and certificate
         if: always()
         run: |
+          echo "=== Stopping and removing axondb-ssl-test ==="
           docker stop axondb-ssl-test || true
           docker rm -f axondb-ssl-test || true
+
+          echo "=== Cleaning up test certificates ==="
+          sudo rm -rf tests/certs
+          echo "✓ Test certificates removed"
 
   # Comprehensive environment variable test (runs separately)
   axondb-timeseries-env-var-test:
