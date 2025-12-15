@@ -188,11 +188,12 @@ fi
 export DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI="${DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI:-true}"
 
 # Create custom admin user BEFORE starting OpenSearch (if requested)
-# This modifies internal_users.yml so OpenSearch loads the custom user on startup
-# Much simpler than runtime modification via securityadmin tool
+# This REPLACES the default admin user in internal_users.yml
+# Security: Only ONE admin user should exist (either default OR custom, never both)
 if [ -n "$AXONOPS_SEARCH_USER" ] && [ -n "$AXONOPS_SEARCH_PASSWORD" ]; then
-    echo "=== Creating Custom Admin User (Pre-Startup) ==="
+    echo "=== Replacing Default Admin with Custom Admin User (Pre-Startup) ==="
     echo "  Username: $AXONOPS_SEARCH_USER"
+    echo "  Replacing default 'admin' user for security"
     echo ""
 
     # Generate password hash using OpenSearch security tools
@@ -205,22 +206,28 @@ if [ -n "$AXONOPS_SEARCH_USER" ] && [ -n "$AXONOPS_SEARCH_PASSWORD" ]; then
         exit 1
     fi
 
-    # Append custom user to internal_users.yml (will be loaded by OpenSearch on startup)
+    # REPLACE internal_users.yml with ONLY the custom user (delete default admin)
     INTERNAL_USERS_FILE="${OPENSEARCH_PATH_CONF}/opensearch-security/internal_users.yml"
-    echo "  Adding user to ${INTERNAL_USERS_FILE}..."
-    cat >> "$INTERNAL_USERS_FILE" <<EOF
+    echo "  Writing ${INTERNAL_USERS_FILE} with ONLY custom user..."
+    cat > "$INTERNAL_USERS_FILE" <<EOF
+---
+_meta:
+  type: "internalusers"
+  config_version: 2
 
-# AxonOps custom admin user (created pre-startup via AXONOPS_SEARCH_USER)
+# AxonOps custom admin user (REPLACES default admin for security)
+# Created from AXONOPS_SEARCH_USER and AXONOPS_SEARCH_PASSWORD environment variables
 ${AXONOPS_SEARCH_USER}:
   hash: "${PASSWORD_HASH}"
   reserved: true
   backend_roles:
   - "admin"
-  description: "AxonOps admin user created via AXONOPS_SEARCH_USER environment variable"
+  description: "AxonOps admin user created via AXONOPS_SEARCH_USER (default admin replaced)"
 EOF
 
-    echo "  ✓ Custom admin user added: $AXONOPS_SEARCH_USER"
-    echo "  ✓ OpenSearch will load this user on startup"
+    echo "  ✓ Default 'admin' user REMOVED"
+    echo "  ✓ Custom admin user created: $AXONOPS_SEARCH_USER"
+    echo "  ✓ ONLY custom user will exist (no default admin)"
     echo ""
 fi
 
