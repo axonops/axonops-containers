@@ -184,43 +184,72 @@ if [[ "$(id -u)" == "0" ]]; then
     exit 1
 fi
 
-# Initialize OpenSearch security in background (non-blocking)
-# This will wait for OpenSearch to be ready, then:
-#   1. Install demo SSL configuration (required for security plugin)
-#   2. Create custom admin user (if AXONOPS_SEARCH_USER and AXONOPS_SEARCH_PASSWORD are set)
-# Can be disabled by setting INIT_OPENSEARCH_SECURITY=false
-INIT_OPENSEARCH_SECURITY="${INIT_OPENSEARCH_SECURITY:-true}"
-
 # Performance Analyzer - disabled by default (AxonOps provides monitoring)
 export DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI="${DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI:-true}"
+
+# Create custom admin user BEFORE starting OpenSearch (if requested)
+# This modifies internal_users.yml so OpenSearch loads the custom user on startup
+# Much simpler than runtime modification via securityadmin tool
+if [ -n "$AXONOPS_SEARCH_USER" ] && [ -n "$AXONOPS_SEARCH_PASSWORD" ]; then
+    echo "=== Creating Custom Admin User (Pre-Startup) ==="
+    echo "  Username: $AXONOPS_SEARCH_USER"
+    echo ""
+
+    # Generate password hash using OpenSearch security tools
+    echo "  Generating password hash..."
+    HASH_OUTPUT=$(cd "${OPENSEARCH_HOME}" && bash "${OPENSEARCH_HOME}/plugins/opensearch-security/tools/hash.sh" -p "$AXONOPS_SEARCH_PASSWORD" 2>/dev/null)
+    PASSWORD_HASH=$(echo "$HASH_OUTPUT" | tail -1)
+
+    if [ -z "$PASSWORD_HASH" ] || ! echo "$PASSWORD_HASH" | grep -q '^\$2[ayb]\$'; then
+        echo "  ⚠ ERROR: Failed to generate valid bcrypt password hash"
+        exit 1
+    fi
+
+    # Append custom user to internal_users.yml (will be loaded by OpenSearch on startup)
+    INTERNAL_USERS_FILE="${OPENSEARCH_PATH_CONF}/opensearch-security/internal_users.yml"
+    echo "  Adding user to ${INTERNAL_USERS_FILE}..."
+    cat >> "$INTERNAL_USERS_FILE" <<EOF
+
+# AxonOps custom admin user (created pre-startup via AXONOPS_SEARCH_USER)
+${AXONOPS_SEARCH_USER}:
+  hash: "${PASSWORD_HASH}"
+  reserved: true
+  backend_roles:
+  - "admin"
+  description: "AxonOps admin user created via AXONOPS_SEARCH_USER environment variable"
+EOF
+
+    echo "  ✓ Custom admin user added: $AXONOPS_SEARCH_USER"
+    echo "  ✓ OpenSearch will load this user on startup"
+    echo ""
+fi
 
 # Display security configuration
 if [ "$DISABLE_SECURITY_PLUGIN" = "true" ]; then
     echo "⚠ WARNING: Security plugin disabled (DISABLE_SECURITY_PLUGIN=true)"
     echo "  This is NOT recommended for production!"
-elif [ -n "$AXONOPS_SEARCH_USER" ] && [ -n "$AXONOPS_SEARCH_PASSWORD" ]; then
+elif [ -n "$AXONOPS_SEARCH_USER" ]; then
     echo "✓ Security enabled with custom admin user: $AXONOPS_SEARCH_USER"
 else
-    echo "✓ Security enabled with default demo configuration"
-    echo "  Default credentials: admin / admin (change for production!)"
+    echo "✓ Security enabled with default admin user"
+    echo "  Default credentials: admin / MyS3cur3P@ss2025"
 fi
 echo ""
 
-if [ "$INIT_OPENSEARCH_SECURITY" = "true" ]; then
-    echo "Starting security initialization in background..."
-    (/usr/local/bin/init-opensearch.sh > ${OPENSEARCH_LOG_DIR}/init-opensearch.log 2>&1 &)
-else
-    echo "OpenSearch security initialization disabled (INIT_OPENSEARCH_SECURITY=false)"
-    echo "Writing semaphore file to allow healthcheck to proceed..."
-    # Write semaphore immediately so healthcheck doesn't block
-    # Located in /var/lib/opensearch (persistent volume) not /etc (ephemeral)
-    mkdir -p ${OPENSEARCH_DATA_DIR}/.axonops
-    {
-        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "RESULT=skipped"
-        echo "REASON=disabled_by_env_var"
-    } > ${OPENSEARCH_DATA_DIR}/.axonops/init-security.done
-fi
+# Write semaphore file immediately (no background init script needed)
+mkdir -p ${OPENSEARCH_DATA_DIR}/.axonops
+{
+    echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "RESULT=success"
+    if [ -n "$AXONOPS_SEARCH_USER" ]; then
+        echo "REASON=custom_user_created_prestartup"
+        echo "ADMIN_USER=${AXONOPS_SEARCH_USER}"
+    else
+        echo "REASON=default_config"
+    fi
+} > ${OPENSEARCH_DATA_DIR}/.axonops/init-security.done
+echo "✓ Semaphore written (pre-startup configuration complete)"
+echo ""
 
 # Parse Docker env vars to customize OpenSearch
 # e.g. Setting the env var cluster.name=testcluster

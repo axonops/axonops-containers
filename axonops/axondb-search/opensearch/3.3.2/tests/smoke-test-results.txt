@@ -1,6 +1,6 @@
 AxonDB Search Smoke Test Results
 =================================
-Date: Mon Dec 15 07:30:28 AM CET 2025
+Date: Mon Dec 15 10:51:23 AM CET 2025
 
 ========================================
 AUTHENTICATION TESTS
@@ -19,9 +19,9 @@ CLUSTER HEALTH TESTS
 INDEX & DOCUMENT CRUD TESTS
 ========================================
 ✓ PASS: Index created successfully
-✓ PASS: Document created (ID: 0Uq0IJsBW2GDILgeEKZj)
+✓ PASS: Document created (ID: coprIZsB2x9NIFNn_53i)
 ✓ PASS: Document retrieved successfully
-✗ FAIL: Document search - Expected 1 hit, got 
+✓ PASS: Document found via search
 ✓ PASS: Document deleted successfully
 ✓ PASS: Index deleted successfully
 ========================================
@@ -35,13 +35,13 @@ PERFORMANCE & BULK TESTS
 ========================================
 ✓ PASS: Bulk indexed 1000 documents in 0s
 ✓ PASS: All 1000 documents indexed correctly
-✓ PASS: Search query returned 1 result in 26ms (< 1000ms)
+✓ PASS: Search query returned 1 result in 25ms (< 1000ms)
 ========================================
 DATA PERSISTENCE TESTS
 ========================================
 ✓ PASS: Created index with 2 documents
 ✓ PASS: Data read back correctly (2 documents found)
-✓ PASS: Index data exists in /var/lib/opensearch (found 6 indices)
+✓ PASS: Index data exists in /var/lib/opensearch (found 5 indices)
 ========================================
 SEMAPHORE & INIT SCRIPT TESTS
 ========================================
@@ -50,9 +50,30 @@ SEMAPHORE & INIT SCRIPT TESTS
 ✓ PASS: Custom user axonops recorded in semaphore
 ✓ PASS: Init script log shows successful user creation
 ========================================
-PROCESS FAILURE DETECTION TESTS
+ENVIRONMENT VARIABLE TESTS
+========================================
+✓ PASS: Cluster name is axonopsdb-search (default)
+✓ PASS: Heap size is 8GB (default)
+✓ PASS: Discovery type is single-node
+✓ PASS: Network host is 0.0.0.0 (bound to all interfaces)
+✓ PASS: Custom user axonops exists in security index
+✓ PASS: HTTPS accessible (TLS enabled by default)
+✓ PASS: AXONOPS_SEARCH_TLS_ENABLED defaults to true or is set correctly
+========================================
+TLS DISABLED TEST (HTTP Mode)
+========================================
+✓ PASS: HTTP accessible when TLS disabled (got 200)
+✓ PASS: HTTP mode fully functional (API + healthchecks work)
+========================================
+PROCESS FAILURE DETECTION TEST (DESTRUCTIVE - RUNS LAST)
 ========================================
 ✓ PASS: Liveness healthcheck correctly detected process failure (exit code 1)
 ========================================
-ENVIRONMENT VARIABLE TESTS
+TEST SUMMARY
 ========================================
+Tests Run:    36
+Tests Passed: 36
+Tests Failed: 0
+
+[0;32m✓ ALL TESTS PASSED![0m
+

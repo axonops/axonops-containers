@@ -101,7 +101,7 @@ discovery.type: single-node
 #
 # Increase bulk/write queue size for high-throughput workloads:
 #
-thread_pool.write.queue_size: 1000
+thread_pool.write.queue_size: 10000
 #
 # Default is 10000 in OpenSearch 3.x (was 200 in older versions)
 # Increase if you see bulk rejections in high-write scenarios
@@ -109,12 +109,40 @@ thread_pool.write.queue_size: 1000
 #
 # ---------------------------------- Security ----------------------------------
 #
-# Security plugin configuration
-# Note: Security plugin is enabled by default. To disable, set:
-# plugins.security.disabled: true
+# Security plugin configuration with AxonOps-branded certificates
+# Certificates are auto-generated during Docker build with AxonOps branding
+# (CN: axondbsearch.axonops.com, O: AxonOps, OU: Database)
 #
-# The demo configuration has been disabled for production readiness.
-# Configure TLS and authentication for production use.
+# Transport layer SSL/TLS (node-to-node communication)
+plugins.security.ssl.transport.pemcert_filepath: certs/node.pem
+plugins.security.ssl.transport.pemkey_filepath: certs/node-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: certs/root-ca.pem
+plugins.security.ssl.transport.enforce_hostname_verification: false
+plugins.security.ssl.transport.resolve_hostname: false
+
+# HTTP layer SSL/TLS (REST API)
+plugins.security.ssl.http.enabled: true
+plugins.security.ssl.http.pemcert_filepath: certs/node.pem
+plugins.security.ssl.http.pemkey_filepath: certs/node-key.pem
+plugins.security.ssl.http.pemtrustedcas_filepath: certs/root-ca.pem
+plugins.security.ssl.http.clientauth_mode: NONE
+
+# Admin certificate (for securityadmin tool)
+# DN must match the admin certificate exactly in RFC2253 format (order: OU, O, CN)
+plugins.security.authcz.admin_dn:
+  - "OU=Database,O=AxonOps,CN=admin.axondbsearch.axonops.com"
+
+# Security plugin settings
+# IMPORTANT: Demo certificates are NOT allowed (we use AxonOps-branded certificates)
+plugins.security.allow_unsafe_democertificates: false
+plugins.security.allow_default_init_securityindex: true
+plugins.security.audit.type: internal_opensearch
+plugins.security.enable_snapshot_restore_privilege: true
+plugins.security.check_snapshot_restore_write_privileges: true
+plugins.security.restapi.roles_enabled: ["all_access", "security_rest_api_access"]
+
+# Note: To disable security plugin entirely, set:
+# plugins.security.disabled: true
 #
 # For more information on security configuration:
 # https://opensearch.org/docs/latest/security/configuration/

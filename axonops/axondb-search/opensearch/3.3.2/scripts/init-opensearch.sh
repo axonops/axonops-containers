@@ -124,15 +124,25 @@ done
 
 echo ""
 
-# Verify demo SSL configuration exists (installed during build)
+# Verify AxonOps SSL certificates exist (generated during build)
 echo "=== Verifying Security Configuration ==="
+CERT_FILES="root-ca.pem node.pem node-key.pem admin.pem admin-key.pem"
+for cert in $CERT_FILES; do
+    if [ ! -f "${OPENSEARCH_PATH_CONF}/certs/${cert}" ]; then
+        echo "⚠ ERROR: Certificate not found: ${OPENSEARCH_PATH_CONF}/certs/${cert}"
+        write_semaphore "failed" "certificates_missing"
+        exit 1
+    fi
+done
+
 if [ ! -f "${OPENSEARCH_PATH_CONF}/opensearch-security/config.yml" ]; then
     echo "⚠ ERROR: Security configuration not found!"
     echo "  Expected: ${OPENSEARCH_PATH_CONF}/opensearch-security/config.yml"
     write_semaphore "failed" "security_config_missing"
     exit 1
 fi
-echo "✓ Demo SSL configuration verified"
+echo "✓ AxonOps SSL certificates verified (axondbsearch.axonops.com)"
+echo "✓ Security configuration verified"
 echo ""
 
 # Check if custom admin user creation is requested
@@ -194,9 +204,9 @@ EOF
     if bash "${OPENSEARCH_HOME}/plugins/opensearch-security/tools/securityadmin.sh" \
         -cd "${OPENSEARCH_PATH_CONF}/opensearch-security" \
         -icl -nhnv \
-        -cacert "${OPENSEARCH_PATH_CONF}/root-ca.pem" \
-        -cert "${OPENSEARCH_PATH_CONF}/kirk.pem" \
-        -key "${OPENSEARCH_PATH_CONF}/kirk-key.pem" \
+        -cacert "${OPENSEARCH_PATH_CONF}/certs/root-ca.pem" \
+        -cert "${OPENSEARCH_PATH_CONF}/certs/admin.pem" \
+        -key "${OPENSEARCH_PATH_CONF}/certs/admin-key.pem" \
         -h localhost; then
         echo "✓ Security configuration applied successfully"
         echo ""
