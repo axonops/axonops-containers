@@ -191,7 +191,7 @@ fi
 # Test 9: Create a document
 run_test
 echo "Test 9: Create document"
-DOC_RESPONSE=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" -X POST "$OPENSEARCH_URL/$TEST_INDEX/_doc" -H 'Content-Type: application/json' -d '{"message":"Smoke test document","timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","test_id":"smoke-test-1"}' 2>/dev/null)
+DOC_RESPONSE=$(curl -s --insecure -u "$CUSTOM_USER:$CUSTOM_PASSWORD" -X POST "$OPENSEARCH_URL/$TEST_INDEX/_doc?refresh=wait_for" -H 'Content-Type: application/json' -d '{"message":"Smoke test document","timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","test_id":"smoke-test-1"}' 2>/dev/null)
 DOC_ID=$(echo "$DOC_RESPONSE" | grep -o '"_id":"[^"]*"' | cut -d':' -f2 | tr -d '"')
 if [ -n "$DOC_ID" ]; then
     pass_test "Document created (ID: $DOC_ID)"
