@@ -113,8 +113,6 @@ jobs:
           expected_image: ghcr.io/axonops/axondb-search
           is_production: 'true'
 
-      - name: Verify no startup errors
-
       - name: Verify versions (jemalloc, OpenSearch, Java, opensearch)
         uses: ./.github/actions/axondb-search-verify-versions
         with:
@@ -135,8 +133,6 @@ jobs:
         uses: ./.github/actions/axondb-search-test-rest-api
         with:
           container_name: axondb-test
-
-      - name: Test cqlsh
 
       - name: Run Trivy container security scan
         uses: aquasecurity/trivy-action@0.33.0
