@@ -24,6 +24,7 @@ ARG GIT_TAG=unknown
 ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME=unknown
+ARG YQ_VERSION=v4.50.1
 
 ENV CASSANDRA_VERSION=${CASSANDRA_VERSION}
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
@@ -138,8 +139,7 @@ RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
     rm -rf /tmp/*
 
 # Get yq, this will be used to modify the cassandra.yaml if needed
-RUN YQ_VERSION=v4.50.1 && \
-    ARCH=$(uname -m) && \
+RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         YQ_ARCH="amd64"; \
     elif [ "$ARCH" = "aarch64" ]; then \
@@ -147,8 +147,19 @@ RUN YQ_VERSION=v4.50.1 && \
     else \
         echo "ERROR: Unsupported architecture: $ARCH" && exit 1; \
     fi && \
+    wget -q -O /tmp/checksums.txt https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums-bsd && \
     wget -q -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH} && \
-    chmod +x /usr/local/bin/yq
+    # Extract expected hash from checksums.txt and compare only the hash portion
+    EXPECTED_SHA256=$(grep "SHA256 (yq_linux_${YQ_ARCH})" /tmp/checksums.txt | awk '{print $4}') && \
+    LOCAL_SHA256=$(sha256sum /usr/local/bin/yq | awk '{print $1}') && \
+    if [ "${EXPECTED_SHA256}" != "${LOCAL_SHA256}" ]; then \
+      echo "ERROR: Checksum failed for yq_linux_${YQ_ARCH}" >&2; \
+      echo "Expected: ${EXPECTED_SHA256}" >&2; \
+      echo "Got     : ${LOCAL_SHA256}" >&2; \
+      exit 1; \
+    fi && \
+    chmod +x /usr/local/bin/yq && \
+    rm -f /tmp/checksums.txt
 
 # Install cqlai
 # Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,

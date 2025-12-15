@@ -100,6 +100,8 @@ runs:
           -e CASSANDRA_TRUSTSTORE_PASSWORD=changeit \
           -e CASSANDRA_CLIENT_ENCRYPTION_ENABLED=true \
           -e CASSANDRA_CLIENT_ENCRYPTION_OPTIONAL=false \
+          -e CASSANDRA_INTERNODE_CLIENT_AUTH=true \
+          -e CASSANDRA_INTERNODE_ENCRYPTION=all \
           -e CASSANDRA_CA_CERT_PATH=/etc/cassandra/certs/ca.crt \
           -e CASSANDRA_TLS_CERT_PATH=/etc/cassandra/certs/tls.crt \
           -e CASSANDRA_TLS_KEY_PATH=/etc/cassandra/certs/tls.key \
