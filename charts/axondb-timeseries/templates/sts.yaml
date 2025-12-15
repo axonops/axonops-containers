@@ -72,30 +72,48 @@ spec:
                 secretKeyRef:
                   name: {{ include "axon-cassandra.fullname" . }}-keystore-password
                   key: password
+            # PEM certificate paths
+            - name: CASSANDRA_TLS_KEY_PATH
+              value: "/etc/cassandra/certs/tls.key"
+            - name: CASSANDRA_TLS_CERT_PATH
+              value: "/etc/cassandra/certs/tls.crt"
+            - name: CASSANDRA_CA_CERT_PATH
+              value: "/etc/cassandra/certs/ca.crt"
             {{- else if .Values.tls.manual.existingSecret }}
             - name: CASSANDRA_KEYSTORE_PATH
-              value: "{{ .Values.tls.manual.mountPath }}/keystore.jks"
+              value: "/etc/cassandra/certs/keystore.jks"
             - name: CASSANDRA_TRUSTSTORE_PATH
-              value: "{{ .Values.tls.manual.mountPath }}/truststore.jks"
+              value: "/etc/cassandra/certs/truststore.jks"
+            - name: CASSANDRA_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.tls.manual.existingSecret }}
+                  key: keystore-password
+            - name: CASSANDRA_TRUSTSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.tls.manual.existingSecret }}
+                  key: truststore-password
+            # PEM certificate paths
+            - name: CASSANDRA_TLS_KEY_PATH
+              value: "/etc/cassandra/certs/tls.key"
+            - name: CASSANDRA_TLS_CERT_PATH
+              value: "/etc/cassandra/certs/tls.crt"
+            - name: CASSANDRA_CA_CERT_PATH
+              value: "/etc/cassandra/certs/ca.crt"
             {{- end }}
-            # Internode encryption settings
-            {{- if .Values.tls.cassandra.internode }}
             - name: CASSANDRA_INTERNODE_ENCRYPTION
               value: "{{ .Values.tls.cassandra.internode.encryption }}"
             - name: CASSANDRA_INTERNODE_CLIENT_AUTH
               value: "{{ .Values.tls.cassandra.internode.requireClientAuth }}"
             - name: CASSANDRA_INTERNODE_PROTOCOL
               value: "{{ .Values.tls.cassandra.internode.protocol }}"
-            {{- end }}
-            # Client-to-node encryption settings
-            {{- if .Values.tls.cassandra.clientToNode.enabled }}
             - name: CASSANDRA_CLIENT_ENCRYPTION_ENABLED
               value: "true"
             - name: CASSANDRA_CLIENT_ENCRYPTION_OPTIONAL
               value: "{{ not .Values.tls.cassandra.clientToNode.requireClientAuth }}"
             - name: CASSANDRA_CLIENT_PROTOCOL
               value: "{{ .Values.tls.cassandra.clientToNode.protocol }}"
-            {{- end }}
           {{- end }}
           {{- if .Values.authentication.db_secret }}
             # Authentication credentials from secret
@@ -182,7 +200,7 @@ spec:
               readOnly: true
             {{- else if .Values.tls.manual.existingSecret }}
             - name: tls-manual-certs
-              mountPath: {{ .Values.tls.manual.mountPath }}
+              mountPath: /etc/cassandra/certs
               readOnly: true
             {{- end }}
             {{- end }}

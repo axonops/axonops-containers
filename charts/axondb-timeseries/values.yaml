@@ -131,6 +131,15 @@ tls:
     # In production, override this with a secure password
     keystorePassword: "changeme"
 
+    # When enabled, the following environment variables are set:
+    #   - CASSANDRA_KEYSTORE_PATH: /etc/cassandra/certs/keystore.jks
+    #   - CASSANDRA_TRUSTSTORE_PATH: /etc/cassandra/certs/truststore.jks
+    #   - CASSANDRA_KEYSTORE_PASSWORD: (from secret)
+    #   - CASSANDRA_TRUSTSTORE_PASSWORD: (from secret)
+    #   - CASSANDRA_TLS_KEY_PATH: /etc/cassandra/certs/tls.key
+    #   - CASSANDRA_TLS_CERT_PATH: /etc/cassandra/certs/tls.crt
+    #   - CASSANDRA_CA_CERT_PATH: /etc/cassandra/certs/ca.crt
+
     # Issuer configuration
     issuer:
       # Issuer name (if using an existing issuer)
@@ -151,24 +160,32 @@ tls:
       # IP addresses for the certificate (SANs)
       ipAddresses: []
       # Certificate duration (default: 90 days)
-      duration: 2160h # 90 days
+      duration: 43800h # 5 years
       # Certificate renewal time before expiry
-      renewBefore: 360h # 15 days
+      renewBefore: 720h # 30 days
       # Secret name where the certificate will be stored
-      secretName: "cassandra-tls-cert"
-      # Use this certificate for internode encryption
-      internode: true
-      # Use this certificate for client-to-node encryption
-      clientToNode: true
+      secretName: "axondb-timeseries-tls-cert"
 
   # Manual TLS configuration (when cert-manager is disabled)
   manual:
-    # Existing secret containing TLS certificates
-    # Expected keys: tls.crt, tls.key, ca.crt
+    # Existing secret containing TLS certificates and passwords
+    # Required keys in the secret:
+    #   - tls.crt: TLS certificate
+    #   - tls.key: Private key
+    #   - ca.crt: CA certificate
+    #   - keystore.jks: Java keystore file
+    #   - truststore.jks: Java truststore file
+    #   - keystore-password: Password for the keystore
+    #   - truststore-password: Password for the truststore
+    # Environment variables set:
+    #   - CASSANDRA_KEYSTORE_PATH: /etc/cassandra/certs/keystore.jks
+    #   - CASSANDRA_TRUSTSTORE_PATH: /etc/cassandra/certs/truststore.jks
+    #   - CASSANDRA_KEYSTORE_PASSWORD: (from secret key: keystore-password)
+    #   - CASSANDRA_TRUSTSTORE_PASSWORD: (from secret key: truststore-password)
+    #   - CASSANDRA_TLS_KEY_PATH: /etc/cassandra/certs/tls.key
+    #   - CASSANDRA_TLS_CERT_PATH: /etc/cassandra/certs/tls.crt
+    #   - CASSANDRA_CA_CERT_PATH: /etc/cassandra/certs/ca.crt
     existingSecret: ""
-
-    # Mount paths for certificates
-    mountPath: /etc/cassandra/certs
 
   # Cassandra-specific TLS settings
   cassandra:
