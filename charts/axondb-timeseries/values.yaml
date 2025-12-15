@@ -68,6 +68,91 @@ resources: {}
   #   cpu: 1000m
   #   memory: 512Mi
 
+# TLS/SSL Configuration
+tls:
+  # Enable TLS/SSL for Cassandra
+  enabled: false
+
+  # cert-manager configuration for automatic certificate management
+  certManager:
+    # Enable cert-manager for certificate provisioning
+    enabled: false
+
+    # Keystore password (used for JKS/PKCS12 keystores)
+    # In production, override this with a secure password
+    keystorePassword: "changeme"
+
+    # Issuer configuration
+    issuer:
+      # Issuer name (if using an existing issuer)
+      name: ""
+      # Issuer kind (Issuer or ClusterIssuer)
+      kind: "ClusterIssuer"
+      # Create a self-signed issuer if no issuer name is provided
+      createSelfSigned: true
+
+    # Certificate specification
+    certificate:
+      # Common name for the certificate
+      commonName: ""
+      # DNS names for the certificate (SANs)
+      dnsNames: []
+        # - cassandra.example.com
+        # - "*.cassandra.example.com"
+      # IP addresses for the certificate (SANs)
+      ipAddresses: []
+      # Certificate duration (default: 90 days)
+      duration: 2160h # 90 days
+      # Certificate renewal time before expiry
+      renewBefore: 360h # 15 days
+      # Secret name where the certificate will be stored
+      secretName: "cassandra-tls-cert"
+      # Use this certificate for internode encryption
+      internode: true
+      # Use this certificate for client-to-node encryption
+      clientToNode: true
+
+  # Manual TLS configuration (when cert-manager is disabled)
+  manual:
+    # Existing secret containing TLS certificates
+    # Expected keys: tls.crt, tls.key, ca.crt
+    existingSecret: ""
+
+    # Mount paths for certificates
+    mountPath: /etc/cassandra/certs
+
+  # Cassandra-specific TLS settings
+  cassandra:
+    # Internode encryption settings
+    internode:
+      # Encryption options: none, dc, rack, all
+      encryption: "all"
+      # Require client authentication
+      requireClientAuth: true
+      # Protocol version
+      protocol: "TLS"
+      # Accepted protocols (comma-separated)
+      acceptedProtocols: "TLSv1.2,TLSv1.3"
+      # Cipher suites (leave empty for JVM defaults)
+      cipherSuites: []
+      # Keystore type
+      storeType: "JKS"
+
+    # Client-to-node encryption settings
+    clientToNode:
+      # Enable client encryption
+      enabled: false
+      # Require client authentication
+      requireClientAuth: false
+      # Protocol version
+      protocol: "TLS"
+      # Accepted protocols
+      acceptedProtocols: "TLSv1.2,TLSv1.3"
+      # Cipher suites
+      cipherSuites: []
+      # Keystore type
+      storeType: "JKS"
+
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   enabled: true
