@@ -76,7 +76,7 @@ runs:
         # Set permissions for certificates
         chmod 644 *.crt *.jks
         chmod 600 *.key
-        chown -R 999:999 .
+        sudo chown -R 999:999 .
 
         echo "✓ SSL certificates generated successfully"
         ls -la
