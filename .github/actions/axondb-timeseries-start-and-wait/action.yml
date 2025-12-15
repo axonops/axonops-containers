@@ -23,6 +23,7 @@ runs:
         echo "Starting AxonDB Time-Series container: ${{ inputs.container_name }}"
 
         DOCKER_CMD="docker run -d --name ${{ inputs.container_name }} \
+          --hostname ${{ inputs.container_name }} \
           --memory=6g \
           --memory-swap=6g \
           -e CASSANDRA_HEAP_SIZE=${{ inputs.cassandra_heap_size }} \
