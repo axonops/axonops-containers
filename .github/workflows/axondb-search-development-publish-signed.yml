@@ -105,16 +105,21 @@ jobs:
           admin_user: admin
           admin_password: MyS3cur3P@ss2025
 
+      - name: Install Trivy
+        run: |
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy
+
       - name: Run Trivy container security scan
-        uses: aquasecurity/trivy-action@0.33.0
-        with:
-          image-ref: 'axondb-search:test'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          scanners: 'vuln'
-          severity: 'CRITICAL,HIGH'
-          trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore.yaml'
+        run: |
+          trivy image \
+            --exit-code 1 \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            --ignorefile axonops/axondb-search/opensearch/3.3.2/.trivyignore.yaml \
+            axondb-search:test
 
       - name: Run Trivy scan and upload to GitHub Security
         uses: aquasecurity/trivy-action@0.33.0
