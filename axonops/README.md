@@ -44,15 +44,26 @@ Apache Cassandra 5.0.6 configured and optimized for storing AxonOps metrics and 
 - Comprehensive healthcheck probes (startup, liveness, readiness)
 - Built on Red Hat UBI 9 with supply chain security
 
-**Status**: Production Ready
+**Status**: Production Ready (v1.0.0)
 **Images**: `ghcr.io/axonops/axondb-timeseries`
 **Documentation**: [README](./axondb-timeseries/README.md) | [Development](./axondb-timeseries/DEVELOPMENT.md) | [Release](./axondb-timeseries/RELEASE.md)
 
-### 🚧 AxonDB Search (Coming Soon)
+### ✅ AxonDB Search
 
-Search-optimized Apache Cassandra database for AxonOps logs, events, and search workloads.
+**[axondb-search/](./axondb-search/)** - Search and analytics optimized OpenSearch database
 
-**Status**: In Development
+OpenSearch 3.3.2 configured and optimized for AxonOps search, logs, and analytics workloads:
+- AxonOps-branded TLS certificates (RSA 3072, not demo certificates)
+- Secure admin user replacement model (AXONOPS_SEARCH_USER/PASSWORD)
+- 20 environment variables for complete customization
+- Production settings (bootstrap.memory_lock, thread_pool)
+- Multi-architecture support (amd64, arm64)
+- Comprehensive healthcheck probes with security plugin health endpoint
+- Built on Red Hat UBI 9 with supply chain security
+
+**Status**: Production Ready (v1.0.0)
+**Images**: `ghcr.io/axonops/axondb-search`
+**Documentation**: [README](./axondb-search/README.md) | [Development](./axondb-search/DEVELOPMENT.md) | [Release](./axondb-search/RELEASE.md)
 
 ### 🚧 AxonOps Server (Coming Soon)
 
