@@ -162,6 +162,11 @@ if [ -n "$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(thread_pool\.write\.queue_size:).*/\2 '"$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE"'/'
 fi
 
+# Define certificate paths from environment variables or use defaults
+TLS_CERT_PATH=${OPENSEARCH_TLS_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem"}
+TLS_KEY_PATH=${OPENSEARCH_TLS_KEY_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node-key.pem"}
+CA_CERT_PATH=${OPENSEARCH_CA_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-root-ca.pem"}
+
 # Apply transport SSL hostname verification if env var set
 if [ -n "$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.transport\.enforce_hostname_verification:).*/\2 '"$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION"'/'
@@ -176,6 +181,33 @@ fi
 if [ -n "$OPENSEARCH_SECURITY_ADMIN_DN" ]; then
     # Replace the admin_dn line (format: "  - \"DN_STRING\"")
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's|^  - ".*axondbsearch.*"|  - "'"$OPENSEARCH_SECURITY_ADMIN_DN"'"|'
+fi
+
+# Apply SSL/TLS certificate paths based on environment variables
+# Convert absolute paths to relative paths for opensearch.yml (remove the config path prefix)
+# The configuration expects relative paths from the config directory
+if [ -n "$TLS_CERT_PATH" ]; then
+    # Extract relative path by removing the OPENSEARCH_PATH_CONF prefix
+    RELATIVE_CERT_PATH="${TLS_CERT_PATH#${OPENSEARCH_PATH_CONF}/}"
+    # Update both transport and HTTP certificate paths
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.transport\.pemcert_filepath:).*|\1 ${RELATIVE_CERT_PATH}|"
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.http\.pemcert_filepath:).*|\1 ${RELATIVE_CERT_PATH}|"
+fi
+
+if [ -n "$TLS_KEY_PATH" ]; then
+    # Extract relative path by removing the OPENSEARCH_PATH_CONF prefix
+    RELATIVE_KEY_PATH="${TLS_KEY_PATH#${OPENSEARCH_PATH_CONF}/}"
+    # Update both transport and HTTP key paths
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.transport\.pemkey_filepath:).*|\1 ${RELATIVE_KEY_PATH}|"
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.http\.pemkey_filepath:).*|\1 ${RELATIVE_KEY_PATH}|"
+fi
+
+if [ -n "$CA_CERT_PATH" ]; then
+    # Extract relative path by removing the OPENSEARCH_PATH_CONF prefix
+    RELATIVE_CA_PATH="${CA_CERT_PATH#${OPENSEARCH_PATH_CONF}/}"
+    # Update both transport and HTTP CA certificate paths
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.transport\.pemtrustedcas_filepath:).*|\1 ${RELATIVE_CA_PATH}|"
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.http\.pemtrustedcas_filepath:).*|\1 ${RELATIVE_CA_PATH}|"
 fi
 
 # Disable HTTP SSL if AXONOPS_SEARCH_TLS_ENABLED=false
@@ -212,12 +244,11 @@ export DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI="${DISABLE_PERFORMANCE_ANALYZER_AG
 # This generates unique certificates per deployment instead of embedding them in the image
 GENERATE_CERTS_ON_STARTUP="${GENERATE_CERTS_ON_STARTUP:-true}"
 CERT_SEMAPHORE="${OPENSEARCH_DATA_DIR}/.axonops/generate-certs.done"
-CERT_FILE="${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem"
 
 if [ "$GENERATE_CERTS_ON_STARTUP" = "true" ]; then
     echo "=== Certificate Generation (Runtime) ==="
 
-    if [ ! -f "$CERT_FILE" ]; then
+    if [ ! -f "$TLS_CERT_PATH" ]; then
         # Certs don't exist - check if we generated them before but they're gone (ephemeral storage)
         if [ -f "$CERT_SEMAPHORE" ] && grep -q "certs_generated\|certs_regenerated" "$CERT_SEMAPHORE" 2>/dev/null; then
             echo "⚠ Certificates were generated before but are missing (container restart with ephemeral storage)"

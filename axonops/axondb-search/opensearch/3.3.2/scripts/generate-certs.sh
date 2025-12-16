@@ -16,6 +16,9 @@ ORG_UNIT="Database"
 CN_ROOT="AxonOps Root CA"
 CN_NODE="axondbsearch.axonops.com"
 CN_ADMIN="admin.axondbsearch.axonops.com"
+TLS_CERT_PATH=${OPENSEARCH_TLS_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem"}
+TLS_KEY_PATH=${OPENSEARCH_TLS_KEY_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node-key.pem"}
+CA_CERT_PATH=${OPENSEARCH_CA_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-root-ca.pem"}
 
 # Prefix for generated certificate files (makes them clearly identifiable as defaults)
 FILE_PREFIX="axondbsearch-default-"
@@ -54,8 +57,12 @@ openssl req -new -newkey rsa:3072 -sha256 -nodes \
   -subj "/CN=${CN_NODE}/O=${ORG}/OU=${ORG_UNIT}" \
   2>/dev/null
 
+if [ -z $OPENSEARCH_FQDN ]; then
+  OPENSEARCH_FQDN="axondbsearch.axonops.com"
+fi
+
 # Create SAN configuration for node certificate
-cat > ${FILE_PREFIX}node-san.cnf <<EOF
+cat > tls-san.cnf <<EOF
 [req]
 distinguished_name = req_distinguished_name
 req_extensions = v3_req
@@ -69,6 +76,7 @@ subjectAltName = @alt_names
 DNS.1 = ${CN_NODE}
 DNS.2 = localhost
 DNS.3 = *.axondbsearch.axonops.com
+DNS.4 = ${OPENSEARCH_FQDN}
 IP.1 = 127.0.0.1
 IP.2 = ::1
 EOF
