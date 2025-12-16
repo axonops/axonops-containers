@@ -50,12 +50,12 @@ echo "2. Generating Node Certificate..."
 
 # Create node CSR
 openssl req -new -newkey rsa:3072 -sha256 -nodes \
-  -keyout ${FILE_PREFIX}node-key-temp.pem -out ${FILE_PREFIX}node.csr \
+  -keyout ${FILE_PREFIX}node-key-temp.pem -out ${FILE_PREFIX}${FILE_PREFIX}node.csr \
   -subj "/CN=${CN_NODE}/O=${ORG}/OU=${ORG_UNIT}" \
   2>/dev/null
 
 # Create SAN configuration for node certificate
-cat > node-san.cnf <<EOF
+cat > ${FILE_PREFIX}node-san.cnf <<EOF
 [req]
 distinguished_name = req_distinguished_name
 req_extensions = v3_req
@@ -74,9 +74,9 @@ IP.2 = ::1
 EOF
 
 # Sign node certificate with Root CA
-openssl x509 -req -in node.csr -CA ${FILE_PREFIX}root-ca.pem -CAkey ${FILE_PREFIX}root-ca-key.pem \
+openssl x509 -req -in ${FILE_PREFIX}node.csr -CA ${FILE_PREFIX}root-ca.pem -CAkey ${FILE_PREFIX}root-ca-key.pem \
   -CAcreateserial -out ${FILE_PREFIX}node.pem -days "$VALIDITY_DAYS" \
-  -extensions v3_req -extfile node-san.cnf \
+  -extensions v3_req -extfile ${FILE_PREFIX}node-san.cnf \
   2>/dev/null
 
 # Convert key to PKCS#8 format (required by OpenSearch)
@@ -84,7 +84,7 @@ openssl pkcs8 -topk8 -inform PEM -outform PEM -in node-key-temp.pem \
   -out ${FILE_PREFIX}node-key.pem -nocrypt
 
 # Cleanup
-rm -f node.csr node-key-temp.pem node-san.cnf
+rm -f ${FILE_PREFIX}node.csr node-key-temp.pem ${FILE_PREFIX}node-san.cnf
 
 if [ ! -f ${FILE_PREFIX}node.pem ] || [ ! -f ${FILE_PREFIX}node-key.pem ]; then
     echo "ERROR: Failed to generate node certificate"
@@ -97,12 +97,12 @@ echo "3. Generating Admin Client Certificate..."
 
 # Create admin CSR
 openssl req -new -newkey rsa:3072 -sha256 -nodes \
-  -keyout admin-key-temp.pem -out admin.csr \
+  -keyout admin-key-temp.pem -out ${FILE_PREFIX}admin.csr \
   -subj "/CN=${CN_ADMIN}/O=${ORG}/OU=${ORG_UNIT}" \
   2>/dev/null
 
 # Sign admin certificate with Root CA
-openssl x509 -req -in admin.csr -CA ${FILE_PREFIX}root-ca.pem -CAkey ${FILE_PREFIX}root-ca-key.pem \
+openssl x509 -req -in ${FILE_PREFIX}admin.csr -CA ${FILE_PREFIX}root-ca.pem -CAkey ${FILE_PREFIX}root-ca-key.pem \
   -CAcreateserial -out ${FILE_PREFIX}admin.pem -days "$VALIDITY_DAYS" \
   2>/dev/null
 
@@ -111,7 +111,7 @@ openssl pkcs8 -topk8 -inform PEM -outform PEM -in admin-key-temp.pem \
   -out ${FILE_PREFIX}admin-key.pem -nocrypt
 
 # Cleanup
-rm -f admin.csr admin-key-temp.pem root-ca.srl
+rm -f ${FILE_PREFIX}admin.csr admin-key-temp.pem root-ca.srl
 
 if [ ! -f ${FILE_PREFIX}admin.pem ] || [ ! -f ${FILE_PREFIX}admin-key.pem ]; then
     echo "ERROR: Failed to generate admin certificate"
