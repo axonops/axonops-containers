@@ -34,16 +34,16 @@ echo ""
 # 1. Generate Root CA
 echo "1. Generating Root CA..."
 openssl req -x509 -newkey rsa:3072 -sha256 -days "$VALIDITY_DAYS" \
-  -nodes -keyout ${FILE_PREFIX}${FILE_PREFIX}root-ca-key.pem -out ${FILE_PREFIX}${FILE_PREFIX}root-ca.pem \
+  -nodes -keyout ${FILE_PREFIX}root-ca-key.pem -out ${FILE_PREFIX}root-ca.pem \
   -subj "/CN=${CN_ROOT}/O=${ORG}/OU=${ORG_UNIT}" \
   2>/dev/null
 
-if [ ! -f ${FILE_PREFIX}${FILE_PREFIX}root-ca.pem ] || [ ! -f ${FILE_PREFIX}${FILE_PREFIX}root-ca-key.pem ]; then
+if [ ! -f ${FILE_PREFIX}root-ca.pem ] || [ ! -f ${FILE_PREFIX}root-ca-key.pem ]; then
     echo "ERROR: Failed to generate root CA"
     exit 1
 fi
 echo "   ✓ Root CA generated: $CN_ROOT"
-echo "   Files: ${FILE_PREFIX}${FILE_PREFIX}root-ca.pem, ${FILE_PREFIX}${FILE_PREFIX}root-ca-key.pem"
+echo "   Files: ${FILE_PREFIX}root-ca.pem, ${FILE_PREFIX}root-ca-key.pem"
 
 # 2. Generate Node Certificate
 echo "2. Generating Node Certificate..."
