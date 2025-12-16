@@ -54,15 +54,14 @@ echo "2. Generating Node Certificate..."
 # Create node CSR
 openssl req -new -newkey rsa:3072 -sha256 -nodes \
   -keyout ${FILE_PREFIX}node-key-temp.pem -out ${FILE_PREFIX}node.csr \
-  -subj "/CN=${CN_NODE}/O=${ORG}/OU=${ORG_UNIT}" \
-  2>/dev/null
+  -subj "/CN=${CN_NODE}/O=${ORG}/OU=${ORG_UNIT}" > /dev/null
 
 if [ -z $OPENSEARCH_FQDN ]; then
   OPENSEARCH_FQDN="axondbsearch.axonops.com"
 fi
 
 # Create SAN configuration for node certificate
-cat > tls-san.cnf <<EOF
+cat > ${FILE_PREFIX}node-san.cnf <<EOF
 [req]
 distinguished_name = req_distinguished_name
 req_extensions = v3_req
@@ -84,8 +83,7 @@ EOF
 # Sign node certificate with Root CA
 openssl x509 -req -in ${FILE_PREFIX}node.csr -CA ${FILE_PREFIX}root-ca.pem -CAkey ${FILE_PREFIX}root-ca-key.pem \
   -CAcreateserial -out ${FILE_PREFIX}node.pem -days "$VALIDITY_DAYS" \
-  -extensions v3_req -extfile ${FILE_PREFIX}node-san.cnf \
-  2>/dev/null
+  -extensions v3_req -extfile ${FILE_PREFIX}node-san.cnf >/dev/null
 
 # Convert key to PKCS#8 format (required by OpenSearch)
 openssl pkcs8 -topk8 -inform PEM -outform PEM -in ${FILE_PREFIX}node-key-temp.pem \
