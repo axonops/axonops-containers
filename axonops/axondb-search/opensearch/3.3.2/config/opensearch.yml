@@ -114,6 +114,10 @@ thread_pool.write.queue_size: 10000
 # (CN: axondbsearch.axonops.com, O: AxonOps, OU: Database)
 #
 # Transport layer SSL/TLS (node-to-node communication)
+
+#When enabled, in-place hot reloading monitors your keystore resources for updates every 5 seconds.
+plugins.security.ssl.certificates_hot_reload.enabled: true
+
 plugins.security.ssl.transport.pemcert_filepath: certs/axondbsearch-default-node.pem
 plugins.security.ssl.transport.pemkey_filepath: certs/axondbsearch-default-node-key.pem
 plugins.security.ssl.transport.pemtrustedcas_filepath: certs/axondbsearch-default-root-ca.pem
