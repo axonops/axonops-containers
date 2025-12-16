@@ -112,6 +112,11 @@ export AXONOPS_SEARCH_TLS_ENABLED="${AXONOPS_SEARCH_TLS_ENABLED:-true}"
 # JVM heap settings (default: 8G, matches AxonDB Time-Series)
 export OPENSEARCH_HEAP_SIZE="${OPENSEARCH_HEAP_SIZE:-8g}"
 
+# Define certificate paths from environment variables or use defaults
+TLS_CERT_PATH=${OPENSEARCH_TLS_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem"}
+TLS_KEY_PATH=${OPENSEARCH_TLS_KEY_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node-key.pem"}
+CA_CERT_PATH=${OPENSEARCH_CA_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-root-ca.pem"}
+
 echo "Configuration:"
 echo "  Cluster Name:       ${OPENSEARCH_CLUSTER_NAME}"
 echo "  Node Name:          ${OPENSEARCH_NODE_NAME}"
@@ -119,6 +124,12 @@ echo "  Network Host:       ${OPENSEARCH_NETWORK_HOST}"
 echo "  Discovery Type:     ${OPENSEARCH_DISCOVERY_TYPE}"
 echo "  Heap Size:          ${OPENSEARCH_HEAP_SIZE}"
 echo "  TLS Enabled:        ${AXONOPS_SEARCH_TLS_ENABLED}"
+
+if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "true" ]; then
+    echo "  TLS Cert Path:      ${TLS_CERT_PATH}"
+    echo "  TLS Key Path:       ${TLS_KEY_PATH}"
+    echo "  CA Cert Path:       ${CA_CERT_PATH}"
+fi
 echo ""
 
 # Apply environment variable substitutions to opensearch.yml
@@ -162,11 +173,6 @@ if [ -n "$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(thread_pool\.write\.queue_size:).*/\2 '"$OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE"'/'
 fi
 
-# Define certificate paths from environment variables or use defaults
-TLS_CERT_PATH=${OPENSEARCH_TLS_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem"}
-TLS_KEY_PATH=${OPENSEARCH_TLS_KEY_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node-key.pem"}
-CA_CERT_PATH=${OPENSEARCH_CA_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-root-ca.pem"}
-
 # Apply transport SSL hostname verification if env var set
 if [ -n "$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.transport\.enforce_hostname_verification:).*/\2 '"$OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION"'/'
@@ -181,6 +187,21 @@ fi
 if [ -n "$OPENSEARCH_SECURITY_ADMIN_DN" ]; then
     # Replace the admin_dn line (format: "  - \"DN_STRING\"")
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's|^  - ".*axondbsearch.*"|  - "'"$OPENSEARCH_SECURITY_ADMIN_DN"'"|'
+fi
+
+# Disable HTTP SSL if AXONOPS_SEARCH_TLS_ENABLED=false
+# This is useful when TLS is terminated at load balancer/ingress
+# Transport layer SSL remains enabled for node-to-node communication
+if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
+    echo "Disabling HTTP SSL (AXONOPS_SEARCH_TLS_ENABLED=false)"
+    echo "  TLS will be terminated at load balancer/ingress"
+    echo "  Transport layer SSL remains enabled for node-to-node communication"
+    # Add or update the HTTP SSL setting in opensearch.yml
+    if grep -q "plugins.security.ssl.http.enabled" /etc/opensearch/opensearch.yml; then
+        _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.http\.enabled:).*/\2 false/'
+    else
+        echo "plugins.security.ssl.http.enabled: false" >> /etc/opensearch/opensearch.yml
+    fi
 fi
 
 # Apply SSL/TLS certificate paths based on environment variables
@@ -210,21 +231,6 @@ if [ -n "$CA_CERT_PATH" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.http\.pemtrustedcas_filepath:).*|\1 ${RELATIVE_CA_PATH}|"
 fi
 
-# Disable HTTP SSL if AXONOPS_SEARCH_TLS_ENABLED=false
-# This is useful when TLS is terminated at load balancer/ingress
-# Transport layer SSL remains enabled for node-to-node communication
-if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
-    echo "Disabling HTTP SSL (AXONOPS_SEARCH_TLS_ENABLED=false)"
-    echo "  TLS will be terminated at load balancer/ingress"
-    echo "  Transport layer SSL remains enabled for node-to-node communication"
-    # Add or update the HTTP SSL setting in opensearch.yml
-    if grep -q "plugins.security.ssl.http.enabled" /etc/opensearch/opensearch.yml; then
-        _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.http\.enabled:).*/\2 false/'
-    else
-        echo "plugins.security.ssl.http.enabled: false" >> /etc/opensearch/opensearch.yml
-    fi
-fi
-
 echo "✓ Configuration applied to opensearch.yml"
 echo ""
 
@@ -244,11 +250,12 @@ export DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI="${DISABLE_PERFORMANCE_ANALYZER_AG
 # This generates unique certificates per deployment instead of embedding them in the image
 GENERATE_CERTS_ON_STARTUP="${GENERATE_CERTS_ON_STARTUP:-true}"
 CERT_SEMAPHORE="${OPENSEARCH_DATA_DIR}/.axonops/generate-certs.done"
+CERT_FILE=${OPENSEARCH_TLS_CERT_PATH:-${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem}
 
 if [ "$GENERATE_CERTS_ON_STARTUP" = "true" ]; then
     echo "=== Certificate Generation (Runtime) ==="
 
-    if [ ! -f "$TLS_CERT_PATH" ]; then
+    if [ ! -f "$CERT_FILE" ]; then
         # Certs don't exist - check if we generated them before but they're gone (ephemeral storage)
         if [ -f "$CERT_SEMAPHORE" ] && grep -q "certs_generated\|certs_regenerated" "$CERT_SEMAPHORE" 2>/dev/null; then
             echo "⚠ Certificates were generated before but are missing (container restart with ephemeral storage)"
