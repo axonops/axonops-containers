@@ -19,7 +19,7 @@ runs:
         echo "=== Verifying Certificate Files ==="
 
         # Check AxonOps certificate files exist (with axondbsearch-default- prefix)
-        for cert in axondbsearch-default-root-ca.pem axondbsearch-default-node.pem axondbsearch-default-node-key.pem axondbsearch-default-admin.pem axondbsearch-default-admin-key.pem; do
+        for cert in tls.ca tls.crt tls.key axondbsearch-default-admin.pem axondbsearch-default-admin-key.pem; do
           if docker exec ${{ inputs.container_name }} test -f /etc/opensearch/certs/$cert; then
             echo "✓ $cert exists"
           else

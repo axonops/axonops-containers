@@ -22,7 +22,7 @@ roles:
 replicas: 1
 
 # if not set, falls back to parsing .Values.imageTag, then .Chart.appVersion.
-majorVersion: ""
+majorVersion: "3"
 
 global:
   # Set if you want to change the default docker registry, e.g. a private one.
@@ -33,6 +33,8 @@ opensearchHome: /usr/share/opensearch
 
 # such as opensearch.yml and log4j2.properties
 config:
+  overrideExisting: false
+
   # Values must be YAML literal style scalar / YAML multiline string.
   # <filename>: |
   #   <formatted-value(s)>
@@ -46,58 +48,13 @@ config:
   #
   #   rootLogger.level = info
   #   rootLogger.appenderRef.console.ref = console
+
+  # Example opensearch.yml configuration you can override
   opensearch.yml: |
     cluster.name: opensearch-cluster
 
     # Bind to all interfaces because we don't know what IP address Docker will assign to us.
     network.host: 0.0.0.0
-
-    # Setting network.host to a non-loopback address enables the annoying bootstrap checks. "Single-node" mode disables them again.
-    # Implicitly done if ".singleNode" is set to "true".
-    # discovery.type: single-node
-
-    # Start OpenSearch Security Demo Configuration
-    # WARNING: revise all the lines below before you go into production
-    # plugins:
-    #   security:
-    #     ssl:
-    #       transport:
-    #         pemcert_filepath: esnode.pem
-    #         pemkey_filepath: esnode-key.pem
-    #         pemtrustedcas_filepath: root-ca.pem
-    #         enforce_hostname_verification: false
-    #       http:
-    #         enabled: true
-    #         pemcert_filepath: esnode.pem
-    #         pemkey_filepath: esnode-key.pem
-    #         pemtrustedcas_filepath: root-ca.pem
-    #     allow_unsafe_democertificates: true
-    #     allow_default_init_securityindex: true
-    #     authcz:
-    #       admin_dn:
-    #         - CN=kirk,OU=client,O=client,L=test,C=de
-    #     audit.type: internal_opensearch
-    #     enable_snapshot_restore_privilege: true
-    #     check_snapshot_restore_write_privileges: true
-    #     restapi:
-    #       roles_enabled: ["all_access", "security_rest_api_access"]
-    #     system_indices:
-    #       enabled: true
-    #       indices:
-    #         [
-    #           ".opendistro-alerting-config",
-    #           ".opendistro-alerting-alert*",
-    #           ".opendistro-anomaly-results*",
-    #           ".opendistro-anomaly-detector*",
-    #           ".opendistro-anomaly-checkpoints",
-    #           ".opendistro-anomaly-detection-state",
-    #           ".opendistro-reports-*",
-    #           ".opendistro-notifications-*",
-    #           ".opendistro-notebooks",
-    #           ".opendistro-asynchronous-search-response*",
-    #         ]
-    ######## End OpenSearch Security Demo Configuration ########
-  # log4j2.properties:
 
 # OpenSearch initial admin password
 # Chart version 2.18.0 and App Version OpenSearch 2.12.0 onwards a custom strong password needs to be provided in order to setup demo admin user.
@@ -131,7 +88,7 @@ hostAliases: []
 #   - "bar.local"
 
 image:
-  repository: "opensearchproject/opensearch"
+  repository: "ghcr.io/axonops/development/axondb-search"
   # override image tag, which is .Chart.AppVersion by default
   tag: ""
   pullPolicy: "IfNotPresent"
@@ -145,7 +102,71 @@ openSearchAnnotations: {}
 # additionals labels
 labels: {}
 
-opensearchJavaOpts: "-Xmx2048M -Xms2048M"
+opensearchJavaOps: ""
+opensearchHeapSize: "2g"
+
+authentication:
+  opensearch_user: ""
+  opensearch_password: ""
+  opensearch_secret: ""
+
+# TLS/SSL Configuration
+tls:
+  # Enable TLS/SSL for Opensearch
+  enabled: false
+
+  # cert-manager configuration for automatic certificate management
+  certManager:
+    # Enable cert-manager for certificate provisioning
+    enabled: false
+
+    # Keystore password (used for JKS/PKCS12 keystores)
+    # In production, override this with a secure password
+    keystorePassword: "changeme"
+
+    # When enabled, the following environment variables are set:
+    #   - OPENSEARCH_TLS_KEY_PATH: /etc/opensearch/certs/tls.key
+    #   - OPENSEARCH_TLS_CERT_PATH: /etc/opensearch/certs/tls.crt
+    #   - OPENSEARCH_CA_CERT_PATH: /etc/opensearch/certs/ca.crt
+
+    # Issuer configuration
+    issuer:
+      # Issuer name (if using an existing issuer)
+      name: ""
+      # Issuer kind (Issuer or ClusterIssuer)
+      kind: "ClusterIssuer"
+      # Create a self-signed issuer if no issuer name is provided
+      createSelfSigned: true
+
+    # Certificate specification
+    certificate:
+      # Common name for the certificate
+      commonName: ""
+      # DNS names for the certificate (SANs)
+      dnsNames: []
+        # - opensearch.example.com
+        # - "*.opensearch.example.com"
+      # IP addresses for the certificate (SANs)
+      ipAddresses: []
+      # Certificate duration (default: 90 days)
+      duration: 43800h # 5 years
+      # Certificate renewal time before expiry
+      renewBefore: 720h # 30 days
+      # Secret name where the certificate will be stored
+      secretName: "axondb-timeseries-tls-cert"
+
+  # Manual TLS configuration (when cert-manager is disabled)
+  manual:
+    # Existing secret containing TLS certificates and passwords
+    # Required keys in the secret:
+    #   - tls.crt: TLS certificate
+    #   - tls.key: Private key
+    #   - ca.crt: CA certificate
+    # Environment variables set:
+    #   - OPENSEARCH_TLS_KEY_PATH: /etc/opensearch/certs/tls.key
+    #   - OPENSEARCH_TLS_CERT_PATH: /etc/opensearch/certs/tls.crt
+    #   - OPENSEARCH_CA_CERT_PATH: /etc/opensearch/certs/ca.crt
+    existingSecret: ""
 
 resources:
   requests:
@@ -318,8 +339,8 @@ updateStrategy: RollingUpdate
 maxUnavailable: 1
 
 podSecurityContext:
-  fsGroup: 1000
-  runAsUser: 1000
+  fsGroup: 999
+  runAsUser: 999
 
 securityContext:
   capabilities:
@@ -327,7 +348,7 @@ securityContext:
       - ALL
   # readOnlyRootFilesystem: true
   runAsNonRoot: true
-  runAsUser: 1000
+  runAsUser: 999
 
 securityConfig:
   enabled: true
@@ -452,10 +473,6 @@ lifecycle: {}
   #         ES_URL=http://localhost:9200
   #         while [[ "$(curl -s -o /dev/null -w '%{http_code}\n' $ES_URL)" != "200" ]]; do sleep 1; done
   #         curl -XPUT "$ES_URL/_template/$TEMPLATE_NAME" -H 'Content-Type: application/json' -d'{"index_patterns":['\""$INDEX_PATTERN"\"'],"settings":{"number_of_shards":'$SHARD_COUNT',"number_of_replicas":'$REPLICA_COUNT'}}'
-
-keystore: []
-# To add secrets to the keystore:
-#  - secretName: opensearch-encryption-key
 
 networkPolicy:
   create: false

@@ -1,5 +1,5 @@
 {{- $root := . }}
-{{- if .Values.config }}
+{{- if .Values.config.overrideExisting }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

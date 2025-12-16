@@ -161,7 +161,34 @@ spec:
       {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriod }}
       volumes:
-      {{- if .Values.config }}
+      {{- if .Values.tls.enabled }}
+      # TLS/SSL certificate volumes
+      {{- if .Values.tls.certManager.enabled }}
+      - name: tls-certs
+        secret:
+          secretName: {{ .Values.tls.certManager.certificate.secretName | default (printf "%s-tls" (include "opensearch.fullname" .)) }}
+          items:
+            - key: keystore.jks
+              path: keystore.jks
+            - key: truststore.jks
+              path: truststore.jks
+            - key: keystore.p12
+              path: keystore.p12
+            - key: truststore.p12
+              path: truststore.p12
+            - key: tls.crt
+              path: tls.crt
+            - key: tls.key
+              path: tls.key
+            - key: ca.crt
+              path: ca.crt
+      {{- else if .Values.tls.manual.existingSecret }}
+      - name: tls-manual-certs
+        secret:
+          secretName: {{ .Values.tls.manual.existingSecret }}
+      {{- end }}
+      {{- end }}
+      {{- if .Values.config.overrideExisting }}
       - name: config
         configMap:
           name: {{ template "opensearch.uname" . }}-config
@@ -282,7 +309,7 @@ spec:
         resources:
           {{- toYaml .Values.initResources | nindent 10 }}
 {{- end }}
-{{- if .Values.config }}
+{{- if .Values.config.overrideExisting }}
       - name: configfile
         image: "{{ template "opensearch.dockerRegistry" . }}{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
@@ -297,12 +324,14 @@ spec:
         resources:
           {{- toYaml .Values.initResources | nindent 10 }}
         volumeMounts:
+        {{- if .Values.config.overrideExisting }}
           - mountPath: /tmp/config/
             name: config-emptydir
         {{- range $path, $config := .Values.config }}
           - name: config
             mountPath: /tmp/configfolder/{{ $path }}
             subPath: {{ $path }}
+        {{- end -}}
         {{- end -}}
 {{- end }}
 {{- if .Values.keystore }}
@@ -414,6 +443,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: OPENSEARCH_FQDN
+          value: {{ printf "%s.%s.svc.cluster.local" (include "opensearch.uname" .) .Release.Namespace | quote }}
         {{- if (and (has "master" .Values.roles) (not .Values.singleNode)) }}
         - name: cluster.initial_master_nodes
           value: "{{ template "opensearch.endpoints" . }}"
@@ -424,17 +455,79 @@ spec:
           value: "{{ .Values.clusterName }}"
         - name: network.host
           value: "{{ .Values.networkHost }}"
-        - name: OPENSEARCH_JAVA_OPTS
-          value: "{{ .Values.opensearchJavaOpts }}"
+        - name: OPENSEARCH_HEAP_SIZE
+          value: "{{ .Values.opensearchHeapSize }}"
         - name: node.roles
           value: "{{ template "opensearch.roles" . }}"
-{{- if .Values.opensearchInitialAdminPassword }}
-        - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+        - name: OPENSEARCH_JAVA_OPTS
+          value: "{{ .Values.opensearchJavaOps }}"
+      {{- if .Values.authentication.opensearch_secret }}
+        # Authentication credentials from secret
+        - name: AXONOPS_SEARCH_USER
           valueFrom:
             secretKeyRef:
-              name: {{ template "opensearch.uname" . }}-admin-password
-              key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
-{{- end }}
+              name: {{ .Values.authentication.opensearch_secret }}
+              key: AXONOPS_SEARCH_USER
+        - name: AXONOPS_SEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.authentication.opensearch_secret }}
+              key: AXONOPS_SEARCH_PASSWORD
+      {{- else if and .Values.authentication.opensearch_user .Values.authentication.opensearch_password }}
+        # Authentication credentials from values
+        - name: AXONOPS_SEARCH_USER
+          value: {{ .Values.authentication.opensearch_user | quote }}
+        - name: AXONOPS_SEARCH_PASSWORD
+          value: {{ .Values.authentication.opensearch_password | quote }}
+      {{- end }}
+      {{- if .Values.tls.enabled }}
+        # TLS/SSL Environment Variables
+        {{- if .Values.tls.certManager.enabled }}
+        - name: OPENSEARCH_KEYSTORE_PATH
+          value: "/etc/opensearch/certs/keystore.jks"
+        - name: OPENSEARCH_TRUSTSTORE_PATH
+          value: "/etc/opensearch/certs/truststore.jks"
+        - name: OPENSEARCH_KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "opensearch.fullname" . }}-keystore-password
+              key: password
+        - name: OPENSEARCH_TRUSTSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "opensearch.fullname" . }}-keystore-password
+              key: password
+        # PEM certificate paths
+        - name: OPENSEARCH_TLS_KEY_PATH
+          value: "/etc/opensearch/certs/tls.key"
+        - name: OPENSEARCH_TLS_CERT_PATH
+          value: "/etc/opensearch/certs/tls.crt"
+        - name: OPENSEARCH_CA_CERT_PATH
+          value: "/etc/opensearch/certs/ca.crt"
+        {{- else if .Values.tls.manual.existingSecret }}
+        - name: OPENSEARCH_KEYSTORE_PATH
+          value: "/etc/opensearch/certs/keystore.jks"
+        - name: OPENSEARCH_TRUSTSTORE_PATH
+          value: "/etc/opensearch/certs/truststore.jks"
+        - name: OPENSEARCH_KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.tls.manual.existingSecret }}
+              key: keystore-password
+        - name: OPENSEARCH_TRUSTSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.tls.manual.existingSecret }}
+              key: truststore-password
+        # PEM certificate paths
+        - name: OPENSEARCH_TLS_KEY_PATH
+          value: "/etc/opensearch/certs/tls.key"
+        - name: OPENSEARCH_TLS_CERT_PATH
+          value: "/etc/opensearch/certs/tls.crt"
+        - name: OPENSEARCH_CA_CERT_PATH
+          value: "/etc/opensearch/certs/ca.crt"
+        {{- end }}
+        {{- end }}
 {{- if .Values.singleNode }}
         - name: discovery.type
           value: "single-node"
@@ -451,6 +544,18 @@ spec:
 {{ toYaml .Values.opensearchLifecycle | indent 10 }}
 {{- end }}
         volumeMounts:
+        {{- if .Values.tls.enabled }}
+        # TLS/SSL certificate mounts
+        {{- if .Values.tls.certManager.enabled }}
+        - name: tls-certs
+          mountPath: /etc/opensearch/certs
+          readOnly: true
+        {{- else if .Values.tls.manual.existingSecret }}
+        - name: tls-manual-certs
+          mountPath: /etc/opensearch/certs
+          readOnly: true
+        {{- end }}
+        {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: "{{ template "opensearch.uname" . }}"
           mountPath: {{ .Values.opensearchHome }}/data
@@ -514,10 +619,12 @@ spec:
           subPath: {{ .subPath }}
           {{- end }}
         {{- end }}
+        {{- if .Values.config.overrideExisting }}
         {{- range $path, $config := .Values.config }}
         - name: config-emptydir
           mountPath: {{ $.Values.opensearchHome }}/config/{{ $path }}
           subPath: {{ $path }}
+        {{- end -}}
         {{- end -}}
         {{- if .Values.extraVolumeMounts }}
         # Currently some extra blocks accept strings
