@@ -425,7 +425,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ## Environment Variables
 
-The container supports 20 environment variables for configuration:
+The container supports 21 environment variables for configuration:
 
 | Variable | Description | Default | Category |
 |----------|-------------|---------|----------|
@@ -441,6 +441,7 @@ The container supports 20 environment variables for configuration:
 | `AXONOPS_SEARCH_USER` | Create custom admin user with this username (replaces default admin) | - | Security & Init |
 | `AXONOPS_SEARCH_PASSWORD` | Password for custom admin user (required if `AXONOPS_SEARCH_USER` set) | - | Security & Init |
 | `AXONOPS_SEARCH_TLS_ENABLED` | Enable HTTPS on REST API (set `false` for LB termination) | `true` | Security & Init |
+| `GENERATE_CERTS_ON_STARTUP` | Generate AxonOps default certificates at runtime if missing | `true` | Security & Init |
 | `INIT_OPENSEARCH_SECURITY` | Run security initialization (deprecated, always runs) | `true` | Security & Init |
 | `INIT_TIMEOUT` | Timeout in seconds for initialization script | `600` (10 min) | Security & Init |
 | `OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE` | Write thread pool queue size (increase for high-write workloads) | `10000` | Advanced/Transport |
@@ -767,7 +768,71 @@ docker exec axondb-search /usr/local/bin/healthcheck.sh readiness
 
 ### Security and Certificate Management
 
-The container includes a comprehensive security configuration with AxonOps-branded TLS certificates generated during the Docker build process.
+The container includes a comprehensive security configuration with AxonOps-branded TLS certificates generated **at runtime** (container startup), providing better security and flexibility for persistent storage scenarios.
+
+#### Runtime Certificate Generation
+
+**How It Works:**
+
+The container generates certificates automatically when it starts:
+
+1. **Startup Check**: On container startup, the entrypoint script checks if certificate files exist
+2. **Automatic Generation**: If certificates are missing, they are generated automatically with AxonOps branding
+3. **Semaphore Tracking**: A semaphore file records the generation status
+4. **Skip on Restart**: If certificates already exist (persistent volume), generation is skipped
+
+**Benefits of Runtime Generation:**
+
+- **Persistent Storage Compatible**: Certificates persist across container recreations when using volumes
+- **Fresh Certificates**: New deployments get newly-generated certificates
+- **User-Provided Certificates**: Easy to provide your own certificates by disabling auto-generation
+- **Transparent Operation**: Fully automatic with sensible defaults
+
+**Controlling Certificate Generation:**
+
+Use the `GENERATE_CERTS_ON_STARTUP` environment variable to control this behavior:
+
+```bash
+# Default: Auto-generate certificates if missing
+docker run -d --name axondb-search \
+  -e GENERATE_CERTS_ON_STARTUP=true \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+
+# Disable: Require user-provided certificates
+docker run -d --name axondb-search \
+  -e GENERATE_CERTS_ON_STARTUP=false \
+  -v /path/to/your/certs:/etc/opensearch/certs \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+```
+
+**Generation Scenarios:**
+
+| Scenario | `GENERATE_CERTS_ON_STARTUP` | Certificates Exist? | Result |
+|----------|----------------------------|---------------------|--------|
+| **First startup (empty volume)** | `true` (default) | No | ✓ Certificates generated |
+| **First startup (no volume)** | `true` (default) | No | ✓ Certificates generated (ephemeral) |
+| **Restart with persistent volume** | `true` (default) | Yes | ✓ Skipped (existing certs used) |
+| **User-provided certificates** | `false` | Yes | ✓ User certs used |
+| **User-provided certificates** | `false` | No | ✗ Container fails (no certs) |
+
+**Semaphore File:**
+
+The certificate generation status is recorded in `/var/lib/opensearch/.axonops/generate-certs.done`:
+
+```bash
+# Check certificate generation status
+docker exec axondb-search cat /var/lib/opensearch/.axonops/generate-certs.done
+
+# Example output:
+COMPLETED=2025-12-16T05:47:02Z
+RESULT=success
+REASON=certs_generated
+```
+
+**Possible `RESULT` values:**
+- `success` - Certificates generated successfully
+- `skipped` - Certificates already exist, generation skipped
+- `disabled` - Certificate generation disabled via `GENERATE_CERTS_ON_STARTUP=false`
 
 #### AxonOps-Branded Certificates (NOT Demo Certificates)
 
@@ -790,16 +855,16 @@ The container includes a comprehensive security configuration with AxonOps-brand
 
 ```yaml
 # Transport layer SSL/TLS (node-to-node communication)
-plugins.security.ssl.transport.pemcert_filepath: certs/node.pem
-plugins.security.ssl.transport.pemkey_filepath: certs/node-key.pem
-plugins.security.ssl.transport.pemtrustedcas_filepath: certs/root-ca.pem
+plugins.security.ssl.transport.pemcert_filepath: certs/axondbsearch-default-node.pem
+plugins.security.ssl.transport.pemkey_filepath: certs/axondbsearch-default-node-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: certs/axondbsearch-default-root-ca.pem
 plugins.security.ssl.transport.enforce_hostname_verification: false
 
 # HTTP layer SSL/TLS (REST API)
 plugins.security.ssl.http.enabled: true
-plugins.security.ssl.http.pemcert_filepath: certs/node.pem
-plugins.security.ssl.http.pemkey_filepath: certs/node-key.pem
-plugins.security.ssl.http.pemtrustedcas_filepath: certs/root-ca.pem
+plugins.security.ssl.http.pemcert_filepath: certs/axondbsearch-default-node.pem
+plugins.security.ssl.http.pemkey_filepath: certs/axondbsearch-default-node-key.pem
+plugins.security.ssl.http.pemtrustedcas_filepath: certs/axondbsearch-default-root-ca.pem
 plugins.security.ssl.http.clientauth_mode: NONE
 
 # Admin certificate DN (for securityadmin tool)
@@ -812,26 +877,78 @@ plugins.security.allow_unsafe_democertificates: false
 
 #### Certificate Files Generated
 
-The following certificate files are created in `/etc/opensearch/certs/`:
+The following certificate files are created in `/etc/opensearch/certs/` (using `axondbsearch-default-` prefix to clearly identify auto-generated certificates):
 
 | File | Type | Description |
 |------|------|-------------|
-| `root-ca.pem` | Root CA Certificate | AxonOps Root CA (public certificate) |
-| `root-ca-key.pem` | Root CA Private Key | Root CA private key (600 permissions) |
-| `node.pem` | Node Certificate | Node certificate for transport and HTTP SSL |
-| `node-key.pem` | Node Private Key | Node private key in PKCS#8 format (600 permissions) |
-| `admin.pem` | Admin Certificate | Admin client certificate for securityadmin tool |
-| `admin-key.pem` | Admin Private Key | Admin private key in PKCS#8 format (600 permissions) |
+| `axondbsearch-default-root-ca.pem` | Root CA Certificate | AxonOps Root CA (public certificate) |
+| `axondbsearch-default-root-ca-key.pem` | Root CA Private Key | Root CA private key (600 permissions) |
+| `axondbsearch-default-node.pem` | Node Certificate | Node certificate for transport and HTTP SSL |
+| `axondbsearch-default-node-key.pem` | Node Private Key | Node private key in PKCS#8 format (600 permissions) |
+| `axondbsearch-default-admin.pem` | Admin Certificate | Admin client certificate for securityadmin tool |
+| `axondbsearch-default-admin-key.pem` | Admin Private Key | Admin private key in PKCS#8 format (600 permissions) |
+
+**File Naming Convention:**
+
+Certificate files use the `axondbsearch-default-` prefix to:
+- Clearly identify AxonOps auto-generated certificates
+- Distinguish them from user-provided certificates
+- Make it obvious which certificates can be safely replaced
 
 **Certificate Verification:**
 
 ```bash
 # View node certificate details
-docker exec axondb-search openssl x509 -in /etc/opensearch/certs/node.pem -noout -text
+docker exec axondb-search openssl x509 -in /etc/opensearch/certs/axondbsearch-default-node.pem -noout -text
 
 # Verify certificate chain
-docker exec axondb-search openssl verify -CAfile /etc/opensearch/certs/root-ca.pem /etc/opensearch/certs/node.pem
+docker exec axondb-search openssl verify \
+  -CAfile /etc/opensearch/certs/axondbsearch-default-root-ca.pem \
+  /etc/opensearch/certs/axondbsearch-default-node.pem
+
+# Check certificate generation semaphore
+docker exec axondb-search cat /var/lib/opensearch/.axonops/generate-certs.done
 ```
+
+#### Using Custom Certificates
+
+To provide your own certificates instead of using AxonOps auto-generated ones:
+
+**Option 1: Disable auto-generation and mount your certificates**
+```bash
+docker run -d --name axondb-search \
+  -e GENERATE_CERTS_ON_STARTUP=false \
+  -v /path/to/your/certs:/etc/opensearch/certs:ro \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+```
+
+**Option 2: Replace certificates in persistent volume**
+```bash
+# Create volume
+docker volume create opensearch-certs
+
+# Start container with auto-generation first time
+docker run -d --name axondb-search \
+  -v opensearch-certs:/etc/opensearch/certs \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+
+# Stop container and replace certificates
+docker stop axondb-search
+docker run --rm -v opensearch-certs:/certs busybox sh -c "rm /certs/axondbsearch-default-*.pem"
+docker cp /path/to/your/certs/. axondb-search:/etc/opensearch/certs/
+
+# Restart with your certificates
+docker start axondb-search
+```
+
+**Required certificate files (if providing your own):**
+- `root-ca.pem` (or your CA cert name)
+- `node.pem` (or your node cert name)
+- `node-key.pem` (or your node key name, PKCS#8 format)
+- `admin.pem` (or your admin cert name)
+- `admin-key.pem` (or your admin key name, PKCS#8 format)
+
+Update `opensearch.yml` to reference your certificate filenames if they differ from AxonOps defaults.
 
 #### Admin User Replacement Model
 
