@@ -124,6 +124,57 @@ fi
 # JVM heap settings
 export CASSANDRA_HEAP_SIZE="${CASSANDRA_HEAP_SIZE:-8G}"
 
+# Enable SSL if specified (assumes certs are mounted in /etc/cassandra/ssl)
+if [ "$CASSANDRA_KEYSTORE_PATH" != "" ] && [ -f "${CASSANDRA_KEYSTORE_PATH}" ]; then
+  yq -i '.server_encryption_options.internode_encryption = strenv(CASSANDRA_INTERNODE_ENCRYPTION)' /etc/cassandra/cassandra.yaml
+  yq -i '.server_encryption_options.enabled = true' /etc/cassandra/cassandra.yaml
+  yq -i '.server_encryption_options.keystore = strenv(CASSANDRA_KEYSTORE_PATH)' /etc/cassandra/cassandra.yaml
+  yq -i '.server_encryption_options.keystore_password = strenv(CASSANDRA_KEYSTORE_PASSWORD)' /etc/cassandra/cassandra.yaml
+  yq -i '.server_encryption_options.truststore = strenv(CASSANDRA_TRUSTSTORE_PATH)' /etc/cassandra/cassandra.yaml
+  yq -i '.server_encryption_options.truststore_password = strenv(CASSANDRA_TRUSTSTORE_PASSWORD)' /etc/cassandra/cassandra.yaml
+
+  yq -i '.client_encryption_options.enabled = strenv(CASSANDRA_INTERNODE_CLIENT_AUTH)' /etc/cassandra/cassandra.yaml
+  yq -i '.client_encryption_options.keystore = strenv(CASSANDRA_KEYSTORE_PATH)' /etc/cassandra/cassandra.yaml
+  yq -i '.client_encryption_options.keystore_password = strenv(CASSANDRA_KEYSTORE_PASSWORD)' /etc/cassandra/cassandra.yaml
+  yq -i '.client_encryption_options.truststore = strenv(CASSANDRA_TRUSTSTORE_PATH)' /etc/cassandra/cassandra.yaml
+  yq -i '.client_encryption_options.truststore_password = strenv(CASSANDRA_TRUSTSTORE_PASSWORD)' /etc/cassandra/cassandra.yaml
+  echo "✓ SSL encryption enabled for client and inter-node communication"
+  SSL_ENABLED=true
+else
+  echo "⚠ SSL encryption not enabled (keystore/truststore not found), continuing without it"
+  SSL_ENABLED=false
+fi
+
+if [ "$CASSANDRSA_FQDN" == "" ]; then
+  CASSANDRSA_FQDN="$(hostname)"
+  echo "✓ CQLSH FQDN set to $CASSANDRSA_FQDN"
+fi
+
+if [ "$SSL_ENABLED" = true ] && [ -f "$CASSANDRA_CA_CERT_PATH" ]; then
+  mkdir -p /opt/cassandra/.cassandra
+  cat >> /opt/cassandra/.cassandra/cqlshrc <<EOL
+[connection]
+ssl = true
+hostname = $CASSANDRSA_FQDN
+
+[ssl]
+certfile = $CASSANDRA_CA_CERT_PATH
+userkey = $CASSANDRA_TLS_KEY_PATH
+usercert = $CASSANDRA_TLS_CERT_PATH
+validate = true
+EOL
+
+elif [ "$SSL_ENABLED" = true ]; then
+  cat >> /opt/cassandra/.cassandra/cqlshrc <<EOL
+[connection]
+ssl = true
+hostname = $CASSANDRSA_FQDN
+
+[ssl]
+validate = false
+EOL
+fi
+
 echo "Configuration:"
 echo "  Cluster Name:       ${CASSANDRA_CLUSTER_NAME}"
 echo "  DC/Rack:            ${CASSANDRA_DC}/${CASSANDRA_RACK}"
@@ -131,6 +182,11 @@ echo "  Num Tokens:         ${CASSANDRA_NUM_TOKENS}"
 echo "  Listen Address:     ${CASSANDRA_LISTEN_ADDRESS}"
 echo "  RPC Address:        ${CASSANDRA_RPC_ADDRESS}"
 echo "  Heap Size:          ${CASSANDRA_HEAP_SIZE}"
+if [ "$SSL_ENABLED" = true ]; then
+  echo "  SSL:                Enabled"
+else
+  echo "  SSL:                Disabled"
+fi
 echo ""
 
 # Apply environment variable substitutions to cassandra.yaml

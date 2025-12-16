@@ -1,0 +1,128 @@
+name: 'AxonDB Time-Series SSL Test'
+description: 'Tests SSL/TLS encryption for client and internode communication'
+inputs:
+  image:
+    description: 'Container image to test'
+    required: true
+    default: 'axondb-timeseries:test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate temporary SSL certificates
+      shell: bash
+      run: |
+        echo "=== Generating temporary SSL certificates for testing ==="
+
+        # Create certificates directory
+        mkdir -p tests/certs
+        cd tests/certs
+
+        # Generate CA private key
+        openssl genrsa -out ca.key 2048
+
+        # Generate CA certificate
+        openssl req -new -x509 -key ca.key -out ca.crt -days 365 \
+          -subj "/C=US/ST=Test/L=Test/O=Test/CN=Test CA"
+
+        # Generate server private key
+        openssl genrsa -out tls.key 2048
+
+        # Generate server certificate request with SAN for localhost and IP
+        cat > server.conf <<EOF
+        [req]
+        distinguished_name = req_distinguished_name
+        req_extensions = v3_req
+
+        [req_distinguished_name]
+
+        [v3_req]
+        keyUsage = keyEncipherment, dataEncipherment
+        extendedKeyUsage = serverAuth, clientAuth
+        subjectAltName = @alt_names
+
+        [alt_names]
+        DNS.1 = localhost
+        DNS.2 = ${{ inputs.container_name }}
+        IP.1 = 127.0.0.1
+        EOF
+
+        openssl req -new -key tls.key -out tls.csr \
+          -subj "/C=US/ST=Test/L=Test/O=Test/CN=localhost" \
+          -config server.conf
+
+        # Sign server certificate with CA including extensions
+        openssl x509 -req -in tls.csr -CA ca.crt -CAkey ca.key \
+          -CAcreateserial -out tls.crt -days 365 \
+          -extensions v3_req -extfile server.conf
+
+        # Create PKCS12 file for importing into Java keystore
+        openssl pkcs12 -export -out server.p12 \
+          -inkey tls.key -in tls.crt \
+          -certfile ca.crt -passout pass:changeit \
+          -name cassandra
+
+        # Create Java keystore with server certificate
+        keytool -importkeystore \
+          -srckeystore server.p12 -srcstoretype PKCS12 -srcstorepass changeit \
+          -destkeystore keystore.jks -deststoretype JKS -deststorepass changeit \
+          -alias cassandra -noprompt
+
+        # Create Java truststore with CA certificate
+        keytool -import -file ca.crt \
+          -keystore truststore.jks -storepass changeit \
+          -alias ca -noprompt
+
+        # Set permissions for certificates
+        chmod 644 *.crt *.jks
+        chmod 600 *.key
+        sudo chown -R 999:999 .
+
+        echo "✓ SSL certificates generated successfully"
+        ls -la
+
+        cd ../..
+
+    - name: Test Cassandra with client SSL enabled
+      shell: bash
+      run: |
+        echo "=== Testing Cassandra with client SSL enabled ==="
+
+        # Start Cassandra with SSL configuration
+        docker run -d \
+          -v $(pwd)/tests/certs:/etc/cassandra/certs:ro \
+          --hostname ${{ inputs.container_name }} \
+          --name ${{ inputs.container_name }} \
+          -p 9042:9042 \
+          -e CASSANDRA_DC=ssl_test_dc \
+          -e CASSANDRA_HEAP_SIZE=1G \
+          -e CASSANDRA_KEYSTORE_PATH=/etc/cassandra/certs/keystore.jks \
+          -e CASSANDRA_TRUSTSTORE_PATH=/etc/cassandra/certs/truststore.jks \
+          -e CASSANDRA_KEYSTORE_PASSWORD=changeit \
+          -e CASSANDRA_TRUSTSTORE_PASSWORD=changeit \
+          -e CASSANDRA_CLIENT_ENCRYPTION_ENABLED=true \
+          -e CASSANDRA_CLIENT_ENCRYPTION_OPTIONAL=false \
+          -e CASSANDRA_INTERNODE_CLIENT_AUTH=true \
+          -e CASSANDRA_INTERNODE_ENCRYPTION=all \
+          -e CASSANDRA_CA_CERT_PATH=/etc/cassandra/certs/ca.crt \
+          -e CASSANDRA_TLS_CERT_PATH=/etc/cassandra/certs/tls.crt \
+          -e CASSANDRA_TLS_KEY_PATH=/etc/cassandra/certs/tls.key \
+          ${{ inputs.image }}
+
+        echo "Waiting for Cassandra to start (120 seconds)..."
+        sleep 120
+
+        # Check if Cassandra started successfully
+        if ! docker ps | grep -q ${{ inputs.container_name }}; then
+          echo "ERROR: Container failed to start"
+          docker logs ${{ inputs.container_name }}
+          exit 1
+        fi
+
+        echo "Creating keyspace..."
+        docker exec ${{ inputs.container_name }} cqlsh --ssl -u cassandra -p cassandra -e "CREATE KEYSPACE IF NOT EXISTS cqlsh_ssl_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+
+        echo "========================================="
+        echo "✓ ALL SSL TESTS PASSED"
+        echo "========================================="
+

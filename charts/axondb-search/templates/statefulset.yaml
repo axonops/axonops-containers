@@ -23,7 +23,7 @@ spec:
   podManagementPolicy: {{ .Values.podManagementPolicy }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
-  {{- if .Values.persistence.enabled }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
   volumeClaimTemplates:
   - metadata:
       name: {{ template "opensearch.uname" . }}
@@ -161,6 +161,11 @@ spec:
       {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriod }}
       volumes:
+      {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
+      - name: {{ template "opensearch.uname" . }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.existingClaim }}
+      {{- end }}
       {{- if .Values.tls.enabled }}
       # TLS/SSL certificate volumes
       {{- if .Values.tls.certManager.enabled }}
@@ -246,14 +251,6 @@ spec:
         secret:
           secretName: {{ .Values.securityConfig.tenantsSecret }}
       {{- end }}
-{{- if .Values.keystore }}
-      - name: keystore
-        emptyDir: {}
-      {{- range .Values.keystore }}
-      - name: keystore-{{ .secretName }}
-        secret: {{ toYaml . | nindent 12 }}
-      {{- end }}
-{{ end }}
       {{- if .Values.extraVolumes }}
       # Currently some extra blocks accept strings
       # to continue with backwards compatibility this is being kept
@@ -272,7 +269,7 @@ spec:
       {{- if .Values.hostAliases }}
       hostAliases: {{ toYaml .Values.hostAliases | nindent 8 }}
       {{- end }}
-      {{- if or (.Values.extraInitContainers) (.Values.keystore) (.Values.persistence.enabled) (.Values.sysctlInit.enabled) (.Values.config)  }}
+      {{- if or (.Values.extraInitContainers) (.Values.persistence.enabled) (.Values.sysctlInit.enabled) (.Values.config)  }}
       initContainers:
 {{- if and .Values.persistence.enabled .Values.persistence.enableInitChown }}
       - name: fsgroup-volume
@@ -333,47 +330,6 @@ spec:
             subPath: {{ $path }}
         {{- end -}}
         {{- end -}}
-{{- end }}
-{{- if .Values.keystore }}
-      - name: keystore
-        image: "{{ template "opensearch.dockerRegistry" . }}{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-        imagePullPolicy: "{{ .Values.image.pullPolicy }}"
-        command:
-        - sh
-        - -c
-        - |
-          #!/usr/bin/env bash
-          set -euo pipefail
-
-          {{ .Values.opensearchHome }}/bin/opensearch-keystore create
-
-          for i in /tmp/keystoreSecrets/*/*; do
-            [ -f "$i" ] || continue
-            key=$(basename $i)
-            echo "Adding file $i to keystore key $key"
-            {{ .Values.opensearchHome }}/bin/opensearch-keystore add-file "$key" "$i"
-          done
-
-          # Add the bootstrap password since otherwise the opensearch entrypoint tries to do this on startup
-          if [ ! -z ${PASSWORD+x} ]; then
-            echo 'Adding env $PASSWORD to keystore as key bootstrap.password'
-            echo "$PASSWORD" | {{ .Values.opensearchHome }}/bin/opensearch-keystore add -x bootstrap.password
-          fi
-
-          cp -a {{ .Values.opensearchHome }}/config/opensearch.keystore /tmp/keystore/
-        env: {{ toYaml .Values.extraEnvs | nindent 10 }}
-        envFrom: {{ toYaml .Values.envFrom | nindent 10 }}
-        securityContext:
-{{ toYaml .Values.securityContext | indent 10 }}
-        resources:
-          {{- toYaml .Values.initResources | nindent 10 }}
-        volumeMounts:
-        - name: keystore
-          mountPath: /tmp/keystore
-        {{- range .Values.keystore }}
-        - name: keystore-{{ .secretName }}
-          mountPath: /tmp/keystoreSecrets/{{ .secretName }}
-        {{- end }}
 {{- end }}
       {{- if .Values.extraInitContainers }}
       # Currently some extra blocks accept strings
@@ -559,11 +515,6 @@ spec:
         {{- if .Values.persistence.enabled }}
         - name: "{{ template "opensearch.uname" . }}"
           mountPath: {{ .Values.opensearchHome }}/data
-        {{- end }}
-        {{- if .Values.keystore }}
-        - name: keystore
-          mountPath: {{ .Values.opensearchHome }}/config/opensearch.keystore
-          subPath: opensearch.keystore
         {{- end }}
         {{- if .Values.securityConfig.enabled }}
         {{- if .Values.securityConfig.actionGroupsSecret }}

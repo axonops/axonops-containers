@@ -22,35 +22,35 @@ runs:
         echo "=== Testing CQL operations with cqlai ==="
 
         echo "Creating keyspace..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "CREATE KEYSPACE IF NOT EXISTS cqlai_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "CREATE KEYSPACE IF NOT EXISTS cqlai_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
 
         echo "Creating table..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "CREATE TABLE IF NOT EXISTS cqlai_test.users (id UUID PRIMARY KEY, name TEXT, email TEXT, created_at TIMESTAMP);"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "CREATE TABLE IF NOT EXISTS cqlai_test.users (id UUID PRIMARY KEY, name TEXT, email TEXT, created_at TIMESTAMP);"
 
         echo "Inserting test data..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Alice', 'alice@example.com', toTimestamp(now()));"
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Bob', 'bob@example.com', toTimestamp(now()));"
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Charlie', 'charlie@example.com', toTimestamp(now()));"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Alice', 'alice@example.com', toTimestamp(now()));"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Bob', 'bob@example.com', toTimestamp(now()));"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "INSERT INTO cqlai_test.users (id, name, email, created_at) VALUES (uuid(), 'Charlie', 'charlie@example.com', toTimestamp(now()));"
 
         echo "Selecting data..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "SELECT * FROM cqlai_test.users;"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "SELECT * FROM cqlai_test.users;"
 
         echo "Verifying data..."
         # Save output to avoid SIGPIPE (exit 141) when grep exits early
-        OUTPUT=$(docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "SELECT * FROM cqlai_test.users;")
+        OUTPUT=$(docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "SELECT * FROM cqlai_test.users;")
         echo "$OUTPUT" | grep -q "example.com"
         echo "✓ Data verified"
 
         echo "Testing UPDATE..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "UPDATE cqlai_test.users SET name = 'Alice Updated' WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Alice' ALLOW FILTERING);" || true
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "UPDATE cqlai_test.users SET name = 'Alice Updated' WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Alice' ALLOW FILTERING);" || true
 
         echo "Testing DELETE..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "DELETE FROM cqlai_test.users WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Charlie' ALLOW FILTERING);" || true
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "DELETE FROM cqlai_test.users WHERE id IN (SELECT id FROM cqlai_test.users WHERE name = 'Charlie' ALLOW FILTERING);" || true
 
         echo "Querying system tables..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "SELECT keyspace_name, table_name FROM system_schema.tables WHERE keyspace_name = 'cqlai_test';"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "SELECT keyspace_name, table_name FROM system_schema.tables WHERE keyspace_name = 'cqlai_test';"
 
         echo "Cleanup test keyspace..."
-        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra -e "DROP KEYSPACE cqlai_test;"
+        docker exec ${{ inputs.container_name }} cqlai -u cassandra -p cassandra ${{ inputs.container_name }} -e "DROP KEYSPACE cqlai_test;"
 
         echo "✓ All cqlai CQL tests passed"
