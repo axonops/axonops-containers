@@ -1,0 +1,74 @@
+name: 'Helm Lint'
+description: 'Lints a Helm chart for syntax and best practices'
+inputs:
+  chart_path:
+    description: 'Path to the Helm chart directory'
+    required: true
+  values_file:
+    description: 'Optional values file to use during linting'
+    required: false
+    default: ''
+  strict:
+    description: 'Enable strict mode (fail on warnings)'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: 'latest'
+
+    - name: Lint Helm chart
+      shell: bash
+      run: |
+        echo "🔍 Linting Helm chart: ${{ inputs.chart_path }}"
+
+        LINT_ARGS=""
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          LINT_ARGS="--strict"
+          echo "  Mode: Strict (fail on warnings)"
+        fi
+
+        if [ -n "${{ inputs.values_file }}" ]; then
+          LINT_ARGS="$LINT_ARGS --values ${{ inputs.values_file }}"
+          echo "  Values file: ${{ inputs.values_file }}"
+        fi
+
+        helm lint ${{ inputs.chart_path }} $LINT_ARGS
+
+        if [ $? -eq 0 ]; then
+          echo "✓ Helm chart passed linting"
+        else
+          echo "✗ Helm chart failed linting"
+          exit 1
+        fi
+
+    - name: Template Helm chart
+      shell: bash
+      run: |
+        echo "🔨 Templating Helm chart to validate rendering..."
+
+        TEMPLATE_ARGS=""
+        if [ -n "${{ inputs.values_file }}" ]; then
+          TEMPLATE_ARGS="--values ${{ inputs.values_file }}"
+        fi
+
+        helm template test-release ${{ inputs.chart_path }} $TEMPLATE_ARGS > /dev/null
+
+        if [ $? -eq 0 ]; then
+          echo "✓ Helm chart templates rendered successfully"
+        else
+          echo "✗ Helm chart template rendering failed"
+          exit 1
+        fi
+
+    - name: Lint summary
+      shell: bash
+      run: |
+        CHART_NAME=$(basename ${{ inputs.chart_path }})
+        echo "### ✓ $CHART_NAME" >> $GITHUB_STEP_SUMMARY
+        echo "Chart \`${{ inputs.chart_path }}\` passed all linting checks" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
