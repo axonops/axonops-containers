@@ -193,31 +193,12 @@ tls:
     internode:
       # Encryption options: none, dc, rack, all
       encryption: "all"
-      # Require client authentication
-      requireClientAuth: true
       # Protocol version
       protocol: "TLS"
       # Accepted protocols (comma-separated)
       acceptedProtocols: "TLSv1.2,TLSv1.3"
       # Cipher suites (leave empty for JVM defaults)
       cipherSuites: []
-      # Keystore type
-      storeType: "JKS"
-
-    # Client-to-node encryption settings
-    clientToNode:
-      # Enable client encryption
-      enabled: false
-      # Require client authentication
-      requireClientAuth: false
-      # Protocol version
-      protocol: "TLS"
-      # Accepted protocols
-      acceptedProtocols: "TLSv1.2,TLSv1.3"
-      # Cipher suites
-      cipherSuites: []
-      # Keystore type
-      storeType: "JKS"
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
@@ -235,23 +216,6 @@ readinessProbe:
   timeoutSeconds: 30
   successThreshold: 1
   failureThreshold: 5
-
-##
-customLivenessProbe: {}
-## @param customReadinessProbe Custom readinessProbe that overrides the default one
-##
-customReadinessProbe: {}
-## @param customStartupProbe [object] Override default startup probe
-##
-customStartupProbe: {}
-
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
 
 # Persistence configuration for Cassandra data
 persistence:
