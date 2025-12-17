@@ -1,0 +1,67 @@
+{{- if and .Values.tls.enabled .Values.tls.certManager.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "axon-cassandra.fullname" . }}-tls
+  labels:
+    {{- include "axon-cassandra.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.tls.certManager.certificate }}
+  secretName: {{ .secretName | default (printf "%s-tls" (include "axon-cassandra.fullname" $)) }}
+  {{- if .commonName }}
+  commonName: {{ .commonName }}
+  {{- else }}
+  commonName: {{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+  {{- end }}
+  dnsNames:
+    {{- if .dnsNames }}
+    {{- toYaml .dnsNames | nindent 4 }}
+    {{- else }}
+    # Default DNS names for the StatefulSet pods
+    - {{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+    - "*.{{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local"
+    - {{ include "axon-cassandra.fullname" $ }}-headless.{{ $.Release.Namespace }}.svc.cluster.local
+    - "*.{{ include "axon-cassandra.fullname" $ }}-headless.{{ $.Release.Namespace }}.svc.cluster.local"
+    {{- range $i := until (int $.Values.replicaCount) }}
+    - {{ include "axon-cassandra.fullname" $ }}-{{ $i }}.{{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+    - {{ include "axon-cassandra.fullname" $ }}-{{ $i }}-headless.{{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+    {{- end }}
+    {{- end }}
+  {{- if .ipAddresses }}
+  ipAddresses:
+    {{- toYaml .ipAddresses | nindent 4 }}
+  {{- end }}
+  duration: {{ .duration | default "2160h" }}
+  renewBefore: {{ .renewBefore | default "360h" }}
+  {{- end }}
+  issuerRef:
+    {{- if .Values.tls.certManager.issuer.name }}
+    name: {{ .Values.tls.certManager.issuer.name }}
+    {{- else }}
+    name: {{ include "axon-cassandra.fullname" . }}-issuer
+    {{- end }}
+    kind: {{ .Values.tls.certManager.issuer.kind | default "ClusterIssuer" }}
+  # Key specifications
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  # Additional options for Java keystore generation
+  keystores:
+    jks:
+      create: true
+      passwordSecretRef:
+        name: {{ include "axon-cassandra.fullname" . }}-keystore-password
+        key: password
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: {{ include "axon-cassandra.fullname" . }}-keystore-password
+        key: password
+{{- end }}
