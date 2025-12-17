@@ -21,8 +21,11 @@ spec:
     # Default DNS names for the StatefulSet pods
     - {{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
     - "*.{{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local"
+    - {{ include "axon-cassandra.fullname" $ }}-headless.{{ $.Release.Namespace }}.svc.cluster.local
+    - "*.{{ include "axon-cassandra.fullname" $ }}-headless.{{ $.Release.Namespace }}.svc.cluster.local"
     {{- range $i := until (int $.Values.replicaCount) }}
     - {{ include "axon-cassandra.fullname" $ }}-{{ $i }}.{{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+    - {{ include "axon-cassandra.fullname" $ }}-{{ $i }}-headless.{{ include "axon-cassandra.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
     {{- end }}
     {{- end }}
   {{- if .ipAddresses }}

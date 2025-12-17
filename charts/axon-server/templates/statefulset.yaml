@@ -46,7 +46,23 @@ spec:
         runAsNonRoot: {{ .Values.podSecurityContext.runAsNonRoot }}
         {{- end }}
       {{- end }}
+      initContainers:
+{{- if and .Values.persistence.enabled .Values.persistence.enableInitChown }}
+      - name: fsgroup-volume
+        image: "{{ template "axon-server.dockerRegistry" . }}{{ .Values.persistence.image | default "busybox" }}:{{ .Values.persistence.imageTag | default "latest" }}"
+        imagePullPolicy: "{{ .Values.image.pullPolicy | default "IfNotPresent" }}"
+        command: ['sh', '-c']
+        args:
+          - 'chown -R 9988:9988 /var/lib/axonops'
+        securityContext:
+          runAsUser: 0
+        resources:
+          {{- toYaml .Values.initResources | nindent 10 }}
+        volumeMounts:
+          - name: "data"
+            mountPath: /var/lib/axonops
       containers:
+{{- end }}
       - name: {{ .Chart.Name }}
         {{- with .Values.securityContext }}
         securityContext:
@@ -97,6 +113,11 @@ spec:
         - name: data
           mountPath: /var/lib/axonops
         {{- end }}
+        {{- if .Values.config.sslSecretName }}
+        - name: ssl-certs
+          mountPath: /ssl
+          readOnly: true
+        {{- end }}
         {{- with .Values.extraVolumeMounts }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -121,6 +142,11 @@ spec:
       {{- if not .Values.persistence.enabled }}
       - name: data
         emptyDir: {}
+      {{- end }}
+      {{- if .Values.config.sslSecretName }}
+      - name: ssl-certs
+        secret:
+          secretName: {{ .Values.config.sslSecretName }}
       {{- end }}
       {{- with .Values.extraVolumes }}
       {{- toYaml . | nindent 6 }}

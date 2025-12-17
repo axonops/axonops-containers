@@ -60,3 +60,11 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "axon-server.dockerRegistry" -}}
+{{- if eq .Values.global.dockerRegistry "" -}}
+  {{- .Values.global.dockerRegistry -}}
+{{- else -}}
+  {{- .Values.global.dockerRegistry | trimSuffix "/" | printf "%s/" -}}
+{{- end -}}
+{{- end -}}

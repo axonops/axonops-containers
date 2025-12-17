@@ -170,7 +170,7 @@ spec:
                 - /bin/bash
                 - -ec
                 - |
-                  nodetool info | grep "Native Transport active: true"
+                  /usr/local/bin/healthcheck.sh liveness
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -186,7 +186,7 @@ spec:
                 - /bin/bash
                 - -ec
                 - |
-                  nodetool status | grep -E "^UN\\s+${POD_IP}"
+                  /usr/local/bin/healthcheck.sh readiness
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}

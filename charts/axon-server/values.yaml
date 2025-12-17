@@ -1,6 +1,9 @@
 # Default values for axon-server.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+global:
+  # Set if you want to change the default docker registry, e.g. a private one.
+  dockerRegistry: ""
 
 # Image configuration
 image:
@@ -18,9 +21,9 @@ fullnameOverride: ""
 # Configure the Elasticsearch endpoint
 searchDb:
   hosts:
-    - http://axonops-elastic:9200
-  username: ""
-  password: ""
+    - https://axondb-search-cluster-master:9200
+  username: "admin"
+  password: "MyS3cur3P@ss2025"
   skip_verify: true
 
 # dashboardUrl should be set to the publicly-accessible URL for the AxonOps Dashboard
@@ -93,26 +96,35 @@ config:
     #       backupAdminRole: "cn=xxxx"
 
   # Additional configuration options
-  extraConfig: {}
-    # cql_hosts:
-    #   - cassandra-dc1
-    # cql_username: "cassandra"
-    # cql_password: "cassandra"
-    # cql_local_dc: dc1
-    # cql_proto_version: 4
-    # cql_max_searchqueriesparallelism: 100
-    # cql_batch_size: 100
-    # cql_page_size: 100
-    # cql_autocreate_tables: false
-    # cql_retrypolicy_numretries: 3
-    # cql_retrypolicy_min: 2s
-    # cql_retrypolicy_max: 10s
-    # cql_reconnectionpolicy_maxretries: 10
-    # cql_reconnectionpolicy_initialinterval: 1s
-    # cql_reconnectionpolicy_maxinterval: 10s
-    # cql_keyspace_replication: "{ 'class': 'NetworkTopologyStrategy', 'dc1': 1, 'dc2': 1 }"
-    # cql_metrics_cache_max_size: 128  #MB
-    # cql_metrics_cache_max_items : 500000
+  extraConfig:
+    cql_hosts:
+      - axondb-timeseries-headless.sergio.svc.cluster.local
+    cql_username: "axonops"
+    cql_password: "axonops"
+    cql_local_dc: axonopsdb_dc1
+    cql_proto_version: 4
+    cql_max_searchqueriesparallelism: 100
+    cql_batch_size: 100
+    cql_page_size: 100
+    cql_autocreate_tables: true
+    cql_retrypolicy_numretries: 3
+    cql_retrypolicy_min: 2s
+    cql_retrypolicy_max: 10s
+    cql_reconnectionpolicy_maxretries: 10
+    cql_reconnectionpolicy_initialinterval: 1s
+    cql_reconnectionpolicy_maxinterval: 10s
+    cql_keyspace_replication: "{ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
+    cql_metrics_cache_max_size: 128  #MB
+    cql_metrics_cache_max_items : 500000
+    cql_ssl: true
+    cql_skip_verify: true
+    # cql_ca_file: /ssl/ca.crt
+    # cql_cert_file: /ssl/tls.crt
+    # cql_key_file: /ssl/tls.key
+
+  # if you are using TLS or mTLS, provide the secret name containing the SSL certs
+  # and configure the paths accordingly
+  sslSecretName: ""
 
 # Service Account configuration
 serviceAccount:
@@ -132,8 +144,8 @@ serviceAccount:
 # Configure pod security context for the server pod
 podSecurityContext:
   enabled: false
-  runAsUser: 1000
-  fsGroup: 1000
+  runAsUser: 9988
+  fsGroup: 9988
   runAsNonRoot: true
 
 # Container security context
@@ -143,7 +155,7 @@ securityContext:
     - ALL
   readOnlyRootFilesystem: false
   runAsNonRoot: true
-  runAsUser: 1000
+  runAsUser: 9988
 
 # Pod annotations and labels
 podAnnotations: {}
@@ -237,6 +249,22 @@ resources: {}
   #   cpu: 500m
   #   memory: 512Mi
 
+initResources: {}
+#  limits:
+#     cpu: "25m"
+#     memory: "128Mi"
+#  requests:
+#     cpu: "25m"
+#     memory: "128Mi"
+
+sidecarResources: {}
+#   limits:
+#     cpu: "25m"
+#     memory: "128Mi"
+#   requests:
+#     cpu: "25m"
+#     memory: "128Mi"
+
 # Probes configuration
 livenessProbe:
   httpGet:
@@ -296,9 +324,10 @@ extraVolumeMounts: []
 # StatefulSet specific configuration
 persistence:
   enabled: true
+  enableInitChown: true
   storageClass: ""
   accessMode: ReadWriteOnce
-  size: 10Gi
+  size: 1Gi
   # existingClaim: ""
   annotations: {}
 
