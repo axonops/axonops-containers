@@ -148,7 +148,7 @@ docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0-latest
 docker run -d --name cassandra \
   -e AXON_AGENT_KEY="your-axonops-agent-key" \
   -e AXON_AGENT_ORG="your-organization" \
-  -e AXON_AGENT_HOST="agents.axonops.cloud" \
+  -e AXON_AGENT_SERVER_HOST="agents.axonops.cloud" \
   -p 9042:9042 \
   -p 8080:8080 \
   ghcr.io/axonops/k8ssandra/cassandra:5.0-latest
@@ -173,7 +173,7 @@ For Kubernetes deployments, use the image with K8ssandra Operator:
 export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5"
 export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="agents.axonops.cloud"
+export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 
 cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
 ```
@@ -236,7 +236,7 @@ Set up your AxonOps credentials:
 ```bash
 export AXON_AGENT_KEY="your-axonops-api-key" # Obtained from AxonOps Cloud Console
 export AXON_AGENT_ORG="your-organization-id" # AxonOps Cloud organization name
-export AXON_AGENT_HOST="agents.axonops.cloud"
+export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 ```
 
 Optional: Specify a custom image name (defaults to ttl.sh with 1-hour TTL):
@@ -505,7 +505,7 @@ The `examples/axon-cluster.yml` provides a template for deploying a 3-node Cassa
 export IMAGE_NAME="your-image"
 export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="agents.axonops.cloud"
+export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 
 # Apply the configuration
 cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
@@ -590,7 +590,7 @@ The AxonOps agent is configured via environment variables passed to the Cassandr
 |----------|-------------|---------|
 | `AXON_AGENT_KEY` | Your AxonOps agent key | Required |
 | `AXON_AGENT_ORG` | Your AxonOps organization ID | Required |
-| `AXON_AGENT_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
+| `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
 | `AXON_AGENT_LOG_OUTPUT` | Agent log output destination | `std` |
 | `AXON_AGENT_ARGS` | Additional agent arguments | - |
 
@@ -606,8 +606,8 @@ containers:
         value: "${AXON_AGENT_KEY}"
       - name: AXON_AGENT_ORG
         value: "${AXON_AGENT_ORG}"
-      - name: AXON_AGENT_HOST
-        value: "${AXON_AGENT_HOST}"
+      - name: AXON_AGENT_SERVER_HOST
+        value: "${AXON_AGENT_SERVER_HOST}"
 ```
 
 ## Scripts Reference
@@ -639,7 +639,7 @@ Builds, pushes, and deploys a Cassandra cluster with AxonOps integration.
 export IMAGE_NAME="your-registry/image:tag"  # Optional, defaults to ttl.sh
 export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="your-host"  # Optional
+export AXON_AGENT_SERVER_HOST="your-host"  # Optional
 
 # Change to version directory (script runs docker build from here)
 cd 5.0
@@ -660,7 +660,7 @@ cd 5.0
 - `IMAGE_NAME`: Docker image name (optional)
 - `AXON_AGENT_KEY`: AxonOps API key (required in cluster config)
 - `AXON_AGENT_ORG`: AxonOps organization (required in cluster config)
-- `AXON_AGENT_HOST`: AxonOps host (required in cluster config)
+- `AXON_AGENT_SERVER_HOST`: AxonOps host (required in cluster config)
 
 ## Examples
 
@@ -740,7 +740,7 @@ To use this example:
    ```bash
    export AXON_AGENT_KEY="your-key"
    export AXON_AGENT_ORG="your-org"
-   export AXON_AGENT_HOST="agents.axonops.cloud"
+   export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
    # Optional: Override default image
    export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0"
 

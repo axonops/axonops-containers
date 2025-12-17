@@ -27,8 +27,8 @@ spec:
                 value: "${AXON_AGENT_KEY}"
               - name: AXON_AGENT_ORG
                 value: "${AXON_AGENT_ORG}"
-              - name: AXON_AGENT_HOST
-                value: "${AXON_AGENT_HOST}"
+              - name: AXON_AGENT_SERVER_HOST
+                value: "${AXON_AGENT_SERVER_HOST}"
         config:
           jvmOptions:
             heap_initial_size: 1G
