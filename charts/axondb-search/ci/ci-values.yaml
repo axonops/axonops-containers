@@ -123,7 +123,7 @@ hostAliases: []
 
 
 image:
-  repository: "opensearchproject/opensearch"
+  repository: "ghcr.io/axonops/axondb-search"
   # override image tag, which is .Chart.AppVersion by default
   tag: ""
   pullPolicy: "IfNotPresent"
