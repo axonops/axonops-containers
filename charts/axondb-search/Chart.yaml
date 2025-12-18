@@ -1,6 +1,21 @@
 apiVersion: v2
 name: axondb-search
 description: This helm chart installs the backeding search engine for AxonOps
+maintainers:
+  - name: AxonOps Team
+    email: info@aoxnops.com
+home: https://github.com/axonops/axonops-containers/
+sources:
+  - https://github.com/opensearch-project/opensearch
+  - https://github.com/opensearch-project/helm-charts
+keywords:
+  - axonops
+  - monitoring
+  - kafka
+  - cassandra
+  - opensearch
+  - search
+  - logging
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -21,12 +36,4 @@ version: 0.1.0
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "3.3.2-1.1.0"
-
-maintainers:
-  - name: AxonOps Team
-    email: info@aoxnops.com
-home: https://opensearch.org
-sources:
-  - https://github.com/opensearch-project/opensearch
-  - https://github.com/opensearch-project/helm-charts
+appVersion: "3.3.2-1.0.0"

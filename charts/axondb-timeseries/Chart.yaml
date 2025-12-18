@@ -7,6 +7,11 @@ keywords:
   - cassandra
   - database
   - storage
+  - axonops
+  - monitoring
+  - kafka
+  - timeseries
+  - timeseries database
 maintainers:
   - name: AxonOps Team
     email: info@aoxnops.com
@@ -30,4 +35,4 @@ version: 0.1.0
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "5.0.5-1.0.0"
+appVersion: "5.0.6-1.0.0"
