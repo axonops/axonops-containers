@@ -355,7 +355,7 @@ securityContext:
 
 securityConfig:
   enabled: true
-  path: "/usr/share/opensearch/config/opensearch-security"
+  path: "/etc/opensearch/opensearch-security"
   actionGroupsSecret:
   configSecret:
   internalUsersSecret:
