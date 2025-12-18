@@ -401,6 +401,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        {{- if and .Values.tls.enabled .Values.tls.certManager.enabled }}
+        - name: OPENSEARCH_SECURITY_NODES_DN
+          value: "CN={{ include "opensearch.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local;CN=*.{{ include "opensearch.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local;CN={{ template "opensearch.masterService" . }}.{{ .Release.Namespace }}.svc.cluster.local;CN={{ template "opensearch.masterService" . }}-headless.{{ .Release.Namespace }}.svc.cluster.local{{- range $i := until (int $.Values.replicas) }};CN={{ include "opensearch.fullname" $ }}-{{ $i }}.{{ include "opensearch.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local{{- end }}"
+        {{- else if .Values.tls.enabled }}
+        - name: OPENSEARCH_SECURITY_NODES_DN
+          value: "{{ .Values.tls.commonName }};*.{{ .Values.tls.commonName }}"
+        {{- end }}
         - name: OPENSEARCH_FQDN
           value: {{ printf "%s.%s.svc.cluster.local" (include "opensearch.uname" .) .Release.Namespace | quote }}
         {{- if (and (has "master" .Values.roles) (not .Values.singleNode)) }}

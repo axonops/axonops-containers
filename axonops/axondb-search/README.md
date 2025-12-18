@@ -446,6 +446,7 @@ The container supports 18 environment variables for configuration:
 | `OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION` | Enforce hostname verification for transport SSL | `false` | Advanced/Transport |
 | `OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE` | HTTP client authentication mode (`NONE`, `OPTIONAL`, `REQUIRED`) | `NONE` | Advanced/Transport |
 | `OPENSEARCH_SECURITY_ADMIN_DN` | Custom admin certificate DN (for custom certificate scenarios) | `OU=Database,O=AxonOps,CN=admin.axondbsearch.axonops.com` | Advanced/Transport |
+| `OPENSEARCH_SECURITY_NODES_DN` | Node certificate DNs for inter-node communication (semicolon-separated list, supports wildcards) | `CN=*.axonops.svc.cluster.local` | Advanced/Transport |
 | `DISABLE_SECURITY_PLUGIN` | Disable security plugin entirely (NOT recommended for production) | `false` | Plugin Control |
 | `DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI` | Disable performance analyzer (AxonOps provides monitoring) | `true` | Plugin Control |
 
@@ -534,6 +535,45 @@ docker run -d --name axondb-search \
   -e OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION=true \
   -e OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE=OPTIONAL \
   ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+```
+
+**Node Certificate DNs (Multi-Node Security):**
+
+For multi-node clusters, configure which certificate Distinguished Names (DNs) are allowed for inter-node communication. This is critical for securing transport layer communication between OpenSearch nodes.
+
+```bash
+# Single DN (default)
+docker run -d --name axondb-search \
+  -e OPENSEARCH_SECURITY_NODES_DN="CN=*.axonops.svc.cluster.local" \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+
+# Multiple DNs (semicolon-separated)
+docker run -d --name axondb-search \
+  -e OPENSEARCH_SECURITY_NODES_DN="CN=*.example.svc.cluster.local;CN=node-1.example.com;CN=node-2.example.com" \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+```
+
+**Important:**
+- Use semicolons (`;`) to separate multiple DNs
+- Supports wildcards (e.g., `CN=*.svc.cluster.local`) for dynamic pod names in Kubernetes
+- Whitespace around DNs is automatically trimmed
+- Only nodes with certificates matching these DNs can join the cluster
+- Essential for preventing unauthorized nodes from joining your cluster
+
+**Kubernetes StatefulSet Example:**
+```yaml
+env:
+  - name: OPENSEARCH_SECURITY_NODES_DN
+    value: "CN=*.axondb-search.default.svc.cluster.local;CN=axondb-search-0;CN=axondb-search-1;CN=axondb-search-2"
+```
+
+This configuration generates the following in `opensearch.yml`:
+```yaml
+plugins.security.nodes_dn:
+  - "CN=*.axondb-search.default.svc.cluster.local"
+  - "CN=axondb-search-0"
+  - "CN=axondb-search-1"
+  - "CN=axondb-search-2"
 ```
 
 ## Container Features
@@ -636,7 +676,7 @@ The entrypoint modifies these OpenSearch configuration files based on environmen
 
 | File | What's Modified | Environment Variables |
 |------|----------------|----------------------|
-| `/etc/opensearch/opensearch.yml` | Core OpenSearch settings | `OPENSEARCH_CLUSTER_NAME`, `OPENSEARCH_NODE_NAME`, `OPENSEARCH_NETWORK_HOST`, `OPENSEARCH_DISCOVERY_TYPE`, `OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE`, `OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION`, `OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE`, `OPENSEARCH_SECURITY_ADMIN_DN`, `AXONOPS_SEARCH_TLS_ENABLED` |
+| `/etc/opensearch/opensearch.yml` | Core OpenSearch settings | `OPENSEARCH_CLUSTER_NAME`, `OPENSEARCH_NODE_NAME`, `OPENSEARCH_NETWORK_HOST`, `OPENSEARCH_DISCOVERY_TYPE`, `OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE`, `OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION`, `OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE`, `OPENSEARCH_SECURITY_ADMIN_DN`, `OPENSEARCH_SECURITY_NODES_DN`, `AXONOPS_SEARCH_TLS_ENABLED` |
 | `/etc/opensearch/jvm.options` | JVM heap memory settings | `OPENSEARCH_HEAP_SIZE` |
 | `/etc/opensearch/opensearch-security/internal_users.yml` | Admin user configuration | `AXONOPS_SEARCH_USER`, `AXONOPS_SEARCH_PASSWORD` (REPLACES entire file) |
 
@@ -1169,7 +1209,7 @@ Located in `/etc/opensearch/opensearch-security/`:
 | `roles_mapping.yml` | User-to-role mappings | Maps users and backend roles to OpenSearch roles |
 | `action_groups.yml` | Action group definitions | Groups of permissions for simplified role creation |
 | `tenants.yml` | Multi-tenancy configuration | Tenant definitions for dashboard isolation |
-| `nodes_dn.yml` | Node distinguished names | Certificate DNs allowed for node-to-node communication |
+| `nodes_dn.yml` | Node distinguished names | Certificate DNs allowed for node-to-node communication (legacy, use `OPENSEARCH_SECURITY_NODES_DN` env var instead) |
 | `allowlist.yml` | API allowlist | REST API endpoints allowed when security is restricted |
 | `audit.yml` | Audit logging configuration | Audit log settings (disabled by default, can be enabled) |
 
@@ -1182,6 +1222,7 @@ Located in `/etc/opensearch/opensearch-security/`:
 - **Network:** Binds to `0.0.0.0` (all interfaces)
 - **Thread Pool:** `thread_pool.write.queue_size: 10000` (increase for high-write workloads)
 - **Security:** AxonOps-branded certificates, demo certificates disabled (`allow_unsafe_democertificates: false`)
+- **Nodes DN:** Default wildcard `CN=*.axonops.svc.cluster.local` (configurable via `OPENSEARCH_SECURITY_NODES_DN`)
 
 **jvm.options:**
 - **Heap:** Default 8G (`-Xms8g -Xmx8g`), configurable via `OPENSEARCH_HEAP_SIZE`

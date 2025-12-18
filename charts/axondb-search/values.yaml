@@ -167,6 +167,8 @@ tls:
     #   - OPENSEARCH_TLS_CERT_PATH: /etc/opensearch/certs/tls.crt
     #   - OPENSEARCH_CA_CERT_PATH: /etc/opensearch/certs/ca.crt
     existingSecret: ""
+    # Common name for the certificate, for example, mycluster.namespace.svc.cluster.local
+    commonName: ""
 
 resources:
   requests:

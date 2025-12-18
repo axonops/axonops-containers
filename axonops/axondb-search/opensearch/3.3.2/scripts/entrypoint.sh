@@ -183,6 +183,39 @@ if [ -n "$OPENSEARCH_SECURITY_ADMIN_DN" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's|^  - ".*axondbsearch.*"|  - "'"$OPENSEARCH_SECURITY_ADMIN_DN"'"|'
 fi
 
+# Apply security nodes DN if env var set (for custom certificate scenarios)
+# Supports multiple DNs separated by semicolon (;)
+# Example: "CN=*.example.svc.cluster.local;CN=node-1;CN=node-2"
+if [ -n "$OPENSEARCH_SECURITY_NODES_DN" ]; then
+    echo "Configuring nodes_dn from OPENSEARCH_SECURITY_NODES_DN..."
+
+    # Remove existing nodes_dn section (from the key line to the last list item)
+    _sed-in-place "/etc/opensearch/opensearch.yml" '/^plugins\.security\.nodes_dn:/,/^  - ".*"$/d'
+
+    # Build the nodes_dn section from the environment variable
+    NODES_DN_SECTION="plugins.security.nodes_dn:"
+
+    # Split by semicolon and build YAML list
+    IFS=';' read -ra DN_ARRAY <<< "$OPENSEARCH_SECURITY_NODES_DN"
+    for dn in "${DN_ARRAY[@]}"; do
+        # Trim whitespace
+        dn=$(echo "$dn" | xargs)
+        if [ -n "$dn" ]; then
+            NODES_DN_SECTION="${NODES_DN_SECTION}\n  - \"${dn}\""
+        fi
+    done
+
+    # Insert the new nodes_dn section after admin_dn
+    _sed-in-place "/etc/opensearch/opensearch.yml" "/^plugins\.security\.authcz\.admin_dn:/,/^  - \".*\"$/ {
+        /^  - \".*\"$/ a\\
+\\
+# Node certificates (configured via OPENSEARCH_SECURITY_NODES_DN)\\
+${NODES_DN_SECTION}
+    }"
+
+    echo "  ✓ Configured $(echo "${DN_ARRAY[@]}" | wc -w) node DN(s)"
+fi
+
 # Disable HTTP SSL if AXONOPS_SEARCH_TLS_ENABLED=false
 # This is useful when TLS is terminated at load balancer/ingress
 # Transport layer SSL remains enabled for node-to-node communication
@@ -406,9 +439,6 @@ fi
 echo ""
 echo "=== Starting OpenSearch ==="
 echo ""
-
-touch /var/log/opensearch/axondb-search-cluster.log
-tail -f /var/log/opensearch/axondb-search-cluster.log &
 
 # Prepend "opensearch" command if no argument was provided or if the first
 # argument looks like a flag (i.e. starts with a dash).

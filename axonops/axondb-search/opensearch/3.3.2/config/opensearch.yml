@@ -136,6 +136,13 @@ plugins.security.ssl.http.clientauth_mode: NONE
 plugins.security.authcz.admin_dn:
   - "OU=Database,O=AxonOps,CN=admin.axondbsearch.axonops.com"
 
+# Node certificates (allowed DNs for inter-node communication)
+# Configure via OPENSEARCH_SECURITY_NODES_DN env var (semicolon-separated list)
+# Example: "CN=*.example.svc.cluster.local;CN=node-1;CN=node-2"
+# Supports wildcards for dynamic pod names in Kubernetes
+plugins.security.nodes_dn:
+  - "CN=*.axonops.svc.cluster.local"
+
 # Security plugin settings
 # IMPORTANT: Demo certificates are NOT allowed (we use AxonOps-branded certificates)
 plugins.security.allow_unsafe_democertificates: false

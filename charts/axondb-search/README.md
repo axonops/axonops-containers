@@ -432,6 +432,12 @@ podManagementPolicy: "Parallel"
 securityConfig:
   enabled: true
 
+# Node certificate DNs for inter-node security (multi-node clusters)
+# Configures which certificate Distinguished Names can join the cluster
+extraEnvs:
+  - name: OPENSEARCH_SECURITY_NODES_DN
+    value: "CN=*.axondb-search.default.svc.cluster.local;CN=axondb-search-cluster-master-0;CN=axondb-search-cluster-master-1;CN=axondb-search-cluster-master-2"
+
 # Service configuration
 service:
   type: ClusterIP
@@ -519,6 +525,12 @@ tls:
 # Security configuration
 securityConfig:
   enabled: true
+
+# Node certificate DNs for inter-node security
+# IMPORTANT: Configure this for multi-node clusters to control which nodes can join
+extraEnvs:
+  - name: OPENSEARCH_SECURITY_NODES_DN
+    value: "CN=*.axondb-search.prod.example.com;CN=axondb-search-production-0;CN=axondb-search-production-1;CN=axondb-search-production-2"
 
 # Health check probes
 startupProbe:
@@ -664,6 +676,38 @@ curl -k -u admin:ChangeThisSecurePassword123! https://localhost:9200/_cluster/he
 - Always use Kubernetes secrets for credentials in production
 - Enable TLS for production deployments
 
+**Multi-Node Security (Node Certificate DNs):**
+
+For multi-node clusters, configure which certificate Distinguished Names (DNs) are allowed to join the cluster using the `OPENSEARCH_SECURITY_NODES_DN` environment variable. This is critical for securing transport layer communication between nodes.
+
+Configure via `extraEnvs`:
+```yaml
+extraEnvs:
+  - name: OPENSEARCH_SECURITY_NODES_DN
+    value: "CN=*.example.svc.cluster.local;CN=node-1;CN=node-2"
+```
+
+**Key points:**
+- Use semicolons (`;`) to separate multiple DNs
+- Supports wildcards (e.g., `CN=*.svc.cluster.local`) for dynamic pod names in Kubernetes
+- Only nodes with certificates matching these DNs can join the cluster
+- Essential for preventing unauthorized nodes from joining your cluster
+- Default value: `CN=*.axonops.svc.cluster.local`
+
+**Example for Kubernetes with wildcard DNS:**
+```yaml
+extraEnvs:
+  - name: OPENSEARCH_SECURITY_NODES_DN
+    value: "CN=*.axondb-search.default.svc.cluster.local"
+```
+
+**Example with explicit node names:**
+```yaml
+extraEnvs:
+  - name: OPENSEARCH_SECURITY_NODES_DN
+    value: "CN=axondb-search-0;CN=axondb-search-1;CN=axondb-search-2"
+```
+
 ### Complete Values Reference
 
 <details>
@@ -681,7 +725,7 @@ curl -k -u admin:ChangeThisSecurePassword123! https://localhost:9200/_cluster/he
 | enableServiceLinks | bool | `true` | Enable service links injection |
 | envFrom | list | `[]` | Load environment variables from secrets/configmaps |
 | extraContainers | list | `[]` | Additional sidecar containers |
-| extraEnvs | list | `[]` | Additional environment variables |
+| extraEnvs | list | `[]` | Additional environment variables (use for OPENSEARCH_SECURITY_NODES_DN in multi-node clusters) |
 | extraInitContainers | list | `[]` | Additional init containers |
 | extraVolumeMounts | list | `[]` | Additional volume mounts |
 | extraVolumes | list | `[]` | Additional volumes |
