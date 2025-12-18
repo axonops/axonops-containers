@@ -55,8 +55,3 @@
 ⚠️  WARNING: Persistence is DISABLED. Data will be lost on pod restart!
    To enable persistence, set persistence.enabled=true in your values.
 {{- end }}
-
-{{- if eq .Values.replicaCount 1.0 }}
-⚠️  WARNING: Running with only 1 replica. This is not recommended for production.
-   Consider increasing replicaCount for high availability.
-{{- end }}
