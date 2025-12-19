@@ -1,6 +1,7 @@
 apiVersion: v2
 name: axondb-search
 description: This helm chart installs the backeding search engine for AxonOps
+icon: https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png
 maintainers:
   - name: AxonOps Team
     email: info@aoxnops.com

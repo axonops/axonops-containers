@@ -2,7 +2,7 @@ apiVersion: v2
 name: axon-dash
 description: Install AxonOps dashboard
 home: https://axonops.com
-icon: https://static.wixstatic.com/media/a5611a_ade5ecd5de154e5381d2e13067f1aec3~mv2.png/v1/fill/w_163,h_47,al_c,usm_1.20_1.00_0.01,enc_auto/tr_logo.png
+icon: https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png
 maintainers:
   - name: AxonOps Team
     email: info@axonops.com

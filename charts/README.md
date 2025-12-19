@@ -26,6 +26,8 @@ The AxonOps platform is composed of the following components:
 | [axondb-timeseries](./axondb-timeseries) | Time-series database for metrics | ![Version](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/axonops/axonops-containers/main/charts/axondb-timeseries/Chart.yaml&label=version&query=$.version&color=blue) |
 | [axondb-search](./axondb-search) | Search database for logs | ![Version](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/axonops/axonops-containers/main/charts/axondb-search/Chart.yaml&label=version&query=$.version&color=blue) |
 
+> **Note:** AxonOps Timeseries is designed to run as a single-node instance and we do not recommend running in a clustered mode.
+
 ## Prerequisites
 
 Before installing AxonOps using these Helm charts, ensure you have:

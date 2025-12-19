@@ -55,3 +55,11 @@
 ⚠️  WARNING: Persistence is DISABLED. Data will be lost on pod restart!
    To enable persistence, set persistence.enabled=true in your values.
 {{- end }}
+
+{{- if gt (int .Values.replicaCount) 1 }}
+
+⚠️  WARNING: AxonOps Timeseries is designed to run as a single-node instance.
+   You currently have replicaCount set to {{ .Values.replicaCount }}.
+   We do not recommend running in a clustered mode.
+   Consider setting replicaCount=1 in your values.
+{{- end }}
