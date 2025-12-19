@@ -43,9 +43,11 @@ spec:
       targetPort: cql
       protocol: TCP
       name: cql
+{{- if .Values.service.jmxEnabled }}
     - port: 7199
       targetPort: jmx
       protocol: TCP
       name: jmx
+{{- end }}
   selector:
     {{- include "axon-cassandra.selectorLabels" . | nindent 4 }}

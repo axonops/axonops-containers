@@ -257,14 +257,6 @@ initResources: {}
 #     cpu: "25m"
 #     memory: "128Mi"
 
-sidecarResources: {}
-#   limits:
-#     cpu: "25m"
-#     memory: "128Mi"
-#   requests:
-#     cpu: "25m"
-#     memory: "128Mi"
-
 # Probes configuration
 livenessProbe:
   httpGet:
