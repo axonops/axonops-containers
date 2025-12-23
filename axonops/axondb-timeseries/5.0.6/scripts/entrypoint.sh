@@ -262,20 +262,10 @@ if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]
     echo "Skipping init scripts (restoring existing data with keyspaces and users already configured)"
     echo ""
 
-    # Write semaphores immediately so healthcheck doesn't block
-    # These indicate that init is "skipped" (not failed, not in progress)
-    # Located in /var/lib/cassandra (persistent volume) not /etc (ephemeral)
-    mkdir -p /var/lib/cassandra/.axonops
-    {
-        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "RESULT=skipped"
-        echo "REASON=restore_scenario"
-    } > /var/lib/cassandra/.axonops/init-system-keyspaces.done
-    {
-        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "RESULT=skipped"
-        echo "REASON=restore_scenario"
-    } > /var/lib/cassandra/.axonops/init-db-user.done
+    # NOTE: Semaphores (init-system-keyspaces.done, init-db-user.done) will come from backup!
+    # The backup includes /var/lib/cassandra/.axonops with original cluster state
+    # Restore script copies .axonops directory FIRST, preserving semaphore state
+    # No need to write "skipped" semaphores - we use the real ones from backup
 
     # Write restore semaphore IMMEDIATELY so startup probe passes
     # Restore script will update this to "success" or "failed" when complete

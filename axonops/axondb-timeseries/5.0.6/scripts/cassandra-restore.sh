@@ -248,6 +248,54 @@ mkdir -p "$CASSANDRA_DATA_DIR" || {
 log "✓ Data directory created"
 
 # ============================================================================
+# 7a. Restore .axonops Directory FIRST (Semaphores and State)
+# ============================================================================
+
+log "Restoring .axonops directory (semaphores and state)..."
+
+AXONOPS_SOURCE="${BACKUP_DIR}/.axonops"
+AXONOPS_DEST="/var/lib/cassandra/.axonops"
+
+if [ -d "$AXONOPS_SOURCE" ]; then
+    # Create .axonops directory
+    mkdir -p "$AXONOPS_DEST" || {
+        log_error "Failed to create .axonops directory: ${AXONOPS_DEST}"
+        write_semaphore "failed" "axonops_mkdir_failed"
+        exit 1
+    }
+
+    # Restore .axonops directory
+    if rsync -a --no-H "$AXONOPS_SOURCE/" "$AXONOPS_DEST/" 2>&1; then
+        log "✓ .axonops directory restored"
+        log "  Semaphores from original cluster preserved"
+
+        # Fix permissions (cassandra user needs access)
+        chown -R cassandra:cassandra "$AXONOPS_DEST" 2>&1 || {
+            log "WARNING: Failed to fix .axonops ownership"
+        }
+
+        # Show restored semaphores for debugging
+        if [ -f "${AXONOPS_DEST}/init-system-keyspaces.done" ]; then
+            KEYSPACE_RESULT=$(grep "^RESULT=" "${AXONOPS_DEST}/init-system-keyspaces.done" | cut -d'=' -f2 || echo "unknown")
+            log "  init-system-keyspaces.done: RESULT=$KEYSPACE_RESULT (from backup)"
+        fi
+
+        if [ -f "${AXONOPS_DEST}/init-db-user.done" ]; then
+            USER_RESULT=$(grep "^RESULT=" "${AXONOPS_DEST}/init-db-user.done" | cut -d'=' -f2 || echo "unknown")
+            log "  init-db-user.done: RESULT=$USER_RESULT (from backup)"
+        fi
+    else
+        log_error "Failed to restore .axonops directory"
+        write_semaphore "failed" "axonops_restore_failed"
+        exit 1
+    fi
+else
+    log "WARNING: .axonops directory not found in backup (${AXONOPS_SOURCE})"
+    log "  This may be an old backup from before semaphore feature"
+    log "  Health checks may fail - manual semaphore creation may be needed"
+fi
+
+# ============================================================================
 # 8. rsync Restore from Backup (with retry and timeout)
 # ============================================================================
 

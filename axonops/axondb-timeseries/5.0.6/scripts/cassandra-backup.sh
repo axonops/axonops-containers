@@ -617,6 +617,27 @@ if [ -f "$SCHEMA_TEMP" ]; then
 fi
 
 # ============================================================================
+# 12a. Backup .axonops Directory (Semaphores and State)
+# ============================================================================
+
+AXONOPS_DIR="/var/lib/cassandra/.axonops"
+if [ -d "$AXONOPS_DIR" ]; then
+    log "Backing up .axonops directory (semaphores and state)..."
+
+    # Copy .axonops to backup (preserves init/restore state from original cluster)
+    if rsync -a "$AXONOPS_DIR/" "${BACKUP_DIR}/.axonops/" 2>&1; then
+        log "✓ .axonops directory backed up"
+        log "  This preserves semaphore state for restore"
+    else
+        log "WARNING: Failed to backup .axonops directory"
+        log "  Restore may need manual semaphore configuration"
+    fi
+else
+    log "WARNING: .axonops directory not found (${AXONOPS_DIR})"
+    log "  This may be a fresh cluster or semaphores not yet created"
+fi
+
+# ============================================================================
 # 13. Calculate Backup Statistics
 # ============================================================================
 
