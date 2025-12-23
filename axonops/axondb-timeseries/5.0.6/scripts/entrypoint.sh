@@ -277,6 +277,14 @@ if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]
         echo "REASON=restore_scenario"
     } > /var/lib/cassandra/.axonops/init-db-user.done
 
+    # Write restore semaphore IMMEDIATELY so startup probe passes
+    # Restore script will update this to "success" or "failed" when complete
+    {
+        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "RESULT=in_progress"
+        echo "REASON=restore_starting"
+    } > /var/lib/cassandra/.axonops/restore.done
+
     # Start restore in BACKGROUND (non-blocking)
     # This prevents entrypoint from blocking on long restores (which causes K8s startup probe timeouts)
     # The cassandra-wrapper.sh will wait for restore to complete before starting Cassandra
