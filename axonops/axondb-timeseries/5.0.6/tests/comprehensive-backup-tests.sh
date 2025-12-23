@@ -108,15 +108,13 @@ fi
 
 # Create test data
 echo "Creating test data..."
-podman exec k8s-backup-source cqlsh -u cassandra -p cassandra -e "
-CREATE KEYSPACE k8s_demo WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': 1};
-CREATE TABLE k8s_demo.data (id INT PRIMARY KEY, value TEXT);
-INSERT INTO k8s_demo.data (id, value) VALUES (1, 'K8S Test Row 1');
-INSERT INTO k8s_demo.data (id, value) VALUES (2, 'K8S Test Row 2');
-" 2>&1 | grep -v "Warning"
+podman exec k8s-backup-source cqlsh -u cassandra -p cassandra -e "CREATE KEYSPACE k8s_demo WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': 1};" 2>&1 | grep -v "Warning"
+podman exec k8s-backup-source cqlsh -u cassandra -p cassandra -e "CREATE TABLE k8s_demo.data (id INT PRIMARY KEY, value TEXT);" 2>&1 | grep -v "Warning"
+podman exec k8s-backup-source cqlsh -u cassandra -p cassandra -e "INSERT INTO k8s_demo.data (id, value) VALUES (1, 'K8S Test Row 1');" 2>&1 | grep -v "Warning"
+podman exec k8s-backup-source cqlsh -u cassandra -p cassandra -e "INSERT INTO k8s_demo.data (id, value) VALUES (2, 'K8S Test Row 2');" 2>&1 | grep -v "Warning"
 
 # Verify data exists
-ROW_COUNT=$(podman exec k8s-backup-source cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM k8s_demo.data;" 2>&1 | grep -A1 "count" | tail -1 | tr -d ' ')
+ROW_COUNT=$(podman exec k8s-backup-source cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM k8s_demo.data;" 2>&1 | grep -A2 "count" | tail -1 | tr -d ' ')
 if [ "$ROW_COUNT" = "2" ]; then
     echo "✓ Test data created (2 rows)"
 else
@@ -128,7 +126,13 @@ fi
 echo "Creating backup..."
 podman exec k8s-backup-source /usr/local/bin/cassandra-backup.sh >/dev/null 2>&1
 
-BACKUP_NAME=$(podman exec k8s-backup-source ls -1dt /backup/data_backup-* | head -1 | xargs basename | sed 's/^data_//')
+# Check backup from HOST volume (more reliable than exec ls)
+BACKUP_NAME=$(ls -1dt "$BACKUP_VOLUME"/data_backup-* 2>/dev/null | head -1 | xargs basename | sed 's/^data_//')
+if [ -z "$BACKUP_NAME" ]; then
+    fail_test "K8s restore test" "Backup was not created"
+    podman logs k8s-backup-source | grep -i "backup\|error" | tail -20
+    exit 1
+fi
 echo "Backup created: $BACKUP_NAME"
 
 # CRITICAL: Destroy first container (simulates pod deletion in K8s)
@@ -171,7 +175,7 @@ if podman exec k8s-restore-target nc -z localhost 9042 2>/dev/null; then
         echo "✓ Restore semaphore shows success"
 
         # Verify data restored
-        RESTORED_COUNT=$(podman exec k8s-restore-target cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM k8s_demo.data;" 2>&1 | grep -A1 "count" | tail -1 | tr -d ' ')
+        RESTORED_COUNT=$(podman exec k8s-restore-target cqlsh -u cassandra -p cassandra -e "SELECT COUNT(*) FROM k8s_demo.data;" 2>&1 | grep -A2 "count" | tail -1 | tr -d ' ')
         if [ "$RESTORED_COUNT" = "2" ]; then
             pass_test "Kubernetes-style restore (pod recreation with volume persistence)"
         else
@@ -228,7 +232,7 @@ echo "Initial backup count: $INITIAL_COUNT"
 echo "Manually aging first 3 backups (3 hours old)..."
 for backup in $(ls -1dt "$BACKUP_VOLUME"/data_backup-* | tail -3); do
     echo "  Aging: $(basename $backup)"
-    touch -d "3 hours ago" "$backup"
+    sudo touch -d "3 hours ago" "$backup"
 done
 
 # Trigger backup with BACKUP_RETENTION_HOURS=2 (should delete aged backups)

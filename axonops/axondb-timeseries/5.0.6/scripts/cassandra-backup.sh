@@ -307,7 +307,8 @@ cleanup_snapshot() {
     fi
 }
 
-trap cleanup_snapshot EXIT
+# NOTE: Trap is already set at top of script (cleanup_snapshot + housekeeping + remove_backup_lock)
+# Do NOT set another trap here as it would overwrite the first one!
 
 # ============================================================================
 # 6. Flush Memtables (CRITICAL - Ensures all data written to SSTables)

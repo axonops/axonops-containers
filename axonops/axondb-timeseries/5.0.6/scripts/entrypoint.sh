@@ -269,6 +269,7 @@ if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]
 
     # Write restore semaphore IMMEDIATELY so startup probe passes
     # Restore script will update this to "success" or "failed" when complete
+    mkdir -p /var/lib/cassandra/.axonops
     {
         echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
         echo "RESULT=in_progress"
