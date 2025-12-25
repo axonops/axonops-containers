@@ -357,8 +357,8 @@ if [ -n "${BACKUP_SCHEDULE:-}" ]; then
         echo "✓ Backup scheduler started"
         echo "  Schedule: ${BACKUP_SCHEDULE}"
         echo "  Retention: ${BACKUP_RETENTION_HOURS} hours"
-        echo "  Scheduler logs: /var/log/cassandra/backup-scheduler.log"
-        echo "  Backup logs: /var/log/cassandra/backup-cron.log (auto-rotated, max 1000 lines)"
+        echo "  Scheduler logs: /var/log/cassandra/backup-scheduler.log (rotated, compressed, retained)"
+        echo "  Backup logs: /var/log/cassandra/backup-cron.log (rotated, compressed, retained)"
         echo "  Backup output visible in container logs (use: podman logs / kubectl logs)"
         echo ""
     fi

@@ -294,3 +294,10 @@ echo "✓ Database user initialization complete"
 echo "  User '${AXONOPS_DB_USER}' is now the active superuser"
 echo "  Default 'cassandra' user has been disabled"
 write_user_semaphore "success" "user_initialized"
+
+# Rotate log file if needed (this script's output is redirected to init-system-keyspaces.log)
+# Prevents unbounded growth if volume reused across container recreations
+INIT_LOG="/var/log/cassandra/init-system-keyspaces.log"
+INIT_LOG_SIZE_MB="${INIT_LOG_ROTATE_SIZE_MB:-10}"
+INIT_LOG_KEEP="${INIT_LOG_ROTATE_KEEP:-5}"
+/usr/local/bin/log-rotate.sh "$INIT_LOG" "$INIT_LOG_SIZE_MB" "$INIT_LOG_KEEP" 2>/dev/null || true
