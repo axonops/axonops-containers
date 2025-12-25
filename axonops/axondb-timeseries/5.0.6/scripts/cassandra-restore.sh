@@ -33,6 +33,14 @@ get_duration() {
 
 log "Starting Cassandra restore (version ${SCRIPT_VERSION})"
 
+# Rotate restore log if needed before starting (preserve history across restores)
+# Note: This script's output is redirected to this log by entrypoint.sh
+RESTORE_LOG="/var/log/cassandra/restore.log"
+ROTATE_SIZE_MB="${RESTORE_LOG_ROTATE_SIZE_MB:-10}"
+ROTATE_KEEP="${RESTORE_LOG_ROTATE_KEEP:-5}"
+
+/usr/local/bin/log-rotate.sh "$RESTORE_LOG" "$ROTATE_SIZE_MB" "$ROTATE_KEEP" 2>/dev/null || true
+
 # ============================================================================
 # Semaphore Management
 # ============================================================================

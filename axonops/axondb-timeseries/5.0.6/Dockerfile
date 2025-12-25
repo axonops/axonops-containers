@@ -216,7 +216,8 @@ COPY scripts/backup-cron-wrapper.sh /usr/local/bin/backup-cron-wrapper.sh
 COPY scripts/backup-scheduler.sh /usr/local/bin/backup-scheduler.sh
 COPY scripts/cassandra-wrapper.sh /usr/local/bin/cassandra-wrapper.sh
 COPY scripts/retention-cleanup.sh /usr/local/bin/retention-cleanup.sh
-RUN chmod 755 /usr/local/bin/cassandra-backup.sh /usr/local/bin/cassandra-restore.sh /usr/local/bin/backup-cron-wrapper.sh /usr/local/bin/backup-scheduler.sh /usr/local/bin/cassandra-wrapper.sh /usr/local/bin/retention-cleanup.sh
+COPY scripts/log-rotate.sh /usr/local/bin/log-rotate.sh
+RUN chmod 755 /usr/local/bin/cassandra-backup.sh /usr/local/bin/cassandra-restore.sh /usr/local/bin/backup-cron-wrapper.sh /usr/local/bin/backup-scheduler.sh /usr/local/bin/cassandra-wrapper.sh /usr/local/bin/retention-cleanup.sh /usr/local/bin/log-rotate.sh
 
 # Generate comprehensive build information for runtime startup banner
 # Values are quoted for safe sourcing in bash

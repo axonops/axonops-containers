@@ -128,4 +128,13 @@ elif [ $CLEANUP_EXIT -ne 0 ]; then
 fi
 
 log "✓ All old backups deleted successfully"
+
+# Rotate log file if needed (size-based, compressed, retained)
+# Configurable via env vars (defaults: 10MB, keep 5 rotations)
+LOG_FILE="/var/log/cassandra/retention-cleanup.log"
+ROTATE_SIZE_MB="${RETENTION_LOG_ROTATE_SIZE_MB:-10}"
+ROTATE_KEEP="${RETENTION_LOG_ROTATE_KEEP:-5}"
+
+/usr/local/bin/log-rotate.sh "$LOG_FILE" "$ROTATE_SIZE_MB" "$ROTATE_KEEP" 2>/dev/null || true
+
 exit 0
