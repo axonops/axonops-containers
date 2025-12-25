@@ -18,7 +18,8 @@ log() {
 log "Cassandra wrapper starting"
 
 # Check if restore was requested
-RESTORE_SEMAPHORE="/var/lib/cassandra/.axonops/restore.done"
+# Semaphore is in /tmp (ephemeral, not backed up with .axonops)
+RESTORE_SEMAPHORE="/tmp/axonops-restore.done"
 
 if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]; then
     log "Restore requested - waiting for restore to complete before starting Cassandra"

@@ -269,12 +269,12 @@ if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]
 
     # Write restore semaphore IMMEDIATELY so startup probe passes
     # Restore script will update this to "success" or "failed" when complete
-    mkdir -p /var/lib/cassandra/.axonops
+    # CRITICAL: Use /tmp (ephemeral) not .axonops (gets backed up!)
     {
         echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
         echo "RESULT=in_progress"
         echo "REASON=restore_starting"
-    } > /var/lib/cassandra/.axonops/restore.done
+    } > /tmp/axonops-restore.done
 
     # Start restore in BACKGROUND (non-blocking)
     # This prevents entrypoint from blocking on long restores (which causes K8s startup probe timeouts)
@@ -323,26 +323,29 @@ fi
 echo ""
 
 # ============================================================================
-# Configure Scheduled Backups (if enabled)
+# Configure Scheduled Backups (if BACKUP_SCHEDULE provided)
 # ============================================================================
-BACKUP_ENABLED="${BACKUP_ENABLED:-false}"
+# NOTE: No BACKUP_ENABLED flag needed - if user provides BACKUP_SCHEDULE, enable backups
+# This simplifies configuration - one env var instead of two
 
-if [ "$BACKUP_ENABLED" = "true" ]; then
-    # CRITICAL: Require explicit BACKUP_SCHEDULE from user (no defaults)
-    if [ -z "${BACKUP_SCHEDULE:-}" ]; then
-        echo "ERROR: BACKUP_ENABLED=true but BACKUP_SCHEDULE not set"
-        echo "  You must provide a cron schedule expression"
+if [ -n "${BACKUP_SCHEDULE:-}" ]; then
+    echo "=== Configuring Scheduled Backups ==="
+    echo "Schedule: ${BACKUP_SCHEDULE}"
+
+    # CRITICAL: BACKUP_RETENTION_HOURS is mandatory when backups enabled
+    if [ -z "${BACKUP_RETENTION_HOURS:-}" ]; then
+        echo "ERROR: BACKUP_SCHEDULE provided but BACKUP_RETENTION_HOURS not set"
+        echo "  Retention is MANDATORY to prevent disk fill"
         echo "  Examples:"
-        echo "    BACKUP_SCHEDULE=\"*/30 * * * *\"    # Every 30 minutes"
-        echo "    BACKUP_SCHEDULE=\"0 */6 * * *\"     # Every 6 hours"
-        echo "    BACKUP_SCHEDULE=\"0 2 * * *\"       # Daily at 2 AM"
+        echo "    BACKUP_RETENTION_HOURS=24      # Keep 24 hours"
+        echo "    BACKUP_RETENTION_HOURS=168     # Keep 7 days"
+        echo "    BACKUP_RETENTION_HOURS=720     # Keep 30 days"
         echo ""
-        echo "Disabling scheduled backups"
-        echo "You can manually trigger backups with: /usr/local/bin/cassandra-backup.sh"
+        echo "CRITICAL: Cannot start backups without retention policy"
+        echo "Container startup will continue, but backups are DISABLED"
         echo ""
     else
-        echo "=== Configuring Scheduled Backups ==="
-        echo "Schedule: ${BACKUP_SCHEDULE}"
+        echo "Retention: ${BACKUP_RETENTION_HOURS} hours"
         echo ""
 
         # Start backup scheduler in background (container-native, no cron needed)
@@ -353,13 +356,14 @@ if [ "$BACKUP_ENABLED" = "true" ]; then
 
         echo "✓ Backup scheduler started"
         echo "  Schedule: ${BACKUP_SCHEDULE}"
+        echo "  Retention: ${BACKUP_RETENTION_HOURS} hours"
         echo "  Scheduler logs: /var/log/cassandra/backup-scheduler.log"
         echo "  Backup logs: /var/log/cassandra/backup-cron.log (auto-rotated, max 1000 lines)"
         echo "  Backup output visible in container logs (use: podman logs / kubectl logs)"
         echo ""
     fi
 else
-    echo "Scheduled backups disabled (BACKUP_ENABLED=false)"
+    echo "Scheduled backups disabled (BACKUP_SCHEDULE not set)"
     echo "You can manually trigger backups with: /usr/local/bin/cassandra-backup.sh"
     echo ""
 fi

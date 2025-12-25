@@ -37,7 +37,9 @@ log "Starting Cassandra backup (version ${SCRIPT_VERSION})"
 # Backup Lock Semaphore (Prevents Overlapping Backups)
 # ============================================================================
 
-LOCK_SEMAPHORE="/var/lib/cassandra/.axonops/backup.lock"
+# CRITICAL: Lock must be in /tmp (ephemeral) not .axonops (gets backed up!)
+# Restoring an old lock would block all future backups
+LOCK_SEMAPHORE="/tmp/axonops-backup.lock"
 
 # Check if backup already in progress
 if [ -f "$LOCK_SEMAPHORE" ]; then

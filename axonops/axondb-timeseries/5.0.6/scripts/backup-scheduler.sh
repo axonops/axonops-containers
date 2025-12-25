@@ -14,14 +14,23 @@ log() {
 }
 
 log "Backup scheduler starting"
-log "Schedule: ${BACKUP_SCHEDULE:-*/6 * * * *}"
+
+# CRITICAL: BACKUP_SCHEDULE is mandatory (no defaults!)
+if [ -z "${BACKUP_SCHEDULE:-}" ]; then
+    log "ERROR: BACKUP_SCHEDULE not set"
+    log "This script should only be started if BACKUP_SCHEDULE is provided"
+    log "Check entrypoint.sh configuration"
+    exit 1
+fi
+
+log "Schedule: ${BACKUP_SCHEDULE}"
 
 # Parse cron schedule to determine interval in minutes
 # For simplicity, we'll support */N format (every N minutes/hours)
 # Example: "*/6 * * * *" = every 6 minutes
 # Example: "0 */6 * * *" = every 6 hours
 
-SCHEDULE="${BACKUP_SCHEDULE:-0 */6 * * *}"
+SCHEDULE="${BACKUP_SCHEDULE}"
 
 # Simple parser for common patterns
 if echo "$SCHEDULE" | grep -qE '^\*/[0-9]+ \* \* \* \*$'; then
@@ -34,18 +43,23 @@ elif echo "$SCHEDULE" | grep -qE '^0 \*/[0-9]+ \* \* \*$'; then
     INTERVAL_MINUTES=$((INTERVAL_HOURS * 60))
     log "Detected schedule: Every ${INTERVAL_HOURS} hours (${INTERVAL_MINUTES} minutes)"
 else
-    # Default to 6 hours if we can't parse
-    log "WARNING: Could not parse schedule pattern: $SCHEDULE"
-    log "Defaulting to 360 minutes (6 hours)"
-    INTERVAL_MINUTES=360
+    # Cannot parse - ERROR
+    log "ERROR: Could not parse schedule pattern: $SCHEDULE"
+    log "Supported patterns:"
+    log "  */N * * * *  (every N minutes)"
+    log "  0 */N * * *  (every N hours)"
+    exit 1
 fi
 
 INTERVAL_SECONDS=$((INTERVAL_MINUTES * 60))
-log "Running backups every ${INTERVAL_SECONDS} seconds (${INTERVAL_MINUTES} minutes)"
+# Format as HH:MM:SS for readability (#6)
+HOURS=$((INTERVAL_SECONDS / 3600))
+MINUTES=$(((INTERVAL_SECONDS % 3600) / 60))
+SECONDS=$((INTERVAL_SECONDS % 60))
+log "Running backups every $(printf '%02d:%02d:%02d' $HOURS $MINUTES $SECONDS)"
 
 # Wait for Cassandra to be ready before first backup
 log "Waiting for Cassandra to be ready..."
-sleep 60
 
 MAX_WAIT=300
 ELAPSED=0

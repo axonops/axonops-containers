@@ -18,7 +18,8 @@ case "$MODE" in
     log "Checking if Cassandra is starting"
 
     # CRITICAL: Check if restore was requested
-    RESTORE_SEMAPHORE="/var/lib/cassandra/.axonops/restore.done"
+    # Semaphore is in /tmp (ephemeral, not backed up with .axonops)
+    RESTORE_SEMAPHORE="/tmp/axonops-restore.done"
     if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]; then
       # Restore was requested - check semaphore
       if [ ! -f "$RESTORE_SEMAPHORE" ]; then
@@ -107,7 +108,8 @@ case "$MODE" in
     log "Checking readiness"
 
     # CRITICAL: Check if restore was requested - BLOCK until complete
-    RESTORE_SEMAPHORE="/var/lib/cassandra/.axonops/restore.done"
+    # Semaphore is in /tmp (ephemeral, not backed up with .axonops)
+    RESTORE_SEMAPHORE="/tmp/axonops-restore.done"
     if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]; then
       # Restore was requested - check semaphore
       if [ ! -f "$RESTORE_SEMAPHORE" ]; then

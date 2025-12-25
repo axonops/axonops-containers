@@ -37,8 +37,9 @@ log "Starting Cassandra restore (version ${SCRIPT_VERSION})"
 # Semaphore Management
 # ============================================================================
 
-SEMAPHORE_DIR="/var/lib/cassandra/.axonops"
-SEMAPHORE_FILE="${SEMAPHORE_DIR}/restore.done"
+# CRITICAL: Restore semaphore must be ephemeral (not in .axonops which gets backed up!)
+# Restoring old "success" semaphore would confuse health checks
+SEMAPHORE_FILE="/tmp/axonops-restore.done"
 
 # Write semaphore file with result and reason
 write_semaphore() {
@@ -46,7 +47,7 @@ write_semaphore() {
     local reason="${2:-}"
     local backup_name="${3:-}"
 
-    mkdir -p "$SEMAPHORE_DIR"
+    # /tmp always exists, no mkdir needed
     {
         echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
         echo "RESULT=$result"
