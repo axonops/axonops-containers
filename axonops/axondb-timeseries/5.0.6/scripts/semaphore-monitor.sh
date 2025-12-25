@@ -11,8 +11,11 @@ set -euo pipefail
 
 MONITOR_INTERVAL="${SEMAPHORE_MONITOR_INTERVAL:-60}"
 
+# Script name for dynamic logging (auto-detect from $0)
+SCRIPT_NAME=$(basename "$0" .sh)
+
 log() {
-    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [SEMAPHORE-MONITOR] $*"
+    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [${SCRIPT_NAME}] $*"
 }
 
 log "Semaphore monitor starting (interval: ${MONITOR_INTERVAL}s)"
