@@ -6,12 +6,15 @@ set -euo pipefail
 # Purpose: Run scheduled backups in background (container-native, no cron needed)
 # ============================================================================
 
-LOG_FILE="/var/log/cassandra/backup-cron.log"
-MAX_LOG_LINES=1000
-
 log() {
     echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [SCHEDULER] $*"
 }
+
+# Log rotation configuration for scheduler log
+# This script's output is redirected to backup-scheduler.log by entrypoint
+SCHEDULER_LOG="/var/log/cassandra/backup-scheduler.log"
+SCHEDULER_LOG_SIZE_MB="${SCHEDULER_LOG_ROTATE_SIZE_MB:-10}"
+SCHEDULER_LOG_KEEP="${SCHEDULER_LOG_ROTATE_KEEP:-5}"
 
 log "Backup scheduler starting"
 
@@ -94,6 +97,9 @@ while true; do
     else
         log "WARNING: Backup failed or was skipped (exit code $BACKUP_EXIT)"
     fi
+
+    # Rotate scheduler log if needed (this script's output is redirected to backup-scheduler.log)
+    /usr/local/bin/log-rotate.sh "$SCHEDULER_LOG" "$SCHEDULER_LOG_SIZE_MB" "$SCHEDULER_LOG_KEEP" 2>/dev/null || true
 
     log "Sleeping for ${INTERVAL_MINUTES} minutes until next backup..."
     sleep "$INTERVAL_SECONDS"

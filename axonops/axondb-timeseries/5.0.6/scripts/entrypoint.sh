@@ -352,7 +352,7 @@ if [ -n "${BACKUP_SCHEDULE:-}" ]; then
         # This avoids PAM/crontab permission issues in containers
         # Backup output goes to console (for kubectl logs) AND file (via wrapper script)
         echo "Starting backup scheduler daemon..."
-        (/usr/local/bin/backup-scheduler.sh 2>&1 &)
+        (/usr/local/bin/backup-scheduler.sh >> /var/log/cassandra/backup-scheduler.log 2>&1 &)
 
         echo "✓ Backup scheduler started"
         echo "  Schedule: ${BACKUP_SCHEDULE}"
