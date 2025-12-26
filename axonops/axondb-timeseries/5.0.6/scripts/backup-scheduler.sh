@@ -82,7 +82,8 @@ done
 if nc -z localhost 9042 2>/dev/null; then
     log "Cassandra is ready, starting backup schedule"
 else
-    log "Cassandra not ready yet, will attempt backups anyway (they will skip if not ready)"
+    log "WARNING: Cassandra not ready after ${MAX_WAIT}s"
+    log "Starting scheduler anyway - backup script will handle errors"
 fi
 
 # Main backup loop

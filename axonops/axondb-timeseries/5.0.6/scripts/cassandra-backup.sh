@@ -223,21 +223,35 @@ if [ ! -d "$CASSANDRA_DATA_DIR" ]; then
 fi
 
 # Check Cassandra is running and responsive
-# If not running, skip backup gracefully (important for scheduled backups via cron)
 if ! pgrep -f cassandra > /dev/null 2>&1; then
-    log "WARNING: Cassandra process is not running"
-    log "Skipping backup - Cassandra must be running to take snapshots"
-    log "This is normal if Cassandra is stopped or restarting"
-    log "Will retry on next scheduled backup"
-    exit 0  # Exit successfully - skip this backup cycle
+    log_error "Cassandra process is not running"
+    log_error "Backup cannot proceed without Cassandra running"
+
+    # Update semaphore to error state
+    {
+        echo "STATE=error"
+        echo "REASON=Cassandra process not running"
+        echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        echo "PID=$$"
+    } > "$LOCK_SEMAPHORE"
+
+    exit 1
 fi
 
 # Check CQL port is listening
 if ! nc -z localhost "$CQL_PORT" 2>/dev/null; then
-    log "WARNING: CQL port $CQL_PORT is not listening"
-    log "Skipping backup - Cassandra may not be fully started yet"
-    log "Will retry on next scheduled backup"
-    exit 0  # Exit successfully - skip this backup cycle
+    log_error "CQL port $CQL_PORT is not listening"
+    log_error "Cassandra may not be fully started yet"
+
+    # Update semaphore to error state
+    {
+        echo "STATE=error"
+        echo "REASON=CQL port not listening"
+        echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        echo "PID=$$"
+    } > "$LOCK_SEMAPHORE"
+
+    exit 1
 fi
 
 # Check nodetool is available
