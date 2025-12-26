@@ -4,9 +4,11 @@ set -e
 # Comprehensive Backup/Restore Tests - Priority 1
 # Tests critical functionality that wasn't validated in smoke tests
 
-TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
-RESULTS_FILE="${TEST_DIR}/comprehensive-test-results.txt"
-BACKUP_VOLUME="${TEST_DIR}/.test-backups"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../lib/test-common.sh"
+
+TEST_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+RESULTS_FILE="${TEST_DIR}/results/comprehensive-test-results.txt"
 
 # Colors
 GREEN='\033[0;32m'
@@ -26,6 +28,7 @@ echo "Results: ${RESULTS_FILE}"
 echo ""
 
 # Initialize results
+mkdir -p "$(dirname "$RESULTS_FILE")"
 echo "Comprehensive Backup/Restore Test Results" > "$RESULTS_FILE"
 echo "=========================================" >> "$RESULTS_FILE"
 echo "Date: $(date)" >> "$RESULTS_FILE"
