@@ -31,7 +31,6 @@ Production-ready Apache Cassandra 5.0.6 container optimized for time-series work
   - [Healthcheck Debugging](#healthcheck-debugging)
   - [Container Not Starting](#container-not-starting)
 - [Production Considerations](#production-considerations)
-  - [Backup and Restore](#backup-and-restore)
 
 ## Overview
 

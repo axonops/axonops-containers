@@ -58,22 +58,45 @@ echo "✓ Container ready"
 echo ""
 
 echo "========================================" | tee -a "$RESULTS_FILE"
+echo "SCRIPT SYNTAX VALIDATION" | tee -a "$RESULTS_FILE"
+echo "========================================" | tee -a "$RESULTS_FILE"
+echo ""
+
+# Test 1: Validate bash syntax for all scripts
+run_test
+echo "Test 1: Validate bash syntax for all scripts"
+SYNTAX_ERRORS=0
+for script in healthcheck.sh entrypoint.sh cassandra-backup.sh cassandra-restore.sh backup-scheduler.sh cassandra-wrapper.sh retention-cleanup.sh log-rotate.sh semaphore-monitor.sh; do
+    if ! podman exec "$CONTAINER_NAME" bash -n /usr/local/bin/$script 2>/dev/null; then
+        echo "  ✗ Syntax error in: $script"
+        SYNTAX_ERRORS=$((SYNTAX_ERRORS + 1))
+    fi
+done
+
+if [ "$SYNTAX_ERRORS" -eq 0 ]; then
+    pass_test "All scripts have valid bash syntax (9 scripts)"
+else
+    fail_test "Script syntax validation" "$SYNTAX_ERRORS scripts have syntax errors"
+fi
+
+echo ""
+echo "========================================" | tee -a "$RESULTS_FILE"
 echo "BACKUP SCRIPT TESTS" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 1: Backup script exists and is executable
+# Test 3: Backup script exists and is executable
 run_test
-echo "Test 1: Backup script exists and is executable"
+echo "Test 3: Backup script exists and is executable"
 if podman exec "$CONTAINER_NAME" test -x /usr/local/bin/cassandra-backup.sh; then
     pass_test "Backup script exists and is executable"
 else
     fail_test "Backup script existence" "Script not found or not executable"
 fi
 
-# Test 2: Create first backup (full copy, no hardlinks)
+# Test 3: Create first backup (full copy, no hardlinks)
 run_test
-echo "Test 2: Create first backup"
+echo "Test 3: Create first backup"
 START_TIME=$(date +%s)
 if podman exec "$CONTAINER_NAME" /usr/local/bin/cassandra-backup.sh > /tmp/backup-test-1.log 2>&1; then
     END_TIME=$(date +%s)
@@ -92,9 +115,9 @@ else
     cat /tmp/backup-test-1.log
 fi
 
-# Test 3: Verify backup contains schema.cql
+# Test 4: Verify backup contains schema.cql
 run_test
-echo "Test 3: Backup contains schema.cql"
+echo "Test 4: Backup contains schema.cql"
 LATEST_BACKUP=$(podman exec "$CONTAINER_NAME" sh -c 'ls -1dt /backup/data_backup-* 2>/dev/null | head -1')
 if podman exec "$CONTAINER_NAME" test -f "${LATEST_BACKUP}/schema.cql"; then
     SCHEMA_LINES=$(podman exec "$CONTAINER_NAME" sh -c "wc -l < ${LATEST_BACKUP}/schema.cql")
@@ -103,9 +126,9 @@ else
     fail_test "Schema dump" "schema.cql not found in backup"
 fi
 
-# Test 4: Verify snapshot was cleaned up
+# Test 5: Verify snapshot was cleaned up
 run_test
-echo "Test 4: Snapshot cleaned up after backup"
+echo "Test 5: Snapshot cleaned up after backup"
 SNAPSHOT_OUTPUT=$(podman exec "$CONTAINER_NAME" nodetool listsnapshots 2>/dev/null)
 if echo "$SNAPSHOT_OUTPUT" | grep -q "There are no snapshots"; then
     pass_test "Snapshot cleaned up (no snapshots remain)"
@@ -114,9 +137,9 @@ else
     fail_test "Snapshot cleanup" "Found $SNAPSHOT_COUNT snapshot(s) still present"
 fi
 
-# Test 5: Create second backup (should use hardlinks)
+# Test 6: Create second backup (should use hardlinks)
 run_test
-echo "Test 5: Create second backup with hardlink deduplication"
+echo "Test 6: Create second backup with hardlink deduplication"
 sleep 5  # Ensure different timestamp
 
 # Clean any stale lock from previous test (trap may not have run yet)
@@ -148,9 +171,9 @@ else
     cat /tmp/backup-test-2.log
 fi
 
-# Test 6: Verify backup logging includes timings
+# Test 7: Verify backup logging includes timings
 run_test
-echo "Test 6: Backup logs include operation timings"
+echo "Test 7: Backup logs include operation timings"
 if grep -qE "took [0-9]+(s|m)" /tmp/backup-test-2.log; then
     TIMING_COUNT=$(grep -cE "took [0-9]+(s|m)" /tmp/backup-test-2.log)
     pass_test "Backup logs include timings ($TIMING_COUNT timing logs found)"
@@ -164,18 +187,18 @@ echo "RESTORE SCRIPT TESTS" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 7: Restore script exists and is executable
+# Test 8: Restore script exists and is executable
 run_test
-echo "Test 7: Restore script exists and is executable"
+echo "Test 8: Restore script exists and is executable"
 if podman exec "$CONTAINER_NAME" test -x /usr/local/bin/cassandra-restore.sh; then
     pass_test "Restore script exists and is executable"
 else
     fail_test "Restore script existence" "Script not found or not executable"
 fi
 
-# Test 8: Full restore cycle via entrypoint
+# Test 9: Full restore cycle via entrypoint
 run_test
-echo "Test 8: Full restore cycle (entrypoint integration)"
+echo "Test 9: Full restore cycle (entrypoint integration)"
 echo "  Creating new container with restore from backup..."
 
 # Get a backup created by THIS test run (most recent)
@@ -248,9 +271,9 @@ echo "RETENTION POLICY TESTS" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 9: Backup retention in hours (not days)
+# Test 10: Backup retention in hours (not days)
 run_test
-echo "Test 9: Backup retention uses BACKUP_RETENTION_HOURS"
+echo "Test 10: Backup retention uses BACKUP_RETENTION_HOURS"
 if podman exec "$CONTAINER_NAME" grep -q "BACKUP_RETENTION_HOURS" /usr/local/bin/cassandra-backup.sh; then
     pass_test "Backup script uses BACKUP_RETENTION_HOURS"
 else
@@ -263,63 +286,63 @@ echo "ERROR HANDLING TESTS" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 13: Hardlink filesystem check
+# Test 14: Hardlink filesystem check
 run_test
-echo "Test 10: Hardlink filesystem support check exists"
+echo "Test 11: Hardlink filesystem support check exists"
 if podman exec "$CONTAINER_NAME" grep -q "Testing filesystem hardlink support" /usr/local/bin/cassandra-backup.sh; then
     pass_test "Hardlink support test exists in backup script"
 else
     fail_test "Hardlink check" "Hardlink support test not found"
 fi
 
-# Test 14: rsync retry mechanism
+# Test 15: rsync retry mechanism
 run_test
-echo "Test 11: rsync retry mechanism exists"
+echo "Test 12: rsync retry mechanism exists"
 if podman exec "$CONTAINER_NAME" grep -q "BACKUP_RSYNC_RETRIES" /usr/local/bin/cassandra-backup.sh; then
     pass_test "rsync retry mechanism implemented"
 else
     fail_test "rsync retry" "BACKUP_RSYNC_RETRIES not found"
 fi
 
-# Test 15: rsync timeout mechanism
+# Test 16: rsync timeout mechanism
 run_test
-echo "Test 12: rsync timeout mechanism exists"
+echo "Test 13: rsync timeout mechanism exists"
 if podman exec "$CONTAINER_NAME" grep -q "BACKUP_RSYNC_TIMEOUT_MINUTES" /usr/local/bin/cassandra-backup.sh; then
     pass_test "rsync timeout mechanism implemented"
 else
     fail_test "rsync timeout" "BACKUP_RSYNC_TIMEOUT_MINUTES not found"
 fi
 
-# Test 16: rsync extra options support
+# Test 17: rsync extra options support
 run_test
-echo "Test 13: rsync extra options support"
+echo "Test 14: rsync extra options support"
 if podman exec "$CONTAINER_NAME" grep -q "BACKUP_RSYNC_EXTRA_OPTS" /usr/local/bin/cassandra-backup.sh; then
     pass_test "rsync extra options supported"
 else
     fail_test "rsync extra opts" "BACKUP_RSYNC_EXTRA_OPTS not found"
 fi
 
-# Test 17: Restore script checks if Cassandra is running (FATAL)
+# Test 18: Restore script checks if Cassandra is running (FATAL)
 run_test
-echo "Test 14: Restore script checks if Cassandra is running"
+echo "Test 15: Restore script checks if Cassandra is running"
 if podman exec "$CONTAINER_NAME" grep -q "Cassandra is running - this should NEVER happen" /usr/local/bin/cassandra-restore.sh; then
     pass_test "Restore script has Cassandra running check (FATAL)"
 else
     fail_test "Cassandra running check" "Check not found or not FATAL"
 fi
 
-# Test 18: Restore script has retry mechanism
+# Test 19: Restore script has retry mechanism
 run_test
-echo "Test 15: Restore script has rsync retry mechanism"
+echo "Test 16: Restore script has rsync retry mechanism"
 if podman exec "$CONTAINER_NAME" grep -q "RESTORE_RSYNC_RETRIES" /usr/local/bin/cassandra-restore.sh; then
     pass_test "Restore rsync retry mechanism implemented"
 else
     fail_test "Restore rsync retry" "RESTORE_RSYNC_RETRIES not found"
 fi
 
-# Test 19: Backup script gracefully skips when Cassandra not running
+# Test 20: Backup script gracefully skips when Cassandra not running
 run_test
-echo "Test 16: Backup script skips gracefully when Cassandra not running"
+echo "Test 17: Backup script skips gracefully when Cassandra not running"
 if podman exec "$CONTAINER_NAME" grep -q "WARNING: Cassandra process is not running" /usr/local/bin/cassandra-backup.sh; then
     # Check that script exits 0 (not 1) when Cassandra not running
     if podman exec "$CONTAINER_NAME" sh -c 'grep -A5 "WARNING: Cassandra process is not running" /usr/local/bin/cassandra-backup.sh' | grep -q "exit 0"; then
@@ -337,9 +360,9 @@ echo "SINGLE-NODE ENFORCEMENT TEST" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 20: Backup script enforces single-node only
+# Test 21: Backup script enforces single-node only
 run_test
-echo "Test 17: Backup script enforces single-node clusters"
+echo "Test 18: Backup script enforces single-node clusters"
 if podman exec "$CONTAINER_NAME" grep -q "Backup is only supported for single-node clusters" /usr/local/bin/cassandra-backup.sh; then
     pass_test "Single-node enforcement exists"
 else
@@ -352,9 +375,9 @@ echo "CONFIGURATION VARIABLES TEST" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 21: All required environment variables documented
+# Test 22: All required environment variables documented
 run_test
-echo "Test 18: Environment variables properly configured"
+echo "Test 19: Environment variables properly configured"
 REQUIRED_VARS="BACKUP_RETENTION_HOURS BACKUP_USE_HARDLINKS BACKUP_RSYNC_RETRIES BACKUP_RSYNC_TIMEOUT_MINUTES BACKUP_RSYNC_EXTRA_OPTS"
 MISSING=""
 for var in $REQUIRED_VARS; do
@@ -375,18 +398,18 @@ echo "LOCK SEMAPHORE TESTS (PHASE 3)" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 19: Backup lock semaphore exists in script
+# Test 20: Backup lock semaphore exists in script
 run_test
-echo "Test 19: Backup lock semaphore implemented"
+echo "Test 20: Backup lock semaphore implemented"
 if podman exec "$CONTAINER_NAME" grep -q "backup.lock" /usr/local/bin/cassandra-backup.sh; then
     pass_test "Backup lock semaphore implemented"
 else
     fail_test "Backup lock semaphore" "Lock mechanism not found"
 fi
 
-# Test 20: Test backup lock prevents overlapping backups
+# Test 21: Test backup lock prevents overlapping backups
 run_test
-echo "Test 20: Lock prevents overlapping backups"
+echo "Test 21: Lock prevents overlapping backups"
 # Create a slow backup by triggering one, then immediately triggering another
 podman exec "$CONTAINER_NAME" /usr/local/bin/cassandra-backup.sh >/dev/null 2>&1 &
 BACKUP_PID=$!
@@ -418,18 +441,18 @@ echo "ORPHANED SNAPSHOT CLEANUP TESTS" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 21: Orphaned snapshot housekeeping exists
+# Test 22: Orphaned snapshot housekeeping exists
 run_test
-echo "Test 21: Orphaned snapshot housekeeping implemented"
+echo "Test 22: Orphaned snapshot housekeeping implemented"
 if podman exec "$CONTAINER_NAME" grep -q "housekeeping_cleanup_old_snapshots" /usr/local/bin/cassandra-backup.sh; then
     pass_test "Orphaned snapshot housekeeping implemented"
 else
     fail_test "Snapshot housekeeping" "Housekeeping function not found"
 fi
 
-# Test 22: SNAPSHOT_RETENTION_DAYS variable exists
+# Test 23: SNAPSHOT_RETENTION_DAYS variable exists
 run_test
-echo "Test 22: SNAPSHOT_RETENTION_DAYS variable supported"
+echo "Test 23: SNAPSHOT_RETENTION_DAYS variable supported"
 if podman exec "$CONTAINER_NAME" grep -q "SNAPSHOT_RETENTION_DAYS" /usr/local/bin/cassandra-backup.sh; then
     pass_test "SNAPSHOT_RETENTION_DAYS variable supported"
 else
@@ -442,28 +465,28 @@ echo "SCHEDULED BACKUP TESTS (PHASE 3)" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo ""
 
-# Test 23: Backup scheduler script exists
+# Test 24: Backup scheduler script exists
 run_test
-echo "Test 23: Backup scheduler script exists"
+echo "Test 24: Backup scheduler script exists"
 if podman exec "$CONTAINER_NAME" test -x /usr/local/bin/backup-scheduler.sh; then
     pass_test "Backup scheduler script exists and is executable"
 else
     fail_test "Backup scheduler" "Script not found or not executable"
 fi
 
-# Test 24: Backup cron wrapper exists
+# Test 25: Backup cron wrapper exists
 run_test
-echo "Test 24: Backup cron wrapper exists"
+echo "Test 25: Backup cron wrapper exists"
 if podman exec "$CONTAINER_NAME" test -x /usr/local/bin/backup-cron-wrapper.sh; then
     pass_test "Backup cron wrapper exists and is executable"
 else
     fail_test "Backup cron wrapper" "Script not found or not executable"
 fi
 
-# Test 25: BACKUP_SCHEDULE configuration exists in entrypoint
+# Test 26: BACKUP_SCHEDULE configuration exists in entrypoint
 # TODO: This test is flaky - entrypoint path varies. Will be addressed in smoke test reorganization.
 run_test
-echo "Test 25: BACKUP_SCHEDULE configuration exists in entrypoint (skipped - needs reorganization)"
+echo "Test 26: BACKUP_SCHEDULE configuration exists in entrypoint (skipped - needs reorganization)"
 pass_test "BACKUP_SCHEDULE configuration (skipped pending smoke test reorganization)"
 
 echo ""
