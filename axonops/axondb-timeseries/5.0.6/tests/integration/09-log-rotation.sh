@@ -107,11 +107,11 @@ echo "STEP 5: Verify rotation created .1.gz file"
 echo "------------------------------------------------------------------------"
 
 if podman exec log-rotation-test test -f "${TEST_LOG}.1.gz"; then
-    # Check it's actually gzipped
-    if podman exec log-rotation-test file "${TEST_LOG}.1.gz" | grep -q "gzip"; then
-        echo "✓ ${TEST_LOG}.1.gz created and is gzipped"
+    # Verify it's actually gzipped by trying to gunzip test (non-destructive)
+    if podman exec log-rotation-test bash -c "gunzip -t '${TEST_LOG}.1.gz' 2>&1"; then
+        echo "✓ ${TEST_LOG}.1.gz created and is valid gzip"
     else
-        fail_test "Log rotation" ".1.gz exists but is not gzipped"
+        fail_test "Log rotation" ".1.gz exists but gunzip test failed"
         exit 1
     fi
 else
