@@ -128,10 +128,12 @@ echo "------------------------------------------------------------------------"
 
 NEW_SIZE=$(podman exec log-rotation-test stat -c%s "$TEST_LOG" 2>/dev/null)
 
-if [ "$NEW_SIZE" -eq 0 ]; then
-    echo "✓ Original log truncated to 0 bytes"
+# Log should be truncated (much smaller than 11MB original)
+# Note: log-rotate.sh writes a rotation message after truncating, so size will be ~87 bytes
+if [ "$NEW_SIZE" -lt 1000 ]; then
+    echo "✓ Original log truncated ($NEW_SIZE bytes, was 11MB)"
 else
-    fail_test "Log rotation" "Original log not truncated (size: $NEW_SIZE)"
+    fail_test "Log rotation" "Original log not truncated (size: $NEW_SIZE bytes)"
     exit 1
 fi
 
