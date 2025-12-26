@@ -191,6 +191,12 @@ CLEANUP_TIMEOUT_MINUTES="${RETENTION_CLEANUP_TIMEOUT_MINUTES:-60}"  # Timeout fo
 BACKUP_RSYNC_RETRIES="${BACKUP_RSYNC_RETRIES:-3}"
 BACKUP_RSYNC_TIMEOUT_MINUTES="${BACKUP_RSYNC_TIMEOUT_MINUTES:-120}"
 BACKUP_RSYNC_EXTRA_OPTS="${BACKUP_RSYNC_EXTRA_OPTS:-}"
+RSYNC_BWLIMIT_KB="${RSYNC_BWLIMIT_KB:-}"  # Bandwidth limit in KB/s (optional)
+
+# Resource-friendly settings
+# - nice -n 19: Lower CPU priority (0-19, higher = lower priority)
+# - ionice -c 3: Idle disk I/O class (only use disk when nothing else needs it)
+# These ensure backups don't impact Cassandra performance
 
 # Cassandra configuration
 CASSANDRA_DATA_DIR="${CASSANDRA_DATA_DIR:-/var/lib/cassandra/data}"
@@ -497,6 +503,12 @@ if [ "$BACKUP_USE_HARDLINKS" = "true" ] && [ -n "$LATEST_BACKUP" ]; then
     RSYNC_OPTS="$RSYNC_OPTS --link-dest=$LATEST_BACKUP"
 fi
 
+# Add bandwidth limit if specified
+if [ -n "$RSYNC_BWLIMIT_KB" ]; then
+    RSYNC_OPTS="$RSYNC_OPTS --bwlimit=$RSYNC_BWLIMIT_KB"
+    log "Bandwidth limit: ${RSYNC_BWLIMIT_KB} KB/s"
+fi
+
 # Add extra user-provided options
 if [ -n "$BACKUP_RSYNC_EXTRA_OPTS" ]; then
     RSYNC_OPTS="$RSYNC_OPTS $BACKUP_RSYNC_EXTRA_OPTS"
@@ -504,6 +516,12 @@ fi
 
 # Convert timeout to seconds
 RSYNC_TIMEOUT_SECONDS=$((BACKUP_RSYNC_TIMEOUT_MINUTES * 60))
+
+# Resource-friendly wrapper for rsync
+# - nice -n 19: Lower CPU priority (backups don't starve Cassandra)
+# - ionice -c 3: Idle disk I/O (only use disk when nothing else needs it)
+RSYNC_WRAPPER="nice -n 19 ionice -c 3"
+log "Resource limits: nice -n 19 (low CPU priority), ionice -c 3 (idle I/O)"
 
 # rsync with retry logic
 RSYNC_SUCCESS=false
@@ -564,7 +582,7 @@ for attempt in $(seq 1 $((BACKUP_RSYNC_RETRIES + 1))); do
             # With hardlinks - check if destination exists in previous backup
             prev_dest="${LATEST_BACKUP}/${rel_path}"
             if [ -d "$prev_dest" ]; then
-                if ! timeout ${RSYNC_TIMEOUT_SECONDS} rsync $RSYNC_OPTS --link-dest="$prev_dest" "$snapshot_dir/" "$dest_dir/" 2>&1; then
+                if ! timeout ${RSYNC_TIMEOUT_SECONDS} $RSYNC_WRAPPER rsync $RSYNC_OPTS --link-dest="$prev_dest" "$snapshot_dir/" "$dest_dir/" 2>&1; then
                     if [ $? -eq 124 ]; then
                         log_error "rsync timed out after ${BACKUP_RSYNC_TIMEOUT_MINUTES} minutes for: $rel_path"
                     else
@@ -575,7 +593,7 @@ for attempt in $(seq 1 $((BACKUP_RSYNC_RETRIES + 1))); do
                 fi
             else
                 # No previous backup for this table - full copy
-                if ! timeout ${RSYNC_TIMEOUT_SECONDS} rsync $RSYNC_OPTS "$snapshot_dir/" "$dest_dir/" 2>&1; then
+                if ! timeout ${RSYNC_TIMEOUT_SECONDS} $RSYNC_WRAPPER rsync $RSYNC_OPTS "$snapshot_dir/" "$dest_dir/" 2>&1; then
                     if [ $? -eq 124 ]; then
                         log_error "rsync timed out after ${BACKUP_RSYNC_TIMEOUT_MINUTES} minutes for: $rel_path"
                     else
@@ -587,7 +605,7 @@ for attempt in $(seq 1 $((BACKUP_RSYNC_RETRIES + 1))); do
             fi
         else
             # Without hardlinks - full copy
-            if ! timeout ${RSYNC_TIMEOUT_SECONDS} rsync $RSYNC_OPTS "$snapshot_dir/" "$dest_dir/" 2>&1; then
+            if ! timeout ${RSYNC_TIMEOUT_SECONDS} $RSYNC_WRAPPER rsync $RSYNC_OPTS "$snapshot_dir/" "$dest_dir/" 2>&1; then
                 if [ $? -eq 124 ]; then
                     log_error "rsync timed out after ${BACKUP_RSYNC_TIMEOUT_MINUTES} minutes for: $rel_path"
                 else
