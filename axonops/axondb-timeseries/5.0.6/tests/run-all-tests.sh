@@ -81,8 +81,8 @@ if [ -f "smoke/basic-functionality.sh" ]; then
     fi
 fi
 
-# Integration Tests (run in order: 00-09, includes comprehensive test as 00)
-for test in integration/0*.sh; do
+# Integration Tests (run in order: 01-10, includes comprehensive test as 10 last)
+for test in integration/{0,1}*.sh; do
     if [ -f "$test" ]; then
         test_name=$(basename "$test" .sh | sed 's/^[0-9]*-//' | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
         if ! run_test_suite "Integration: $test_name" "$test"; then
