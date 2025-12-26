@@ -18,6 +18,17 @@ log_error() {
     echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [${SCRIPT_NAME}] ERROR: $*" >&2
 }
 
+# Helper to write error state to semaphore (call before exit 1)
+write_error_semaphore() {
+    local reason="$1"
+    {
+        echo "STATE=error"
+        echo "REASON=$reason"
+        echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        echo "PID=$$"
+    } > "$LOCK_SEMAPHORE"
+}
+
 # Timing helper
 START_TIME=$(date +%s)
 get_duration() {
@@ -207,18 +218,21 @@ log "Validating environment..."
 if [ ! -d "$BACKUP_VOLUME" ]; then
     log_error "Backup volume does not exist: ${BACKUP_VOLUME}"
     log_error "Please ensure /backup volume is mounted"
+    write_error_semaphore "Backup volume does not exist"
     exit 1
 fi
 
 if [ ! -w "$BACKUP_VOLUME" ]; then
     log_error "Backup volume is not writable: ${BACKUP_VOLUME}"
     log_error "Check volume permissions (should be writable by cassandra user)"
+    write_error_semaphore "Backup volume not writable"
     exit 1
 fi
 
 # Check Cassandra data directory exists
 if [ ! -d "$CASSANDRA_DATA_DIR" ]; then
     log_error "Cassandra data directory does not exist: ${CASSANDRA_DATA_DIR}"
+    write_error_semaphore "Cassandra data directory does not exist"
     exit 1
 fi
 
@@ -226,15 +240,7 @@ fi
 if ! pgrep -f cassandra > /dev/null 2>&1; then
     log_error "Cassandra process is not running"
     log_error "Backup cannot proceed without Cassandra running"
-
-    # Update semaphore to error state
-    {
-        echo "STATE=error"
-        echo "REASON=Cassandra process not running"
-        echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-        echo "PID=$$"
-    } > "$LOCK_SEMAPHORE"
-
+    write_error_semaphore "Cassandra process not running"
     exit 1
 fi
 
@@ -242,15 +248,7 @@ fi
 if ! nc -z localhost "$CQL_PORT" 2>/dev/null; then
     log_error "CQL port $CQL_PORT is not listening"
     log_error "Cassandra may not be fully started yet"
-
-    # Update semaphore to error state
-    {
-        echo "STATE=error"
-        echo "REASON=CQL port not listening"
-        echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-        echo "PID=$$"
-    } > "$LOCK_SEMAPHORE"
-
+    write_error_semaphore "CQL port not listening"
     exit 1
 fi
 
@@ -258,6 +256,7 @@ fi
 if ! command -v nodetool >/dev/null 2>&1; then
     log_error "nodetool command not found"
     log_error "PATH: $PATH"
+    write_error_semaphore "nodetool command not found"
     exit 1
 fi
 
@@ -276,6 +275,7 @@ if [ "$NODE_COUNT" -eq 0 ]; then
     log_error "Unable to determine cluster state (nodetool status failed)"
     log_error "Cassandra may not be ready or nodetool is not working"
     nodetool status 2>&1 || true
+    write_error_semaphore "Unable to determine cluster state"
     exit 1
 fi
 
@@ -286,6 +286,7 @@ if [ "$NODE_COUNT" -gt 1 ]; then
     log_error ""
     log_error "For multi-node clusters, please use external backup solutions"
     log_error "or deploy and manage Cassandra separately from AxonOps containers"
+    write_error_semaphore "Multi-node cluster detected ($NODE_COUNT nodes)"
     exit 1
 fi
 
@@ -357,6 +358,7 @@ SNAPSHOT_START=$(date +%s)
 if ! nodetool snapshot -t "$SNAPSHOT_TAG" 2>&1; then
     log_error "nodetool snapshot failed"
     log_error "Cannot proceed with backup"
+    write_error_semaphore "nodetool snapshot failed"
     exit 1
 fi
 
@@ -469,6 +471,7 @@ if [ "$BACKUP_USE_HARDLINKS" = "true" ]; then
         log_error ""
         log_error "Current filesystem info:"
         df -T "$BACKUP_VOLUME" 2>&1 || true
+        write_error_semaphore "Filesystem does not support hardlinks"
         exit 1
     fi
 fi
@@ -523,6 +526,7 @@ for attempt in $(seq 1 $((BACKUP_RSYNC_RETRIES + 1))); do
     if [ -z "$SNAPSHOT_DIRS" ]; then
         log_error "No snapshot directories found for tag: ${SNAPSHOT_TAG}"
         log_error "Expected to find directories at: ${CASSANDRA_DATA_DIR}/*/snapshots/${SNAPSHOT_TAG}"
+        write_error_semaphore "No snapshot directories found"
         exit 1
     fi
 
@@ -612,6 +616,7 @@ for attempt in $(seq 1 $((BACKUP_RSYNC_RETRIES + 1))); do
             log_error "  - Increasing BACKUP_RSYNC_TIMEOUT_MINUTES (current: ${BACKUP_RSYNC_TIMEOUT_MINUTES})"
             log_error "  - Increasing BACKUP_RSYNC_RETRIES (current: ${BACKUP_RSYNC_RETRIES})"
             log_error "  - Checking disk space and filesystem health"
+            write_error_semaphore "rsync failed after $((BACKUP_RSYNC_RETRIES + 1)) attempts"
             exit 1
         fi
     fi
@@ -619,6 +624,7 @@ done
 
 if [ "$RSYNC_SUCCESS" != "true" ]; then
     log_error "rsync failed - backup incomplete"
+    write_error_semaphore "rsync failed - backup incomplete"
     exit 1
 fi
 
