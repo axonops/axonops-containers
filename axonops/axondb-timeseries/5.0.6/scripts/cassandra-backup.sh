@@ -6,9 +6,6 @@ set -euo pipefail
 # Purpose: Create snapshot-based backups with rsync deduplication
 # ============================================================================
 
-# Script version for logging
-SCRIPT_VERSION="1.1.1"
-
 # Script name for dynamic logging (auto-detect from $0)
 SCRIPT_NAME=$(basename "$0" .sh)
 
@@ -34,7 +31,7 @@ get_duration() {
     fi
 }
 
-log "Starting Cassandra backup (version ${SCRIPT_VERSION})"
+log "Starting Cassandra backup"
 
 # ============================================================================
 # Backup Lock Semaphore (Prevents Overlapping Backups)

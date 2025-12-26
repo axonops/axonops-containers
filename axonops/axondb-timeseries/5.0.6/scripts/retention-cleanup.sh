@@ -8,8 +8,6 @@ set -euo pipefail
 # This script is spawned in background by cassandra-backup.sh
 # It allows backup to complete immediately while deletion happens async
 
-SCRIPT_VERSION="1.0.0"
-
 # Script name for dynamic logging (auto-detect from $0)
 SCRIPT_NAME=$(basename "$0" .sh)
 
@@ -35,7 +33,7 @@ get_duration() {
     fi
 }
 
-log "Starting retention cleanup (version ${SCRIPT_VERSION})"
+log "Starting retention cleanup"
 
 # Semaphore for this cleanup process
 # CRITICAL: In /tmp (ephemeral) not .axonops (would be backed up!)

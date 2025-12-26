@@ -6,9 +6,6 @@ set -euo pipefail
 # Purpose: Restore Cassandra data from backup
 # ============================================================================
 
-# Script version for logging
-SCRIPT_VERSION="1.1.1"
-
 # Script name for dynamic logging (auto-detect from $0)
 SCRIPT_NAME=$(basename "$0" .sh)
 
@@ -34,7 +31,7 @@ get_duration() {
     fi
 }
 
-log "Starting Cassandra restore (version ${SCRIPT_VERSION})"
+log "Starting Cassandra restore"
 
 # Rotate restore log if needed before starting (preserve history across restores)
 # Note: This script's output is redirected to this log by entrypoint.sh
