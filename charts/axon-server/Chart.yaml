@@ -2,7 +2,7 @@ apiVersion: v2
 name: axon-server
 description: Install AxonOps server - Unified observability platform for Apache Cassandra
 home: https://axonops.com
-icon: https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png
+icon: https://github.com/axonops/axonops-workbench/raw/main/renderer/assets/images/axonops-icon-512x512.png
 keywords:
   - cassandra
   - monitoring
