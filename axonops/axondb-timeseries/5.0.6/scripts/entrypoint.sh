@@ -73,6 +73,35 @@ print_startup_banner() {
     fi
     echo ""
 
+    # Backup/Restore Configuration (show if configured)
+    if [ -n "${BACKUP_SCHEDULE:-}" ] || [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]; then
+      echo "Backup/Restore Configuration:"
+
+      # Scheduled backups
+      if [ -n "${BACKUP_SCHEDULE:-}" ]; then
+        echo "  Scheduled Backups:  Enabled"
+        echo "    Schedule:         ${BACKUP_SCHEDULE}"
+        echo "    Retention:        ${BACKUP_RETENTION_HOURS:-not set} hours"
+        echo "    Min Keep Count:   ${BACKUP_MINIMUM_RETENTION_COUNT:-1}"
+        echo "    Hardlinks:        ${BACKUP_USE_HARDLINKS:-true}"
+        echo "    Calculate Stats:  ${BACKUP_CALCULATE_STATS:-false}"
+      else
+        echo "  Scheduled Backups:  Disabled (trigger manually via /usr/local/bin/cassandra-backup.sh)"
+      fi
+
+      # Restore configuration
+      if [ -n "${RESTORE_FROM_BACKUP:-}" ]; then
+        echo "  Restore:            Enabled (specific backup)"
+        echo "    Target:           ${RESTORE_FROM_BACKUP}"
+      elif [ "${RESTORE_ENABLED:-false}" = "true" ]; then
+        echo "  Restore:            Enabled (latest backup)"
+      else
+        echo "  Restore:            Disabled"
+      fi
+
+      echo ""
+    fi
+
     echo "================================================================================"
     echo "Starting Cassandra..."
     echo "================================================================================"
@@ -243,38 +272,154 @@ fi
 
 # JVM options are set in jvm17-server.options (including Shenandoah GC)
 
-# Initialize system keyspaces and custom database user in background (non-blocking)
-# This will wait for Cassandra to be ready, then:
-#   1. Convert system keyspaces to NetworkTopologyStrategy (if INIT_SYSTEM_KEYSPACES_AND_ROLES=true)
-#   2. Create custom superuser (if AXONOPS_DB_USER and AXONOPS_DB_PASSWORD are set)
-# Only runs on fresh single-node clusters with default credentials
-# Can be disabled by setting INIT_SYSTEM_KEYSPACES_AND_ROLES=false
-INIT_SYSTEM_KEYSPACES_AND_ROLES="${INIT_SYSTEM_KEYSPACES_AND_ROLES:-true}"
+# ============================================================================
+# Restore from Backup (if requested)
+# ============================================================================
+# CRITICAL: Check restore FIRST, before starting init scripts
+# In a restore scenario, we're restoring EXISTING data (with keyspaces and users already configured)
+# We should NOT run init scripts that would try to ALTER system keyspaces or CREATE users
+# This runs BEFORE Cassandra starts to restore data files first
 
-if [ "$INIT_SYSTEM_KEYSPACES_AND_ROLES" = "true" ]; then
-    echo "Starting initialization in background (keyspaces + roles)..."
-    (/usr/local/bin/init-system-keyspaces.sh > /var/log/cassandra/init-system-keyspaces.log 2>&1 &)
+if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]; then
+    echo "=== Restore Requested ==="
+    if [ -n "${RESTORE_FROM_BACKUP:-}" ]; then
+        echo "Restoring from backup: ${RESTORE_FROM_BACKUP}"
+    else
+        echo "Restoring from latest backup"
+    fi
+    echo ""
+    echo "Skipping init scripts (restoring existing data with keyspaces and users already configured)"
+    echo ""
+
+    # NOTE: Semaphores (init-system-keyspaces.done, init-db-user.done) will come from backup!
+    # The backup includes /var/lib/cassandra/.axonops with original cluster state
+    # Restore script copies .axonops directory FIRST, preserving semaphore state
+    # No need to write "skipped" semaphores - we use the real ones from backup
+
+    # Write restore semaphore IMMEDIATELY so startup probe passes
+    # Restore script will update this to "success" or "failed" when complete
+    # CRITICAL: Use /tmp (ephemeral) not .axonops (gets backed up!)
+    {
+        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "RESULT=in_progress"
+        echo "REASON=restore_starting"
+    } > /tmp/axonops-restore.done
+
+    # Start restore in BACKGROUND (non-blocking)
+    # This prevents entrypoint from blocking on long restores (which causes K8s startup probe timeouts)
+    # The cassandra-wrapper.sh will wait for restore to complete before starting Cassandra
+    echo "Starting restore script in background..."
+    echo "  Output: /var/log/cassandra/restore.log"
+    echo "  Wrapper will wait for restore to complete before starting Cassandra"
+    echo ""
+    (/usr/local/bin/cassandra-restore.sh > /var/log/cassandra/restore.log 2>&1 &)
+
+    # Entrypoint will now exec cassandra-wrapper.sh (which waits for restore, then starts Cassandra)
+    # This allows entrypoint to return immediately (preventing K8s startup probe timeouts)
+
 else
-    echo "System keyspace and role initialization disabled (INIT_SYSTEM_KEYSPACES_AND_ROLES=false)"
-    echo "Writing semaphore files to allow healthcheck to proceed..."
-    # Write semaphores immediately so healthcheck doesn't block
-    # Located in /var/lib/cassandra (persistent volume) not /etc (ephemeral)
-    mkdir -p /var/lib/cassandra/.axonops
-    {
-        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "RESULT=skipped"
-        echo "REASON=disabled_by_env_var"
-    } > /var/lib/cassandra/.axonops/init-system-keyspaces.done
-    {
-        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "RESULT=skipped"
-        echo "REASON=init_disabled"
-    } > /var/lib/cassandra/.axonops/init-db-user.done
+    # NO restore requested - run init scripts normally for fresh cluster
+    # Initialize system keyspaces and custom database user in background (non-blocking)
+    # This will wait for Cassandra to be ready, then:
+    #   1. Convert system keyspaces to NetworkTopologyStrategy (if INIT_SYSTEM_KEYSPACES_AND_ROLES=true)
+    #   2. Create custom superuser (if AXONOPS_DB_USER and AXONOPS_DB_PASSWORD are set)
+    # Only runs on fresh single-node clusters with default credentials
+    # Can be disabled by setting INIT_SYSTEM_KEYSPACES_AND_ROLES=false
+    INIT_SYSTEM_KEYSPACES_AND_ROLES="${INIT_SYSTEM_KEYSPACES_AND_ROLES:-true}"
+
+    if [ "$INIT_SYSTEM_KEYSPACES_AND_ROLES" = "true" ]; then
+        echo "Starting initialization in background (keyspaces + roles)..."
+        (/usr/local/bin/init-system-keyspaces.sh > /var/log/cassandra/init-system-keyspaces.log 2>&1 &)
+    else
+        echo "System keyspace and role initialization disabled (INIT_SYSTEM_KEYSPACES_AND_ROLES=false)"
+        echo "Writing semaphore files to allow healthcheck to proceed..."
+        # Write semaphores immediately so healthcheck doesn't block
+        # Located in /var/lib/cassandra (persistent volume) not /etc (ephemeral)
+        mkdir -p /var/lib/cassandra/.axonops
+        {
+            echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "RESULT=skipped"
+            echo "REASON=disabled_by_env_var"
+        } > /var/lib/cassandra/.axonops/init-system-keyspaces.done
+        {
+            echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "RESULT=skipped"
+            echo "REASON=init_disabled"
+        } > /var/lib/cassandra/.axonops/init-db-user.done
+    fi
 fi
 
 echo ""
+
+# ============================================================================
+# Configure Scheduled Backups (if BACKUP_SCHEDULE provided)
+# ============================================================================
+# NOTE: No BACKUP_ENABLED flag needed - if user provides BACKUP_SCHEDULE, enable backups
+# This simplifies configuration - one env var instead of two
+
+if [ -n "${BACKUP_SCHEDULE:-}" ]; then
+    echo "=== Configuring Scheduled Backups ==="
+    echo "Schedule: ${BACKUP_SCHEDULE}"
+
+    # CRITICAL: BACKUP_RETENTION_HOURS is mandatory when backups enabled
+    if [ -z "${BACKUP_RETENTION_HOURS:-}" ]; then
+        echo "ERROR: BACKUP_SCHEDULE provided but BACKUP_RETENTION_HOURS not set"
+        echo "  Retention is MANDATORY to prevent disk fill"
+        echo "  Examples:"
+        echo "    BACKUP_RETENTION_HOURS=24      # Keep 24 hours"
+        echo "    BACKUP_RETENTION_HOURS=168     # Keep 7 days"
+        echo "    BACKUP_RETENTION_HOURS=720     # Keep 30 days"
+        echo ""
+        echo "CRITICAL: This is an invalid configuration"
+        echo "Container cannot start with backup schedule but no retention policy"
+        echo ""
+        exit 1
+    else
+        echo "Retention: ${BACKUP_RETENTION_HOURS} hours"
+        echo ""
+
+        # Start backup scheduler in background (container-native, no cron needed)
+        # This avoids PAM/crontab permission issues in containers
+        # Backup output goes to console (for kubectl logs) AND file (via wrapper script)
+        echo "Starting backup scheduler daemon..."
+        (/usr/local/bin/backup-scheduler.sh >> /var/log/cassandra/backup-scheduler.log 2>&1 &)
+
+        echo "✓ Backup scheduler started"
+        echo "  Schedule: ${BACKUP_SCHEDULE}"
+        echo "  Retention: ${BACKUP_RETENTION_HOURS} hours"
+        echo "  Scheduler logs: /var/log/cassandra/backup-scheduler.log (rotated, compressed, retained)"
+        echo "  Backup logs: /var/log/cassandra/backup-cron.log (rotated, compressed, retained)"
+        echo "  Backup output visible in container logs (use: podman logs / kubectl logs)"
+        echo ""
+    fi
+else
+    echo "Scheduled backups disabled (BACKUP_SCHEDULE not set)"
+    echo "You can manually trigger backups with: /usr/local/bin/cassandra-backup.sh"
+    echo ""
+fi
+
+# ============================================================================
+# Start Semaphore Monitor (background daemon for kubectl logs visibility)
+# ============================================================================
+# Monitors all semaphore files and echoes in-progress/error states to console
+# Provides visibility into long-running operations (backups, restores, cleanup)
+ENABLE_SEMAPHORE_MONITOR="${ENABLE_SEMAPHORE_MONITOR:-true}"
+
+if [ "$ENABLE_SEMAPHORE_MONITOR" = "true" ]; then
+    echo "Starting semaphore monitor daemon..."
+    echo "  Interval: ${SEMAPHORE_MONITOR_INTERVAL:-60}s"
+    echo "  Monitors: backup.lock, retention-cleanup.lock, restore.done, init semaphores"
+    echo "  Alerts on: in_progress, error, failed states"
+    (/usr/local/bin/semaphore-monitor.sh >> /var/log/cassandra/semaphore-monitor.log 2>&1 &)
+    echo "✓ Semaphore monitor started"
+    echo ""
+fi
+
 echo "=== Starting Cassandra ==="
 echo ""
 
-# Execute command (CMD is ["cassandra", "-f"] which gets passed as $@)
-exec "$@"
+# Execute cassandra-wrapper.sh (which waits for restore if needed, then starts Cassandra)
+# In restore scenario: wrapper waits for restore to complete, preventing data corruption
+# In normal scenario: wrapper starts Cassandra immediately
+# CMD is ["cassandra", "-f"] which gets passed as $@
+exec /usr/local/bin/cassandra-wrapper.sh "$@"

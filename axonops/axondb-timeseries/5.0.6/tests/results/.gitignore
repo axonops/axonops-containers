@@ -1,0 +1,4 @@
+# Ignore all test results and logs
+*.log
+*-results.txt
+*-output.log

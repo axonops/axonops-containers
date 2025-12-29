@@ -957,10 +957,168 @@ docker exec axondb nodetool status
    - Set up log aggregation for `/var/log/cassandra/`
    - Consider integrating with AxonOps for comprehensive monitoring
 
-6. **Backup Strategy**
-   - Regular snapshots of `/var/lib/cassandra/data`
-   - Test restore procedures
-   - Document recovery time objectives (RTO)
+6. **Backup and Restore**
+
+   This container includes integrated backup/restore functionality designed for single-node deployments.
+
+   **Quick Start:**
+   ```bash
+   # Enable scheduled backups (every 6 hours, keep 168 hours / 7 days)
+   docker run -d \
+     -v /backup:/backup \
+     -e BACKUP_SCHEDULE="0 */6 * * *" \
+     -e BACKUP_RETENTION_HOURS=168 \
+     axondb-timeseries:latest
+
+   # Restore from backup
+   docker run -d \
+     -v /backup:/backup \
+     -e RESTORE_FROM_BACKUP="backup-20251226-120000" \
+     axondb-timeseries:latest
+   ```
+
+   **Key Features:**
+   - Snapshot-based backups with hardlink deduplication (76% space savings)
+   - Kubernetes-compatible (non-blocking restore, startup probe safe)
+   - Automatic retention with async deletion
+   - `.axonops` semaphore preservation (prevents re-initialization on restore)
+   - IP address change handling
+   - Log rotation with compression
+
+   **Configuration:**
+
+   | Variable | Required | Default | Description |
+   |----------|----------|---------|-------------|
+   | `BACKUP_SCHEDULE` | No | - | Cron expression (e.g., `0 */6 * * *` for every 6 hours) |
+   | `BACKUP_RETENTION_HOURS` | If schedule set | - | Hours to keep backups (e.g., `168` for 7 days) |
+   | `BACKUP_MINIMUM_RETENTION_COUNT` | No | `1` | Always keep at least N backups |
+   | `BACKUP_USE_HARDLINKS` | No | `true` | Use hardlink deduplication |
+   | `BACKUP_CALCULATE_STATS` | No | `false` | Calculate space savings (expensive) |
+   | `BACKUP_RSYNC_RETRIES` | No | `3` | Number of rsync retries |
+   | `BACKUP_RSYNC_TIMEOUT_MINUTES` | No | `120` | rsync timeout (large datasets) |
+   | `RESTORE_FROM_BACKUP` | No | - | Backup name or `latest` |
+   | `RESTORE_ENABLED` | No | `false` | Enable restore without backup name |
+   | `RESTORE_RESET_CREDENTIALS` | No | `false` | Delete system_auth on restore (reset to cassandra/cassandra) |
+   | `RSYNC_BWLIMIT_KB` | No | - | Bandwidth limit for backups in KB/s |
+   | `ENABLE_SEMAPHORE_MONITOR` | No | `false` | Monitor backup/restore state |
+
+   **Kubernetes Example:**
+   ```yaml
+   apiVersion: v1
+   kind: Pod
+   metadata:
+     name: axondb
+   spec:
+     containers:
+     - name: cassandra
+       image: axondb-timeseries:latest
+       env:
+       - name: BACKUP_SCHEDULE
+         value: "0 */6 * * *"
+       - name: BACKUP_RETENTION_HOURS
+         value: "168"
+       volumeMounts:
+       - name: data
+         mountPath: /var/lib/cassandra
+       - name: backup
+         mountPath: /backup
+     volumes:
+     - name: data
+       persistentVolumeClaim:
+         claimName: cassandra-data
+     - name: backup
+       persistentVolumeClaim:
+         claimName: cassandra-backup
+   ```
+
+   **Restore from Backup (Pod Recreation):**
+   ```yaml
+   # After pod deletion, restore from backup on new pod
+   env:
+   - name: RESTORE_FROM_BACKUP
+     value: "latest"  # or specific: "backup-20251226-120000"
+   ```
+
+   **Important Notes:**
+   - **Single-node only**: Backups are designed for single-node clusters
+   - **Hardlinks are local**: When copying backups to remote storage (S3, NFS), hardlinks become independent files (full copy)
+   - **`.axonops` preservation**: Init semaphores are backed up and restored to prevent re-initialization
+   - **Non-blocking restore**: Restore runs in background, container starts normally (K8s compatible)
+   - **Credentials preserved**: Custom credentials from backup are restored automatically (unless `RESTORE_RESET_CREDENTIALS=true`)
+   - **Credential reset** (`RESTORE_RESET_CREDENTIALS=true`): Deletes all users/roles from backup
+     - Resets to cassandra/cassandra (custom user auto-created if AXONOPS_DB_USER set)
+     - All permissions and grants from backup are lost
+     - Use for prod → dev restores where credential reset is desired
+
+   **Backup Location:**
+   - Mount `/backup` volume for persistence
+   - Backups stored as: `/backup/data_backup-YYYYMMDD-HHMMSS/`
+   - Includes schema dump (`schema.cql`) and data snapshots
+
+   **Restore Examples:**
+   ```bash
+   # Restore latest backup
+   docker run -d \
+     -v /backup:/backup \
+     -e RESTORE_FROM_BACKUP="latest" \
+     axondb-timeseries:latest
+
+   # Restore specific backup
+   docker run -d \
+     -v /backup:/backup \
+     -e RESTORE_FROM_BACKUP="backup-20251226-120000" \
+     axondb-timeseries:latest
+
+   # List available backups
+   ls -1dt /backup/data_backup-* | head -10
+
+   # Restore with credential reset (prod → dev)
+   docker run -d \
+     -v /backup:/backup \
+     -e RESTORE_FROM_BACKUP="backup-20251226-120000" \
+     -e RESTORE_RESET_CREDENTIALS=true \
+     axondb-timeseries:latest
+   # After restore: credentials are cassandra/cassandra
+
+   # Restore with credential reset + new custom user
+   docker run -d \
+     -v /backup:/backup \
+     -e RESTORE_FROM_BACKUP="backup-20251226-120000" \
+     -e RESTORE_RESET_CREDENTIALS=true \
+     -e AXONOPS_DB_USER=devuser \
+     -e AXONOPS_DB_PASSWORD=devpass123 \
+     axondb-timeseries:latest
+   # After restore: credentials are devuser/devpass123 (auto-created)
+   ```
+
+   **Monitoring Backups:**
+   ```bash
+   # Enable semaphore monitor (logs backup/restore state every 60s)
+   docker run -d \
+     -e BACKUP_SCHEDULE="0 */6 * * *" \
+     -e BACKUP_RETENTION_HOURS=168 \
+     -e ENABLE_SEMAPHORE_MONITOR=true \
+     axondb-timeseries:latest
+
+   # Check backup logs
+   docker exec axondb cat /var/log/cassandra/backup-cron.log
+   docker exec axondb cat /var/log/cassandra/retention-cleanup.log
+
+   # Check restore logs
+   docker exec axondb cat /var/log/cassandra/restore.log
+   ```
+
+   **Troubleshooting:**
+
+   | Issue | Check | Solution |
+   |-------|-------|----------|
+   | Backups not created | `cat /var/log/cassandra/backup-scheduler.log` | Verify BACKUP_SCHEDULE is valid cron |
+   | Retention not working | `cat /var/log/cassandra/retention-cleanup.log` | Check BACKUP_RETENTION_HOURS is set |
+   | Restore fails | `cat /var/log/cassandra/restore.log` | Verify backup exists: `ls /backup/data_backup-*` |
+   | Init runs on restore | `cat /var/lib/cassandra/.axonops/init-*.done` | Verify .axonops in backup |
+   | Lock errors | `cat /tmp/axonops-backup.lock` | Wait for previous backup to complete |
+
+   For detailed testing, see [tests/README.md](./5.0.6/tests/README.md).
 
 7. **Cluster Deployment**
    - Use consistent `CASSANDRA_DC` and `CASSANDRA_RACK` across nodes
