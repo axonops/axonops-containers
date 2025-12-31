@@ -1,0 +1,123 @@
+name: Strimzi Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'feat/**'
+      - 'fix/**'
+      - 'bug/**'
+    paths:
+      - 'strimzi/**'
+      - '!strimzi/**/*.md'
+      - '.github/workflows/strimzi-build-and-test.yml'
+      - '.github/actions/strimzi-*/**'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'strimzi/**'
+      - '!strimzi/**/*.md'
+      - '.github/workflows/strimzi-build-and-test.yml'
+      - '.github/actions/strimzi-*/**'
+  workflow_call:
+    inputs:
+      strimzi_version:
+        description: 'Strimzi version to build'
+        required: false
+        type: string
+        default: '0.45.0'
+      kafka_version:
+        description: 'Kafka version to build'
+        required: false
+        type: string
+        default: '3.8.0'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  strimzi-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - strimzi_version: ${{ inputs.strimzi_version || '0.45.0' }}
+            kafka_version: ${{ inputs.kafka_version || '3.8.0' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set build metadata
+        id: meta
+        run: |
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          echo "✓ Strimzi: ${{ matrix.strimzi_version }}"
+          echo "✓ Kafka: ${{ matrix.kafka_version }}"
+
+      - name: Build image for testing
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./strimzi
+          file: ./strimzi/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-strimzi:test
+          build-args: |
+            STRIMZI_VERSION=${{ matrix.strimzi_version }}
+            KAFKA_VERSION=${{ matrix.kafka_version }}
+            AGENT_VERSION=${{ vars.AGENT_VERSION || 'axon-agent' }}
+            KAFKA_AGENT_VERSION=${{ vars.KAFKA_AGENT_VERSION || 'axon-kafka3-agent' }}
+            AXONOPS_REPO_FILE=${{ vars.AXONOPS_REPO_FILE || 'axonops.repo.dev' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image layers
+        run: |
+          echo "Inspecting built image layers..."
+          docker history axonops-strimzi:test
+          docker inspect axonops-strimzi:test
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axonops-strimzi:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'strimzi/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axonops-strimzi:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'strimzi/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rmi axonops-strimzi:test || true
+
