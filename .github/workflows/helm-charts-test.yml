@@ -8,16 +8,16 @@ on:
       - 'feature/**'
       - 'fix/**'
     paths:
-      - 'charts/**'
-      - '!charts/**/*.md'
+      - 'axonops/charts/**'
+      - '!axonops/charts/**/*.md'
       - '.github/workflows/helm-charts-test.yml'
   pull_request:
     branches:
       - main
       - development
     paths:
-      - 'charts/**'
-      - '!charts/**/*.md'
+      - 'axonops/charts/**'
+      - '!axonops/charts/**/*.md'
       - '.github/workflows/helm-charts-test.yml'
   workflow_dispatch:
 
@@ -116,7 +116,7 @@ jobs:
 
       # - name: Lint timeseries chart
       #   run: |
-      #     helm lint charts/axondb-timeseries
+      #     helm lint axonops/charts/axondb-timeseries
 
       # - name: Install axondb-timeseries chart
       #   run: |
@@ -132,7 +132,7 @@ jobs:
       #       --set heapSize=1024M \
       #       --wait --timeout=10m \
       #       --debug \
-      #       charts/axondb-timeseries
+      #       axonops/charts/axondb-timeseries
 
       # - name: Verify timeseries deployment
       #   run: |
@@ -149,20 +149,20 @@ jobs:
 
       # - name: Lint search chart
       #   run: |
-      #     helm lint charts/axondb-search
+      #     helm lint axonops/charts/axondb-search
 
       # - name: Install axondb-search chart
       #   run: |
       #     helm upgrade --install axondb-search \
       #       -n axonops-test \
-      #       -f charts/axondb-search/ci/ci-values.yaml \
+      #       -f axonops/charts/axondb-search/ci/ci-values.yaml \
       #       --set persistence.enabled=false \
       #       --set opensearchJavaOpts="-Xms1g -Xmx1g" \
       #       --set resources.requests.memory=1Gi \
       #       --set resources.limits.memory=1536Mi \
       #       --wait --timeout=10m \
       #       --debug \
-      #       charts/axondb-search
+      #       axonops/charts/axondb-search
 
       # - name: Verify search deployment
       #   run: |
@@ -179,7 +179,7 @@ jobs:
 
       # - name: Lint axon-server chart
       #   run: |
-      #     helm lint charts/axon-server
+      #     helm lint axonops/charts/axon-server
 
       # - name: Install axon-server chart
       #   run: |
@@ -191,7 +191,7 @@ jobs:
       #       --set resources.limits.memory=768Mi \
       #       --wait --timeout=10m \
       #       --debug \
-      #       charts/axon-server
+      #       axonops/charts/axon-server
 
       # - name: Verify axon-server deployment
       #   run: |
@@ -208,7 +208,7 @@ jobs:
 
       # - name: Lint axon-dash chart
       #   run: |
-      #     helm lint charts/axon-dash
+      #     helm lint axonops/charts/axon-dash
 
       # - name: Install axon-dash chart
       #   run: |
@@ -219,7 +219,7 @@ jobs:
       #       --set resources.limits.memory=768Mi \
       #       --wait --timeout=10m \
       #       --debug \
-      #       charts/axon-dash
+      #       axonops/charts/axon-dash
 
       # - name: Verify axon-dash deployment
       #   run: |

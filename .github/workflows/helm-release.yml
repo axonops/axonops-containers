@@ -46,7 +46,7 @@ jobs:
         id: set-charts
         run: |
           # Find all charts
-          ALL_CHARTS=$(find charts -maxdepth 2 -name Chart.yaml -exec dirname {} \;)
+          ALL_CHARTS=$(find axonops/charts -maxdepth 2 -name Chart.yaml -exec dirname {} \;)
 
           # Filter charts if specific ones are requested
           if [ -n "${{ github.event.inputs.charts_to_release }}" ]; then
@@ -55,7 +55,7 @@ jobs:
             IFS=',' read -ra CHART_NAMES <<< "$REQUESTED_CHARTS"
             for chart_name in "${CHART_NAMES[@]}"; do
               chart_name=$(echo "$chart_name" | xargs) # trim whitespace
-              chart_path=$(echo "$ALL_CHARTS" | grep "charts/$chart_name\$" || true)
+              chart_path=$(echo "$ALL_CHARTS" | grep "axonops/charts/$chart_name\$" || true)
               if [ -n "$chart_path" ]; then
                 FILTERED_CHARTS="$FILTERED_CHARTS$chart_path"$'\n'
               fi
