@@ -85,7 +85,7 @@ jobs:
             KAFKA_VERSION=${{ matrix.kafka_version }}
             AGENT_VERSION=${{ vars.AGENT_VERSION || 'axon-agent' }}
             KAFKA_AGENT_VERSION=${{ vars.KAFKA_AGENT_VERSION || 'axon-kafka3-agent' }}
-            AXONOPS_REPO_FILE=${{ vars.AXONOPS_REPO_FILE || 'axonops.repo.dev' }}
+            AXONOPS_REPO_FILE=${{ vars.AXONOPS_REPO_FILE || 'axonops.repo.release' }}
             AXON_AGENT_VERSION=${{ matrix.axon_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
