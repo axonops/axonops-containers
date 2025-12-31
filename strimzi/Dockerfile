@@ -26,10 +26,11 @@ RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y \
     && microdnf clean all \
     && rm -f /etc/axonops/axon-agent.yml
 
+RUN touch /opt/kafka/server.log && chown kafka:kafka /opt/kafka/server.log
+
 # load axonops components
 COPY files/axonops-wrapper.sh /opt/kafka/axonops-wrapper.sh
-RUN touch /opt/kafka/server.log && chown kafka:kafka /opt/kafka/server.log \
- && chmod 755 /opt/kafka/axonops-wrapper.sh \
+RUN chmod 755 /opt/kafka/axonops-wrapper.sh \
  && sed -i '$i source /opt/kafka/axonops-wrapper.sh' /opt/kafka/kafka_run.sh \
  && if [ -f /opt/kafka/zookeeper_run.sh ]; then sed -i '2i source /opt/kafka/axonops-wrapper.sh' /opt/kafka/zookeeper_run.sh; fi
 
