@@ -1,9 +1,15 @@
 name: Strimzi Publish Signed to GHCR
 
 on:
-  push:
-    tags:
-      - 'strimzi-v*'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'strimzi/**'
+      - '!strimzi/**/*.md'
+      - '.github/workflows/strimzi-publish-signed.yml'
+      - '.github/actions/strimzi-*/**'
   workflow_dispatch:
     inputs:
       main_git_tag:
@@ -17,6 +23,10 @@ on:
       operator_version:
         description: 'Strimzi operator version to build (e.g., 0.47.0, 0.46.0, 0.45.0, etc.)'
         required: true
+        type: string
+      axon_agent_version:
+        description: 'AxonOps agent version to use (optional, overrides matrix default)'
+        required: false
         type: string
 
 env:
@@ -138,7 +148,15 @@ jobs:
 
           # Get first Kafka version for this operator
           KAFKA_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions[0]')
-          AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+
+          # Use input axon_agent_version if provided, otherwise use matrix default
+          if [ -n "${{ inputs.axon_agent_version }}" ]; then
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
+            echo "Using provided AxonOps Agent version: $AXON_AGENT_VERSION"
+          else
+            AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+            echo "Using matrix default AxonOps Agent version: $AXON_AGENT_VERSION"
+          fi
 
           echo "kafka_version=$KAFKA_VERSION" >> $GITHUB_OUTPUT
           echo "axon_agent_version=$AXON_AGENT_VERSION" >> $GITHUB_OUTPUT
@@ -220,7 +238,13 @@ jobs:
           # Get Kafka versions and agent version for this operator
           KAFKA_VERSIONS=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions | join(", ")')
           KAFKA_COUNT=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions | length')
-          AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+
+          # Use input axon_agent_version if provided, otherwise use matrix default
+          if [ -n "${{ inputs.axon_agent_version }}" ]; then
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
+          else
+            AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+          fi
 
           # Calculate total tags: each Kafka version gets 3 tags (immutable, operator-floating, kafka-floating)
           # Plus operator-latest and latest tags
@@ -306,13 +330,21 @@ jobs:
 
           # Get Kafka versions and agent version for this operator
           KAFKA_VERSIONS=$(echo "$VERSION_MATRIX" | jq -c --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions')
-          AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+
+          # Use input axon_agent_version if provided, otherwise use matrix default
+          if [ -n "${{ inputs.axon_agent_version }}" ]; then
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
+            echo "Using provided AxonOps Agent version: $AXON_AGENT_VERSION"
+          else
+            AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+            echo "Using matrix default AxonOps Agent version: $AXON_AGENT_VERSION"
+          fi
 
           # Convert to GitHub Actions matrix format with axon_agent_version for each entry
           MATRIX_JSON=$(echo "$KAFKA_VERSIONS" | jq -c --arg axon "$AXON_AGENT_VERSION" '[.[] | {kafka_version: ., axon_agent_version: $axon}]')
 
           echo "kafka_matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
-          echo "Generated matrix for Strimzi $OPERATOR_VERSION:"
+          echo "Generated matrix for Strimzi $OPERATOR_VERSION with AxonOps Agent $AXON_AGENT_VERSION:"
           echo "$MATRIX_JSON" | jq '.'
 
   strimzi-build-push-sign:
