@@ -3,8 +3,10 @@ ARG KAFKA_VERSION=4.1.0
 
 FROM quay.io/strimzi/kafka:${STRIMZI_VERSION}-kafka-${KAFKA_VERSION}
 
-ARG AGENT_VERSION=axon-agent
-ARG KAFKA_AGENT_VERSION=axon-kafka3-agent
+ARG AXON_AGENT_VERSION=2.0.12
+
+ARG AGENT_PACKAGE=axon-agent
+ARG KAFKA_AGENT_PACKAGE=axon-kafka3-agent
 ARG AXONOPS_REPO_FILE=axonops.repo.dev
 
 USER root
@@ -12,8 +14,8 @@ USER root
 # Add AxonOps repo
 COPY files/${AXONOPS_REPO_FILE} /etc/yum.repos.d/axonops-yum.repo
 RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y \
-        ${KAFKA_AGENT_VERSION} \
-        ${AGENT_VERSION} \
+        ${KAFKA_AGENT_PACKAGE}-${AXON_AGENT_VERSION} \
+        ${AGENT_PACKAGE} \
     && microdnf clean all \
     && rm -f /etc/axonops/axon-agent.yml
 

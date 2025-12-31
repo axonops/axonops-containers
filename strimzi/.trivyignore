@@ -31,3 +31,9 @@ CVE-2025-58183  # archive/tar
 CVE-2025-58186  # HTTP headers
 CVE-2025-58187  # name constraint
 CVE-2025-61729  # stdlib HostnameError (HIGH - fixed in Go 1.24.11, 1.25.5)
+
+CVE-2024-13009  # jetty-server: Jetty: Gzip Request Body Buffer Corruption
+CVE-2024-29371  # jose4j: From CVEorg collector
+CVE-2025-55163  # netty: netty-codec-http2: Netty MadeYouReset HTTP/2 DDoS
+CVE-2025-48734  # commons-beanutils: Apache Commons BeanUtils
+
