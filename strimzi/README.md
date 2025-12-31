@@ -241,7 +241,7 @@ docker rmi axonkafka:local
 ### Clean up Kubernetes Images (k3s example)
 
 ```bash
-k3s crictl rmi europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axonkafka:0.46.0-kafka-3.9.0
+k3s crictl rmi ghcr.io/axonops/strimzi/kafka:0.47.0-3.9.0
 ```
 
 ## Troubleshooting

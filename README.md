@@ -212,6 +212,7 @@ For production environments requiring signature verification before deployment:
 - **Sigstore Policy Controller** - Official Sigstore admission controller
 
 **Example: Kyverno Policy**
+
 ```yaml
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -220,11 +221,31 @@ metadata:
 spec:
   validationFailureAction: Enforce
   rules:
+    # RULE 1: Deny any image NOT from ghcr.io/axonops/
+    - name: check-registry
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            namespaces: [kafka,k8ssandra-operator,strimzi]
+      validate:
+        message: "Only images from ghcr.io/axonops/ are allowed in the kafka namespace."
+        foreach:
+        - list: "request.object.spec.containers"
+          deny:
+            conditions:
+              all:
+              - key: "{{ element.image }}"
+                operator: NotEquals # Use NotEquals with wildcards
+                value: "ghcr.io/axonops/*"
+
+    # RULE 2: Verify the signatures of those images
     - name: verify-signature
       match:
-        resources:
-          kinds:
-            - Pod
+        any:
+        - resources:
+            kinds: [Pod]
+            namespaces: [kafka,k8ssandra-operator,strimzi]
       verifyImages:
         - imageReferences:
             - "ghcr.io/axonops/*"
@@ -233,6 +254,8 @@ spec:
                 - keyless:
                     subject: "https://github.com/axonops/axonops-containers/*"
                     issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev
 ```
 
 **Cloud Provider Support:**
