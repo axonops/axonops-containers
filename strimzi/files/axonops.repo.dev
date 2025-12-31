@@ -1,0 +1,6 @@
+[axonops-yum-dev]
+name=axonops-yum-dev
+baseurl=https://europe-yum.pkg.dev/projects/axonops-public/axonops-yum-dev
+enabled=1
+repo_gpgcheck=0
+gpgcheck=0
