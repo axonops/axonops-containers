@@ -1,6 +1,9 @@
 name: Strimzi Publish Signed to GHCR
 
 on:
+  push:
+    tags:
+      - 'strimzi-v*'
   workflow_dispatch:
     inputs:
       main_git_tag:

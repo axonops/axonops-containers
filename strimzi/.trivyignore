@@ -39,4 +39,4 @@ CVE-2024-13009  # jetty-server: Jetty: Gzip Request Body Buffer Corruption
 CVE-2024-29371  # jose4j: From CVEorg collector
 CVE-2025-55163  # netty: netty-codec-http2: Netty MadeYouReset HTTP/2 DDoS
 CVE-2025-48734  # commons-beanutils: Apache Commons BeanUtils
-
+CVE-2025-27818  # pache-kafka: Apache Kafka: Possible RCE attack via SASL
