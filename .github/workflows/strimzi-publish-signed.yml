@@ -1,0 +1,610 @@
+name: Strimzi Publish Signed to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      main_git_tag:
+        description: 'Git tag on main branch to checkout and build (e.g., 1.0.0)'
+        required: true
+        type: string
+      container_version:
+        description: 'Container version for GHCR (e.g., 1.0.0)'
+        required: true
+        type: string
+      operator_version:
+        description: 'Strimzi operator version to build (e.g., 0.47.0, 0.46.0, 0.45.0, etc.)'
+        required: true
+        type: string
+      axon_agent_version:
+        description: 'AxonOps agent version to use (optional, overrides matrix default)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: axonops/strimzi/kafka
+  # Version matrix - maps operator versions to supported Kafka versions and AxonOps agent version
+  VERSION_MATRIX: |
+    {
+      "0.47.0": {
+        "kafka_versions": ["3.9.0", "3.9.1"],
+        "axon_agent_version": "2.0.12"
+      },
+      "0.46.1": {
+        "kafka_versions": ["3.9.0"],
+        "axon_agent_version": "2.0.12"
+      },
+      "0.46.0": {
+        "kafka_versions": ["3.9.0"],
+        "axon_agent_version": "2.0.12"
+      },
+      "0.45.1": {
+        "kafka_versions": ["3.8.0", "3.8.1", "3.9.0", "3.9.1"],
+        "axon_agent_version": "2.0.12"
+      },
+      "0.45.0": {
+        "kafka_versions": ["3.8.0", "3.8.1", "3.9.0"],
+        "axon_agent_version": "2.0.12"
+      },
+      "0.44.0": {
+        "kafka_versions": ["3.7.0", "3.7.1", "3.8.0"],
+        "axon_agent_version": "2.0.12"
+      },
+      "0.43.0": {
+        "kafka_versions": ["3.7.0", "3.7.1", "3.8.0"],
+        "axon_agent_version": "2.0.12"
+      }
+    }
+  # Strimzi base image digests - hardcoded for security and reproducibility
+  # Format: "strimzi_version+kafka_version": "sha256:digest"
+  # To get digest: docker pull quay.io/strimzi/kafka:VERSION-kafka-KAFKA && docker inspect --format='{{index .RepoDigests 0}}' quay.io/strimzi/kafka:VERSION-kafka-KAFKA
+  STRIMZI_DIGESTS: |
+    {
+      "0.43.0+3.7.0": "sha256:d27cf5bf3624e18ba705246b14f92d12b8a15eb8551b13abf027cf71b549baf0",
+      "0.43.0+3.7.1": "sha256:ad06ead5125bce87498b1582a76e78143a6d21408ac4b12bb7e6007aa4cabd84",
+      "0.43.0+3.8.0": "sha256:b2f4e8895e9ed66228512ce14aec685101fa75dc329128d47cb1c15e3aef3c9c",
+      "0.44.0+3.7.0": "sha256:238bb080825b7ecebaa819be09788bc3d056ae8162ebcd41444076dc22f85740",
+      "0.44.0+3.7.1": "sha256:98d332b7fa5c9e48f60b516e00ed5812bd9268e014fd2337284e7cc3e664f1eb",
+      "0.44.0+3.8.0": "sha256:9a4224635e09ece2c1d3ffe9d715813cf63037461c9f06c1b5f53554aed5ecdc",
+      "0.45.0+3.8.0": "sha256:1fb0cac58be6798c07e850102b86f97d9b6e829dc8ce7846fcd13bcc25a115ed",
+      "0.45.0+3.8.1": "sha256:b2b5f2ee4e4e6fcf99592e830561c39af4b29a2b5eec8943861afa30a7cf5309",
+      "0.45.0+3.9.0": "sha256:e73e191d671cab3fe93dce6f1e151efcb9381bc60697472fef999ca3e208b784",
+      "0.45.1+3.8.0": "sha256:efd0ffeb947120fd65d458a40d20025bbea8b06cd16e3adbf0782afd8e79c17e",
+      "0.45.1+3.8.1": "sha256:beb52e066ec8c5c33ca65075309b3158236a8dca917ddd9074df1e935db98cf1",
+      "0.45.1+3.9.0": "sha256:53cffb2cd769b77442a0a57673439c9917bebe5267583c4d32af343c15a9006b",
+      "0.45.1+3.9.1": "sha256:d5b01dab055b67a778a148a0ca71a164522fd1e618f6585050fc6d0c0549041a",
+      "0.46.0+3.9.0": "sha256:3c976468f590b464bd224fdf0adb45556fccfba6025bc6b770e3fa69f7398b04",
+      "0.46.1+3.9.0": "sha256:f3837f8cb2a60e906e84486128c41c398424f4085df2348e9e0486bfc12089fd",
+      "0.47.0+3.9.0": "sha256:1bb6ad2cfdee6158e445af962cfb4b48da6cdaf3dc800c7f55a164c674b99823",
+      "0.47.0+3.9.1": "sha256:7942736f66e3379e2b14623c78b4c24174ffb560ebf0134d9704568e94b6a250",
+      "0.47.0+3.9.0": "sha256:1bb6ad2cfdee6158e445af962cfb4b48da6cdaf3dc800c7f55a164c674b99823",
+      "0.47.0+3.9.1": "sha256:7942736f66e3379e2b14623c78b4c24174ffb560ebf0134d9704568e94b6a250",
+      "0.48.0+4.0.0": "sha256:48db05ad2e9fa39eb388089e7e25654bcbf4da1ddc3a5635d675056c28bbcb96",
+      "0.48.0+4.1.0": "sha256:34450afc1a3399a9026fc3c6ec90e9f6adfec9faf6520545b4d84e90cda34964",
+      "0.49.0+4.0.0": "sha256:4597937c5addc051f3c623b18f7dab95c7ecb45a6a3a36bb53680838058b4498",
+      "0.49.0+4.0.1": "sha256:ef62adf737d52e98e0c09d6c988b4c82491916fe94f188a2b0b556b8fcb886ae",
+      "0.49.0+4.1.0": "sha256:7a08fc4adddd559469921a200763c566003b5606ec2f86d3b21b0ceb4b4a5e89",
+      "0.49.0+4.1.1": "sha256:435fcab3d03d2b829c54d602e2860a5d6769ad2d30bf05261e78126b5b716ec5",
+      "0.49.1+4.0.0": "sha256:8f775ee53622bf68b791c405e40299baa3d845b98e282d1a9269f9466018e990",
+      "0.49.1+4.0.1": "sha256:d495d3b6c98d1ea22ed3bdf0d6d06d6cda1c5b35087c817e8cf807892b178520",
+      "0.49.1+4.1.0": "sha256:73799dcf5bc7d1bb19f500f345d8892a1f91cf0213e01d9b59d3a1a53cc80aca",
+      "0.49.1+4.1.1": "sha256:bfbee54f85beb3731cf41483befa39d8c5ebe5db002df6265c6ea95b6a156749"
+    }
+
+jobs:
+  strimzi-validate:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Verify tag is on main branch
+        run: |
+          echo "Checking if tag ${{ inputs.main_git_tag }} is on main branch..."
+          TAG_COMMIT=$(git rev-parse ${{ inputs.main_git_tag }})
+          echo "Tag commit: $TAG_COMMIT"
+          git fetch origin main
+          if git merge-base --is-ancestor $TAG_COMMIT origin/main; then
+            echo "✓ Tag ${{ inputs.main_git_tag }} is on main branch"
+          else
+            echo "ERROR: Tag ${{ inputs.main_git_tag }} is not on main branch"
+            exit 1
+          fi
+
+      - name: Validate operator version
+        run: |
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          VERSION_MATRIX='${{ env.VERSION_MATRIX }}'
+
+          if ! echo "$VERSION_MATRIX" | jq -e --arg v "$OPERATOR_VERSION" '.[$v]' > /dev/null; then
+            echo "ERROR: Operator version $OPERATOR_VERSION not found in VERSION_MATRIX"
+            echo "Available versions:"
+            echo "$VERSION_MATRIX" | jq -r 'keys[]'
+            exit 1
+          fi
+          echo "✓ Operator version $OPERATOR_VERSION is valid"
+
+      - name: Check if container versions already exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Checking if version ${{ inputs.container_version }} exists..."
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          VERSION_MATRIX='${{ env.VERSION_MATRIX }}'
+
+          # Get Kafka versions and agent version for this operator version
+          KAFKA_VERSIONS=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions[]')
+
+          # Use input axon_agent_version if provided, otherwise use matrix default
+          if [ -n "${{ inputs.axon_agent_version }}" ]; then
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
+          else
+            AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+          fi
+
+          for KAFKA_VERSION in $KAFKA_VERSIONS; do
+            TAG="${OPERATOR_VERSION}-${KAFKA_VERSION}-${AXON_AGENT_VERSION}"
+            echo "Checking for tag: $TAG in strimzi"
+            if gh api --paginate "/orgs/axonops/packages/container/strimzi/versions" \
+              --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .metadata.container.tags[]" 2>/dev/null | grep -q "$TAG"; then
+              echo "ERROR: Container version $TAG already exists"
+              exit 1
+            fi
+          done
+          echo "✓ Container version ${{ inputs.container_version }} is available for all Kafka versions"
+
+  strimzi-test:
+    needs: strimzi-validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Get first Kafka version and agent version for testing
+        id: versions
+        run: |
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          VERSION_MATRIX='${{ env.VERSION_MATRIX }}'
+
+          # Get first Kafka version for this operator
+          KAFKA_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions[0]')
+
+          # Use input axon_agent_version if provided, otherwise use matrix default
+          if [ -n "${{ inputs.axon_agent_version }}" ]; then
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
+            echo "Using provided AxonOps Agent version: $AXON_AGENT_VERSION"
+          else
+            AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+            echo "Using matrix default AxonOps Agent version: $AXON_AGENT_VERSION"
+          fi
+
+          echo "kafka_version=$KAFKA_VERSION" >> $GITHUB_OUTPUT
+          echo "axon_agent_version=$AXON_AGENT_VERSION" >> $GITHUB_OUTPUT
+          echo "✓ Testing with Kafka version: $KAFKA_VERSION"
+          echo "✓ Testing with AxonOps Agent version: $AXON_AGENT_VERSION"
+
+      - name: Resolve Strimzi base image digest
+        id: strimzi
+        run: |
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          KAFKA_VERSION="${{ steps.versions.outputs.kafka_version }}"
+          COMPOSITE_KEY="${OPERATOR_VERSION}+${KAFKA_VERSION}"
+
+          # Get digest for this composite key
+          DIGEST=$(echo '${{ env.STRIMZI_DIGESTS }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+
+          if [ "$DIGEST" = "null" ] || [ -z "$DIGEST" ]; then
+            echo "ERROR: No digest found for Strimzi ${OPERATOR_VERSION} + Kafka ${KAFKA_VERSION}"
+            echo "Composite key: $COMPOSITE_KEY"
+            exit 1
+          fi
+
+          # Determine the correct Kafka agent package based on version
+          if [[ "$KAFKA_VERSION" == 4.* ]]; then
+            KAFKA_AGENT_PACKAGE=axon-kafka4-agent
+          else
+            KAFKA_AGENT_PACKAGE=axon-kafka3-agent
+          fi
+
+          echo "KAFKA_AGENT_PACKAGE=$KAFKA_AGENT_PACKAGE" >> $GITHUB_ENV
+
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "✓ Strimzi: $OPERATOR_VERSION"
+          echo "✓ Kafka: $KAFKA_VERSION"
+          echo "✓ Base digest: $DIGEST"
+          echo "✓ AxonOps Kafka: $KAFKA_AGENT_PACKAGE"
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./strimzi
+          file: ./strimzi/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-strimzi:test
+          build-args: |
+            STRIMZI_VERSION=${{ inputs.operator_version }}
+            KAFKA_VERSION=${{ steps.versions.outputs.kafka_version }}
+            STRIMZI_BASE_DIGEST=${{ steps.strimzi.outputs.digest }}
+            AXONOPS_REPO_FILE=${{ vars.AXONOPS_REPO_FILE || 'axonops.repo.release' }}
+            AXON_AGENT_VERSION=${{ steps.versions.outputs.axon_agent_version }}
+            KAFKA_AGENT_PACKAGE=${{ env.KAFKA_AGENT_PACKAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image layers
+        run: |
+          echo "Inspecting built image layers..."
+          docker history axonops-strimzi:test
+          docker inspect axonops-strimzi:test
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axonops-strimzi:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'strimzi/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axonops-strimzi:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'strimzi/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rmi axonops-strimzi:test || true
+
+  strimzi-create-release:
+    needs: strimzi-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Generate release body
+        id: release_body
+        run: |
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          VERSION_MATRIX='${{ env.VERSION_MATRIX }}'
+
+          # Get Kafka versions and agent version for this operator
+          KAFKA_VERSIONS=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions | join(", ")')
+          KAFKA_COUNT=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions | length')
+
+          # Use input axon_agent_version if provided, otherwise use matrix default
+          if [ -n "${{ inputs.axon_agent_version }}" ]; then
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
+          else
+            AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+          fi
+
+          # Calculate total tags: each Kafka version gets 3 tags (immutable, operator-floating, kafka-floating)
+          # Plus operator-latest and latest tags
+          TOTAL_TAGS=$((KAFKA_COUNT * 3 + 2))
+
+          cat > release_body.txt <<EOF
+          Strimzi Kafka signed container images release ${{ inputs.container_version }}
+
+          Built from git tag: ${{ inputs.main_git_tag }}
+
+          **Image path:** ghcr.io/axonops/strimzi
+          **Signing:** Keyless signing with Sigstore Cosign
+          **Strimzi Operator:** v$OPERATOR_VERSION
+          **AxonOps Agent:** v$AXON_AGENT_VERSION
+
+          **Published:** $TOTAL_TAGS total tags across $KAFKA_COUNT Kafka versions
+          **Kafka versions:** $KAFKA_VERSIONS
+
+          **Tagging strategy (3D versioning):**
+          - Fully immutable: \`{STRIMZI}-{KAFKA}-{AXON}\` (e.g., \`$OPERATOR_VERSION-3.9.0-$AXON_AGENT_VERSION\`)
+          - Strimzi-floating: \`{STRIMZI}-{KAFKA}\` (e.g., \`$OPERATOR_VERSION-3.9.0\`)
+          - Kafka-floating: \`{KAFKA}\` (e.g., \`3.9.0\`)
+          - Operator-latest: \`$OPERATOR_VERSION-latest\` (latest Kafka for this Strimzi version)
+          - Global-latest: \`latest\` (latest overall)
+
+          **Example tags for Kafka 3.9.0:**
+          - \`$OPERATOR_VERSION-3.9.0-$AXON_AGENT_VERSION\` (immutable)
+          - \`$OPERATOR_VERSION-3.9.0\` (floating AxonOps version)
+          - \`3.9.0\` (floating Strimzi + AxonOps versions)
+          - \`$OPERATOR_VERSION-latest\` (latest Kafka for Strimzi $OPERATOR_VERSION)
+          - \`latest\` (global latest)
+
+          **Verify signatures:**
+
+          \`\`\`bash
+          # Using cosign binary
+          cosign verify \\
+            --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \\
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
+            ghcr.io/axonops/strimzi:$OPERATOR_VERSION-3.9.0-$AXON_AGENT_VERSION
+
+          # Using cosign container (no installation required)
+          docker run --rm gcr.io/projectsigstore/cosign:latest verify \\
+            --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \\
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
+            ghcr.io/axonops/strimzi:$OPERATOR_VERSION-3.9.0-$AXON_AGENT_VERSION
+          \`\`\`
+          EOF
+
+          echo "Release body generated"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('release_body.txt', 'utf8');
+
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ inputs.main_git_tag }}',
+              name: `strimzi-${{ inputs.operator_version }}-${{ inputs.container_version }}`,
+              body: body,
+              draft: false,
+              prerelease: false
+            });
+            console.log(`Release created: ${release.data.html_url}`);
+            return release.data.id;
+
+  strimzi-generate-matrix:
+    needs: [strimzi-test, strimzi-create-release]
+    runs-on: ubuntu-latest
+    outputs:
+      kafka_matrix: ${{ steps.matrix.outputs.kafka_matrix }}
+    steps:
+      - name: Generate build matrix
+        id: matrix
+        run: |
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          VERSION_MATRIX='${{ env.VERSION_MATRIX }}'
+
+          # Get Kafka versions and agent version for this operator
+          KAFKA_VERSIONS=$(echo "$VERSION_MATRIX" | jq -c --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions')
+
+          # Use input axon_agent_version if provided, otherwise use matrix default
+          if [ -n "${{ inputs.axon_agent_version }}" ]; then
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
+            echo "Using provided AxonOps Agent version: $AXON_AGENT_VERSION"
+          else
+            AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
+            echo "Using matrix default AxonOps Agent version: $AXON_AGENT_VERSION"
+          fi
+
+          # Convert to GitHub Actions matrix format with axon_agent_version for each entry
+          MATRIX_JSON=$(echo "$KAFKA_VERSIONS" | jq -c --arg axon "$AXON_AGENT_VERSION" '[.[] | {kafka_version: ., axon_agent_version: $axon}]')
+
+          echo "kafka_matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "Generated matrix for Strimzi $OPERATOR_VERSION with AxonOps Agent $AXON_AGENT_VERSION:"
+          echo "$MATRIX_JSON" | jq '.'
+
+  strimzi-build-push-sign:
+    needs: strimzi-generate-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 3
+      matrix:
+        include: ${{ fromJson(needs.strimzi-generate-matrix.outputs.kafka_matrix) }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve Strimzi base image digest
+        id: strimzi
+        run: |
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          KAFKA_VERSION="${{ matrix.kafka_version }}"
+          COMPOSITE_KEY="${OPERATOR_VERSION}+${KAFKA_VERSION}"
+
+          # Get digest for this composite key
+          DIGEST=$(echo '${{ env.STRIMZI_DIGESTS }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+
+          if [ "$DIGEST" = "null" ] || [ -z "$DIGEST" ]; then
+            echo "ERROR: No digest found for Strimzi ${OPERATOR_VERSION} + Kafka ${KAFKA_VERSION}"
+            echo "Composite key: $COMPOSITE_KEY"
+            exit 1
+          fi
+
+          # Determine the correct Kafka agent package based on version
+          if [[ "$KAFKA_VERSION" == 4.* ]]; then
+            KAFKA_AGENT_PACKAGE=axon-kafka4-agent
+          else
+            KAFKA_AGENT_PACKAGE=axon-kafka3-agent
+          fi
+
+          echo "KAFKA_AGENT_PACKAGE=$KAFKA_AGENT_PACKAGE" >> $GITHUB_ENV
+
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "✓ Strimzi: $OPERATOR_VERSION"
+          echo "✓ Kafka: $KAFKA_VERSION"
+          echo "✓ Base digest: $DIGEST"
+          echo "✓ AxonOps Kafka: $KAFKA_AGENT_PACKAGE"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine latest Kafka version
+        id: version
+        run: |
+          OPERATOR_VERSION="${{ inputs.operator_version }}"
+          VERSION_MATRIX='${{ env.VERSION_MATRIX }}'
+          CURRENT_KAFKA="${{ matrix.kafka_version }}"
+
+          # Get all Kafka versions for this operator
+          ALL_KAFKA=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].kafka_versions | sort | reverse | join(" ")')
+          LATEST_KAFKA=$(echo "$ALL_KAFKA" | awk '{print $1}')
+
+          # Determine if this is the latest Kafka version for this operator
+          if [ "$CURRENT_KAFKA" == "$LATEST_KAFKA" ]; then
+            echo "is_operator_latest=true" >> $GITHUB_OUTPUT
+            echo "✓ This is the latest Kafka version for operator $OPERATOR_VERSION"
+          else
+            echo "is_operator_latest=false" >> $GITHUB_OUTPUT
+          fi
+
+          # For global latest, check if this is the highest operator version with highest Kafka
+          HIGHEST_OPERATOR=$(echo '${{ env.VERSION_MATRIX }}' | jq -r 'keys | sort | reverse | .[0]')
+          HIGHEST_KAFKA=$(echo '${{ env.VERSION_MATRIX }}' | jq -r --arg v "$HIGHEST_OPERATOR" '.[$v].kafka_versions | sort | reverse | .[0]')
+
+          if [ "$OPERATOR_VERSION" == "$HIGHEST_OPERATOR" ] && [ "$CURRENT_KAFKA" == "$HIGHEST_KAFKA" ]; then
+            echo "is_global_latest=true" >> $GITHUB_OUTPUT
+            echo "✓ This is the global latest (Strimzi $OPERATOR_VERSION + Kafka $CURRENT_KAFKA)"
+          else
+            echo "is_global_latest=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./strimzi
+          file: ./strimzi/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.operator_version }}-${{ matrix.kafka_version }}-${{ matrix.axon_agent_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.operator_version }}-${{ matrix.kafka_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.kafka_version }}
+            ${{ steps.version.outputs.is_operator_latest == 'true' && format('ghcr.io/{0}:{1}-latest', env.IMAGE_NAME, inputs.operator_version) || '' }}
+            ${{ steps.version.outputs.is_global_latest == 'true' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
+          annotations: |
+            index:org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            index:org.opencontainers.image.authors=AxonOps
+            index:org.opencontainers.image.url=https://axonops.com
+            index:org.opencontainers.image.documentation=https://github.com/axonops/axonops-containers/blob/main/strimzi/README.md
+            index:org.opencontainers.image.source=https://github.com/axonops/axonops-containers
+            index:org.opencontainers.image.version=${{ inputs.container_version }}
+            index:org.opencontainers.image.revision=${{ github.sha }}
+            index:org.opencontainers.image.vendor=AxonOps
+            index:org.opencontainers.image.licenses=Apache-2.0
+            index:org.opencontainers.image.title=AxonOps Strimzi Kafka ${{ matrix.kafka_version }}
+            index:org.opencontainers.image.description=Strimzi Kafka ${{ matrix.kafka_version }} (Operator v${{ inputs.operator_version }}) + AxonOps monitoring. Multi-arch (amd64/arm64), signed with cosign, optimized for Kubernetes.
+            index:org.opencontainers.image.ref.name=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.operator_version }}-${{ matrix.kafka_version }}-${{ matrix.axon_agent_version }}
+            index:org.opencontainers.image.base.name=quay.io/strimzi/kafka:${{ inputs.operator_version }}-kafka-${{ matrix.kafka_version }}
+            index:org.opencontainers.image.base.digest=${{ steps.strimzi.outputs.digest }}
+            index:com.axonops.strimzi.version=${{ inputs.operator_version }}
+            index:com.axonops.kafka.version=${{ matrix.kafka_version }}
+            index:com.axonops.axon-agent.version=${{ matrix.axon_agent_version }}
+            index:com.axonops.build.actor=${{ github.actor }}
+          build-args: |
+            STRIMZI_VERSION=${{ inputs.operator_version }}
+            KAFKA_VERSION=${{ matrix.kafka_version }}
+            STRIMZI_BASE_DIGEST=${{ steps.strimzi.outputs.digest }}
+            AXONOPS_REPO_FILE=${{ vars.AXONOPS_REPO_FILE || 'axonops.repo.release' }}
+            AXON_AGENT_VERSION=${{ matrix.axon_agent_version }}
+            KAFKA_AGENT_PACKAGE=${{ env.KAFKA_AGENT_PACKAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Pull built image for verification
+        run: |
+          docker pull ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          docker tag ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }} axonops-strimzi:verify
+
+      - name: Verify image
+        run: |
+          echo "Verifying image layers..."
+          docker history axonops-strimzi:verify
+          docker inspect axonops-strimzi:verify
+          echo "✓ Image verification complete"
+
+      - name: Sign container image
+        uses: ./.github/actions/k8ssandra-sign-container
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Re-push tags after signing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./strimzi
+          file: ./strimzi/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.operator_version }}-${{ matrix.kafka_version }}-${{ matrix.axon_agent_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.operator_version }}-${{ matrix.kafka_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.kafka_version }}
+            ${{ steps.version.outputs.is_operator_latest == 'true' && format('ghcr.io/{0}:{1}-latest', env.IMAGE_NAME, inputs.operator_version) || '' }}
+            ${{ steps.version.outputs.is_global_latest == 'true' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
+          annotations: |
+            index:org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            index:org.opencontainers.image.authors=AxonOps
+            index:org.opencontainers.image.url=https://axonops.com
+            index:org.opencontainers.image.documentation=https://github.com/axonops/axonops-containers/blob/main/strimzi/README.md
+            index:org.opencontainers.image.source=https://github.com/axonops/axonops-containers
+            index:org.opencontainers.image.version=${{ inputs.container_version }}
+            index:org.opencontainers.image.revision=${{ github.sha }}
+            index:org.opencontainers.image.vendor=AxonOps
+            index:org.opencontainers.image.licenses=Apache-2.0
+            index:org.opencontainers.image.title=AxonOps Strimzi Kafka ${{ matrix.kafka_version }}
+            index:org.opencontainers.image.description=Strimzi Kafka ${{ matrix.kafka_version }} (Operator v${{ inputs.operator_version }}) + AxonOps monitoring. Multi-arch (amd64/arm64), signed with cosign, optimized for Kubernetes.
+            index:org.opencontainers.image.ref.name=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.operator_version }}-${{ matrix.kafka_version }}-${{ matrix.axon_agent_version }}
+            index:org.opencontainers.image.base.name=quay.io/strimzi/kafka:${{ inputs.operator_version }}-kafka-${{ matrix.kafka_version }}
+            index:org.opencontainers.image.base.digest=${{ steps.strimzi.outputs.digest }}
+            index:com.axonops.strimzi.version=${{ inputs.operator_version }}
+            index:com.axonops.kafka.version=${{ matrix.kafka_version }}
+            index:com.axonops.axon-agent.version=${{ matrix.axon_agent_version }}
+            index:com.axonops.build.actor=${{ github.actor }}
+          build-args: |
+            STRIMZI_VERSION=${{ inputs.operator_version }}
+            KAFKA_VERSION=${{ matrix.kafka_version }}
+            STRIMZI_BASE_DIGEST=${{ steps.strimzi.outputs.digest }}
+            AXONOPS_REPO_FILE=${{ vars.AXONOPS_REPO_FILE || 'axonops.repo.release' }}
+            AXON_AGENT_VERSION=${{ matrix.axon_agent_version }}
+            KAFKA_AGENT_PACKAGE=${{ env.KAFKA_AGENT_PACKAGE }}
+          cache-from: type=gha
+
+      - name: Image published and signed
+        run: |
+          echo "✓ Image pushed and signed"
+          echo "   ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.operator_version }}-${{ matrix.kafka_version }}-${{ matrix.axon_agent_version }}"
