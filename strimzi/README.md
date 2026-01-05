@@ -165,15 +165,26 @@ The node label defaults to `topology.kubernetes.io/zone` but can be overridden u
 To build a custom image locally for testing:
 
 ```bash
+# For Kafka 3.x versions
+docker build \
+  --build-arg STRIMZI_VERSION=0.46.0 \
+  --build-arg KAFKA_VERSION=3.9.0 \
+  --build-arg KAFKA_AGENT_PACKAGE=axon-kafka3-agent \
+  --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
+  -t axonkafka:local \
+  .
+
+# For Kafka 4.x versions
 docker build \
   --build-arg STRIMZI_VERSION=0.49.1 \
   --build-arg KAFKA_VERSION=4.1.0 \
-  --build-arg KAFKA_AGENT_VERSION=axon-kafka3-agent \
+  --build-arg KAFKA_AGENT_PACKAGE=axon-kafka4-agent \
   --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
-  --build-arg AGENT_VERSION=axon-agent \
   -t axonkafka:local \
   .
 ```
+
+**Important**: Use `axon-kafka3-agent` for Kafka 3.x versions and `axon-kafka4-agent` for Kafka 4.x versions.
 
 ### CI/CD Pipeline
 

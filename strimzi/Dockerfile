@@ -13,6 +13,7 @@ ARG AXON_AGENT_VERSION=2.0.12
 RUN echo "AXONOPS_BUILD: Inheriting from strimzi/kafka:${STRIMZI_VERSION}-kafka-${KAFKA_VERSION} (digest: ${STRIMZI_BASE_DIGEST})"
 
 ARG AGENT_PACKAGE=axon-agent
+# Default to kafka3 agent, but can be overridden for Kafka 4.x builds with axon-kafka4-agent
 ARG KAFKA_AGENT_PACKAGE=axon-kafka3-agent
 ARG AXONOPS_REPO_FILE=axonops.repo.release
 
