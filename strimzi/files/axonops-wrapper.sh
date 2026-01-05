@@ -2,6 +2,8 @@
 
 echo "Starting axonops services"
 
+AGENT_ARGS="${AXONOPS_AGENT_ARGS:-''}"
+
 KAFKA_AGENT_JAR=$(ls -1 /usr/share/axonops/axon-kafka*-agent.jar)
 
 if [ -f /mnt/axon-agent.yml ]; then
@@ -13,4 +15,4 @@ fi
 
 
 
-/usr/share/axonops/axon-agent -v 1 -o file &
+/usr/share/axonops/axon-agent -o file $AXONOPS_AGENT_ARGS &
