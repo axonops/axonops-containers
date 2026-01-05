@@ -4,15 +4,29 @@ echo "Starting axonops services"
 
 AGENT_ARGS="${AXONOPS_AGENT_ARGS:-''}"
 
-KAFKA_AGENT_JAR=$(ls -1 /usr/share/axonops/axon-kafka*-agent.jar)
+# Find the agent jar
+KAFKA_AGENT_JAR=$(ls -1 /usr/share/axonops/axon-kafka*-agent.jar 2>/dev/null)
 
+# Handle the config link and initial javaagent flag
 if [ -f /mnt/axon-agent.yml ]; then
-  ln -s /mnt/axon-agent.yml /etc/axonops/axon-agent.yml
-  export KAFKA_OPTS="${KAFKA_OPTS} -javaagent:${KAFKA_AGENT_JAR}=/etc/axonops/axon-agent.yml -Dio.netty.tryReflectionSetAccessible=true --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED --add-exports=java.base/jdk.internal.ref=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-exports=java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports=java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports=java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports=java.sql/java.sql=ALL-UNNAMED --add-opens=java.base/java.lang.module=ALL-UNNAMED --add-opens=java.base/jdk.internal.loader=ALL-UNNAMED --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED --add-opens=java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens=java.base/jdk.internal.math=ALL-UNNAMED --add-opens=java.base/jdk.internal.module=ALL-UNNAMED --add-opens=java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED --add-exports=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED --add-opens=java.management/com.sun.jmx.interceptor=ALL-UNNAMED --add-exports=java.management/com.sun.jmx.interceptor=ALL-UNNAMED"
+  ln -sf /mnt/axon-agent.yml /etc/axonops/axon-agent.yml
+  KAFKA_OPTS="${KAFKA_OPTS} -javaagent:${KAFKA_AGENT_JAR}=/etc/axonops/axon-agent.yml"
 else
-  export KAFKA_OPTS="${KAFKA_OPTS} -javaagent:${KAFKA_AGENT_JAR} -Dio.netty.tryReflectionSetAccessible=true --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED --add-exports=java.base/jdk.internal.ref=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-exports=java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports=java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports=java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports=java.sql/java.sql=ALL-UNNAMED --add-opens=java.base/java.lang.module=ALL-UNNAMED --add-opens=java.base/jdk.internal.loader=ALL-UNNAMED --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED --add-opens=java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens=java.base/jdk.internal.math=ALL-UNNAMED --add-opens=java.base/jdk.internal.module=ALL-UNNAMED --add-opens=java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED --add-exports=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED --add-opens=java.management/com.sun.jmx.interceptor=ALL-UNNAMED --add-exports=java.management/com.sun.jmx.interceptor=ALL-UNNAMED"
-fi 
+  KAFKA_OPTS="${KAFKA_OPTS} -javaagent:${KAFKA_AGENT_JAR}"
+fi
 
+# Append the required Java 11+ modularity flags to KAFKA_OPTS
+export KAFKA_OPTS="${KAFKA_OPTS} \
+  --add-exports=java.base/sun.nio.ch=ALL-UNNAMED \
+  --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
+  --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED \
+  --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+  --add-exports=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
+  --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
+  --add-opens=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED \
+  --add-exports=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED \
+  --add-opens=java.management/com.sun.jmx.interceptor=ALL-UNNAMED \
+  --add-exports=java.management/com.sun.jmx.interceptor=ALL-UNNAMED"
 
-
-/usr/share/axonops/axon-agent -o file $AXONOPS_AGENT_ARGS &
+# Start the agent
+/usr/share/axonops/axon-agent -o file $AGENT_ARGS &
