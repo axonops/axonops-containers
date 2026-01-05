@@ -12,7 +12,6 @@ data:
     axon-agent:
       org: "YOUR_ORG_NAME"
       cluster_name: "YOUR_CLUSTER_NAME"
-      OpenTSDB_service_test: true
       key: "YOUR_AXONOPS_API_KEY"
     
     kafka:
@@ -35,7 +34,6 @@ data:
     axon-agent:
         org: "YOUR_ORG_NAME"
         cluster_name: "YOUR_CLUSTER_NAME"
-        OpenTSDB_service_test: true
         key: "YOUR_AXONOPS_API_KEY"
     
     kafka:
