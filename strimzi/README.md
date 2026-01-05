@@ -92,6 +92,29 @@ kubectl apply -f examples/kafka-single-node.yaml -n kafka
 kubectl get pod -n kafka --watch
 ```
 
+#### Option D: Kafka Connect Cluster
+
+Deploy a Kafka Connect cluster for streaming data between Kafka and other systems.
+
+**Prerequisites**: Ensure you have a running Kafka cluster (deployed using one of the options above).
+
+**Update the following values** in [`examples/kafka-connect.yaml`](examples/kafka-connect.yaml):
+- `YOUR_AXONOPS_HOST`: Your AxonOps server hostname (e.g., `agents.axonops.com`)
+- `YOUR_AXONOPS_API_KEY`: Your AxonOps organization API key
+- `YOUR_CLUSTER_NAME`: A unique name for this Kafka Connect cluster
+- `YOUR_ORG_NAME`: Your AxonOps organization name
+- `ghcr.io/axonops/strimzi/kafka:latest`: Replace with your specific AxonOps-enabled Kafka image
+- `my-cluster-kafka-bootstrap:9092`: Replace with your actual Kafka bootstrap server address
+
+Then apply:
+
+```bash
+kubectl apply -f examples/kafka-connect.yaml -n kafka
+kubectl get pod -n kafka --watch
+```
+
+**Note**: Kafka Connect support is currently in beta. The Connect workers will report metrics to AxonOps using the `connect` node type.
+
 ## Configuration Details
 
 ### Required Environment Variables
@@ -355,6 +378,23 @@ Key files:
   - Simpler configuration management
 - **Use Case**: Production deployments with standard configuration
 
+### Kafka Connect Cluster
+
+**File**: [`examples/kafka-connect.yaml`](examples/kafka-connect.yaml)
+
+- **Component**: Kafka Connect workers
+- **Replicas**: 1 (can be scaled as needed)
+- **Configuration Method**: ConfigMap-based
+- **Features**:
+  - Connector resource support enabled
+  - AxonOps monitoring for Connect workers
+  - Configurable storage topics for Connect metadata
+- **Configuration Topics**:
+  - Config storage: `connect-configs`
+  - Status storage: `connect-status`
+  - Offset storage: `connect-offsets`
+- **Use Case**: Data integration, ETL pipelines, streaming data between Kafka and external systems
+
 ## Version Compatibility
 
 | Component | Version | Notes |
@@ -374,7 +414,7 @@ Key files:
 
 ## Known Limitations and TODOs
 
-- **Kafka Connect**: Uses standard images but hasn't been tested yet with AxonOps integration
+- **Kafka Connect**: Example configuration provided, but full integration testing is ongoing
 - **Mirror Maker**: Not built or tested yet
 - **ZooKeeper Mode**: Not supported (KRaft only)
 - **Persistent hostId**: Consider using persistent volumes for AxonOps agent hostId file
