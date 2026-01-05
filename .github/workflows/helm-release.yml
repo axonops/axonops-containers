@@ -1,0 +1,189 @@
+name: Helm Charts Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'helm-*'
+      - 'charts-*'
+  workflow_dispatch:
+    inputs:
+      charts_to_release:
+        description: 'Comma-separated list of chart names to release (leave empty for all)'
+        required: false
+        type: string
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  detect-charts:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.set-charts.outputs.charts }}
+      tag_name: ${{ steps.get-tag.outputs.tag_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get tag name
+        id: get-tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG_NAME="manual-$(date +%Y%m%d-%H%M%S)"
+          else
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "📌 Tag: $TAG_NAME"
+
+      - name: Detect Helm charts
+        id: set-charts
+        run: |
+          # Find all charts
+          ALL_CHARTS=$(find axonops/charts -maxdepth 2 -name Chart.yaml -exec dirname {} \;)
+
+          # Filter charts if specific ones are requested
+          if [ -n "${{ github.event.inputs.charts_to_release }}" ]; then
+            REQUESTED_CHARTS="${{ github.event.inputs.charts_to_release }}"
+            FILTERED_CHARTS=""
+            IFS=',' read -ra CHART_NAMES <<< "$REQUESTED_CHARTS"
+            for chart_name in "${CHART_NAMES[@]}"; do
+              chart_name=$(echo "$chart_name" | xargs) # trim whitespace
+              chart_path=$(echo "$ALL_CHARTS" | grep "axonops/charts/$chart_name\$" || true)
+              if [ -n "$chart_path" ]; then
+                FILTERED_CHARTS="$FILTERED_CHARTS$chart_path"$'\n'
+              fi
+            done
+            CHARTS_JSON=$(echo "$FILTERED_CHARTS" | sed '/^$/d' | jq -R -s -c 'split("\n")[:-1]')
+          else
+            CHARTS_JSON=$(echo "$ALL_CHARTS" | jq -R -s -c 'split("\n")[:-1]')
+          fi
+
+          echo "charts=$CHARTS_JSON" >> $GITHUB_OUTPUT
+          echo "📦 Charts to release:"
+          echo "$CHARTS_JSON" | jq -r '.[]' | sed 's/^/  - /'
+
+  lint-charts:
+    needs: detect-charts
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        chart: ${{ fromJson(needs.detect-charts.outputs.charts) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint ${{ matrix.chart }}
+        uses: ./.github/actions/helm-lint
+        with:
+          chart_path: ${{ matrix.chart }}
+          strict: 'true'
+
+  package-and-push:
+    needs: [detect-charts, lint-charts]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: ${{ fromJson(needs.detect-charts.outputs.charts) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Package and push ${{ matrix.chart }}
+        id: release
+        uses: ./.github/actions/helm-package-push
+        with:
+          chart_path: ${{ matrix.chart }}
+          registry: ${{ env.REGISTRY }}
+          registry_username: ${{ github.actor }}
+          registry_password: ${{ secrets.GITHUB_TOKEN }}
+          repository_owner: ${{ github.repository_owner }}
+
+      - name: Create release artifact
+        run: |
+          CHART_NAME="${{ steps.release.outputs.chart_name }}"
+          CHART_VERSION="${{ steps.release.outputs.chart_version }}"
+          OCI_PATH="${{ steps.release.outputs.oci_path }}"
+
+          mkdir -p release-info
+          cat > release-info/${CHART_NAME}.txt <<EOF
+          Chart: ${CHART_NAME}
+          Version: ${CHART_VERSION}
+          OCI Path: ${OCI_PATH}
+          Tag: ${{ needs.detect-charts.outputs.tag_name }}
+          Released: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          EOF
+
+          echo "Release info saved for ${CHART_NAME}"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-info-${{ steps.release.outputs.chart_name }}
+          path: release-info/
+
+  summary:
+    needs: [detect-charts, package-and-push]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-info
+
+      - name: Build release summary
+        run: |
+          echo "## 🚀 Helm Charts Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`${{ needs.detect-charts.outputs.tag_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`${{ env.REGISTRY }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ needs.package-and-push.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Released Charts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -d "release-info" ]; then
+            for info_file in release-info/**/*.txt; do
+              if [ -f "$info_file" ]; then
+                echo "<details>" >> $GITHUB_STEP_SUMMARY
+                echo "<summary>$(basename ${info_file%.txt})</summary>" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+                cat "$info_file" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+                echo "</details>" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          fi
+
+          echo "### Installation Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Pull and install any chart:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Login to registry (if private)" >> $GITHUB_STEP_SUMMARY
+          echo "helm registry login ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Install a chart" >> $GITHUB_STEP_SUMMARY
+          echo "helm install my-release oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/CHART_NAME --version VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.package-and-push.result }}" == "success" ]; then
+            echo "✅ All charts released successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some charts failed to release" >> $GITHUB_STEP_SUMMARY
+          fi

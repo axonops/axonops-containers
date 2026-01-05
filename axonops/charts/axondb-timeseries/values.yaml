@@ -1,0 +1,368 @@
+# Default values for axon-cassandra.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This will set the replicaset count. 
+# Please note that AxonOps Timeseries is designed to run as a single-node instance and we do not recommend running in a clustered mode.
+replicaCount: 1
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: ghcr.io/axonops/axondb-timeseries
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created.
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account.
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 999
+
+securityContext:
+  # capabilities:
+  #   drop:
+  #   - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 999
+
+# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  # it's not required for AxonOps Timeseries to expose JMX port, so disabled by default
+  jmxEnabled: false
+  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  type: ClusterIP
+  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+  port: 9042
+
+# JVM Heap Size Configuration
+# =============================
+# This setting configures the maximum heap size for the Cassandra JVM.
+# Adjust this value based on your workload and available resources.
+# For a production environment, consider setting this to a higher value, such as 8G or more.
+heapSize: 1024M
+
+# Authentication Configuration for AxonOps Timeseries Database
+# =============================================================
+# By default, the timeseries database will not have dedicated authentication users for AxonOps.
+# It is strongly recommended to configure authentication credentials in production environments.
+#
+# You have two options for providing authentication credentials:
+#
+# Option 1: Using a Kubernetes Secret (Recommended for Production)
+# -----------------------------------------------------------------
+# Provide the name of an existing Kubernetes secret containing the credentials.
+# The secret MUST contain these exact keys:
+#   - AXONOPS_DB_USER: The database username for AxonOps
+#   - AXONOPS_DB_PASSWORD: The database password for AxonOps
+#
+# Example secret creation:
+#   kubectl create secret generic axonops-db-credentials \
+#     --from-literal=AXONOPS_DB_USER=axonops \
+#     --from-literal=AXONOPS_DB_PASSWORD=secure-password
+#
+# Then configure:
+#   authentication:
+#     db_secret: "axonops-db-credentials"
+#
+# Option 2: Using Direct Values (For Development/Testing Only)
+# ------------------------------------------------------------
+# Provide the username and password directly in the values file.
+# Note: This method stores credentials in plain text and should NOT be used in production.
+#
+# Example configuration:
+#   authentication:
+#     db_user: "axonops"
+#     db_password: "axonops_password"
+#
+# When Configured:
+# ---------------
+# The credentials will be passed to the container as environment variables:
+# - AXONOPS_DB_USER: The username for database authentication
+# - AXONOPS_DB_PASSWORD: The password for database authentication
+#
+# These environment variables can be used by the application to authenticate with the database.
+
+authentication:
+  db_user: ""
+  db_password: ""
+  db_secret: ""
+
+resources: {}
+  # limits:
+  #   cpu: 2000m
+  #   memory: 1024Mi
+  # requests:
+  #   cpu: 1000m
+  #   memory: 512Mi
+
+# TLS/SSL Configuration
+tls:
+  # Enable TLS/SSL for Cassandra
+  enabled: false
+
+  # cert-manager configuration for automatic certificate management
+  certManager:
+    # Enable cert-manager for certificate provisioning
+    enabled: false
+
+    # Keystore password (used for JKS/PKCS12 keystores)
+    # In production, override this with a secure password
+    keystorePassword: "changeme"
+
+    # When enabled, the following environment variables are set:
+    #   - CASSANDRA_KEYSTORE_PATH: /etc/cassandra/certs/keystore.jks
+    #   - CASSANDRA_TRUSTSTORE_PATH: /etc/cassandra/certs/truststore.jks
+    #   - CASSANDRA_KEYSTORE_PASSWORD: (from secret)
+    #   - CASSANDRA_TRUSTSTORE_PASSWORD: (from secret)
+    #   - CASSANDRA_TLS_KEY_PATH: /etc/cassandra/certs/tls.key
+    #   - CASSANDRA_TLS_CERT_PATH: /etc/cassandra/certs/tls.crt
+    #   - CASSANDRA_CA_CERT_PATH: /etc/cassandra/certs/ca.crt
+
+    # Issuer configuration
+    issuer:
+      # Issuer name (if using an existing issuer)
+      name: ""
+      # Issuer kind (Issuer or ClusterIssuer)
+      kind: "ClusterIssuer"
+      # Create a self-signed issuer if no issuer name is provided
+      createSelfSigned: true
+
+    # Certificate specification
+    certificate:
+      # Common name for the certificate
+      commonName: ""
+      # DNS names for the certificate (SANs)
+      dnsNames: []
+        # - cassandra.example.com
+        # - "*.cassandra.example.com"
+      # IP addresses for the certificate (SANs)
+      ipAddresses: []
+      # Certificate duration (default: 90 days)
+      duration: 43800h # 5 years
+      # Certificate renewal time before expiry
+      renewBefore: 720h # 30 days
+      # Secret name where the certificate will be stored
+      secretName: "axondb-timeseries-tls-cert"
+
+  # Manual TLS configuration (when cert-manager is disabled)
+  manual:
+    # Existing secret containing TLS certificates and passwords
+    # Required keys in the secret:
+    #   - tls.crt: TLS certificate
+    #   - tls.key: Private key
+    #   - ca.crt: CA certificate
+    #   - keystore.jks: Java keystore file
+    #   - truststore.jks: Java truststore file
+    #   - keystore-password: Password for the keystore
+    #   - truststore-password: Password for the truststore
+    # Environment variables set:
+    #   - CASSANDRA_KEYSTORE_PATH: /etc/cassandra/certs/keystore.jks
+    #   - CASSANDRA_TRUSTSTORE_PATH: /etc/cassandra/certs/truststore.jks
+    #   - CASSANDRA_KEYSTORE_PASSWORD: (from secret key: keystore-password)
+    #   - CASSANDRA_TRUSTSTORE_PASSWORD: (from secret key: truststore-password)
+    #   - CASSANDRA_TLS_KEY_PATH: /etc/cassandra/certs/tls.key
+    #   - CASSANDRA_TLS_CERT_PATH: /etc/cassandra/certs/tls.crt
+    #   - CASSANDRA_CA_CERT_PATH: /etc/cassandra/certs/ca.crt
+    existingSecret: ""
+
+  # Cassandra-specific TLS settings
+  cassandra:
+    # Internode encryption settings
+    internode:
+      # Encryption options: none, dc, rack, all
+      encryption: "all"
+      # Protocol version
+      protocol: "TLS"
+      # Accepted protocols (comma-separated)
+      acceptedProtocols: "TLSv1.2,TLSv1.3"
+      # Cipher suites (leave empty for JVM defaults)
+      cipherSuites: []
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 30
+  successThreshold: 1
+  failureThreshold: 5
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 30
+  successThreshold: 1
+  failureThreshold: 5
+
+# Persistence configuration for Cassandra data
+persistence:
+  # Enable persistent storage for Cassandra
+  enabled: true
+
+  # Data volume configuration
+  data:
+    # Use an existing PVC (if specified, this overrides other settings)
+    # existingClaim: ""
+
+    # Storage class for the PVC
+    # If undefined or null, uses the default provisioner
+    # If "-", disables dynamic provisioning
+    # If set to a specific storage class, uses that storage class
+    storageClass: ""
+
+    # Access mode for the PVC
+    accessMode: ReadWriteOnce
+
+    # Size of the data volume
+    size: 10Gi
+
+    # Annotations for the PVC
+    annotations: {}
+
+    # Mount path for data volume
+    mountPath: /var/lib/cassandra
+
+  # Commitlog volume configuration (optional, can be on separate disk for performance)
+  commitlog:
+    # Enable separate volume for commitlog
+    enabled: false
+
+    # Use an existing PVC
+    # existingClaim: ""
+
+    # Storage class for commitlog (often SSD for better performance)
+    storageClass: ""
+
+    # Access mode
+    accessMode: ReadWriteOnce
+
+    # Size of the commitlog volume
+    size: 5Gi
+
+    # Annotations for the PVC
+    annotations: {}
+
+    # Mount path for commitlog volume
+    mountPath: /var/lib/cassandra/commitlog
+
+## @param envVars Extra environment variables to be set on cassandra container
+## For example:
+##  - name: FOO
+##    value: BAR
+##
+envVars: []
+## @param envVarsSecret Name of existing Secret containing extra env vars
+##
+envVarsSecret: ""
+
+# Additional volumes on the output Deployment definition.
+# These are extra volumes in addition to the persistence volumes above
+extraVolumes: []
+  # - name: config
+  #   configMap:
+  #     name: cassandra-config
+  # - name: secrets
+  #   secret:
+  #     secretName: cassandra-secrets
+
+# Additional volumeMounts on the output Deployment definition.
+# These are extra mounts in addition to the persistence mounts
+extraVolumeMounts: []
+  # - name: config
+  #   mountPath: "/etc/cassandra/conf"
+  #   readOnly: true
+  # - name: secrets
+  #   mountPath: "/etc/cassandra/secrets"
+  #   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ServiceMonitor configuration for Prometheus Operator
+serviceMonitor:
+  # Enable ServiceMonitor creation
+  enabled: false
+
+  # Namespace where the ServiceMonitor should be created (if different from release namespace)
+  # namespace: monitoring
+
+  # Additional labels for the ServiceMonitor
+  labels: {}
+    # prometheus: kube-prometheus
+
+  # Additional annotations for the ServiceMonitor
+  annotations: {}
+
+  # Job label to use for the ServiceMonitor
+  # jobLabel: "app.kubernetes.io/name"
+
+  # Additional selector labels for the ServiceMonitor
+  selector: {}
+
+  # Port name to scrape metrics from (should match a port name in the Service)
+  # Default is "jmx" for JMX metrics
+  port: jmx
+
+  # Interval at which metrics should be scraped
+  interval: 30s
+
+  # Timeout for metrics scraping
+  scrapeTimeout: 10s
+
+  # Path to scrape metrics from
+  # path: /metrics
+
+  # Scheme to use for scraping (http or https)
+  # scheme: http
+
+  # TLS configuration for scraping
+  # tlsConfig: {}
+
+  # Relabeling configuration for metrics
+  relabelings: []
+    # - sourceLabels: [__meta_kubernetes_pod_node_name]
+    #   targetLabel: node
+
+  # Metric relabeling configuration
+  metricRelabelings: []
+    # - sourceLabels: [__name__]
+    #   regex: '(cassandra_jvm_memory_.*|cassandra_stats_.*)'
+    #   action: keep
+
+  # Target labels to copy from the Service
+  # targetLabels: []
+
+  # Pod target labels to copy from the Pod
+  # podTargetLabels: []
+
+  # Sample limit for metrics
+  # sampleLimit: 10000

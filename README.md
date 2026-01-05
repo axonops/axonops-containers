@@ -9,8 +9,8 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 ## Table of Contents
 
 - [Components](#components)
+- [Red Hat Universal Base Image (UBI)](#red-hat-universal-base-image-ubi)
 - [Repository Conventions](#repository-conventions)
-- [Getting Started](#getting-started)
 - [Security](#security)
   - [CVE Policy](#cve-policy)
   - [Gold Standard Security Deployment](#gold-standard-security-deployment)
@@ -32,9 +32,26 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 ### Kubernetes Distributions
 - **[k8ssandra/](./k8ssandra/)** - Apache Cassandra with AxonOps integration for K8ssandra Operator
 
-### AxonOps Self-Hosted Components
-- **[axonops/](./axonops/)** - AxonOps self-hosted infrastructure components
-  - **[axondb-timeseries/](./axonops/axondb-timeseries/)** - Time-series optimized Apache Cassandra database
+### AxonOps Self-Hosted
+- **[axonops/](./axonops/)** - AxonOps self-hosted stack (complete platform components)
+
+## Red Hat Universal Base Image (UBI)
+
+All containers in this repository are built on **Red Hat Universal Base Image (UBI) 9**, providing enterprise-grade security, stability, and compliance.
+
+**Why Red Hat UBI?**
+
+- **Freely Redistributable** - No subscription required to use or redistribute
+- **Enterprise Security** - Regular security updates and CVE patches from Red Hat
+- **Production Hardened** - Minimal attack surface with only essential packages
+- **Compliance Ready** - Meets requirements for regulated industries (finance, healthcare, government)
+- **Long-Term Support** - Stable base with predictable lifecycle (RHEL 9 supported until 2032)
+- **Container Optimized** - Purpose-built for containerized workloads with minimal footprint
+
+**Learn More:**
+- [Red Hat UBI Project](https://www.redhat.com/en/blog/introducing-red-hat-universal-base-image)
+- [UBI 9 Container Catalog](https://catalog.redhat.com/software/containers/search?q=ubi9)
+- [UBI Documentation](https://developers.redhat.com/products/rhel/ubi)
 
 ## Repository Conventions
 
@@ -42,18 +59,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - **Published to**: GitHub Container Registry `ghcr.io/axonops/<image-name>:<tag>`
 - **Automated CI/CD**: GitHub Actions with comprehensive testing
 - **Security scanning**: Trivy vulnerability scanning on all images
-- **Base images**: Official upstream sources where possible
-
-## Getting Started
-
-Each component has its own documentation with detailed instructions:
-
-### Kubernetes Distributions
-- [K8ssandra Documentation](./k8ssandra/README.md)
-
-### AxonOps Self-Hosted
-- [AxonOps Components Overview](./axonops/README.md)
-- [AxonDB Time-Series Documentation](./axonops/axondb-timeseries/README.md)
+- **Base images**: Red Hat UBI 9 (digest-pinned for supply chain security)
 
 ## Security
 

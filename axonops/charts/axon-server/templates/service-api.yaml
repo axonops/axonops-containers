@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "axon-server.fullname" . }}-api
+  labels:
+    {{- include "axon-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  {{- with .Values.apiService.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.apiService.type }}
+  {{- if and (eq .Values.apiService.type "ClusterIP") .Values.apiService.clusterIP }}
+  clusterIP: {{ .Values.apiService.clusterIP }}
+  {{- end }}
+  {{- if and (eq .Values.apiService.type "LoadBalancer") .Values.apiService.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.apiService.loadBalancerIP }}
+  {{- end }}
+  {{- if and (eq .Values.apiService.type "LoadBalancer") .Values.apiService.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml .Values.apiService.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if .Values.apiService.externalIPs }}
+  externalIPs:
+    {{- toYaml .Values.apiService.externalIPs | nindent 4 }}
+  {{- end }}
+  ports:
+  - port: {{ .Values.apiService.listenPort }}
+    targetPort: api
+    protocol: TCP
+    name: api
+    {{- if and (eq .Values.apiService.type "NodePort") .Values.apiService.nodePort }}
+    nodePort: {{ .Values.apiService.nodePort }}
+    {{- end }}
+  selector:
+    {{- include "axon-server.selectorLabels" . | nindent 4 }}
+  {{- if eq .Values.apiService.type "LoadBalancer" }}
+  sessionAffinity: ClientIP
+  {{- end }}

@@ -1,0 +1,65 @@
+1. Cassandra has been deployed successfully!
+
+2. To connect to Cassandra:
+
+{{- if contains "NodePort" .Values.service.type }}
+   Get the Cassandra CQL port by running:
+   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "axon-cassandra.fullname" . }})
+   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+
+   Connect using cqlsh:
+   cqlsh $NODE_IP $NODE_PORT
+
+{{- else if contains "LoadBalancer" .Values.service.type }}
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+   You can watch its status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "axon-cassandra.fullname" . }}'
+
+   Get the Cassandra service IP:
+   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "axon-cassandra.fullname" . }} --template "{{ "{{" }} range (index .status.loadBalancer.ingress 0) {{ "}}" }}{{ "{{" }}.{{ "}}" }}{{ "{{" }} end {{ "}}" }}")
+
+   Connect using cqlsh:
+   cqlsh $SERVICE_IP {{ .Values.service.port | default 9042 }}
+
+{{- else if contains "ClusterIP" .Values.service.type }}
+   To connect from within the cluster:
+   kubectl run --namespace {{ .Release.Namespace }} cassandra-client --rm --tty -i --restart='Never' \
+     --image cassandra:5 \
+     -- cqlsh {{ include "axon-cassandra.fullname" . }} {{ .Values.service.port | default 9042 }}
+
+   To connect from outside the cluster, run a port-forward:
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "axon-cassandra.fullname" . }} 9042:{{ .Values.service.port | default 9042 }}
+
+   Then connect locally:
+   cqlsh localhost 9042
+{{- end }}
+
+3. Check the Cassandra pod status:
+   kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "axon-cassandra.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+4. Check the Cassandra logs:
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "axon-cassandra.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+{{- if .Values.persistence.enabled }}
+5. Persistence is ENABLED. Data will be retained across pod restarts.
+   - Data volume size: {{ .Values.persistence.data.size | default "10Gi" }}
+   {{- if .Values.persistence.data.storageClass }}
+   - Storage class: {{ .Values.persistence.data.storageClass }}
+   {{- end }}
+   {{- if .Values.persistence.data.existingClaim }}
+   - Using existing PVC: {{ .Values.persistence.data.existingClaim }}
+   {{- end }}
+   {{- if .Values.persistence.commitlog.enabled }}
+   - Separate commitlog volume: ENABLED ({{ .Values.persistence.commitlog.size | default "5Gi" }})
+   {{- end }}
+{{- else }}
+⚠️  WARNING: Persistence is DISABLED. Data will be lost on pod restart!
+   To enable persistence, set persistence.enabled=true in your values.
+{{- end }}
+
+{{- if gt (int .Values.replicaCount) 1 }}
+
+⚠️  WARNING: AxonOps Timeseries is designed to run as a single-node instance.
+   You currently have replicaCount set to {{ .Values.replicaCount }}.
+   We do not recommend running in a clustered mode.
+   Consider setting replicaCount=1 in your values.
+{{- end }}

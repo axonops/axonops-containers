@@ -79,7 +79,7 @@ http.port: 9200
 # For a single-node cluster, set discovery type to single-node:
 # This prevents bootstrap checks and allows the node to elect itself as cluster manager
 #
-discovery.type: single-node
+# discovery.type: single-node
 #
 # For more information, consult the discovery and cluster formation module documentation.
 #
@@ -114,6 +114,10 @@ thread_pool.write.queue_size: 10000
 # (CN: axondbsearch.axonops.com, O: AxonOps, OU: Database)
 #
 # Transport layer SSL/TLS (node-to-node communication)
+
+#When enabled, in-place hot reloading monitors your keystore resources for updates every 5 seconds.
+plugins.security.ssl.certificates_hot_reload.enabled: true
+
 plugins.security.ssl.transport.pemcert_filepath: certs/axondbsearch-default-node.pem
 plugins.security.ssl.transport.pemkey_filepath: certs/axondbsearch-default-node-key.pem
 plugins.security.ssl.transport.pemtrustedcas_filepath: certs/axondbsearch-default-root-ca.pem
@@ -131,6 +135,13 @@ plugins.security.ssl.http.clientauth_mode: NONE
 # DN must match the admin certificate exactly in RFC2253 format (order: OU, O, CN)
 plugins.security.authcz.admin_dn:
   - "OU=Database,O=AxonOps,CN=admin.axondbsearch.axonops.com"
+
+# Node certificates (allowed DNs for inter-node communication)
+# Configure via OPENSEARCH_SECURITY_NODES_DN env var (semicolon-separated list)
+# Example: "CN=*.example.svc.cluster.local;CN=node-1;CN=node-2"
+# Supports wildcards for dynamic pod names in Kubernetes
+plugins.security.nodes_dn:
+  - "CN=*.axonops.svc.cluster.local"
 
 # Security plugin settings
 # IMPORTANT: Demo certificates are NOT allowed (we use AxonOps-branded certificates)

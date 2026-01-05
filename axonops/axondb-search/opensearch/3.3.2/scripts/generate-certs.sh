@@ -20,6 +20,11 @@ CN_ADMIN="admin.axondbsearch.axonops.com"
 # Prefix for generated certificate files (makes them clearly identifiable as defaults)
 FILE_PREFIX="axondbsearch-default-"
 
+TLS_CERT_PATH=${OPENSEARCH_TLS_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem"}
+TLS_KEY_PATH=${OPENSEARCH_TLS_KEY_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node-key.pem"}
+CA_CERT_PATH=${OPENSEARCH_CA_CERT_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-root-ca.pem"}
+CA_KEY_PATH=${OPENSEARCH_CA_KEY_PATH:-"${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-root-ca-key.pem"}
+
 # Create certs directory
 mkdir -p "$CERTS_DIR"
 cd "$CERTS_DIR"
@@ -34,16 +39,16 @@ echo ""
 # 1. Generate Root CA
 echo "1. Generating Root CA..."
 openssl req -x509 -newkey rsa:3072 -sha256 -days "$VALIDITY_DAYS" \
-  -nodes -keyout ${FILE_PREFIX}root-ca-key.pem -out ${FILE_PREFIX}root-ca.pem \
+  -nodes -keyout ${CA_KEY_PATH} -out ${CA_CERT_PATH} \
   -subj "/CN=${CN_ROOT}/O=${ORG}/OU=${ORG_UNIT}" \
   2>/dev/null
 
-if [ ! -f ${FILE_PREFIX}root-ca.pem ] || [ ! -f ${FILE_PREFIX}root-ca-key.pem ]; then
+if [ ! -f ${CA_CERT_PATH} ] || [ ! -f ${CA_KEY_PATH} ]; then
     echo "ERROR: Failed to generate root CA"
     exit 1
 fi
 echo "   ✓ Root CA generated: $CN_ROOT"
-echo "   Files: ${FILE_PREFIX}root-ca.pem, ${FILE_PREFIX}root-ca-key.pem"
+echo "   Files: ${CA_CERT_PATH}, ${CA_KEY_PATH}"
 
 # 2. Generate Node Certificate
 echo "2. Generating Node Certificate..."
@@ -54,8 +59,12 @@ openssl req -new -newkey rsa:3072 -sha256 -nodes \
   -subj "/CN=${CN_NODE}/O=${ORG}/OU=${ORG_UNIT}" \
   2>/dev/null
 
+if [ -z $OPENSEARCH_FQDN ]; then
+  OPENSEARCH_FQDN="axondbsearch.axonops.com"
+fi
+
 # Create SAN configuration for node certificate
-cat > ${FILE_PREFIX}node-san.cnf <<EOF
+cat > ${CERTS_DIR}/axondbsearch-default-node-san.cnf <<EOF
 [req]
 distinguished_name = req_distinguished_name
 req_extensions = v3_req
@@ -69,24 +78,25 @@ subjectAltName = @alt_names
 DNS.1 = ${CN_NODE}
 DNS.2 = localhost
 DNS.3 = *.axondbsearch.axonops.com
+DNS.4 = ${OPENSEARCH_FQDN}
 IP.1 = 127.0.0.1
 IP.2 = ::1
 EOF
 
 # Sign node certificate with Root CA
-openssl x509 -req -in ${FILE_PREFIX}node.csr -CA ${FILE_PREFIX}root-ca.pem -CAkey ${FILE_PREFIX}root-ca-key.pem \
-  -CAcreateserial -out ${FILE_PREFIX}node.pem -days "$VALIDITY_DAYS" \
-  -extensions v3_req -extfile ${FILE_PREFIX}node-san.cnf \
-  2>/dev/null
+openssl x509 -req -in ${FILE_PREFIX}node.csr -CA ${CA_CERT_PATH} -CAkey ${CA_KEY_PATH} \
+  -CAcreateserial -out ${TLS_CERT_PATH} -days "$VALIDITY_DAYS" \
+  -extensions v3_req -extfile ${CERTS_DIR}/axondbsearch-default-node-san.cnf \
+  >/dev/null
 
 # Convert key to PKCS#8 format (required by OpenSearch)
 openssl pkcs8 -topk8 -inform PEM -outform PEM -in ${FILE_PREFIX}node-key-temp.pem \
-  -out ${FILE_PREFIX}node-key.pem -nocrypt
+  -out ${TLS_KEY_PATH} -nocrypt
 
 # Cleanup
-rm -f ${FILE_PREFIX}node.csr ${FILE_PREFIX}node-key-temp.pem ${FILE_PREFIX}node-san.cnf
+rm -f ${FILE_PREFIX}node.csr ${FILE_PREFIX}node-key-temp.pem ${CERTS_DIR}/axondbsearch-default-node-san.cnf
 
-if [ ! -f ${FILE_PREFIX}node.pem ] || [ ! -f ${FILE_PREFIX}node-key.pem ]; then
+if [ ! -f ${TLS_CERT_PATH} ] || [ ! -f ${TLS_KEY_PATH} ]; then
     echo "ERROR: Failed to generate node certificate"
     exit 1
 fi
@@ -102,7 +112,7 @@ openssl req -new -newkey rsa:3072 -sha256 -nodes \
   2>/dev/null
 
 # Sign admin certificate with Root CA
-openssl x509 -req -in ${FILE_PREFIX}admin.csr -CA ${FILE_PREFIX}root-ca.pem -CAkey ${FILE_PREFIX}root-ca-key.pem \
+openssl x509 -req -in ${FILE_PREFIX}admin.csr -CA ${CA_CERT_PATH} -CAkey ${CA_KEY_PATH} \
   -CAcreateserial -out ${FILE_PREFIX}admin.pem -days "$VALIDITY_DAYS" \
   2>/dev/null
 
@@ -123,8 +133,8 @@ echo ""
 echo "=== Setting Permissions ==="
 
 # Set permissions
-chmod 644 ${FILE_PREFIX}root-ca.pem ${FILE_PREFIX}node.pem ${FILE_PREFIX}admin.pem
-chmod 600 ${FILE_PREFIX}root-ca-key.pem ${FILE_PREFIX}node-key.pem ${FILE_PREFIX}admin-key.pem
+chmod 644 ${CA_CERT_PATH} ${TLS_CERT_PATH} ${FILE_PREFIX}admin.pem
+chmod 600 ${CA_KEY_PATH} ${TLS_KEY_PATH} ${FILE_PREFIX}admin-key.pem
 
 # Set ownership (if running as root during build)
 if [ "$(id -u)" = "0" ] && command -v chown >/dev/null 2>&1; then
@@ -136,7 +146,7 @@ echo ""
 
 # Validate all files exist
 echo "=== Validating Certificate Generation ==="
-REQUIRED_FILES="${FILE_PREFIX}root-ca.pem ${FILE_PREFIX}root-ca-key.pem ${FILE_PREFIX}node.pem ${FILE_PREFIX}node-key.pem ${FILE_PREFIX}admin.pem ${FILE_PREFIX}admin-key.pem"
+REQUIRED_FILES="${CA_CERT_PATH} ${CA_KEY_PATH} ${TLS_CERT_PATH} ${TLS_KEY_PATH} ${FILE_PREFIX}admin.pem ${FILE_PREFIX}admin-key.pem"
 for file in $REQUIRED_FILES; do
     if [ ! -f "$file" ]; then
         echo "ERROR: Required file missing: $file"
@@ -155,13 +165,13 @@ echo ""
 echo "=== Certificate Details ==="
 echo ""
 echo "Root CA:"
-openssl x509 -in ${FILE_PREFIX}root-ca.pem -noout -subject -dates 2>/dev/null | sed 's/^/   /'
+openssl x509 -in ${CA_CERT_PATH} -noout -subject -dates 2>/dev/null | sed 's/^/   /'
 
 echo ""
 echo "Node Certificate:"
-openssl x509 -in ${FILE_PREFIX}node.pem -noout -subject -dates 2>/dev/null | sed 's/^/   /'
+openssl x509 -in ${TLS_CERT_PATH} -noout -subject -dates 2>/dev/null | sed 's/^/   /'
 echo "   Subject Alternative Names:"
-openssl x509 -in ${FILE_PREFIX}node.pem -noout -text 2>/dev/null | grep -A1 "Subject Alternative Name" | tail -1 | sed 's/^/   /'
+openssl x509 -in ${TLS_CERT_PATH} -noout -text 2>/dev/null | grep -A1 "Subject Alternative Name" | tail -1 | sed 's/^/   /'
 
 echo ""
 echo "Admin Certificate:"

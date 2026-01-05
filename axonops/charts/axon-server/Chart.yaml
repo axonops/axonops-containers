@@ -1,0 +1,30 @@
+apiVersion: v2
+name: axon-server
+description: Install AxonOps server - Unified observability platform for Apache Cassandra
+home: https://axonops.com
+icon: https://github.com/axonops/axonops-workbench/raw/main/renderer/assets/images/axonops-icon-512x512.png
+keywords:
+  - cassandra
+  - monitoring
+  - observability
+  - metrics
+  - alerting
+  - kafka
+maintainers:
+  - name: AxonOps Team
+    email: info@axonops.com
+    url: https://axonops.com
+
+sources:
+  - https://github.com/axonops/axonops-containers
+
+type: application
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
+version: 2.0.0
+
+# This is the version number of the application being deployed.
+appVersion: "latest"
+
+kubeVersion: ">=1.19.0-0"

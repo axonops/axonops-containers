@@ -1,0 +1,285 @@
+name: Helm Charts Test
+
+on:
+  push:
+    branches:
+      - development
+      - 'feat/**'
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'axonops/charts/**'
+      - '!axonops/charts/**/*.md'
+      - '.github/workflows/helm-charts-test.yml'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'axonops/charts/**'
+      - '!axonops/charts/**/*.md'
+      - '.github/workflows/helm-charts-test.yml'
+  workflow_dispatch:
+
+env:
+  KIND_VERSION: v0.20.0
+  KUBERNETES_VERSION: v1.28.0
+  HELM_VERSION: v3.13.0
+
+jobs:
+  helm-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Disable run for now
+        run: |
+          echo "Workflow disabled temporarily"
+          exit 0
+      # - name: Checkout code
+      #   uses: actions/checkout@v4
+
+      # - name: Set up Helm
+      #   uses: azure/setup-helm@v4
+      #   with:
+      #     version: ${{ env.HELM_VERSION }}
+
+      # - name: Create KinD cluster configuration
+      #   run: |
+      #     cat > kind-config.yaml <<EOF
+      #     kind: Cluster
+      #     apiVersion: kind.x-k8s.io/v1alpha4
+      #     nodes:
+      #     - role: control-plane
+      #       kubeadmConfigPatches:
+      #       - |
+      #         kind: InitConfiguration
+      #         nodeRegistration:
+      #           kubeletExtraArgs:
+      #             node-labels: "ingress-ready=true"
+      #       extraPortMappings:
+      #       - containerPort: 80
+      #         hostPort: 80
+      #         protocol: TCP
+      #       - containerPort: 443
+      #         hostPort: 443
+      #         protocol: TCP
+      #     EOF
+
+      # - name: Create KinD cluster
+      #   uses: helm/kind-action@v1.10.0
+      #   with:
+      #     version: ${{ env.KIND_VERSION }}
+      #     node_image: kindest/node:${{ env.KUBERNETES_VERSION }}
+      #     cluster_name: helm-test
+      #     config: kind-config.yaml
+      #     wait: 120s
+
+      # - name: Verify cluster
+      #   run: |
+      #     kubectl cluster-info
+      #     kubectl get nodes
+      #     kubectl get pods -A
+      #     echo "=== Node Resources ==="
+      #     kubectl top nodes || echo "Metrics not available yet"
+
+      # - name: Instal cert-manager
+      #   run: |
+      #     helm repo add jetstack https://charts.jetstack.io
+      #     helm repo update
+      #     helm install cert-manager jetstack/cert-manager \
+      #       --namespace cert-manager \
+      #       --create-namespace \
+      #       --set installCRDs=true \
+      #       --version v1.19.1 \
+      #       --wait --timeout=5m
+
+      #     cat <<EOF | kubectl apply -f -
+      #     apiVersion: cert-manager.io/v1
+      #     kind: ClusterIssuer
+      #     metadata:
+      #       name: selfsigned-cluster-issuer
+      #     spec:
+      #       selfSigned: {}
+      #     EOF
+
+      # - name: Create namespace for testing
+      #   run: |
+      #     kubectl create namespace axonops-test
+      #     kubectl config set-context --current --namespace=axonops-test
+
+      # - name: Create database credentials secret
+      #   run: |
+      #     kubectl create secret generic axondb-creds \
+      #       -n axonops-test \
+      #       --from-literal=AXONOPS_DB_USER=axonops \
+      #       --from-literal=AXONOPS_DB_PASSWORD=axonops
+
+      # - name: Lint timeseries chart
+      #   run: |
+      #     helm lint axonops/charts/axondb-timeseries
+
+      # - name: Install axondb-timeseries chart
+      #   run: |
+      #     helm upgrade --install axondb-timeseries \
+      #       -n axonops-test \
+      #       --set authentication.db_secret=axondb-creds \
+      #       --set persistence.enabled=false \
+      #       --set tls.enabled=false \
+      #       --set tls.certManager.enabled=false \
+      #       --set replicaCount=1 \
+      #       --set resources.requests.memory=1Gi \
+      #       --set resources.limits.memory=1536Mi \
+      #       --set heapSize=1024M \
+      #       --wait --timeout=10m \
+      #       --debug \
+      #       axonops/charts/axondb-timeseries
+
+      # - name: Verify timeseries deployment
+      #   run: |
+      #     kubectl get pods -n axonops-test -l app.kubernetes.io/instance=axondb-timeseries
+      #     kubectl wait --for=condition=ready pod \
+      #       -l app.kubernetes.io/instance=axondb-timeseries \
+      #       -n axonops-test \
+      #       --timeout=300s
+
+      # - name: Check timeseries logs
+      #   if: always()
+      #   run: |
+      #     kubectl logs -n axonops-test -l app.kubernetes.io/instance=axondb-timeseries --tail=50 || true
+
+      # - name: Lint search chart
+      #   run: |
+      #     helm lint axonops/charts/axondb-search
+
+      # - name: Install axondb-search chart
+      #   run: |
+      #     helm upgrade --install axondb-search \
+      #       -n axonops-test \
+      #       -f axonops/charts/axondb-search/ci/ci-values.yaml \
+      #       --set persistence.enabled=false \
+      #       --set opensearchJavaOpts="-Xms1g -Xmx1g" \
+      #       --set resources.requests.memory=1Gi \
+      #       --set resources.limits.memory=1536Mi \
+      #       --wait --timeout=10m \
+      #       --debug \
+      #       axonops/charts/axondb-search
+
+      # - name: Verify search deployment
+      #   run: |
+      #     kubectl get pods -n axonops-test -l app.kubernetes.io/instance=axondb-search
+      #     kubectl wait --for=condition=ready pod \
+      #       -l app.kubernetes.io/instance=axondb-search \
+      #       -n axonops-test \
+      #       --timeout=300s
+
+      # - name: Check search logs
+      #   if: always()
+      #   run: |
+      #     kubectl logs -n axonops-test -l app.kubernetes.io/instance=axondb-search --tail=50 || true
+
+      # - name: Lint axon-server chart
+      #   run: |
+      #     helm lint axonops/charts/axon-server
+
+      # - name: Install axon-server chart
+      #   run: |
+      #     helm upgrade --install axon-server \
+      #       -n axonops-test \
+      #       --set config.org_name=test-org \
+      #       --set persistence.enabled=false \
+      #       --set resources.requests.memory=512Mi \
+      #       --set resources.limits.memory=768Mi \
+      #       --wait --timeout=10m \
+      #       --debug \
+      #       axonops/charts/axon-server
+
+      # - name: Verify axon-server deployment
+      #   run: |
+      #     kubectl get pods -n axonops-test -l app.kubernetes.io/instance=axon-server
+      #     kubectl wait --for=condition=ready pod \
+      #       -l app.kubernetes.io/instance=axon-server \
+      #       -n axonops-test \
+      #       --timeout=300s
+
+      # - name: Check axon-server logs
+      #   if: always()
+      #   run: |
+      #     kubectl logs -n axonops-test -l app.kubernetes.io/instance=axon-server --tail=50 || true
+
+      # - name: Lint axon-dash chart
+      #   run: |
+      #     helm lint axonops/charts/axon-dash
+
+      # - name: Install axon-dash chart
+      #   run: |
+      #     helm upgrade --install axon-dash \
+      #       -n axonops-test \
+      #       --set config.axonServerUrl=http://axon-server-api:8080 \
+      #       --set resources.requests.memory=512Mi \
+      #       --set resources.limits.memory=768Mi \
+      #       --wait --timeout=10m \
+      #       --debug \
+      #       axonops/charts/axon-dash
+
+      # - name: Verify axon-dash deployment
+      #   run: |
+      #     kubectl get pods -n axonops-test -l app.kubernetes.io/instance=axon-dash
+      #     kubectl wait --for=condition=ready pod \
+      #       -l app.kubernetes.io/instance=axon-dash \
+      #       -n axonops-test \
+      #       --timeout=300s
+
+      # - name: Check axon-dash logs
+      #   if: always()
+      #   run: |
+      #     kubectl logs -n axonops-test -l app.kubernetes.io/instance=axon-dash --tail=50 || true
+
+      # - name: List all resources
+      #   if: always()
+      #   run: |
+      #     echo "=== Deployments ==="
+      #     kubectl get deployments -n axonops-test
+      #     echo "=== StatefulSets ==="
+      #     kubectl get statefulsets -n axonops-test
+      #     echo "=== Pods ==="
+      #     kubectl get pods -n axonops-test -o wide
+      #     echo "=== Services ==="
+      #     kubectl get services -n axonops-test
+      #     echo "=== PVCs ==="
+      #     kubectl get pvc -n axonops-test
+      #     echo "=== Resource Usage ==="
+      #     kubectl top pods -n axonops-test || echo "Metrics not available"
+      #     kubectl top nodes || echo "Metrics not available"
+
+      # - name: Run helm tests (if available)
+      #   if: always()
+      #   run: |
+      #     echo "Testing timeseries..."
+      #     helm test axondb-timeseries -n axonops-test || true
+      #     echo "Testing search..."
+      #     helm test axondb-search -n axonops-test || true
+      #     echo "Testing axon-server..."
+      #     helm test axon-server -n axonops-test || true
+      #     echo "Testing axon-dash..."
+      #     helm test axon-dash -n axonops-test || true
+
+      # - name: Collect all logs on failure
+      #   if: failure()
+      #   run: |
+      #     echo "=== Collecting all pod logs ==="
+      #     for pod in $(kubectl get pods -n axonops-test -o name); do
+      #       echo "=== Logs for $pod ==="
+      #       kubectl logs -n axonops-test $pod --all-containers=true --tail=100 || true
+      #       echo "=== Previous logs for $pod (if any) ==="
+      #       kubectl logs -n axonops-test $pod --all-containers=true --previous --tail=100 2>/dev/null || true
+      #       echo "=== Describe $pod ==="
+      #       kubectl describe -n axonops-test $pod || true
+      #     done
+
+      #     echo "=== Events ==="
+      #     kubectl get events -n axonops-test --sort-by='.lastTimestamp'
+
+      # - name: Cleanup
+      #   if: always()
+      #   run: |
+      #     kubectl delete namespace axonops-test --ignore-not-found=true || true

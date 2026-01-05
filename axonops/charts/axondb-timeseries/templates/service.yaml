@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "axon-cassandra.fullname" . }}
+  labels:
+    {{- include "axon-cassandra.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port | default 9042 }}
+      targetPort: cql
+      protocol: TCP
+      name: cql
+    - port: 7199
+      targetPort: jmx
+      protocol: TCP
+      name: jmx
+  selector:
+    {{- include "axon-cassandra.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "axon-cassandra.fullname" . }}-headless
+  labels:
+    {{- include "axon-cassandra.labels" . | nindent 4 }}
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  clusterIPs:
+  - None
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  # Create endpoints also if the related pod isn't ready
+  publishNotReadyAddresses: true
+  sessionAffinity: None
+  ports:
+    - port: {{ .Values.service.port | default 9042 }}
+      targetPort: cql
+      protocol: TCP
+      name: cql
+{{- if .Values.service.jmxEnabled }}
+    - port: 7199
+      targetPort: jmx
+      protocol: TCP
+      name: jmx
+{{- end }}
+  selector:
+    {{- include "axon-cassandra.selectorLabels" . | nindent 4 }}

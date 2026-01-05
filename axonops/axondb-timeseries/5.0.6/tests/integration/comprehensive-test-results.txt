@@ -1,0 +1,7 @@
+Comprehensive Backup/Restore Test Results
+=========================================
+Date: Fri Dec 26 10:19:09 AM CET 2025
+
+======================================================================
+Test 1: Kubernetes-Style Restore (Pod Recreation Simulation)
+======================================================================

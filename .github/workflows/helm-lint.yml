@@ -1,0 +1,113 @@
+name: Helm Charts Lint
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'fix/**'
+      - 'feat/**'
+    paths:
+      - 'axonops/charts/**'
+      - '.github/workflows/helm-lint.yml'
+      - '.github/actions/helm-lint/**'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'axonops/charts/**'
+      - '.github/workflows/helm-lint.yml'
+      - '.github/actions/helm-lint/**'
+  workflow_dispatch:
+
+jobs:
+  detect-charts:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.set-charts.outputs.charts }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect Helm charts
+        id: set-charts
+        run: |
+          CHARTS=$(find axonops/charts -maxdepth 2 -name Chart.yaml -exec dirname {} \; | jq -R -s -c 'split("\n")[:-1]')
+          echo "charts=$CHARTS" >> $GITHUB_OUTPUT
+          echo "📦 Detected charts:"
+          echo "$CHARTS" | jq -r '.[]' | sed 's/^/  - /'
+
+  lint-charts:
+    needs: detect-charts
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: ${{ fromJson(needs.detect-charts.outputs.charts) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint ${{ matrix.chart }}
+        uses: ./.github/actions/helm-lint
+        with:
+          chart_path: ${{ matrix.chart }}
+          strict: 'false'
+
+  lint-charts-ci-values:
+    needs: detect-charts
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: ${{ fromJson(needs.detect-charts.outputs.charts) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for CI values files
+        id: check-ci
+        run: |
+          if [ -d "${{ matrix.chart }}/ci" ] && ls ${{ matrix.chart }}/ci/*values*.yaml 1> /dev/null 2>&1; then
+            echo "has_ci_values=true" >> $GITHUB_OUTPUT
+            echo "✓ Found CI values files for ${{ matrix.chart }}"
+          else
+            echo "has_ci_values=false" >> $GITHUB_OUTPUT
+            echo "ℹ No CI values files found for ${{ matrix.chart }}"
+          fi
+
+      - name: Lint with CI values
+        if: steps.check-ci.outputs.has_ci_values == 'true'
+        run: |
+          for values_file in ${{ matrix.chart }}/ci/*values*.yaml; do
+            echo "🔍 Linting with $(basename $values_file)..."
+            helm lint ${{ matrix.chart }} --values "$values_file"
+            if [ $? -eq 0 ]; then
+              echo "✓ Passed with $values_file"
+            else
+              echo "✗ Failed with $values_file"
+              exit 1
+            fi
+          done
+
+  summary:
+    needs: [lint-charts, lint-charts-ci-values]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Build summary
+        run: |
+          echo "## Helm Charts Lint Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **lint-charts**: ${{ needs.lint-charts.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **lint-charts-ci-values**: ${{ needs.lint-charts-ci-values.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.lint-charts.result }}" == "success" ] && [ "${{ needs.lint-charts-ci-values.result }}" == "success" ]; then
+            echo "✅ All Helm charts passed linting" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some Helm charts failed linting" >> $GITHUB_STEP_SUMMARY
+          fi

@@ -24,6 +24,7 @@ ARG GIT_TAG=unknown
 ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME=unknown
+ARG YQ_VERSION=v4.50.1
 
 ENV CASSANDRA_VERSION=${CASSANDRA_VERSION}
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
@@ -74,7 +75,7 @@ ENV PATH=${CASSANDRA_PATH}/bin:${PATH}
 ENV CASSANDRA_HOME=${CASSANDRA_PATH}
 ENV CASSANDRA_CONF=/etc/cassandra
 ENV CASSANDRA_LOG_DIR=/var/log/cassandra
-ENV CASSANDRA_DATA_DIR=/var/lib/cassandra
+ENV CASSANDRA_DATA_DIR=/var/lib/cassandra/data
 
 # Create cassandra user and group
 RUN microdnf install -y --nodocs shadow-utils && \
@@ -89,6 +90,7 @@ RUN microdnf install -y --nodocs shadow-utils && \
 # iproute: network configuration tools
 # numactl: NUMA support (auto-detected by Cassandra)
 # nmap-ncat: provides nc for init script port checks
+# rsync: required for backup/restore functionality
 # Note: curl-minimal is pre-installed in UBI9-minimal, sufficient for our needs
 RUN microdnf install -y --nodocs \
     java-17-openjdk-headless \
@@ -106,6 +108,7 @@ RUN microdnf install -y --nodocs \
     tar \
     gzip \
     wget \
+    rsync \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
@@ -136,6 +139,29 @@ RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
     ln -s /etc/cassandra "$CASSANDRA_HOME/conf" && \
     chown -R cassandra:root "$CASSANDRA_HOME" /etc/cassandra /licenses && \
     rm -rf /tmp/*
+
+# Get yq, this will be used to modify the cassandra.yaml if needed
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        YQ_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        YQ_ARCH="arm64"; \
+    else \
+        echo "ERROR: Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    wget -q -O /tmp/checksums.txt https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums-bsd && \
+    wget -q -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH} && \
+    # Extract expected hash from checksums.txt and compare only the hash portion
+    EXPECTED_SHA256=$(grep "SHA256 (yq_linux_${YQ_ARCH})" /tmp/checksums.txt | awk '{print $4}') && \
+    LOCAL_SHA256=$(sha256sum /usr/local/bin/yq | awk '{print $1}') && \
+    if [ "${EXPECTED_SHA256}" != "${LOCAL_SHA256}" ]; then \
+      echo "ERROR: Checksum failed for yq_linux_${YQ_ARCH}" >&2; \
+      echo "Expected: ${EXPECTED_SHA256}" >&2; \
+      echo "Got     : ${LOCAL_SHA256}" >&2; \
+      exit 1; \
+    fi && \
+    chmod +x /usr/local/bin/yq && \
+    rm -f /tmp/checksums.txt
 
 # Install cqlai
 # Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
@@ -168,9 +194,11 @@ COPY --chown=cassandra:root config/cassandra-env.sh /etc/cassandra/cassandra-env
 COPY --chown=cassandra:root config/logback.xml /etc/cassandra/logback.xml
 
 # Create data and log directories
+# Also ensure parent directory /var/lib/cassandra is owned by cassandra user
+# This is needed for semaphore files in /var/lib/cassandra/.axonops
 RUN mkdir -p ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
-    chown -R cassandra:root ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
-    chmod 775 ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
+    chown -R cassandra:root /var/lib/cassandra ${CASSANDRA_LOG_DIR} && \
+    chmod 775 /var/lib/cassandra ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod a+rwX ${CASSANDRA_PATH} /etc/cassandra
 
 # Copy our healthcheck script
@@ -180,6 +208,18 @@ RUN chmod 755 /usr/local/bin/healthcheck.sh
 # Copy initialization script (handles both keyspace init and user creation)
 COPY scripts/init-system-keyspaces.sh /usr/local/bin/init-system-keyspaces.sh
 RUN chmod 755 /usr/local/bin/init-system-keyspaces.sh
+
+# Copy backup and restore scripts
+COPY scripts/cassandra-backup.sh /usr/local/bin/cassandra-backup.sh
+COPY scripts/cassandra-restore.sh /usr/local/bin/cassandra-restore.sh
+COPY scripts/backup-cron-wrapper.sh /usr/local/bin/backup-cron-wrapper.sh
+COPY scripts/backup-scheduler.sh /usr/local/bin/backup-scheduler.sh
+COPY scripts/cassandra-wrapper.sh /usr/local/bin/cassandra-wrapper.sh
+COPY scripts/retention-cleanup.sh /usr/local/bin/retention-cleanup.sh
+COPY scripts/log-rotate.sh /usr/local/bin/log-rotate.sh
+COPY scripts/semaphore-monitor.sh /usr/local/bin/semaphore-monitor.sh
+COPY scripts/post-restore-create-user.sh /usr/local/bin/post-restore-create-user.sh
+RUN chmod 755 /usr/local/bin/cassandra-backup.sh /usr/local/bin/cassandra-restore.sh /usr/local/bin/backup-cron-wrapper.sh /usr/local/bin/backup-scheduler.sh /usr/local/bin/cassandra-wrapper.sh /usr/local/bin/retention-cleanup.sh /usr/local/bin/log-rotate.sh /usr/local/bin/semaphore-monitor.sh /usr/local/bin/post-restore-create-user.sh
 
 # Generate comprehensive build information for runtime startup banner
 # Values are quoted for safe sourcing in bash
@@ -229,7 +269,7 @@ RUN TINI_VERSION=v0.19.0 && \
 USER cassandra
 
 # Expose volumes
-VOLUME ["/var/lib/cassandra", "/var/log/cassandra"]
+VOLUME ["/var/lib/cassandra", "/var/log/cassandra", "/backup"]
 
 # CASSANDRA PORTS (INTRA-NODE, TLS INTRA-NODE, JMX, CQL, THRIFT)
 EXPOSE 7000 7001 7199 9042 9160

@@ -1,2 +1,6 @@
 # Test Results (Generated)
 test-results.txt
+
+# Test backup volume (project-local)
+.test-backups/
+.soak-test-backups/

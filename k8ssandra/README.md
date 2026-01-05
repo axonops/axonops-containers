@@ -148,7 +148,7 @@ docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0-latest
 docker run -d --name cassandra \
   -e AXON_AGENT_KEY="your-axonops-agent-key" \
   -e AXON_AGENT_ORG="your-organization" \
-  -e AXON_AGENT_HOST="agents.axonops.cloud" \
+  -e AXON_AGENT_SERVER_HOST="agents.axonops.cloud" \
   -p 9042:9042 \
   -p 8080:8080 \
   ghcr.io/axonops/k8ssandra/cassandra:5.0-latest
@@ -173,7 +173,7 @@ For Kubernetes deployments, use the image with K8ssandra Operator:
 export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5"
 export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="agents.axonops.cloud"
+export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 
 cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
 ```
@@ -236,7 +236,7 @@ Set up your AxonOps credentials:
 ```bash
 export AXON_AGENT_KEY="your-axonops-api-key" # Obtained from AxonOps Cloud Console
 export AXON_AGENT_ORG="your-organization-id" # AxonOps Cloud organization name
-export AXON_AGENT_HOST="agents.axonops.cloud"
+export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 ```
 
 Optional: Specify a custom image name (defaults to ttl.sh with 1-hour TTL):
@@ -456,13 +456,13 @@ FROM docker.io/k8ssandra/cass-management-api:5.0.6-ubi
 
 Our containers extend from `k8ssandra/cass-management-api` base images. For supply chain security, we pin base images by digest (immutable) rather than tags. The `K8SSANDRA_BASE_DIGEST` maps Cassandra versions to verified image digests, preventing supply chain attacks where upstream images could be replaced maliciously.
 
-Digest mapping for 5.0.x versions:
-- 5.0.1: `sha256:51d2e8e6696ea37faf652c5bb33a8f8db9f9c565348a2161989ad8f0a9369fd9`
-- 5.0.2: `sha256:688f31162586238bd9e40ca698dcb9819a7b26baaa939f2758b844a73337155b`
-- 5.0.3: `sha256:dff75f5164bd49dd2ceaf6ba6a957eabacb13bd56b401a98c174633de94435cb`
-- 5.0.4: `sha256:553a5aa3170c3462a51e253fecd80260366a119bb298248482811a7b2d774b56`
-- 5.0.5: `sha256:801f14e369fbc90797bacbc755d5539f56506c30da5de005aedecabc0ca358bd`
-- 5.0.6: `sha256:aa2de19866f3487abe0dff65e6b74f5a68c6c5a7d211b5b7a3e0b961603ba5af`
+Digest mapping for 5.0.x versions (k8ssandra API v0.1.111):
+- 5.0.1: `sha256:5cc48bddcb3be29f5c1492408e106417d1455f1182a45f191e99529226135240`
+- 5.0.2: `sha256:17a66c0514e290b3428589ec09cff08d449ca888dd21801baf4896168de78432`
+- 5.0.3: `sha256:359d2a448aab4d64e9e67978f1496b1aa502f03208866bb6f3a0a28d5426e79c`
+- 5.0.4: `sha256:e7cbac800ec3b8f37d7e7952f438544fc2c549a40c072e9074cfdea115925149`
+- 5.0.5: `sha256:b0ced4894cc5e9972d00b45d36def9bd7ac87c6a88934344b676849d8672f7ed`
+- 5.0.6: `sha256:bc5708b8ac40c2ad027961a2b1e1b70c826468b8b727c30859718ffc24d7ae04`
 
 **How to get digests for new k8ssandra versions:**
 
@@ -505,7 +505,7 @@ The `examples/axon-cluster.yml` provides a template for deploying a 3-node Cassa
 export IMAGE_NAME="your-image"
 export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="agents.axonops.cloud"
+export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 
 # Apply the configuration
 cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
@@ -590,7 +590,7 @@ The AxonOps agent is configured via environment variables passed to the Cassandr
 |----------|-------------|---------|
 | `AXON_AGENT_KEY` | Your AxonOps agent key | Required |
 | `AXON_AGENT_ORG` | Your AxonOps organization ID | Required |
-| `AXON_AGENT_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
+| `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
 | `AXON_AGENT_LOG_OUTPUT` | Agent log output destination | `std` |
 | `AXON_AGENT_ARGS` | Additional agent arguments | - |
 
@@ -606,8 +606,8 @@ containers:
         value: "${AXON_AGENT_KEY}"
       - name: AXON_AGENT_ORG
         value: "${AXON_AGENT_ORG}"
-      - name: AXON_AGENT_HOST
-        value: "${AXON_AGENT_HOST}"
+      - name: AXON_AGENT_SERVER_HOST
+        value: "${AXON_AGENT_SERVER_HOST}"
 ```
 
 ## Scripts Reference
@@ -639,7 +639,7 @@ Builds, pushes, and deploys a Cassandra cluster with AxonOps integration.
 export IMAGE_NAME="your-registry/image:tag"  # Optional, defaults to ttl.sh
 export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_HOST="your-host"  # Optional
+export AXON_AGENT_SERVER_HOST="your-host"  # Optional
 
 # Change to version directory (script runs docker build from here)
 cd 5.0
@@ -660,7 +660,7 @@ cd 5.0
 - `IMAGE_NAME`: Docker image name (optional)
 - `AXON_AGENT_KEY`: AxonOps API key (required in cluster config)
 - `AXON_AGENT_ORG`: AxonOps organization (required in cluster config)
-- `AXON_AGENT_HOST`: AxonOps host (required in cluster config)
+- `AXON_AGENT_SERVER_HOST`: AxonOps host (required in cluster config)
 
 ## Examples
 
@@ -740,7 +740,7 @@ To use this example:
    ```bash
    export AXON_AGENT_KEY="your-key"
    export AXON_AGENT_ORG="your-org"
-   export AXON_AGENT_HOST="agents.axonops.cloud"
+   export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
    # Optional: Override default image
    export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0"
 

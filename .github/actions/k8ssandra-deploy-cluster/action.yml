@@ -59,7 +59,7 @@ runs:
                         value: "${{ inputs.axon_agent_key }}"
                       - name: AXON_AGENT_ORG
                         value: "${{ inputs.axon_agent_org }}"
-                      - name: AXON_AGENT_HOST
+                      - name: AXON_AGENT_SERVER_HOST
                         value: "${{ inputs.axon_agent_host }}"
                 config:
                   jvmOptions:

@@ -1,0 +1,323 @@
+# Default values for axon-server.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  # Set if you want to change the default docker registry, e.g. a private one.
+  dockerRegistry: ""
+
+# Image configuration
+image:
+  repository: registry.axonops.com/axonops-public/axonops-docker/axon-server
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Configure imagePullSecrets if you have mirrored the container images to a private repository
+imagePullSecrets: []
+
+# Optionally override the names used in Kubernetes components
+nameOverride: ""
+fullnameOverride: ""
+
+# Configure the Elasticsearch endpoint
+searchDb:
+  hosts:
+    - https://axondb-search-cluster-master:9200
+  username: "admin"
+  password: "MyS3cur3P@ss2025"
+  skip_verify: true
+
+# dashboardUrl should be set to the publicly-accessible URL for the AxonOps Dashboard
+dashboardUrl: https://axonops.example.com
+
+# Configure additional annotations and environment variables to set on the server pod
+deployment:
+  annotations: {}
+  # any environment variables to use
+  env: {}
+  # or preload a secret with all the env variables and use it
+  secretEnv: ""
+
+# AxonOps Server Configuration
+config:
+  # Configure the name of your organisation here
+  org_name: "example"
+  # Enter your AxonOps license key here
+  license_key: ""
+
+  listener:
+    host: 0.0.0.0  # axon-server endpoint used by the API and the agents
+    api_port: 8080 # API port (axon-server <> axon-dash)
+    agents_port: 1888 # axon-server <> axon-agents
+
+  alerting:
+    # How long to wait before sending a notification again if it has already
+    # been sent successfully for an alert. (Usually ~3h or more).
+    notification_interval: 3h
+
+  tls:
+    mode: "disabled" # disabled, TLS, mTLS
+
+  auth:
+    enabled: false
+    # type: "LDAP" # LDAP is the
+    # settings:
+    #   host: "..."
+    #   port: 636
+    #   base: "..."
+    #   useSSL: true
+    #   startTLS: true
+    #   insecureSkipVerify: false
+    #   bindDN: "..."
+    #   bindPassword: "..."
+    #   userFilter: "(cn=%s)"
+    #   rolesAttribute: "memberOf" # attribute that will contain a user role
+    #   callAttempts: 3 # how much retries in case of network issues
+    #   rolesMapping:
+    #     _global_: # _global_ overrides all other roles
+    #       superUserRole: "cn=superuser" # can do everything
+    #       readOnlyRole: "cn=readonly" # can view everything but can not make any changes
+    #       adminRole: "cn=admin" # can do everything but not admin users or backups
+    #       backupAdminRole: "cn=backupadmin" # can view everything and can admin backups
+    #     # organisationName/clusterType/cluster
+    #     organisationName: # org permissions
+    #       superUserRole: "cn=xxxx"
+    #       readOnlyRole: "cn=xxxx"
+    #       adminRole: "cn=xxxx"
+    #       backupAdminRole: "cn=xxxx"
+    #     organisationName/cassandra: # cluster type permissions
+    #       superUserRole: "cn=xxxx"
+    #       readOnlyRole: "cn=xxxx"
+    #       adminRole: "cn=xxxx"
+    #       backupAdminRole: "cn=xxxx"
+    #     organisationName/cassandra/prod: # cluster permissions
+    #       superUserRole: "cn=xxxx"
+    #       readOnlyRole: "cn=xxxx"
+    #       adminRole: "cn=xxxx"
+    #       backupAdminRole: "cn=xxxx"
+
+  # Additional configuration options
+  extraConfig:
+    cql_hosts:
+      - axondb-timeseries-headless.sergio.svc.cluster.local
+    cql_username: "axonops"
+    cql_password: "axonops"
+    cql_local_dc: axonopsdb_dc1
+    cql_proto_version: 4
+    cql_max_searchqueriesparallelism: 100
+    cql_batch_size: 100
+    cql_page_size: 100
+    cql_autocreate_tables: true
+    cql_retrypolicy_numretries: 3
+    cql_retrypolicy_min: 2s
+    cql_retrypolicy_max: 10s
+    cql_reconnectionpolicy_maxretries: 10
+    cql_reconnectionpolicy_initialinterval: 1s
+    cql_reconnectionpolicy_maxinterval: 10s
+    cql_keyspace_replication: "{ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
+    cql_metrics_cache_max_size: 128  #MB
+    cql_metrics_cache_max_items : 500000
+    cql_ssl: true
+    cql_skip_verify: true
+    # cql_ca_file: /ssl/ca.crt
+    # cql_cert_file: /ssl/tls.crt
+    # cql_key_file: /ssl/tls.key
+
+  # if you are using TLS or mTLS, provide the secret name containing the SSL certs
+  # and configure the paths accordingly
+  sslSecretName: ""
+
+# Service Account configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # If true then create a ClusterRole and ClusterRoleBinding for the service account
+  # to allow discovery of Cassandra nodes running within the cluster
+  createClusterRole: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Configure pod security context for the server pod
+podSecurityContext:
+  enabled: false
+  runAsUser: 9988
+  fsGroup: 9988
+  runAsNonRoot: true
+
+# Container security context
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 9988
+
+# Pod annotations and labels
+podAnnotations: {}
+podLabels: {}
+
+# Configuration for the service the agents will connect to
+agentService:
+  type: ClusterIP
+  listenPort: 1888
+  annotations: {}
+  labels: {}
+  externalIPs: []
+  # Optional, only used for "type: ClusterIP"
+  clusterIP: ""
+  # Optional, only used for "type: LoadBalancer"
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  # Optional, only used for "type: NodePort"
+  nodePort: 0
+
+# Configure an ingress for external agents to connect
+agentIngress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    # cert-manager.io/cluster-issuer: "letsencrypt"
+  hosts:
+    - host: agents.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+    # - secretName: agents-tls
+    #   hosts:
+    #     - agents.example.com
+
+# The API service is used by the AxonOps dashboard to connect to the AxonOps server
+apiService:
+  type: ClusterIP
+  listenPort: 8080
+  annotations: {}
+  labels: {}
+  externalIPs: []
+  # Optional, only used for "type: ClusterIP"
+  clusterIP: ""
+  # Optional, only used for "type: LoadBalancer"
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  # Optional, only used for "type: NodePort"
+  nodePort: 0
+
+# If external access to the AxonOps API is required then enable this ingress
+apiIngress:
+  enabled: false
+  className: traefik
+  annotations: {}
+    # cert-manager.io/cluster-issuer: "letsencrypt"
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+    # - secretName: api-tls
+    #   hosts:
+    #     - api.example.com
+
+# HTTPRoute configuration for Gateway API (alternative to Ingress)
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+  - name: gateway
+    sectionName: http
+    # namespace: default
+  hostnames:
+  - api.example.com
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+
+# Resource limits and requests
+resources: {}
+  # limits:
+  #   cpu: 2000m
+  #   memory: 2Gi
+  # requests:
+  #   cpu: 500m
+  #   memory: 512Mi
+
+initResources: {}
+#  limits:
+#     cpu: "25m"
+#     memory: "128Mi"
+#  requests:
+#     cpu: "25m"
+#     memory: "128Mi"
+
+# Probes configuration
+livenessProbe:
+  httpGet:
+    path: /api/v1/healthz
+    port: api
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/v1/healthz
+    port: api
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /api/v1/healthz
+    port: api
+  initialDelaySeconds: 0
+  periodSeconds: 2
+  timeoutSeconds: 3
+  failureThreshold: 60
+
+# Node selection constraints
+nodeSelector: {}
+
+# Tolerations for pod assignment
+tolerations: []
+
+# Affinity rules for pod assignment
+affinity: {}
+
+# Extra volumes and volume mounts to inject into the axon-server pod
+extraVolumes: []
+# - name: extra-config
+#   configMap:
+#     name: extra-config
+
+extraVolumeMounts: []
+# - name: extra-config
+#   mountPath: /etc/extra-config
+#   readOnly: true
+
+# StatefulSet specific configuration
+persistence:
+  enabled: true
+  enableInitChown: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  # existingClaim: ""
+  annotations: {}
+
+# Update strategy for StatefulSet
+updateStrategy:
+  type: RollingUpdate
+
+# Pod management policy for StatefulSet
+podManagementPolicy: OrderedReady

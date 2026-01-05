@@ -1,0 +1,120 @@
+name: 'Helm Package and Push'
+description: 'Packages a Helm chart and pushes it to an OCI registry'
+inputs:
+  chart_path:
+    description: 'Path to the Helm chart directory'
+    required: true
+  registry:
+    description: 'OCI registry URL (e.g., ghcr.io)'
+    required: true
+  registry_username:
+    description: 'Registry username'
+    required: true
+  registry_password:
+    description: 'Registry password or token'
+    required: true
+  repository_owner:
+    description: 'Repository owner (for constructing OCI path)'
+    required: true
+
+outputs:
+  chart_version:
+    description: 'Version of the packaged chart'
+    value: ${{ steps.package.outputs.chart_version }}
+  chart_name:
+    description: 'Name of the packaged chart'
+    value: ${{ steps.package.outputs.chart_name }}
+  oci_path:
+    description: 'Full OCI path where chart was pushed'
+    value: ${{ steps.push.outputs.oci_path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: 'latest'
+
+    - name: Extract chart metadata
+      id: metadata
+      shell: bash
+      run: |
+        CHART_NAME=$(yq eval '.name' ${{ inputs.chart_path }}/Chart.yaml)
+        CHART_VERSION=$(yq eval '.version' ${{ inputs.chart_path }}/Chart.yaml)
+        echo "chart_name=$CHART_NAME" >> $GITHUB_OUTPUT
+        echo "chart_version=$CHART_VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Chart: $CHART_NAME"
+        echo "📌 Version: $CHART_VERSION"
+
+    - name: Package Helm chart
+      id: package
+      shell: bash
+      run: |
+        echo "📦 Packaging Helm chart: ${{ inputs.chart_path }}"
+
+        helm package ${{ inputs.chart_path }} --destination /tmp/charts
+
+        CHART_NAME="${{ steps.metadata.outputs.chart_name }}"
+        CHART_VERSION="${{ steps.metadata.outputs.chart_version }}"
+
+        echo "chart_name=$CHART_NAME" >> $GITHUB_OUTPUT
+        echo "chart_version=$CHART_VERSION" >> $GITHUB_OUTPUT
+
+        echo "✓ Chart packaged: ${CHART_NAME}-${CHART_VERSION}.tgz"
+        ls -lh /tmp/charts/
+
+    - name: Login to OCI registry
+      shell: bash
+      run: |
+        echo "🔐 Logging in to ${{ inputs.registry }}..."
+        echo "${{ inputs.registry_password }}" | helm registry login ${{ inputs.registry }} \
+          --username ${{ inputs.registry_username }} \
+          --password-stdin
+        echo "✓ Login successful"
+
+    - name: Push chart to OCI registry
+      id: push
+      shell: bash
+      run: |
+        CHART_NAME="${{ steps.package.outputs.chart_name }}"
+        CHART_VERSION="${{ steps.package.outputs.chart_version }}"
+        REGISTRY="${{ inputs.registry }}"
+        OWNER="${{ inputs.repository_owner }}"
+
+        # Construct OCI path: oci://ghcr.io/owner/charts/chart-name
+        OCI_PATH="oci://${REGISTRY}/${OWNER}/charts"
+
+        echo "🚀 Pushing chart to ${OCI_PATH}/${CHART_NAME}:${CHART_VERSION}"
+
+        helm push /tmp/charts/${CHART_NAME}-${CHART_VERSION}.tgz ${OCI_PATH}
+
+        FULL_OCI_PATH="${OCI_PATH}/${CHART_NAME}:${CHART_VERSION}"
+        echo "oci_path=$FULL_OCI_PATH" >> $GITHUB_OUTPUT
+
+        echo "✓ Chart pushed successfully"
+        echo "  📍 Location: ${FULL_OCI_PATH}"
+
+    - name: Logout from OCI registry
+      if: always()
+      shell: bash
+      run: |
+        helm registry logout ${{ inputs.registry }} || true
+
+    - name: Release summary
+      shell: bash
+      run: |
+        CHART_NAME="${{ steps.package.outputs.chart_name }}"
+        CHART_VERSION="${{ steps.package.outputs.chart_version }}"
+        OCI_PATH="${{ steps.push.outputs.oci_path }}"
+
+        echo "## 📦 Helm Chart Released" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Chart**: \`${CHART_NAME}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: \`${CHART_VERSION}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Registry**: \`${OCI_PATH}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Installation" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "helm install ${CHART_NAME} ${OCI_PATH}" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

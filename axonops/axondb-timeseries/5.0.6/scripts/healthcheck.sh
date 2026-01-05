@@ -8,14 +8,38 @@ MODE="${1:-readiness}"
 CQL_PORT="${CASSANDRA_NATIVE_TRANSPORT_PORT:-9042}"
 TIMEOUT="${HEALTH_CHECK_TIMEOUT:-10}"
 
+# Script name for logging (combined with mode for context)
+SCRIPT_NAME=$(basename "$0" .sh)
+
 log() {
-  echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [$MODE] $*" >&2
+  echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [${SCRIPT_NAME}:$MODE] $*" >&2
 }
 
 case "$MODE" in
   startup)
     # Lightweight startup check with init script coordination
     log "Checking if Cassandra is starting"
+
+    # CRITICAL: Check if restore was requested
+    # Semaphore is in /tmp (ephemeral, not backed up with .axonops)
+    RESTORE_SEMAPHORE="/tmp/axonops-restore.done"
+    if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]; then
+      # Restore was requested - check semaphore
+      if [ ! -f "$RESTORE_SEMAPHORE" ]; then
+        log "Waiting for restore to start (semaphore not found)"
+        exit 1
+      fi
+
+      RESTORE_RESULT=$(grep "^RESULT=" "$RESTORE_SEMAPHORE" | cut -d'=' -f2)
+      if [ "$RESTORE_RESULT" = "failed" ]; then
+        RESTORE_REASON=$(grep "^REASON=" "$RESTORE_SEMAPHORE" | cut -d'=' -f2)
+        log "ERROR: Restore failed: ${RESTORE_REASON}"
+        exit 1
+      fi
+
+      # Allow in_progress or success for startup probe
+      log "Restore status: ${RESTORE_RESULT}"
+    fi
 
     # CRITICAL: Check if system keyspace init script semaphore exists
     # Located in /var/lib/cassandra (persistent volume) not /etc (ephemeral)
@@ -85,6 +109,33 @@ case "$MODE" in
 
   readiness)
     log "Checking readiness"
+
+    # CRITICAL: Check if restore was requested - BLOCK until complete
+    # Semaphore is in /tmp (ephemeral, not backed up with .axonops)
+    RESTORE_SEMAPHORE="/tmp/axonops-restore.done"
+    if [ -n "${RESTORE_FROM_BACKUP:-}" ] || [ "${RESTORE_ENABLED:-false}" = "true" ]; then
+      # Restore was requested - check semaphore
+      if [ ! -f "$RESTORE_SEMAPHORE" ]; then
+        log "Waiting for restore to complete (semaphore not found)"
+        exit 1
+      fi
+
+      RESTORE_RESULT=$(grep "^RESULT=" "$RESTORE_SEMAPHORE" | cut -d'=' -f2)
+
+      if [ "$RESTORE_RESULT" = "in_progress" ]; then
+        log "Waiting for restore to complete (currently in progress)"
+        exit 1
+      fi
+
+      if [ "$RESTORE_RESULT" = "failed" ]; then
+        RESTORE_REASON=$(grep "^REASON=" "$RESTORE_SEMAPHORE" | cut -d'=' -f2)
+        log "ERROR: Restore failed: ${RESTORE_REASON}"
+        exit 1
+      fi
+
+      # Only continue if success
+      log "Restore completed: ${RESTORE_RESULT}"
+    fi
 
     # Check if native transport port is listening
     if ! nc -z localhost "$CQL_PORT" 2>/dev/null; then

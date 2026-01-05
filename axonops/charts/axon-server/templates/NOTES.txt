@@ -1,0 +1,58 @@
+1. Get the application URL by running these commands:
+
+{{- if .Values.apiIngress.enabled }}
+  {{- range $host := .Values.apiIngress.hosts }}
+    {{- range .paths }}
+  API endpoint available at: http{{ if $.Values.apiIngress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+    {{- end }}
+  {{- end }}
+{{- else if contains "NodePort" .Values.apiService.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "axon-server.fullname" . }}-api)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "API endpoint available at: http://$NODE_IP:$NODE_PORT"
+{{- else if contains "LoadBalancer" .Values.apiService.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "axon-server.fullname" . }}-api'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "axon-server.fullname" . }}-api --template "{{ "{{" }} range (index .status.loadBalancer.ingress 0) {{ "}}" }}{{ "{{" }}.{{ "}}" }}{{ "{{" }} end {{ "}}" }}")
+  echo "API endpoint available at: http://$SERVICE_IP:{{ .Values.apiService.listenPort }}"
+{{- else if contains "ClusterIP" .Values.apiService.type }}
+  echo "API endpoint available at: http://{{ include "axon-server.fullname" . }}-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.apiService.listenPort }}"
+
+  You can use port-forward to access the API:
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "axon-server.fullname" . }}-api {{ .Values.apiService.listenPort }}:{{ .Values.apiService.listenPort }}
+{{- end }}
+
+2. Agent connection endpoint:
+{{- if .Values.agentIngress.enabled }}
+  {{- range $host := .Values.agentIngress.hosts }}
+    {{- range .paths }}
+  Agent endpoint available at: http{{ if $.Values.agentIngress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+    {{- end }}
+  {{- end }}
+{{- else if contains "NodePort" .Values.agentService.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "axon-server.fullname" . }}-agent)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Agent endpoint available at: http://$NODE_IP:$NODE_PORT"
+{{- else if contains "LoadBalancer" .Values.agentService.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "axon-server.fullname" . }}-agent'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "axon-server.fullname" . }}-agent --template "{{ "{{" }} range (index .status.loadBalancer.ingress 0) {{ "}}" }}{{ "{{" }}.{{ "}}" }}{{ "{{" }} end {{ "}}" }}")
+  echo "Agent endpoint available at: $SERVICE_IP:{{ .Values.agentService.listenPort }}"
+{{- else }}
+  echo "Agent endpoint available at: {{ include "axon-server.fullname" . }}-agent.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.agentService.listenPort }}"
+{{- end }}
+
+3. Check the AxonOps server logs:
+  kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "axon-server.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+{{ if not .Values.config.license_key -}}
+⚠️  WARNING: No license key configured. Please set config.license_key in your values.yaml
+{{- end }}
+
+{{ if eq .Values.config.org_name "example" -}}
+⚠️  WARNING: Organization name is set to "example". Please update config.org_name in your values.yaml
+{{- end }}
+
+{{ if eq .Values.dashboardUrl "https://axonops.example.com" -}}
+⚠️  WARNING: Dashboard URL is set to example domain. Please update dashboardUrl in your values.yaml
+{{- end }}

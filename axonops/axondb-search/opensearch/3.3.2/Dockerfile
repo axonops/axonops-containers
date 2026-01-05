@@ -178,10 +178,6 @@ ENV LD_LIBRARY_PATH=${OPENSEARCH_HOME}/plugins/opensearch-knn/lib
 COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod 755 /usr/local/bin/healthcheck.sh
 
-# Copy initialization script
-COPY scripts/init-opensearch.sh /usr/local/bin/init-opensearch.sh
-RUN chmod 755 /usr/local/bin/init-opensearch.sh
-
 # Generate comprehensive build information for runtime startup banner
 # Values are quoted for safe sourcing in bash
 RUN mkdir -p /etc/axonops && \

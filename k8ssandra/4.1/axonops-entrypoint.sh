@@ -11,22 +11,30 @@ else
     echo "⚠ jemalloc not found, continuing without it"
 fi
 
-# Config generation
+# AXON_AGENT_SERVER_HOST
+# AXON_AGENT_SERVER_PORT
+# AXON_AGENT_NTP_HOST
+# AXON_AGENT_KEY
+# AXON_AGENT_ORG
+# AXON_AGENT_CLUSTER_NAME
+# AXON_AGENT_TMP_PATH
+# AXON_AGENT_TLS_MODE
+
+if [ -z "$AXON_AGENT_SERVER_HOST" ]; then
+  export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+fi
+if [ -z "$AXON_AGENT_SERVER_PORT" ]; then
+  export AXON_AGENT_SERVER_PORT="443"
+fi
+if [ -z "$AXON_AGENT_ORG" ]; then
+  echo "ERROR: AXON_AGENT_ORG environment variable is not set. Exiting."
+  exit 1
+fi
+
+# Ensure the config file exists to avoid axon-agent startup errors
+# But do not overwrite if it already exists (e.g., mounted config)
 if [ ! -f /etc/axonops/axon-agent.yml ]; then
-cat > /etc/axonops/axon-agent.yml <<END
-axon-server:
-    hosts: "${AXON_AGENT_HOST:-agents.axonops.cloud}"
-axon-agent:
-    key: ${AXON_AGENT_KEY}
-    org: ${AXON_AGENT_ORG}
-END
-    if [ "$AXON_NTP_HOST" != "" ]; then
-cat >> /etc/axonops/axon-agent.yml <<END
-NTP:
-    hosts:
-      - ${AXON_NTP_HOST}
-END
-    fi
+  echo "cassandra:" > /etc/axonops/axon-agent.yml
 fi
 
 /usr/share/axonops/axon-agent $AXON_AGENT_ARGS | tee /var/log/axonops/axon-agent.log 2>&1 &

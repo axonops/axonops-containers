@@ -425,7 +425,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ## Environment Variables
 
-The container supports 21 environment variables for configuration:
+The container supports 18 environment variables for configuration:
 
 | Variable | Description | Default | Category |
 |----------|-------------|---------|----------|
@@ -442,12 +442,11 @@ The container supports 21 environment variables for configuration:
 | `AXONOPS_SEARCH_PASSWORD` | Password for custom admin user (required if `AXONOPS_SEARCH_USER` set) | - | Security & Init |
 | `AXONOPS_SEARCH_TLS_ENABLED` | Enable HTTPS on REST API (set `false` for LB termination) | `true` | Security & Init |
 | `GENERATE_CERTS_ON_STARTUP` | Generate AxonOps default certificates at runtime if missing | `true` | Security & Init |
-| `INIT_OPENSEARCH_SECURITY` | Run security initialization (deprecated, always runs) | `true` | Security & Init |
-| `INIT_TIMEOUT` | Timeout in seconds for initialization script | `600` (10 min) | Security & Init |
 | `OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE` | Write thread pool queue size (increase for high-write workloads) | `10000` | Advanced/Transport |
 | `OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION` | Enforce hostname verification for transport SSL | `false` | Advanced/Transport |
 | `OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE` | HTTP client authentication mode (`NONE`, `OPTIONAL`, `REQUIRED`) | `NONE` | Advanced/Transport |
 | `OPENSEARCH_SECURITY_ADMIN_DN` | Custom admin certificate DN (for custom certificate scenarios) | `OU=Database,O=AxonOps,CN=admin.axondbsearch.axonops.com` | Advanced/Transport |
+| `OPENSEARCH_SECURITY_NODES_DN` | Node certificate DNs for inter-node communication (semicolon-separated list, supports wildcards) | `CN=*.axonops.svc.cluster.local` | Advanced/Transport |
 | `DISABLE_SECURITY_PLUGIN` | Disable security plugin entirely (NOT recommended for production) | `false` | Plugin Control |
 | `DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI` | Disable performance analyzer (AxonOps provides monitoring) | `true` | Plugin Control |
 
@@ -515,16 +514,6 @@ curl -k -u dbadmin:MySecurePassword123 https://localhost:9200/_cluster/health
 - Only the custom user will exist (no default admin)
 - User creation is atomic - either succeeds completely or rolls back
 
-**Timeout Configuration:**
-
-The initialization script waits up to `INIT_TIMEOUT` seconds (default: 600 = 10 minutes) for OpenSearch to become ready. If your environment has slow startup (large heap, slow disks), increase this value:
-
-```bash
-docker run -d --name axondb-search \
-  -e INIT_TIMEOUT=1200 \
-  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
-```
-
 ### Advanced Configuration
 
 **Thread Pool Configuration:**
@@ -546,6 +535,45 @@ docker run -d --name axondb-search \
   -e OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION=true \
   -e OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE=OPTIONAL \
   ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+```
+
+**Node Certificate DNs (Multi-Node Security):**
+
+For multi-node clusters, configure which certificate Distinguished Names (DNs) are allowed for inter-node communication. This is critical for securing transport layer communication between OpenSearch nodes.
+
+```bash
+# Single DN (default)
+docker run -d --name axondb-search \
+  -e OPENSEARCH_SECURITY_NODES_DN="CN=*.axonops.svc.cluster.local" \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+
+# Multiple DNs (semicolon-separated)
+docker run -d --name axondb-search \
+  -e OPENSEARCH_SECURITY_NODES_DN="CN=*.example.svc.cluster.local;CN=node-1.example.com;CN=node-2.example.com" \
+  ghcr.io/axonops/axondb-search:3.3.2-1.0.0
+```
+
+**Important:**
+- Use semicolons (`;`) to separate multiple DNs
+- Supports wildcards (e.g., `CN=*.svc.cluster.local`) for dynamic pod names in Kubernetes
+- Whitespace around DNs is automatically trimmed
+- Only nodes with certificates matching these DNs can join the cluster
+- Essential for preventing unauthorized nodes from joining your cluster
+
+**Kubernetes StatefulSet Example:**
+```yaml
+env:
+  - name: OPENSEARCH_SECURITY_NODES_DN
+    value: "CN=*.axondb-search.default.svc.cluster.local;CN=axondb-search-0;CN=axondb-search-1;CN=axondb-search-2"
+```
+
+This configuration generates the following in `opensearch.yml`:
+```yaml
+plugins.security.nodes_dn:
+  - "CN=*.axondb-search.default.svc.cluster.local"
+  - "CN=axondb-search-0"
+  - "CN=axondb-search-1"
+  - "CN=axondb-search-2"
 ```
 
 ## Container Features
@@ -648,7 +676,7 @@ The entrypoint modifies these OpenSearch configuration files based on environmen
 
 | File | What's Modified | Environment Variables |
 |------|----------------|----------------------|
-| `/etc/opensearch/opensearch.yml` | Core OpenSearch settings | `OPENSEARCH_CLUSTER_NAME`, `OPENSEARCH_NODE_NAME`, `OPENSEARCH_NETWORK_HOST`, `OPENSEARCH_DISCOVERY_TYPE`, `OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE`, `OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION`, `OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE`, `OPENSEARCH_SECURITY_ADMIN_DN`, `AXONOPS_SEARCH_TLS_ENABLED` |
+| `/etc/opensearch/opensearch.yml` | Core OpenSearch settings | `OPENSEARCH_CLUSTER_NAME`, `OPENSEARCH_NODE_NAME`, `OPENSEARCH_NETWORK_HOST`, `OPENSEARCH_DISCOVERY_TYPE`, `OPENSEARCH_THREAD_POOL_WRITE_QUEUE_SIZE`, `OPENSEARCH_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION`, `OPENSEARCH_SSL_HTTP_CLIENTAUTH_MODE`, `OPENSEARCH_SECURITY_ADMIN_DN`, `OPENSEARCH_SECURITY_NODES_DN`, `AXONOPS_SEARCH_TLS_ENABLED` |
 | `/etc/opensearch/jvm.options` | JVM heap memory settings | `OPENSEARCH_HEAP_SIZE` |
 | `/etc/opensearch/opensearch-security/internal_users.yml` | Admin user configuration | `AXONOPS_SEARCH_USER`, `AXONOPS_SEARCH_PASSWORD` (REPLACES entire file) |
 
@@ -1030,11 +1058,9 @@ The initialization uses **pre-startup configuration** (not background process) f
    └─► 4. Start OpenSearch (exec opensearch)
         │
         ├─► OpenSearch starts and begins accepting connections
-        │
-        ├─► Background init-opensearch.sh script (optional verification)
-        │   - Waits for HTTP API to be ready
-        │   - Verifies AxonOps SSL certificates exist
-        │   - Updates semaphore file status
+        │   - Security plugin uses pre-configured settings from entrypoint
+        │   - AxonOps certificates loaded from /etc/opensearch/certs/
+        │   - Custom admin user (if created) is immediately active
         │
         └─► healthcheck.sh (startup probe) checks semaphore
             - Blocks until semaphore file exists
@@ -1050,9 +1076,9 @@ The initialization uses **pre-startup configuration** (not background process) f
 4. **Persistent semaphores** - Stored in `/var/lib/opensearch` (volume), prevents re-init on restarts
 5. **Kubernetes enforcement** - Pod not marked "Started" until semaphore confirms success
 
-#### Phase 1: Admin User Creation (Pre-Startup)
+#### Admin User Creation (Pre-Startup)
 
-The first phase creates a custom admin user and removes the default admin user **before** OpenSearch starts.
+The entrypoint creates a custom admin user and removes the default admin user **before** OpenSearch starts.
 
 **What it does:**
 1. Generates bcrypt password hash for custom user (using OpenSearch hash.sh tool)
@@ -1080,18 +1106,16 @@ curl -k -u dbadmin:MySecurePassword123 https://localhost:9200/_cluster/health
 - File replacement is atomic (writes new file completely before OpenSearch starts)
 - **Semaphore is ALWAYS written** (success or error)
 
-#### Phase 2: Certificate and Cluster Verification (Background)
+#### Startup Completion
 
-The second phase verifies certificates and cluster health in the background after OpenSearch starts.
+After the entrypoint completes all pre-startup configuration:
 
-**What it does:**
-1. Waits for HTTP port (9200) to be listening
-2. Waits for OpenSearch cluster to be responsive (`/_cluster/health`)
-3. Verifies all AxonOps SSL certificates exist in `/etc/opensearch/certs/`
-4. Verifies security configuration file exists
-5. Updates semaphore file with final status
-
-**Note:** If `AXONOPS_SEARCH_TLS_ENABLED=false`, the background script cannot use securityadmin tool (requires TLS) and will skip advanced user creation steps.
+**What happens:**
+1. OpenSearch process starts with all configuration applied
+2. Security plugin loads with pre-configured admin user
+3. AxonOps certificates are used for TLS
+4. Healthcheck startup probe verifies the semaphore file shows RESULT=success
+5. Container is marked "Started" in Kubernetes only after healthcheck passes
 
 #### Control and Disable
 
@@ -1133,32 +1157,15 @@ ADMIN_USER=dbadmin
 - `success` - Security initialization completed successfully
   - `custom_user_created_prestartup` - Custom admin user created (default admin removed)
   - `default_config` - Using default admin user and password
-  - `custom_admin_user_created` - Custom user created via background script (legacy)
-- `skipped` - Initialization skipped (with REASON explaining why)
-  - `security_plugin_disabled` - DISABLE_SECURITY_PLUGIN=true
-  - `tls_disabled_no_securityadmin` - TLS disabled, cannot use securityadmin tool
-- `failed` - Initialization failed (with REASON) - **Script exits with code 1**
-  - `http_port_timeout` - HTTP port didn't open within timeout
-  - `cluster_not_responsive` - Cluster didn't respond within timeout
-  - `certificates_missing` - AxonOps certificates not found
-  - `security_config_missing` - Security configuration files not found
-  - `password_hash_failed` - Failed to generate bcrypt password hash
-  - `securityadmin_failed` - securityadmin tool failed to apply configuration
 
-**Timeout Configuration:**
-- Default timeout: 600 seconds (10 minutes)
-- Configurable via `INIT_TIMEOUT` environment variable
-- Example: `-e INIT_TIMEOUT=1200` for 20 minutes if OpenSearch startup is slow
+**Note:** If initialization fails (e.g., password hash generation fails), the entrypoint script exits with code 1 before writing the semaphore, preventing the container from starting.
 
-**Important:** When `RESULT=failed` is written, the healthcheck startup probe will fail, preventing the container from being marked "Started" in Kubernetes.
-
-**Guarantee:** The semaphore file is **ALWAYS** written in all code paths. The healthcheck startup probe:
+**Guarantee:** The semaphore file is **ALWAYS** written by the entrypoint script. The healthcheck startup probe:
 1. Requires semaphore file to exist
-2. Checks the RESULT field in the semaphore
-3. **Fails the startup probe if RESULT=failed**
-4. Passes if RESULT=success or RESULT=skipped
+2. Checks the RESULT field
+3. Passes if RESULT=success
 
-This ensures the container won't be marked "Started" if initialization failed.
+If the entrypoint encounters errors during pre-startup initialization, it exits with code 1 before reaching OpenSearch startup, so the container never fully starts.
 
 #### Initialization Logs
 
@@ -1202,7 +1209,7 @@ Located in `/etc/opensearch/opensearch-security/`:
 | `roles_mapping.yml` | User-to-role mappings | Maps users and backend roles to OpenSearch roles |
 | `action_groups.yml` | Action group definitions | Groups of permissions for simplified role creation |
 | `tenants.yml` | Multi-tenancy configuration | Tenant definitions for dashboard isolation |
-| `nodes_dn.yml` | Node distinguished names | Certificate DNs allowed for node-to-node communication |
+| `nodes_dn.yml` | Node distinguished names | Certificate DNs allowed for node-to-node communication (legacy, use `OPENSEARCH_SECURITY_NODES_DN` env var instead) |
 | `allowlist.yml` | API allowlist | REST API endpoints allowed when security is restricted |
 | `audit.yml` | Audit logging configuration | Audit log settings (disabled by default, can be enabled) |
 
@@ -1215,6 +1222,7 @@ Located in `/etc/opensearch/opensearch-security/`:
 - **Network:** Binds to `0.0.0.0` (all interfaces)
 - **Thread Pool:** `thread_pool.write.queue_size: 10000` (increase for high-write workloads)
 - **Security:** AxonOps-branded certificates, demo certificates disabled (`allow_unsafe_democertificates: false`)
+- **Nodes DN:** Default wildcard `CN=*.axonops.svc.cluster.local` (configurable via `OPENSEARCH_SECURITY_NODES_DN`)
 
 **jvm.options:**
 - **Heap:** Default 8G (`-Xms8g -Xmx8g`), configurable via `OPENSEARCH_HEAP_SIZE`
@@ -1420,10 +1428,9 @@ docker logs axondb-search
    - Set: `sudo sysctl -w vm.max_map_count=262144`
    - Permanent: Add to `/etc/sysctl.conf`
 
-5. **Initialization timeout:**
-   - Init script waits up to 10 minutes for OpenSearch
-   - Check: `docker exec axondb-search cat /var/lib/opensearch/.axonops/init-security.done`
-   - Increase: `-e INIT_TIMEOUT=1200`
+5. **Initialization issues:**
+   - Check semaphore: `docker exec axondb-search cat /var/lib/opensearch/.axonops/init-security.done`
+   - Look for RESULT=failed or specific REASON
 
 **Get OpenSearch logs:**
 ```bash

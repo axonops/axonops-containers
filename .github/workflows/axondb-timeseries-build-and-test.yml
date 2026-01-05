@@ -182,7 +182,34 @@ jobs:
         if: always()
         run: |
           docker stop axondb-test || true
-          docker rm axondb-test || true
+          docker rm -f axondb-test || true
+
+      - name: Start test container with SSL
+        uses: ./.github/actions/axondb-timeseries-test-ssl
+        with:
+          container_name: axondb-ssl-test
+          image: axondb-timeseries:test
+
+      - name: Test cqlai with SSL
+        uses: ./.github/actions/axondb-timeseries-test-cqlai
+        with:
+          container_name: axondb-ssl-test
+
+      - name: Test cqlsh with SSL
+        uses: ./.github/actions/axondb-timeseries-test-cqlsh
+        with:
+          container_name: axondb-ssl-test
+
+      - name: Cleanup SSL test container and certificate
+        if: always()
+        run: |
+          echo "=== Stopping and removing axondb-ssl-test ==="
+          docker stop axondb-ssl-test || true
+          docker rm -f axondb-ssl-test || true
+
+          echo "=== Cleaning up test certificates ==="
+          sudo rm -rf tests/certs
+          echo "✓ Test certificates removed"
 
   # Comprehensive environment variable test (runs separately)
   axondb-timeseries-env-var-test:
@@ -219,3 +246,4 @@ jobs:
         uses: ./.github/actions/axondb-timeseries-test-dc-detection
         with:
           image: axondb-timeseries:test
+
