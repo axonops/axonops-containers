@@ -456,13 +456,13 @@ FROM docker.io/k8ssandra/cass-management-api:5.0.6-ubi
 
 Our containers extend from `k8ssandra/cass-management-api` base images. For supply chain security, we pin base images by digest (immutable) rather than tags. The `K8SSANDRA_BASE_DIGEST` maps Cassandra versions to verified image digests, preventing supply chain attacks where upstream images could be replaced maliciously.
 
-Digest mapping for 5.0.x versions:
-- 5.0.1: `sha256:51d2e8e6696ea37faf652c5bb33a8f8db9f9c565348a2161989ad8f0a9369fd9`
-- 5.0.2: `sha256:688f31162586238bd9e40ca698dcb9819a7b26baaa939f2758b844a73337155b`
-- 5.0.3: `sha256:dff75f5164bd49dd2ceaf6ba6a957eabacb13bd56b401a98c174633de94435cb`
-- 5.0.4: `sha256:553a5aa3170c3462a51e253fecd80260366a119bb298248482811a7b2d774b56`
-- 5.0.5: `sha256:801f14e369fbc90797bacbc755d5539f56506c30da5de005aedecabc0ca358bd`
-- 5.0.6: `sha256:aa2de19866f3487abe0dff65e6b74f5a68c6c5a7d211b5b7a3e0b961603ba5af`
+Digest mapping for 5.0.x versions (k8ssandra API v0.1.111):
+- 5.0.1: `sha256:5cc48bddcb3be29f5c1492408e106417d1455f1182a45f191e99529226135240`
+- 5.0.2: `sha256:17a66c0514e290b3428589ec09cff08d449ca888dd21801baf4896168de78432`
+- 5.0.3: `sha256:359d2a448aab4d64e9e67978f1496b1aa502f03208866bb6f3a0a28d5426e79c`
+- 5.0.4: `sha256:e7cbac800ec3b8f37d7e7952f438544fc2c549a40c072e9074cfdea115925149`
+- 5.0.5: `sha256:b0ced4894cc5e9972d00b45d36def9bd7ac87c6a88934344b676849d8672f7ed`
+- 5.0.6: `sha256:bc5708b8ac40c2ad027961a2b1e1b70c826468b8b727c30859718ffc24d7ae04`
 
 **How to get digests for new k8ssandra versions:**
 
