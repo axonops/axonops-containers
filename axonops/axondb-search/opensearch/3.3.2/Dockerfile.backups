@@ -1,0 +1,75 @@
+# Supply chain security: Use immutable digest instead of mutable tag
+# UBI 9 minimal base image digest (latest as of 2025-12-10)
+# Points to: registry.access.redhat.com/ubi9/ubi-minimal:latest
+ARG UBI9_MINIMAL_DIGEST=sha256:80f3902b6dcb47005a90e14140eef9080ccc1bb22df70ee16b27d5891524edb2
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal@${UBI9_MINIMAL_DIGEST}
+
+# Re-declare ARGs after FROM (Docker ARG scope rule)
+ARG UBI9_MINIMAL_DIGEST
+ARG TARGETARCH
+
+# Build metadata arguments (provided by CI/CD or set to defaults for local builds)
+ARG BUILD_DATE=unknown
+ARG VCS_REF=unknown
+ARG VERSION=unknown
+ARG GIT_TAG=unknown
+ARG GITHUB_ACTOR=unknown
+ARG IS_PRODUCTION_RELEASE=false
+ARG IMAGE_FULL_NAME=unknown
+
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+
+RUN echo "AXONOPS_BUILD: Using UBI 9 minimal base image (registry.access.redhat.com/ubi9/ubi-minimal)"
+RUN echo "AXONOPS_BUILD: Base image digest: ${UBI9_MINIMAL_DIGEST}"
+
+# Legacy labels (for backward compatibility)
+LABEL maintainer="AxonOps"
+LABEL name="AxonOps AxonDB Search (OpenSearch ${OPENSEARCH_VERSION})"
+LABEL vendor="AxonOps"
+LABEL url="https://axonops.com"
+LABEL release="${OPENSEARCH_VERSION}"
+LABEL summary="Container to manage OpenSearch backups and restores"
+LABEL description="Production-ready container"
+
+# OCI standard labels
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.authors="AxonOps"
+LABEL org.opencontainers.image.url="https://axonops.com"
+LABEL org.opencontainers.image.documentation="https://github.com/axonops/axonops-containers/blob/main/axonops/axondb-search/README.md"
+LABEL org.opencontainers.image.source="https://github.com/axonops/axonops-containers"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.vendor="AxonOps"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.title="AxonOps AxonDB Search (OpenSearch ${OPENSEARCH_VERSION})"
+LABEL org.opencontainers.image.description="OpenSearch ${OPENSEARCH_VERSION} optimized for AxonOps self-hosted search workloads. Built from Red Hat UBI 9 minimal (${UBI9_MINIMAL_DIGEST})."
+LABEL org.opencontainers.image.ref.name="${IMAGE_FULL_NAME}"
+LABEL org.opencontainers.image.base.name="registry.access.redhat.com/ubi9/ubi-minimal:latest"
+LABEL org.opencontainers.image.base.digest="${UBI9_MINIMAL_DIGEST}"
+
+LABEL com.axonops.build.actor="${GITHUB_ACTOR}"
+
+# Update all packages to latest versions (security patches)
+RUN echo "Updating all packages to latest versions..." && \
+    microdnf update -y && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
+
+RUN echo "Installing required tools (curl, jq)..." && \
+    microdnf install -y curl jq && \
+    microdnf clean all
+
+# Copy backup script
+COPY scripts/backup.sh /usr/local/bin/backup.sh
+RUN chmod +x /usr/local/bin/backup.sh
+
+# Create non-root user for running backups
+RUN groupadd -g 1000 opensearch && \
+    useradd -u 1000 -g opensearch -d /home/opensearch -m opensearch
+
+USER opensearch
+WORKDIR /home/opensearch
+
+ENTRYPOINT ["/usr/local/bin/backup.sh"]
+CMD ["backup"]

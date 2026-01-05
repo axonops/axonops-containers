@@ -1,0 +1,213 @@
+{{- if .Values.backups.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "opensearch.uname" . }}-backup
+  labels:
+    {{- include "opensearch.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backups.schedule | quote }}
+  successfulJobsHistoryLimit: {{ .Values.backups.successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ .Values.backups.failedJobsHistoryLimit | default 3 }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            {{- include "opensearch.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+          {{- with .Values.backups.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          restartPolicy: OnFailure
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.rbac.create }}
+          serviceAccountName: {{ template "opensearch.uname" . }}
+          {{- else if .Values.rbac.serviceAccountName }}
+          serviceAccountName: {{ .Values.rbac.serviceAccountName }}
+          {{- end }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+            - name: backup
+              image: "{{ include "opensearch.dockerRegistry" . }}{{ .Values.backups.image.repository }}:{{ .Values.backups.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.backups.image.pullPolicy }}
+              args:
+                - backup
+              env:
+                # OpenSearch connection
+                - name: AXONOPS_SEARCH_URL
+                  value: "{{ .Values.protocol }}://{{ include "opensearch.serviceName" . }}:{{ .Values.httpPort }}"
+                # Authentication
+                {{- if .Values.authentication.opensearch_secret }}
+                - name: AXONOPS_SEARCH_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.authentication.opensearch_secret }}
+                      key: username
+                - name: AXONOPS_SEARCH_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.authentication.opensearch_secret }}
+                      key: password
+                {{- else if and .Values.authentication.opensearch_user .Values.authentication.opensearch_password }}
+                - name: AXONOPS_SEARCH_USER
+                  value: {{ .Values.authentication.opensearch_user | quote }}
+                - name: AXONOPS_SEARCH_PASSWORD
+                  value: {{ .Values.authentication.opensearch_password | quote }}
+                {{- end }}
+                # TLS configuration
+                {{- if .Values.tls.enabled }}
+                {{- if .Values.tls.certManager.enabled }}
+                - name: AXONOPS_SEARCH_CA_CERT
+                  value: "/etc/opensearch/certs/ca.crt"
+                {{- else if .Values.tls.manual.existingSecret }}
+                - name: AXONOPS_SEARCH_CA_CERT
+                  value: "/etc/opensearch/certs/ca.crt"
+                {{- end }}
+                {{- else }}
+                # TLS not enabled, skip certificate verification
+                - name: AXONOPS_SEARCH_SKIP_TLS_VERIFY
+                  value: "true"
+                {{- end }}
+                # Backup target type
+                - name: AXONOPS_SEARCH_BACKUP_TARGET
+                  value: {{ .Values.backups.target.type | quote }}
+                # Snapshot repository configuration
+                - name: AXONOPS_SEARCH_SNAPSHOT_REPO
+                  value: {{ .Values.backups.snapshotRepo | quote }}
+                - name: AXONOPS_SEARCH_SNAPSHOT_PREFIX
+                  value: {{ .Values.backups.snapshotPrefix | quote }}
+                - name: AXONOPS_SEARCH_SNAPSHOT_INDICES
+                  value: {{ .Values.backups.indices | quote }}
+                {{- if .Values.backups.retentionCount }}
+                - name: AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT
+                  value: {{ .Values.backups.retentionCount | quote }}
+                {{- end }}
+                {{- if .Values.backups.repoSettings }}
+                - name: AXONOPS_SEARCH_REPO_SETTINGS
+                  value: {{ .Values.backups.repoSettings | quote }}
+                {{- end }}
+                # Target-specific configuration
+                {{- if eq .Values.backups.target.type "local" }}
+                - name: AXONOPS_SEARCH_FS_PATH
+                  value: {{ .Values.backups.target.local.path | quote }}
+                {{- else if eq .Values.backups.target.type "s3" }}
+                {{- with .Values.backups.target.s3 }}
+                - name: AXONOPS_SEARCH_S3_BUCKET
+                  value: {{ .bucket | quote }}
+                {{- if .basePath }}
+                - name: AXONOPS_SEARCH_S3_BASE_PATH
+                  value: {{ .basePath | quote }}
+                {{- end }}
+                {{- if .region }}
+                - name: AXONOPS_SEARCH_S3_REGION
+                  value: {{ .region | quote }}
+                {{- end }}
+                {{- if .endpoint }}
+                - name: AXONOPS_SEARCH_S3_ENDPOINT
+                  value: {{ .endpoint | quote }}
+                {{- end }}
+                {{- if .protocol }}
+                - name: AXONOPS_SEARCH_S3_PROTOCOL
+                  value: {{ .protocol | quote }}
+                {{- end }}
+                {{- if .pathStyleAccess }}
+                - name: AXONOPS_SEARCH_S3_PATH_STYLE_ACCESS
+                  value: "true"
+                {{- end }}
+                {{- end }}
+                {{- else if eq .Values.backups.target.type "gcs" }}
+                {{- with .Values.backups.target.gcs }}
+                - name: AXONOPS_SEARCH_GCS_BUCKET
+                  value: {{ .bucket | quote }}
+                {{- if .basePath }}
+                - name: AXONOPS_SEARCH_GCS_BASE_PATH
+                  value: {{ .basePath | quote }}
+                {{- end }}
+                {{- if .client }}
+                - name: AXONOPS_SEARCH_GCS_CLIENT
+                  value: {{ .client | quote }}
+                {{- end }}
+                {{- end }}
+                {{- else if eq .Values.backups.target.type "azure" }}
+                {{- with .Values.backups.target.azure }}
+                - name: AXONOPS_SEARCH_AZURE_CONTAINER
+                  value: {{ .container | quote }}
+                {{- if .basePath }}
+                - name: AXONOPS_SEARCH_AZURE_BASE_PATH
+                  value: {{ .basePath | quote }}
+                {{- end }}
+                {{- if .client }}
+                - name: AXONOPS_SEARCH_AZURE_CLIENT
+                  value: {{ .client | quote }}
+                {{- end }}
+                {{- end }}
+                {{- end }}
+                {{- with .Values.backups.extraEnvs }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+              {{- with .Values.backups.resources }}
+              resources:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- if or .Values.tls.enabled (eq .Values.backups.target.type "local") }}
+              volumeMounts:
+                {{- if .Values.tls.enabled }}
+                {{- if .Values.tls.certManager.enabled }}
+                - name: tls-certs
+                  mountPath: /etc/opensearch/certs
+                  readOnly: true
+                {{- else if .Values.tls.manual.existingSecret }}
+                - name: tls-certs
+                  mountPath: /etc/opensearch/certs
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+                {{- if eq .Values.backups.target.type "local" }}
+                - name: backup-storage
+                  mountPath: {{ .Values.backups.target.local.path }}
+                {{- end }}
+              {{- end }}
+          {{- if or .Values.tls.enabled (eq .Values.backups.target.type "local") }}
+          volumes:
+            {{- if .Values.tls.enabled }}
+            {{- if .Values.tls.certManager.enabled }}
+            - name: tls-certs
+              secret:
+                secretName: {{ .Values.tls.certManager.certificate.secretName | default (printf "%s-tls" (include "opensearch.uname" .)) }}
+            {{- else if .Values.tls.manual.existingSecret }}
+            - name: tls-certs
+              secret:
+                secretName: {{ .Values.tls.manual.existingSecret }}
+            {{- end }}
+            {{- end }}
+            {{- if eq .Values.backups.target.type "local" }}
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: {{ .Values.backups.target.local.existingClaim | default (printf "%s-backup" (include "opensearch.uname" .)) }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.backups.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backups.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backups.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

@@ -56,6 +56,212 @@ config:
     # Bind to all interfaces because we don't know what IP address Docker will assign to us.
     network.host: 0.0.0.0
 
+backups:
+  # Enable scheduled backups via CronJob
+  enabled: true
+
+  # Cron schedule for backups (default: daily at 8am UTC)
+  schedule: "0 8 * * *"
+
+  # Number of successful/failed job history to keep
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+  # Backup container image
+  image:
+    repository: "ghcr.io/axonops/axondb-search-backups"
+    # Override image tag (defaults to Chart.AppVersion)
+    tag: ""
+    pullPolicy: "IfNotPresent"
+
+  # Snapshot repository name in OpenSearch
+  snapshotRepo: "axon-backup-repo"
+
+  # Snapshot name prefix
+  snapshotPrefix: "snapshot"
+
+  # Number of snapshots to retain (empty = keep all)
+  retentionCount: ""
+
+  # Indices to backup (default: all)
+  indices: "_all"
+
+  # Resource requests/limits for the backup job
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+  # Pod annotations for the backup job
+  podAnnotations: {}
+
+  # Node selector for the backup job
+  nodeSelector: {}
+
+  # Tolerations for the backup job
+  tolerations: []
+
+  # Affinity rules for the backup job
+  affinity: {}
+
+  # Extra environment variables for the backup container
+  extraEnvs: []
+  #  - name: MY_VAR
+  #    value: "my-value"
+
+  # Backup target configuration
+  # Supported types: local, s3, gcs, azure
+  target:
+    # Backup target type
+    type: local
+
+    # =========================================================================
+    # Local/Filesystem backup configuration
+    # =========================================================================
+    # For local backups, ensure the path is registered in opensearch.yml:
+    #   path.repo: ["/mnt/backups"]
+    # And mount the volume to both OpenSearch and backup pods
+    local:
+      path: "/mnt/backups"
+      # PVC size for backup storage
+      size: "10Gi"
+      # Storage class for the backup PVC (empty = default, "-" = no storage class)
+      storageClass: ""
+      # Use an existing PVC instead of creating one
+      existingClaim: ""
+
+    # =========================================================================
+    # S3 backup configuration
+    # =========================================================================
+    # Requires repository-s3 plugin installed on OpenSearch nodes
+    # For AWS authentication, use IAM roles (recommended) or configure credentials
+    # in OpenSearch keystore
+    s3:
+      bucket: ""
+      # Base path within the bucket (optional)
+      basePath: ""
+      # AWS region (optional, uses default region if not set)
+      region: ""
+      # Custom S3 endpoint for S3-compatible storage (MinIO, etc.)
+      endpoint: ""
+      # Protocol for custom endpoint (http or https)
+      protocol: ""
+      # Use path-style access (required for MinIO and some S3-compatible stores)
+      pathStyleAccess: false
+
+    # =========================================================================
+    # Google Cloud Storage backup configuration
+    # =========================================================================
+    # Requires repository-gcs plugin installed on OpenSearch nodes
+    # Configure GCS credentials in OpenSearch keystore or use workload identity
+    gcs:
+      bucket: ""
+      # Base path within the bucket (optional)
+      basePath: ""
+      # GCS client name (optional, defaults to 'default')
+      client: ""
+
+    # =========================================================================
+    # Azure Blob Storage backup configuration
+    # =========================================================================
+    # Requires repository-azure plugin installed on OpenSearch nodes
+    # Configure Azure credentials in OpenSearch keystore
+    azure:
+      container: ""
+      # Base path within the container (optional)
+      basePath: ""
+      # Azure client name (optional, defaults to 'default')
+      client: ""
+
+  # Advanced: Override the full repository settings JSON
+  # This takes precedence over the target-specific configuration above
+  # repoSettings: '{"bucket":"my-bucket","region":"us-east-1"}'
+  repoSettings: ""
+
+# ==============================================================================
+# Backup Configuration Examples
+# ==============================================================================
+#
+# Example 1: Local filesystem backup
+# ----------------------------------
+# backups:
+#   enabled: true
+#   schedule: "0 2 * * *"
+#   target:
+#     type: local
+#     local:
+#       path: "/mnt/backups"
+#
+# Note: Add to opensearch config: path.repo: ["/mnt/backups"]
+# And mount the backup volume to both OpenSearch StatefulSet and backup CronJob
+#
+# Example 2: AWS S3 backup with IAM roles
+# ---------------------------------------
+# backups:
+#   enabled: true
+#   schedule: "0 2 * * *"
+#   retentionCount: "7"
+#   target:
+#     type: s3
+#     s3:
+#       bucket: "my-opensearch-backups"
+#       basePath: "production/cluster1"
+#       region: "us-east-1"
+#
+# Note: Use IRSA (IAM Roles for Service Accounts) for authentication
+# The service account needs s3:GetObject, s3:PutObject, s3:DeleteObject,
+# s3:ListBucket permissions on the bucket
+#
+# Example 3: S3-compatible storage (MinIO)
+# ----------------------------------------
+# backups:
+#   enabled: true
+#   schedule: "0 */6 * * *"
+#   target:
+#     type: s3
+#     s3:
+#       bucket: "opensearch-backups"
+#       endpoint: "minio.minio.svc.cluster.local:9000"
+#       protocol: "http"
+#       pathStyleAccess: true
+#
+# Note: Configure credentials in OpenSearch keystore:
+#   opensearch-keystore add s3.client.default.access_key
+#   opensearch-keystore add s3.client.default.secret_key
+#
+# Example 4: Google Cloud Storage backup
+# --------------------------------------
+# backups:
+#   enabled: true
+#   schedule: "0 3 * * *"
+#   retentionCount: "14"
+#   target:
+#     type: gcs
+#     gcs:
+#       bucket: "my-gcs-backup-bucket"
+#       basePath: "opensearch/production"
+#
+# Note: Use Workload Identity or configure service account JSON in keystore
+#
+# Example 5: Azure Blob Storage backup
+# ------------------------------------
+# backups:
+#   enabled: true
+#   schedule: "0 4 * * *"
+#   target:
+#     type: azure
+#     azure:
+#       container: "opensearch-backups"
+#       basePath: "cluster1"
+#
+# Note: Configure Azure credentials in OpenSearch keystore:
+#   opensearch-keystore add azure.client.default.account
+#   opensearch-keystore add azure.client.default.key
+#
+
 # OpenSearch initial admin password
 # Chart version 2.18.0 and App Version OpenSearch 2.12.0 onwards a custom strong password needs to be provided in order to setup demo admin user.
 # Cluster will not spin-up without this unless demo config install is disabled.
