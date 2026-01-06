@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-set -x
+
+[ "$AXONOPS_SEARCH_DEBUG" == "true" ] && set -x
 
 # Backup script for OpenSearch snapshots
 # - Checks whether a snapshot repository is configured according to env vars
