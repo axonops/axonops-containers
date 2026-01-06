@@ -188,7 +188,11 @@ fi
 : "${AXONOPS_SEARCH_BACKUS_PATH:=/mnt/backups}"
 
 if [ $AXONOPS_SEARCH_BACKUP_TARGET = "local" ]; then
-    echo "path.repo: [\"$AXONOPS_SEARCH_BACKUS_PATH\"]" >> "/etc/opensearch/opensearch.yml"
+    if [ -d $AXONOPS_SEARCH_BACKUP_TARGET ]; then
+        echo "path.repo: [\"$AXONOPS_SEARCH_BACKUS_PATH\"]" >> "/etc/opensearch/opensearch.yml"
+    else
+        echo "WARNING: $AXONOPS_SEARCH_BACKUP_TARGET not found. Backups disabled"
+    fi
 fi
 
 # Apply security nodes DN if env var set (for custom certificate scenarios)
