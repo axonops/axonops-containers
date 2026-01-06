@@ -120,7 +120,7 @@ runs:
         echo "=== Validating SSL Environment Variables ==="
 
         CERTS=$(docker exec axondb-search-env-test ls -l /etc/opensearch/certs/tls.crt /etc/opensearch/certs/tls.key /etc/opensearch/certs/ca.crt >/dev/null 2>&1 && echo "FOUND" || echo "MISSING")
-        
+
         if [ "$CERTS" = "missing" ]; then
           echo "ERROR: SSL environment variables not set correctly"
           exit 1

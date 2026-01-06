@@ -1,9 +1,9 @@
 # Supply chain security: Use immutable digest instead of mutable tag
 # UBI 9 minimal base image digest (latest as of 2025-12-10)
 # Points to: registry.access.redhat.com/ubi9/ubi-minimal:latest
-ARG UBI9_MINIMAL_DIGEST=sha256:6db3a58e284f9df960d92299c61ae51065742fb309b8696706cc54f7b1384161
+ARG UBI9_MINIMAL_DIGEST=sha256:6fc28bcb6776e387d7a35a2056d9d2b985dc4e26031e98a2bd35a7137cd6fd71
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal@$UBI9_MINIMAL_DIGEST
 
 # Re-declare ARGs after FROM (Docker ARG scope rule)
 ARG UBI9_MINIMAL_DIGEST

@@ -1,0 +1,122 @@
+name: AxonDB Search Backups Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'fix/**'
+      - 'feat/**'
+    paths:
+      - 'axonops/axondb-search/opensearch/3.3.2/Dockerfile.backups'
+      - 'axonops/axondb-search/opensearch/3.3.2/scripts/backup.sh'
+      - '.github/workflows/axondb-search-backups-*.yml'
+      - '.github/actions/axondb-search-backups-*/**'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'axonops/axondb-search/opensearch/3.3.2/Dockerfile.backups'
+      - 'axonops/axondb-search/opensearch/3.3.2/scripts/backup.sh'
+      - '.github/workflows/axondb-search-backups-*.yml'
+      - '.github/actions/axondb-search-backups-*/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  axondb-search-backups-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for testing
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-search/opensearch/3.3.2
+          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile.backups
+          platforms: linux/amd64
+          load: true
+          tags: axondb-search-backups:test
+          build-args: |
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=test
+            GIT_TAG=test-build
+            GITHUB_ACTOR=${{ github.actor }}
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=axondb-search-backups:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test container startup
+        run: |
+          echo "Testing container can run help command..."
+          docker run --rm axondb-search-backups:test help || docker run --rm axondb-search-backups:test --help || true
+
+      - name: Verify backup script exists
+        run: |
+          echo "Verifying backup script is executable..."
+          docker run --rm --entrypoint /bin/sh axondb-search-backups:test -c "test -x /usr/local/bin/backup.sh && echo '✓ Backup script is executable' || exit 1"
+
+      - name: Verify user and permissions
+        run: |
+          echo "Checking opensearch user exists..."
+          docker run --rm --entrypoint /bin/sh axondb-search-backups:test -c "id opensearch && echo '✓ opensearch user exists' || exit 1"
+
+          echo "Checking user ID is 1000..."
+          docker run --rm --entrypoint /bin/sh axondb-search-backups:test -c "test \$(id -u opensearch) -eq 1000 && echo '✓ User ID is 1000' || exit 1"
+
+      - name: Verify jq installation
+        run: |
+          echo "Testing jq installation..."
+          docker run --rm --entrypoint /bin/sh axondb-search-backups:test -c "jq --version && echo '✓ jq is installed' || exit 1"
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-search-backups:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          scanners: 'vuln'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-search-backups:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          scanners: 'vuln'
+          trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "### AxonDB Search Backups Build and Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: axondb-search-backups:test" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

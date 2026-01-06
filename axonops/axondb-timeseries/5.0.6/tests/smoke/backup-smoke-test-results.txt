@@ -1,4 +1,3 @@
 AxonDB Cassandra Backup/Restore Smoke Test Results
 ===================================================
 Date: Fri Dec 26 06:22:43 AM CET 2025
-

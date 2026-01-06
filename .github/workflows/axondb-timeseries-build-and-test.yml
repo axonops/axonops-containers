@@ -246,4 +246,3 @@ jobs:
         uses: ./.github/actions/axondb-timeseries-test-dc-detection
         with:
           image: axondb-timeseries:test
-
