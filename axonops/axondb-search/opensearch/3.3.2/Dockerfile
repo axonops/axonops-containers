@@ -22,6 +22,9 @@ ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME=unknown
 
+# Target architecture for multi-arch builds (will be set by Docker buildx)
+ARG TARGETARCH
+
 ENV OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
 
@@ -99,7 +102,20 @@ RUN microdnf install -y --nodocs \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
-COPY --chown=opensearch:root "./opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME"
+# Copy OpenSearch files - architecture directory is determined at runtime
+# TARGETARCH is automatically set by Docker buildx (amd64 or arm64)
+# We map: amd64 -> x86_64, arm64 -> aarch64
+RUN --mount=type=bind,source=.,target=/build \
+    if [ "${TARGETARCH}" = "amd64" ]; then \
+        ARCH_DIR="x86_64"; \
+    elif [ "${TARGETARCH}" = "arm64" ]; then \
+        ARCH_DIR="aarch64"; \
+    else \
+        echo "ERROR: Unsupported TARGETARCH: ${TARGETARCH}" && exit 1; \
+    fi && \
+    echo "Copying OpenSearch for architecture: ${TARGETARCH} from ${ARCH_DIR}" && \
+    cp -r "/build/${ARCH_DIR}/opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME" && \
+    chown -R opensearch:root "$OPENSEARCH_HOME"
 
 # Download and install OpenSearch with SHA512 verification
 RUN mkdir -p /licenses && \

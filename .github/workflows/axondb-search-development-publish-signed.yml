@@ -56,47 +56,32 @@ jobs:
           echo "✓ Build ref: ${REF}"
           echo "✓ Container version: ${VERSION}"
 
-  axondb-search-test:
+  prepare-build-context:
     needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix:
         opensearch_version: ['3.3.2']
-    permissions:
-      contents: read
-      security-events: write
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.setup.outputs.ref }}
 
-      - name: Set up QEMU for multi-arch builds
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          install: true
-          driver-opts: |
-            image=moby/buildkit:latest
-
-      - name: Extract OpenSearch version and verify tarballs
-        id: version
+      - name: Prepare OpenSearch Build Context
+        id: prepare
         shell: bash
         run: |
           set -Eeuo pipefail
 
           OPENSEARCH_VERSION=${{ matrix.opensearch_version }}
-
           echo "opensearch_version=${OPENSEARCH_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "✓ OpenSearch version: ${OPENSEARCH_VERSION}"
+          echo "✓ Preparing context for OpenSearch version: ${OPENSEARCH_VERSION}"
 
           download_and_check() {
             local arch="$1"       # x64 or arm64
             local sha512="$2"
+            local target="$3"     # x86_64 or aarch64
             local tarball="opensearch-${OPENSEARCH_VERSION}-linux-${arch}.tar.gz"
             local url="https://artifacts.opensearch.org/releases/bundle/opensearch/${OPENSEARCH_VERSION}/${tarball}"
 
@@ -104,8 +89,9 @@ jobs:
             wget -q "${url}"
 
             echo "${sha512}  ${tarball}" | sha512sum -c -
-            tar zxf "${tarball}" -C ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/
-            echo "✓ Verified and listed: ${tarball}"
+            mkdir -p ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}
+            tar zxf "${tarball}" -C ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}
+            echo "✓ Verified and extracted: ${tarball}"
           }
 
           # Set checksums based on OpenSearch version
@@ -121,17 +107,57 @@ jobs:
               ;;
           esac
 
-          download_and_check x64  "${SHA512_X64}"
-          download_and_check arm64 "${SHA512_ARM64}"
+          download_and_check x64  "${SHA512_X64}" x86_64
+          download_and_check arm64 "${SHA512_ARM64}" aarch64
 
+      - name: Upload build context artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-context-${{ matrix.opensearch_version }}
+          path: ./axonops
+          retention-days: 1
+
+  axondb-search-test:
+    needs: [setup, prepare-build-context]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        opensearch_version: ['3.3.2']
+        platform: [linux/amd64, linux/arm64]
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+
+      - name: Download build context artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-context-${{ matrix.opensearch_version }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.platform }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+          driver-opts: |
+            image=moby/buildkit:latest
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
           context: ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}
           file: ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          load: false
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
           tags: axondb-search:test
           build-args: |
             OPENSEARCH_VERSION=${{ matrix.opensearch_version }}
@@ -142,8 +168,8 @@ jobs:
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.opensearch_version }}-${{ needs.setup.outputs.version }}
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Start container and wait for services
         uses: ./.github/actions/axondb-search-start-and-wait
@@ -223,7 +249,7 @@ jobs:
           docker rm axondb-test || true
 
   axondb-search-build-push-sign:
-    needs: [setup, axondb-search-test]
+    needs: [setup, axondb-search-test, prepare-build-context]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -241,6 +267,11 @@ jobs:
         with:
           ref: ${{ needs.setup.outputs.ref }}
 
+      - name: Download build context artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-context-${{ matrix.opensearch_version }}
+
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
 
@@ -253,12 +284,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set OpenSearch version from matrix
-        id: version
-        run: |
-          echo "opensearch_version=${{ matrix.opensearch_version }}" >> $GITHUB_OUTPUT
-          echo "✓ OpenSearch version: ${{ matrix.opensearch_version }}"
 
       - name: Build and push Docker image (multi-arch)
         id: build
