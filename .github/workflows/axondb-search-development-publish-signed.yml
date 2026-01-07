@@ -99,16 +99,7 @@ jobs:
             # The tarball contains opensearch-VERSION/ as root, we want to strip it
             tar zxf "${tarball}" -C ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target} --strip-components=1
             echo "✓ Verified and extracted: ${tarball}"
-            # List what was created for debugging
-            echo "Created structure in ${target}:"
-            ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}/ | head -10
-            # Verify LICENSE.txt exists
-            if [ -f "./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}/LICENSE.txt" ]; then
-              echo "✓ LICENSE.txt found"
-            else
-              echo "WARNING: LICENSE.txt not found in extracted files!"
-            fi
-          }
+            rm -f "${tarball}"
 
           # Set checksums based on OpenSearch version
           case "${OPENSEARCH_VERSION}" in
@@ -125,15 +116,6 @@ jobs:
 
           download_and_check x64  "${SHA512_X64}" x86_64
           download_and_check arm64 "${SHA512_ARM64}" aarch64
-
-          echo "=== Final structure before upload ==="
-          echo "Contents of opensearch version directory:"
-          ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/
-          echo "=== Checking subdirectories ==="
-          echo "x86_64 contents:"
-          ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/x86_64/ | head -5
-          echo "aarch64 contents:"
-          ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/aarch64/ | head -5
 
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
