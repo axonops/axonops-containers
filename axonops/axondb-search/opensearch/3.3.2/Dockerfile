@@ -99,7 +99,7 @@ RUN microdnf install -y --nodocs \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
-COPY "./opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME"
+COPY --chown=opensearch:root "./opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME"
 
 # Download and install OpenSearch with SHA512 verification
 RUN mkdir -p "$OPENSEARCH_HOME" /licenses && \
