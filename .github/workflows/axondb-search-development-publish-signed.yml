@@ -56,12 +56,16 @@ jobs:
           echo "✓ Build ref: ${REF}"
           echo "✓ Container version: ${VERSION}"
 
-  prepare-build-context:
-    needs: setup
+  axondb-search-test:
+    needs: [setup]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         opensearch_version: ['3.3.2']
+        platform: [linux/amd64, linux/arm64]
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
@@ -122,34 +126,6 @@ jobs:
           ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/x86_64/ | head -5
           echo "aarch64 contents:"
           ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/aarch64/ | head -5
-
-      - name: Upload build context artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-context-${{ matrix.opensearch_version }}
-          path: ./axonops
-          retention-days: 1
-
-  axondb-search-test:
-    needs: [setup, prepare-build-context]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        opensearch_version: ['3.3.2']
-        platform: [linux/amd64, linux/arm64]
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout code at tag
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.ref }}
-
-      - name: Download build context artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-context-${{ matrix.opensearch_version }}
 
       - name: Debug - List build context structure
         run: |
@@ -275,7 +251,7 @@ jobs:
           docker rm axondb-test || true
 
   axondb-search-build-push-sign:
-    needs: [setup, axondb-search-test, prepare-build-context]
+    needs: [setup, axondb-search-test]
     runs-on: ubuntu-latest
     strategy:
       matrix:
