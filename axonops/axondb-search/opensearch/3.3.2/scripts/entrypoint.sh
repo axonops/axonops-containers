@@ -458,5 +458,14 @@ if [ $# -eq 0 ] || [ "${1:0:1}" = '-' ]; then
     set -- opensearch "$@"
 fi
 
+# Create the performanceanalyzer directory
+mkdir -p /dev/shm/performanceanalyzer
+
+# Change ownership to the opensearch user/group
+chown opensearch:opensearch /dev/shm/performanceanalyzer
+
+# Set appropriate permissions
+chmod 755 /dev/shm/performanceanalyzer
+
 # Execute command (CMD is ["opensearch"] which gets passed as $@)
 exec "$@" "${opensearch_opts[@]}"
