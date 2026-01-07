@@ -99,13 +99,11 @@ RUN microdnf install -y --nodocs \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
-COPY --chown=opensearch:root "./opensearch-${OPENSEARCH_VERSION}" "/opt"
+COPY --chown=opensearch:root "./opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME"
 RUN ls -l /opt/
+
 # Download and install OpenSearch with SHA512 verification
-RUN ln -s "/opt/opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME" /licenses && \
-    cd /tmp && \
-    ARCH=$(uname -m) && \
-    cp "$OPENSEARCH_HOME/LICENSE.txt" /licenses/LICENSE.txt && \
+RUN cp "$OPENSEARCH_HOME/LICENSE.txt" /licenses/LICENSE.txt && \
     mv "$OPENSEARCH_HOME/config" /etc/opensearch && \
     ln -s /etc/opensearch "$OPENSEARCH_HOME/config" && \
     rm -rf "$OPENSEARCH_HOME/data" "$OPENSEARCH_HOME/logs" && \
@@ -122,7 +120,7 @@ COPY --chown=opensearch:root config/log4j2.properties /etc/opensearch/log4j2.pro
 RUN cd ${OPENSEARCH_HOME} && \
     DISABLE_INSTALL_DEMO_CONFIG=false \
     OPENSEARCH_INITIAL_ADMIN_PASSWORD='MyS3cur3P@ss2025' \
-    bash ${OPENSEARCH_HOME}/plugins/opensearch-security/tools/install_demo_configuration.sh -y -i -s && \
+    bash -x ${OPENSEARCH_HOME}/plugins/opensearch-security/tools/install_demo_configuration.sh -y -i -s && \
     chown -R opensearch:root /etc/opensearch && \
     echo "Demo SSL infrastructure created" && \
     rm -f /etc/opensearch/esnode.pem \
