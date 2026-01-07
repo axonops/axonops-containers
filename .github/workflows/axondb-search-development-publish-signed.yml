@@ -61,8 +61,6 @@ jobs:
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Start container and wait for services
         uses: ./.github/actions/axondb-search-start-and-wait
@@ -211,8 +209,6 @@ jobs:
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Sign container image
         uses: ./.github/actions/axondb-search-sign-container
@@ -239,7 +235,6 @@ jobs:
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
-          cache-from: type=gha
 
       - name: Development image published and signed
         run: |
