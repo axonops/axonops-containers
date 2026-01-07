@@ -90,8 +90,12 @@ jobs:
 
             echo "${sha512}  ${tarball}" | sha512sum -c -
             mkdir -p ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}
+            # Extract directly - tar will create opensearch-VERSION subdirectory
             tar zxf "${tarball}" -C ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}
             echo "✓ Verified and extracted: ${tarball}"
+            # List what was created for debugging
+            echo "Created structure:"
+            ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}/ | head -5
           }
 
           # Set checksums based on OpenSearch version
@@ -109,6 +113,15 @@ jobs:
 
           download_and_check x64  "${SHA512_X64}" x86_64
           download_and_check arm64 "${SHA512_ARM64}" aarch64
+
+          echo "=== Final structure before upload ==="
+          echo "Contents of opensearch version directory:"
+          ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/
+          echo "=== Checking subdirectories ==="
+          echo "x86_64 contents:"
+          ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/x86_64/ | head -5
+          echo "aarch64 contents:"
+          ls -la ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/aarch64/ | head -5
 
       - name: Upload build context artifact
         uses: actions/upload-artifact@v4
@@ -137,6 +150,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-context-${{ matrix.opensearch_version }}
+
+      - name: Debug - List build context structure
+        run: |
+          echo "=== Contents of build context ==="
+          echo "Current directory: $(pwd)"
+          echo "Testing for platform: ${{ matrix.platform }}"
+          echo "Checking axonops directory:"
+          ls -la ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/ || echo "Directory not found"
+          echo "=== Checking for architecture directories ==="
+          echo "x86_64 directory:"
+          ls -la ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/x86_64/ 2>/dev/null | head -5 || echo "x86_64 not found"
+          echo "aarch64 directory:"
+          ls -la ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/aarch64/ 2>/dev/null | head -5 || echo "aarch64 not found"
 
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3

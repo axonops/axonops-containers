@@ -102,20 +102,33 @@ RUN microdnf install -y --nodocs \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
-# Copy OpenSearch files - architecture directory is determined at runtime
+# Copy OpenSearch files based on target architecture
 # TARGETARCH is automatically set by Docker buildx (amd64 or arm64)
-# We map: amd64 -> x86_64, arm64 -> aarch64
-RUN --mount=type=bind,source=.,target=/build \
-    if [ "${TARGETARCH}" = "amd64" ]; then \
+# For multi-arch builds, we need to handle both x86_64 and aarch64 directories
+# Since we can't use conditional COPY, we copy all and then clean up
+
+# Copy all architecture directories (both might exist in the build context)
+COPY --chown=opensearch:root . /tmp/opensearch-build/
+
+# Move the correct architecture to the final location
+RUN if [ "${TARGETARCH}" = "amd64" ]; then \
         ARCH_DIR="x86_64"; \
     elif [ "${TARGETARCH}" = "arm64" ]; then \
         ARCH_DIR="aarch64"; \
     else \
         echo "ERROR: Unsupported TARGETARCH: ${TARGETARCH}" && exit 1; \
     fi && \
-    echo "Copying OpenSearch for architecture: ${TARGETARCH} from ${ARCH_DIR}" && \
-    cp -r "/build/${ARCH_DIR}/opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME" && \
-    chown -R opensearch:root "$OPENSEARCH_HOME"
+    echo "Installing OpenSearch for architecture: ${TARGETARCH} from ${ARCH_DIR}" && \
+    if [ -d "/tmp/opensearch-build/${ARCH_DIR}/opensearch-${OPENSEARCH_VERSION}" ]; then \
+        mv "/tmp/opensearch-build/${ARCH_DIR}/opensearch-${OPENSEARCH_VERSION}" "$OPENSEARCH_HOME" && \
+        chown -R opensearch:root "$OPENSEARCH_HOME"; \
+    else \
+        echo "ERROR: OpenSearch directory not found at /tmp/opensearch-build/${ARCH_DIR}/opensearch-${OPENSEARCH_VERSION}" && \
+        echo "Available directories:" && \
+        ls -la /tmp/opensearch-build/ && \
+        exit 1; \
+    fi && \
+    rm -rf /tmp/opensearch-build
 
 # Download and install OpenSearch with SHA512 verification
 RUN mkdir -p /licenses && \
