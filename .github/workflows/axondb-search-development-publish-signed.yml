@@ -73,9 +73,10 @@ jobs:
         with:
           install: true
 
-      - name: Debug
+      - name: Build Info
         run: |
-          echo ${{ matrix.opensearch_version }}
+          echo "✓ Building OpenSearch version ${{ matrix.opensearch_version }}"
+          echo "✓ Build ref: ${{ needs.setup.outputs.ref }}"
           ls -l ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}
 
       - name: Build image for testing
