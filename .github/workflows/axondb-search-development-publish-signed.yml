@@ -62,7 +62,7 @@ jobs:
     strategy:
       matrix:
         opensearch_version: ['3.3.2']
-        platform: [linux/amd64, linux/arm64]
+        # Platform removed - tests only run on the runner's native platform (linux/amd64)
     permissions:
       contents: read
       security-events: write
@@ -118,17 +118,15 @@ jobs:
           download_and_check x64  "${SHA512_X64}" x86_64
           download_and_check arm64 "${SHA512_ARM64}" aarch64
 
-      - name: Set up QEMU for multi-arch builds
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: ${{ matrix.platform }}
+      # QEMU not needed for test builds - only building for native platform
+      # - name: Set up QEMU for multi-arch builds
+      #   uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           install: true
-          driver-opts: |
-            image=moby/buildkit:latest
+          platforms: linux/amd64,linux/arm64
 
       - name: Maximize Build Space
         uses: easimon/maximize-build-space@v10
@@ -146,7 +144,8 @@ jobs:
         with:
           context: ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}
           file: ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/Dockerfile
-          platforms: ${{ matrix.platform }}
+          # Don't specify platforms for test builds - build only for the current runner's platform
+          # This allows 'load: true' to work properly
           load: true
           push: false
           tags: axondb-search:test
@@ -237,7 +236,7 @@ jobs:
         run: |
           docker logs axondb-test || true
           docker stop axondb-test || true
-          docker rm axondb-test || true
+          docker rm -f axondb-test || true
 
   axondb-search-build-push-sign:
     needs: [setup, axondb-search-test]
@@ -258,16 +257,59 @@ jobs:
         with:
           ref: ${{ needs.setup.outputs.ref }}
 
-      - name: Download build context artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-context-${{ matrix.opensearch_version }}
+      - name: Prepare OpenSearch Build Context
+        id: prepare
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          OPENSEARCH_VERSION=${{ matrix.opensearch_version }}
+          echo "opensearch_version=${OPENSEARCH_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "✓ Preparing context for OpenSearch version: ${OPENSEARCH_VERSION}"
+
+          download_and_check() {
+            local arch="$1"       # x64 or arm64
+            local sha512="$2"
+            local target="$3"     # x86_64 or aarch64
+            local tarball="opensearch-${OPENSEARCH_VERSION}-linux-${arch}.tar.gz"
+            local url="https://artifacts.opensearch.org/releases/bundle/opensearch/${OPENSEARCH_VERSION}/${tarball}"
+
+            echo "Downloading: ${url}"
+            wget -q "${url}"
+
+            echo "${sha512}  ${tarball}" | sha512sum -c -
+            # Create target directory
+            mkdir -p ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target}
+            # Extract with strip-components to avoid extra nesting
+            # The tarball contains opensearch-VERSION/ as root, we want to strip it
+            tar zxf "${tarball}" -C ./axonops/axondb-search/opensearch/${OPENSEARCH_VERSION}/${target} --strip-components=1
+            echo "✓ Verified and extracted: ${tarball}"
+            rm -f "${tarball}"
+          }
+
+          # Set checksums based on OpenSearch version
+          case "${OPENSEARCH_VERSION}" in
+            "3.3.2")
+              SHA512_X64='68dc91ada02bda29a1efed6ef9916d893e58eef42e20482a6bdb1aab21c2fae490ef198a815b4ab8bcbcc87e44ce272b5943d8f67dcf37bb432e0205031a94e4'
+              SHA512_ARM64='ab055a9192b04be020272a7769801f041c28ad9e12849d54c5ed96b844692b8fcf2ab66ae91f761cc052d3f19777a4a49c43fa81a7ffb037cb2afbe62c4a8dec'
+              ;;
+            # Add more versions as needed
+            *)
+              echo "Error: Checksums not configured for OpenSearch version ${OPENSEARCH_VERSION}"
+              exit 1
+              ;;
+          esac
+
+          download_and_check x64  "${SHA512_X64}" x86_64
+          download_and_check arm64 "${SHA512_ARM64}" aarch64
 
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -286,6 +328,17 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
+
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'false'
 
       - name: Build and push Docker image (multi-arch)
         id: build
