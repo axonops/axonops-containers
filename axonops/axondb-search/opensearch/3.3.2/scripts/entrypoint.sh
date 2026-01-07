@@ -97,7 +97,10 @@ export OPENSEARCH_LOG_DIR=${OPENSEARCH_LOG_DIR:-/var/log/opensearch}
 # opensearch.cgroups.hierarchy.override. Therefore, we set this value here so
 # that cgroup statistics are available for the container this process
 # will run in.
-export OPENSEARCH_JAVA_OPTS="-Dopensearch.cgroups.hierarchy.override=/ $OPENSEARCH_JAVA_OPTS"
+
+PERFORMANCE_ANALYZER=${OPENSEARCH_PERFORMANCE_ANALYZER:-"false"}
+
+export OPENSEARCH_JAVA_OPTS="-Dopensearch.performanceanalyzer.metrics.enabled=${PERFORMANCE_ANALYZER} -Dopensearch.cgroups.hierarchy.override=/ $OPENSEARCH_JAVA_OPTS"
 
 # Set default environment variables if not provided
 export OPENSEARCH_CLUSTER_NAME="${OPENSEARCH_CLUSTER_NAME:-axonopsdb-search}"

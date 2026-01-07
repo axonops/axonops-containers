@@ -139,6 +139,7 @@ chmod 600 ${CA_KEY_PATH} ${TLS_KEY_PATH} ${FILE_PREFIX}admin-key.pem
 # Set ownership (if running as root during build)
 if [ "$(id -u)" = "0" ] && command -v chown >/dev/null 2>&1; then
     chown opensearch:opensearch *.pem 2>/dev/null || true
+    chmod 600 *.pem 2>/dev/null || true
 fi
 
 echo "   ✓ Permissions set (644 for certs, 600 for keys)"
