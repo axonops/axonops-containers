@@ -213,12 +213,23 @@ tls:
     internode:
       # Encryption options: none, dc, rack, all
       encryption: "all"
+      # Require client authentication for internode communication
+      requireClientAuth: true
       # Protocol version
       protocol: "TLS"
       # Accepted protocols (comma-separated)
       acceptedProtocols: "TLSv1.2,TLSv1.3"
       # Cipher suites (leave empty for JVM defaults)
       cipherSuites: []
+
+    # Client-to-node encryption settings
+    clientToNode:
+      # Enable client-to-node encryption
+      enabled: true
+      # Optional encryption (if false, encryption is required)
+      requireClientAuth: false
+      # Protocol version
+      protocol: "TLS"
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:

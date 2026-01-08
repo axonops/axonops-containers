@@ -179,12 +179,6 @@ RUN mkdir -p /etc/axonops && \
     chmod 600 /etc/opensearch/jvm.options /etc/opensearch/log4j2.properties && \
     chown -R opensearch:root /etc/axonops
 
-# AxonDB entrypoint
-COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
-    ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
-    ln -sf /proc/mounts /etc/mtab
-
 # Tini init system (minimal init for containers - handles signals and prevents zombies)
 # Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
 # this will be set correctly by the platform-specific base image.
@@ -203,6 +197,12 @@ RUN TINI_VERSION=v0.19.0 && \
     wget -q -O /tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
     echo "${TINI_SHA256}  /tini" | sha256sum -c - && \
     chmod +x /tini
+
+# AxonDB entrypoint
+COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
+    ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
+    ln -sf /proc/mounts /etc/mtab
 
 # Set user to run as
 USER opensearch

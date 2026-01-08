@@ -109,6 +109,19 @@ spec:
             - name: CASSANDRA_CA_CERT_PATH
               value: "/etc/cassandra/certs/ca.crt"
             {{- end }}
+            # Common TLS configuration environment variables
+            - name: CASSANDRA_INTERNODE_ENCRYPTION
+              value: "{{ .Values.tls.cassandra.internode.encryption }}"
+            - name: CASSANDRA_INTERNODE_CLIENT_AUTH
+              value: "{{ .Values.tls.cassandra.internode.requireClientAuth }}"
+            - name: CASSANDRA_INTERNODE_PROTOCOL
+              value: "{{ .Values.tls.cassandra.internode.protocol }}"
+            - name: CASSANDRA_CLIENT_ENCRYPTION_ENABLED
+              value: "true"
+            - name: CASSANDRA_CLIENT_ENCRYPTION_OPTIONAL
+              value: "{{ not .Values.tls.cassandra.clientToNode.requireClientAuth }}"
+            - name: CASSANDRA_CLIENT_PROTOCOL
+              value: "{{ .Values.tls.cassandra.clientToNode.protocol }}"
           {{- end }}
           {{- if .Values.authentication.db_secret }}
             # Authentication credentials from secret
