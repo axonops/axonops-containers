@@ -161,8 +161,8 @@ fi
 
 # Apply heap size override to jvm.options if env var set
 if [ -n "$OPENSEARCH_HEAP_SIZE" ]; then
-    echo "-Xms=${OPENSEARCH_HEAP_SIZE}" >> "/etc/opensearch/jvm.options"
-    echo "-Xmx=${OPENSEARCH_HEAP_SIZE}" >> "/etc/opensearch/jvm.options"
+    _sed-in-place "/etc/opensearch/jvm.options" -r 's/^-Xms[0-9]+[GgMm]$/-Xms'"$OPENSEARCH_HEAP_SIZE"'/'
+    _sed-in-place "/etc/opensearch/jvm.options" -r 's/^-Xmx[0-9]+[GgMm]$/-Xmx'"$OPENSEARCH_HEAP_SIZE"'/'
 fi
 
 # Apply thread pool write queue size if env var set
