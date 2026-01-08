@@ -132,7 +132,7 @@ RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
     wget -q "https://archive.apache.org/dist/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" && \
     echo "${CASSANDRA_SHA512}  ${CASSANDRA_TARBALL}" | sha512sum -c - && \
     echo "Extracting Cassandra to ${CASSANDRA_HOME}..." && \
-    tar -xzf "${CASSANDRA_TARBALL}" --strip-components=1 -C "$CASSANDRA_HOME" && \
+    tar -xzf "${CASSANDRA_TARBALL}" --no-same-owner --strip-components=1 -C "$CASSANDRA_HOME" && \
     rm "${CASSANDRA_TARBALL}" && \
     cp "$CASSANDRA_HOME/LICENSE.txt" /licenses/LICENSE.txt && \
     mv "$CASSANDRA_HOME/conf" /etc/cassandra && \
