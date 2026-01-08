@@ -13,7 +13,7 @@ data:
       org: "YOUR_ORG_NAME"
       cluster_name: "YOUR_CLUSTER_NAME"
       key: "YOUR_AXONOPS_API_KEY"
-    
+
     kafka:
       node_type: "kraft-controller"
       group: "axonops"
@@ -35,7 +35,7 @@ data:
         org: "YOUR_ORG_NAME"
         cluster_name: "YOUR_CLUSTER_NAME"
         key: "YOUR_AXONOPS_API_KEY"
-    
+
     kafka:
       node_type: "kraft-broker"
       group: "axonops"
@@ -162,4 +162,4 @@ spec:
       valueFrom:
         configMapKeyRef:
           name: kafka-logging-cm
-          key: log4j.properties        
+          key: log4j.properties

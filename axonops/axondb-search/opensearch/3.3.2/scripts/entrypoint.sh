@@ -80,7 +80,7 @@ print_startup_banner() {
 print_startup_banner
 
 # Export OpenSearch paths
-export OPENSEARCH_HOME=${OPENSEARCH_HOME:-/opt/opensearch}
+export OPENSEARCH_HOME=${OPENSEARCH_HOME:-/usr/share/opensearch}
 export OPENSEARCH_PATH_CONF=${OPENSEARCH_PATH_CONF:-/etc/opensearch}
 export OPENSEARCH_DATA_DIR=${OPENSEARCH_DATA_DIR:-/var/lib/opensearch}
 export OPENSEARCH_LOG_DIR=${OPENSEARCH_LOG_DIR:-/var/log/opensearch}
@@ -97,7 +97,10 @@ export OPENSEARCH_LOG_DIR=${OPENSEARCH_LOG_DIR:-/var/log/opensearch}
 # opensearch.cgroups.hierarchy.override. Therefore, we set this value here so
 # that cgroup statistics are available for the container this process
 # will run in.
-export OPENSEARCH_JAVA_OPTS="-Dopensearch.cgroups.hierarchy.override=/ $OPENSEARCH_JAVA_OPTS"
+
+PERFORMANCE_ANALYZER=${OPENSEARCH_PERFORMANCE_ANALYZER:-"false"}
+
+export OPENSEARCH_JAVA_OPTS="-Dopensearch.performanceanalyzer.metrics.enabled=${PERFORMANCE_ANALYZER} -Dopensearch.cgroups.hierarchy.override=/ $OPENSEARCH_JAVA_OPTS"
 
 # Set default environment variables if not provided
 export OPENSEARCH_CLUSTER_NAME="${OPENSEARCH_CLUSTER_NAME:-axonopsdb-search}"
@@ -448,6 +451,9 @@ if [ ${#opensearch_opts[@]} -gt 0 ]; then
     echo ""
 fi
 
+# Set correct permissions for SSL certs (skip errors in Kube)
+chmod 600 /etc/opensearch/certs/*.pem || true
+
 echo ""
 echo "=== Starting OpenSearch ==="
 echo ""
@@ -457,6 +463,15 @@ echo ""
 if [ $# -eq 0 ] || [ "${1:0:1}" = '-' ]; then
     set -- opensearch "$@"
 fi
+
+# Create the performanceanalyzer directory
+mkdir -p /dev/shm/performanceanalyzer
+
+# Change ownership to the opensearch user/group
+chown opensearch:opensearch /dev/shm/performanceanalyzer
+
+# Set appropriate permissions
+chmod 755 /dev/shm/performanceanalyzer
 
 # Execute command (CMD is ["opensearch"] which gets passed as $@)
 exec "$@" "${opensearch_opts[@]}"

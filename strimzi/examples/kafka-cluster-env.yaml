@@ -36,7 +36,7 @@ spec:
         size: 5Gi
         deleteClaim: false
         kraftMetadata: shared
-      
+
   template:
     pod:
       topologySpreadConstraints:
@@ -57,7 +57,7 @@ spec:
         - name: AGENT_CLUSTER_NAME
           value: YOUR_CLUSTER_NAME
         - name: AXON_AGENT_ORG
-          value: YOUR_ORG_NAME      
+          value: YOUR_ORG_NAME
 
 ---
 apiVersion: kafka.strimzi.io/v1beta2
@@ -92,7 +92,7 @@ spec:
         - name: AGENT_CLUSTER_NAME
           value: YOUR_CLUSTER_NAME
         - name: AXON_AGENT_ORG
-          value: YOUR_ORG_NAME      
+          value: YOUR_ORG_NAME
 ---
 
 apiVersion: kafka.strimzi.io/v1beta2

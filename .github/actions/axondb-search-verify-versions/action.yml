@@ -56,12 +56,12 @@ runs:
         fi
 
         # Verify build type
-        if ! echo "$VERSION_INFO" | grep -q '"build_type" : "tar"'; then
-          echo "ERROR: Build type is not tar"
+        if ! echo "$VERSION_INFO" | grep -q '"build_type" : "rpm"'; then
+          echo "ERROR: Build type is not rpm"
           exit 1
         fi
 
         echo ""
         echo "✓ OpenSearch version verified: $ACTUAL_VERSION"
         echo "✓ Distribution: opensearch"
-        echo "✓ Build type: tar"
+        echo "✓ Build type: rpm"

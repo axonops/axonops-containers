@@ -44,7 +44,6 @@ RUN usermod -a -G axonops kafka \
     && mkdir -p /var/log/kafka \
     && chown kafka:axonops /var/log/kafka \
     && chown kafka:axonops /opt/kafka/server.log /opt/kafka/controller.log \
-    && chmod g+w /etc/axonops 
+    && chmod g+w /etc/axonops
 
 USER kafka
-

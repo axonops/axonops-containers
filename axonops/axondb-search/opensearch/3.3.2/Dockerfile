@@ -10,8 +10,6 @@ ENV UBI9_MINIMAL_DIGEST=sha256:6fc28bcb6776e387d7a35a2056d9d2b985dc4e26031e98a2b
 
 # OpenSearch version and SHA512 checksum (from official OpenSearch artifacts)
 ARG OPENSEARCH_VERSION=3.3.2
-ARG OPENSEARCH_SHA512_AMD64=68dc91ada02bda29a1efed6ef9916d893e58eef42e20482a6bdb1aab21c2fae490ef198a815b4ab8bcbcc87e44ce272b5943d8f67dcf37bb432e0205031a94e4
-ARG OPENSEARCH_SHA512_ARM64=ab055a9192b04be020272a7769801f041c28ad9e12849d54c5ed96b844692b8fcf2ab66ae91f761cc052d3f19777a4a49c43fa81a7ffb037cb2afbe62c4a8dec
 
 # Build metadata arguments (provided by CI/CD or set to defaults for local builds)
 ARG BUILD_DATE=unknown
@@ -21,6 +19,9 @@ ARG GIT_TAG=unknown
 ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME=unknown
+
+# Target architecture for multi-arch builds (will be set by Docker buildx)
+ARG TARGETARCH
 
 ENV OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
@@ -65,7 +66,7 @@ RUN echo "Updating all packages to latest versions..." && \
     rm -rf /var/cache/yum /var/cache/dnf
 
 # OpenSearch environment
-ENV OPENSEARCH_HOME=/opt/opensearch
+ENV OPENSEARCH_HOME=/usr/share/opensearch
 ENV OPENSEARCH_PATH_CONF=/etc/opensearch
 ENV OPENSEARCH_DATA_DIR=/var/lib/opensearch
 ENV OPENSEARCH_LOG_DIR=/var/log/opensearch
@@ -99,44 +100,34 @@ RUN microdnf install -y --nodocs \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
-# Download and install OpenSearch with SHA512 verification
-RUN mkdir -p "$OPENSEARCH_HOME" /licenses && \
-    cd /tmp && \
-    ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        OPENSEARCH_TARBALL="opensearch-${OPENSEARCH_VERSION}-linux-x64.tar.gz"; \
-        OPENSEARCH_SHA512=$OPENSEARCH_SHA512_AMD64; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        OPENSEARCH_TARBALL="opensearch-${OPENSEARCH_VERSION}-linux-arm64.tar.gz"; \
-        OPENSEARCH_SHA512=$OPENSEARCH_SHA512_ARM64; \
+# Copy OpenSearch files based on target architecture
+# TARGETARCH is automatically set by Docker buildx (amd64 or arm64)
+# For multi-arch builds, we need to handle both x86_64 and aarch64 directories
+# Since we can't use conditional COPY, we copy all and then clean up
+
+# Copy all architecture directories (both might exist in the build context)
+COPY --chown=opensearch:root . /tmp/opensearch-build/
+
+# Used to verify the pkg
+COPY opensearch-release.pgp /etc/opensearch-release.pgp
+
+# Move the correct architecture to the final location
+RUN if [ "${TARGETARCH}" = "amd64" ]; then \
+        ARCH_DIR="x86_64"; \
+        RPM_ARCH="x64"; \
+    elif [ "${TARGETARCH}" = "arm64" ]; then \
+        ARCH_DIR="aarch64"; \
+        RPM_ARCH="arm64"; \
     else \
-        echo "Invalid arch ${ARCH}" && exit 1; \
+        echo "ERROR: Unsupported TARGETARCH: ${TARGETARCH}" && exit 1; \
     fi && \
-    echo "Downloading OpenSearch ${OPENSEARCH_VERSION} from official artifacts..." && \
-    wget -q "https://artifacts.opensearch.org/releases/bundle/opensearch/${OPENSEARCH_VERSION}/${OPENSEARCH_TARBALL}" && \
-    echo "${OPENSEARCH_SHA512}  ${OPENSEARCH_TARBALL}" | sha512sum -c - && \
-    echo "Extracting OpenSearch to ${OPENSEARCH_HOME}..." && \
-    tar -xzf "${OPENSEARCH_TARBALL}" --strip-components=1 -C "$OPENSEARCH_HOME" && \
-    rm "${OPENSEARCH_TARBALL}" && \
-    cp "$OPENSEARCH_HOME/LICENSE.txt" /licenses/LICENSE.txt && \
-    mv "$OPENSEARCH_HOME/config" /etc/opensearch && \
-    ln -s /etc/opensearch "$OPENSEARCH_HOME/config" && \
-    rm -rf "$OPENSEARCH_HOME/data" "$OPENSEARCH_HOME/logs" && \
-    chown -R opensearch:root "$OPENSEARCH_HOME" /etc/opensearch /licenses && \
-    rm -rf /tmp/*
-
-# Overlay our custom config files to /etc/opensearch (before SSL setup)
-COPY --chown=opensearch:root config/jvm.options /etc/opensearch/jvm.options
-COPY --chown=opensearch:root config/log4j2.properties /etc/opensearch/log4j2.properties
-
-# Install demo SSL configuration and delete demo certs in ONE layer
-# Certificates will be generated at RUNTIME (not build time) to avoid Trivy secret detection
-# Demo script sets up security infrastructure, then we delete demo certs
-RUN cd ${OPENSEARCH_HOME} && \
-    DISABLE_INSTALL_DEMO_CONFIG=false \
+    echo "Installing OpenSearch for architecture: ${TARGETARCH} using RPM" && \
+    rpm --import /etc/opensearch-release.pgp && \
+    curl -L -o /tmp/opensearch.rpm https://artifacts.opensearch.org/releases/bundle/opensearch/${OPENSEARCH_VERSION}/opensearch-${OPENSEARCH_VERSION}-linux-${RPM_ARCH}.rpm && \
+    rpm -K /tmp/opensearch.rpm && \
     OPENSEARCH_INITIAL_ADMIN_PASSWORD='MyS3cur3P@ss2025' \
-    bash ${OPENSEARCH_HOME}/plugins/opensearch-security/tools/install_demo_configuration.sh -y -i -s && \
-    chown -R opensearch:root /etc/opensearch && \
+    rpm -Uvh /tmp/opensearch.rpm && \
+    rm -f /tmp/opensearch.rpm && \
     echo "Demo SSL infrastructure created" && \
     rm -f /etc/opensearch/esnode.pem \
           /etc/opensearch/esnode-key.pem \
@@ -146,30 +137,18 @@ RUN cd ${OPENSEARCH_HOME} && \
           /etc/opensearch/root-ca-key.pem \
           /etc/opensearch/*.srl \
           /etc/opensearch/securityadmin_demo.sh && \
-    echo "✓ Demo certificates removed in same layer"
+    echo "✓ Demo certificates removed in same layer" && \
+    echo "Removing performance analyzer" && \
+    /usr/share/opensearch/bin/opensearch-plugin remove opensearch-performance-analyzer
+
+# Overlay our custom config files to /etc/opensearch (before SSL setup)
+COPY --chown=opensearch:root config/jvm.options /etc/opensearch/jvm.options
+COPY --chown=opensearch:root config/log4j2.properties /etc/opensearch/log4j2.properties
+COPY --chown=opensearch:root config/opensearch.yml /etc/opensearch/opensearch.yml
 
 # Copy certificate generation script (will be run at container startup)
 COPY scripts/generate-certs.sh /usr/local/bin/generate-certs.sh
 RUN chmod 755 /usr/local/bin/generate-certs.sh
-
-# Now overlay our customized opensearch.yml and security configs
-# This updates the security plugin to use our AxonOps certificates instead of demo certs
-COPY --chown=opensearch:root config/opensearch.yml /etc/opensearch/opensearch.yml
-COPY --chown=opensearch:root config/security/action_groups.yml /etc/opensearch/opensearch-security/action_groups.yml
-COPY --chown=opensearch:root config/security/allowlist.yml /etc/opensearch/opensearch-security/allowlist.yml
-COPY --chown=opensearch:root config/security/audit.yml /etc/opensearch/opensearch-security/audit.yml
-COPY --chown=opensearch:root config/security/config.yml /etc/opensearch/opensearch-security/config.yml
-COPY --chown=opensearch:root config/security/internal_users.yml /etc/opensearch/opensearch-security/internal_users.yml
-COPY --chown=opensearch:root config/security/nodes_dn.yml /etc/opensearch/opensearch-security/nodes_dn.yml
-COPY --chown=opensearch:root config/security/roles.yml /etc/opensearch/opensearch-security/roles.yml
-COPY --chown=opensearch:root config/security/roles_mapping.yml /etc/opensearch/opensearch-security/roles_mapping.yml
-COPY --chown=opensearch:root config/security/tenants.yml /etc/opensearch/opensearch-security/tenants.yml
-
-# Create data and log directories
-RUN mkdir -p ${OPENSEARCH_DATA_DIR} ${OPENSEARCH_LOG_DIR} && \
-    chown -R opensearch:root ${OPENSEARCH_DATA_DIR} ${OPENSEARCH_LOG_DIR} && \
-    chmod 775 ${OPENSEARCH_DATA_DIR} ${OPENSEARCH_LOG_DIR} && \
-    chmod a+rwX ${OPENSEARCH_HOME} /etc/opensearch
 
 # Set JAVA_HOME to bundled JDK
 ENV JAVA_HOME=${OPENSEARCH_HOME}/jdk
@@ -197,13 +176,8 @@ RUN mkdir -p /etc/axonops && \
     echo "JAVA_VERSION=\"$(${JAVA_HOME}/bin/java -version 2>&1 | head -1 || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
     echo "OS_VERSION=\"$(grep PRETTY_NAME /etc/os-release 2>/dev/null | sed 's/.*="\(.*\)"/\1/' || echo 'unknown') (UBI - Universal Base Image, freely redistributable)\"" >> /etc/axonops/build-info.txt && \
     echo "PLATFORM=\"$(uname -m || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
+    chmod 600 /etc/opensearch/jvm.options /etc/opensearch/log4j2.properties && \
     chown -R opensearch:root /etc/axonops
-
-# AxonDB entrypoint
-COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
-    ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
-    ln -sf /proc/mounts /etc/mtab
 
 # Tini init system (minimal init for containers - handles signals and prevents zombies)
 # Note: Uses uname -m for architecture detection. For multi-arch builds with buildx,
@@ -223,6 +197,12 @@ RUN TINI_VERSION=v0.19.0 && \
     wget -q -O /tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TINI_ARCH}" && \
     echo "${TINI_SHA256}  /tini" | sha256sum -c - && \
     chmod +x /tini
+
+# AxonDB entrypoint
+COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
+    ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
+    ln -sf /proc/mounts /etc/mtab
 
 # Set user to run as
 USER opensearch

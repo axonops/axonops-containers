@@ -201,10 +201,6 @@ RUN mkdir -p ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod 775 /var/lib/cassandra ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod a+rwX ${CASSANDRA_PATH} /etc/cassandra
 
-# Copy our healthcheck script
-COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
-RUN chmod 755 /usr/local/bin/healthcheck.sh
-
 # Copy initialization script (handles both keyspace init and user creation)
 COPY scripts/init-system-keyspaces.sh /usr/local/bin/init-system-keyspaces.sh
 RUN chmod 755 /usr/local/bin/init-system-keyspaces.sh
@@ -242,7 +238,8 @@ RUN mkdir -p /etc/axonops && \
 
 # AxonDB entrypoint
 COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
+COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh /usr/local/bin/healthcheck.sh && \
     ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
     ln -sf /proc/mounts /etc/mtab
 
