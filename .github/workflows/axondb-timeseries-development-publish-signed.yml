@@ -4,20 +4,56 @@ on:
   workflow_dispatch:
     inputs:
       dev_git_tag:
-        description: 'Git tag on development branch to build (e.g., vdev-axondb-timeseries-1.0.0)'
-        required: true
+        description: 'Git tag or branch to build (defaults to current branch)'
+        required: false
         type: string
+        default: ''
       container_version:
-        description: 'Container version for GHCR (e.g., 1.0.0)'
-        required: true
+        description: 'Container version for GHCR (defaults to branch-based version)'
+        required: false
         type: string
+        default: ''
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/development/axondb-timeseries
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.vars.outputs.ref }}
+      version: ${{ steps.vars.outputs.version }}
+    steps:
+      - name: Determine build parameters
+        id: vars
+        run: |
+          # Determine the ref to checkout
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.dev_git_tag }}" ]]; then
+            REF="${{ inputs.dev_git_tag }}"
+          else
+            REF="${{ github.ref_name }}"
+          fi
+          echo "ref=${REF}" >> $GITHUB_OUTPUT
+
+          # Determine the container version
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.container_version }}" ]]; then
+            VERSION="${{ inputs.container_version }}"
+          else
+            # Generate version from branch and timestamp
+            BRANCH_NAME="${{ github.ref_name }}"
+            # Replace slashes with hyphens and convert to lowercase
+            SAFE_BRANCH=$(echo "${BRANCH_NAME}" | sed 's/\//-/g' | tr '[:upper:]' '[:lower:]')
+            # Generate version with branch and short SHA
+            VERSION="${SAFE_BRANCH}-${{ github.run_number }}-${GITHUB_SHA::7}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+          echo "✓ Build ref: ${REF}"
+          echo "✓ Container version: ${VERSION}"
+
   axondb-timeseries-test:
+    needs: [setup]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,7 +62,7 @@ jobs:
       - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.dev_git_tag }}
+          ref: ${{ needs.setup.outputs.ref }}
 
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
@@ -48,19 +84,21 @@ jobs:
         with:
           context: ./axonops/axondb-timeseries/5.0.6
           file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          load: false
+          # Build only for the runner's platform in tests to enable loading
+          # Multi-platform builds are done in the publish job
+          load: true
+          push: false
           tags: axondb-timeseries:test
           build-args: |
             CASSANDRA_VERSION=${{ steps.version.outputs.cassandra_version }}
             CQLAI_VERSION=${{ vars.AXONDB_TIMESERIES_CQLAI_VERSION }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
-            VERSION=${{ inputs.container_version }}
-            GIT_TAG=${{ inputs.dev_git_tag }}
+            VERSION=${{ needs.setup.outputs.version }}
+            GIT_TAG=${{ needs.setup.outputs.ref }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ needs.setup.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -134,7 +172,7 @@ jobs:
           docker rm axondb-test || true
 
   axondb-timeseries-build-push-sign:
-    needs: axondb-timeseries-test
+    needs: [setup, axondb-timeseries-test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -147,7 +185,7 @@ jobs:
       - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.dev_git_tag }}
+          ref: ${{ needs.setup.outputs.ref }}
 
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
@@ -178,7 +216,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ needs.setup.outputs.version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           build-args: |
@@ -186,11 +224,11 @@ jobs:
             CQLAI_VERSION=${{ vars.AXONDB_TIMESERIES_CQLAI_VERSION }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
-            VERSION=${{ inputs.container_version }}
-            GIT_TAG=${{ inputs.dev_git_tag }}
+            VERSION=${{ needs.setup.outputs.version }}
+            GIT_TAG=${{ needs.setup.outputs.ref }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ needs.setup.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -207,7 +245,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ needs.setup.outputs.version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           build-args: |
@@ -215,17 +253,17 @@ jobs:
             CQLAI_VERSION=${{ vars.AXONDB_TIMESERIES_CQLAI_VERSION }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
-            VERSION=${{ inputs.container_version }}
-            GIT_TAG=${{ inputs.dev_git_tag }}
+            VERSION=${{ needs.setup.outputs.version }}
+            GIT_TAG=${{ needs.setup.outputs.ref }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ needs.setup.outputs.version }}
           cache-from: type=gha
 
       - name: Development image published and signed
         run: |
           echo "✓ Development image pushed and signed to GHCR"
-          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ inputs.container_version }}"
+          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.cassandra_version }}-${{ needs.setup.outputs.version }}"
           echo "Digest: ${{ steps.build.outputs.digest }}"
 
   axondb-timeseries-verify-published:

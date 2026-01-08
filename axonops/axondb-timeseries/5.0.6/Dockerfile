@@ -20,9 +20,8 @@ RUN CASSANDRA_TARBALL="apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz" && \
     wget -q "https://archive.apache.org/dist/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" -O /tmp/$CASSANDRA_TARBALL && \
     echo "${CASSANDRA_SHA512} /tmp/${CASSANDRA_TARBALL}" | sha512sum -c - && \
     mkdir -p /opt/tmp && \
-    tar -xzf "/tmp/${CASSANDRA_TARBALL}" --no-same-owner -C /opt/tmp
-
-RUN mv "/opt/tmp/apache-cassandra-${CASSANDRA_VERSION}" /opt/tmp/cassandra
+    tar -xzf "/tmp/${CASSANDRA_TARBALL}" --no-same-owner -C /opt/tmp && \
+    mv "/opt/tmp/apache-cassandra-${CASSANDRA_VERSION}" /opt/tmp/cassandra
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal@${UBI9_MINIMAL_DIGEST}
 
