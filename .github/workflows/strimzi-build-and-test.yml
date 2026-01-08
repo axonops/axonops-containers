@@ -192,4 +192,3 @@ jobs:
         if: always()
         run: |
           docker rmi axonops-strimzi:test || true
-

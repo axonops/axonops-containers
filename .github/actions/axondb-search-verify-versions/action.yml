@@ -57,7 +57,7 @@ runs:
 
         # Verify build type
         if ! echo "$VERSION_INFO" | grep -q '"build_type" : "rpm"'; then
-          echo "ERROR: Build type is not tar"
+          echo "ERROR: Build type is not rpm"
           exit 1
         fi
 

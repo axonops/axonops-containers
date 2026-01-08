@@ -161,7 +161,7 @@ affinity: {}
 # Configuration for axon-dash application
 config:
   # Axon server URL endpoint
-  axonServerUrl: "http://axon-server:3000"
+  axonServerUrl: "http://axon-server-api:8080"
   # Context path for the application
   contextPath: ""
   # Listener configuration
