@@ -131,8 +131,8 @@ RUN mkdir -p /licenses && \
     wget -q "https://dlcdn.apache.org/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" -O /tmp/$CASSANDRA_TARBALL || \
     wget -q "https://archive.apache.org/dist/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" -O /tmp/$CASSANDRA_TARBALL  && \
     echo "${CASSANDRA_SHA512} /tmp/${CASSANDRA_TARBALL}" | sha512sum -c - && \
-    tar -xzf "/tmp/${CASSANDRA_TARBALL}" --no-same-owner && \
-    rm -rf $CASSANDRA_HOME && mv apache-cassandra-${CASSANDRA_VERSION} ${CASSANDRA_HOME} && \
+    tar -xzf "/tmp/${CASSANDRA_TARBALL}" --no-same-owner -C / && \
+    rm -rf $CASSANDRA_HOME && mv /apache-cassandra-${CASSANDRA_VERSION} ${CASSANDRA_HOME} && \
     rm -f "${CASSANDRA_TARBALL}" && \
     cp "$CASSANDRA_HOME/LICENSE.txt" /licenses/LICENSE.txt && \
     mv "$CASSANDRA_HOME/conf" /etc/cassandra && \
