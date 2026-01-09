@@ -90,8 +90,8 @@ jobs:
         with:
           context: ./axonops/axondb-search/opensearch/3.3.2
           file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          load: false
+          platforms: linux/amd64
+          load: true
           tags: axondb-search:test
           build-args: |
             OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
