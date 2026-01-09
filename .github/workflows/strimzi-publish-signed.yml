@@ -167,7 +167,7 @@ jobs:
 
           # Use input axon_agent_version if provided, otherwise use matrix default
           if [ -n "${{ inputs.axon_agent_version }}" ]; then
-            AXON_AGENT_VERSION="${{{ inputs.axon_agent_version }}"
+            AXON_AGENT_VERSION="${{ inputs.axon_agent_version }}"
           else
             AXON_AGENT_VERSION=$(echo "$VERSION_MATRIX" | jq -r --arg v "$OPERATOR_VERSION" '.[$v].axon_agent_version')
           fi
