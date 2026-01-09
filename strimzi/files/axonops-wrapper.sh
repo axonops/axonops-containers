@@ -30,13 +30,8 @@ export KAFKA_OPTS="${KAFKA_OPTS} \
 
 # Move /var/lib/axonops to a persistent directory
 if [ ! -d /var/lib/kafka/data-0/axonops ]; then
-  cp -a /var/lib/axonops /var/lib/kafka/data-0/axonops
+  cp -a /var/lib/axonops-template /var/lib/kafka/data-0/axonops
 fi
-
-for x in agent_service hostId local.db mq; do
-  rm -rf /var/lib/axonops/$x
-  ln -s /var/lib/kafka/data-0/axonops/$x /var/lib/axonops/$x
-done
 
 # Start the agent
 /usr/share/axonops/axon-agent -o file $AGENT_ARGS &
