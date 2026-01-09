@@ -78,7 +78,8 @@ jobs:
         with:
           context: ./axonops/axondb-timeseries/5.0.6
           file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
-          platforms: linux/amd64
+          # Build only for the runner's platform in tests to enable loading
+          # Multi-platform builds are done in the publish workflows
           load: true
           tags: axondb-timeseries:test
           build-args: |
@@ -229,7 +230,8 @@ jobs:
         with:
           context: ./axonops/axondb-timeseries/5.0.6
           file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
-          platforms: linux/amd64
+          # Build only for the runner's platform in tests to enable loading
+          # Multi-platform builds are done in the publish workflows
           load: true
           tags: axondb-timeseries:test
           build-args: |
@@ -246,4 +248,3 @@ jobs:
         uses: ./.github/actions/axondb-timeseries-test-dc-detection
         with:
           image: axondb-timeseries:test
-

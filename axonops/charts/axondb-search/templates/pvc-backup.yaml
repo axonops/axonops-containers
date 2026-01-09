@@ -1,0 +1,22 @@
+{{- if and (eq .Values.backups.target.type "local") (not .Values.backups.target.local.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ template "opensearch.uname" . }}-backups
+  labels:
+    {{- include "opensearch.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.backups.target.local.size }}
+  {{- if .Values.backups.target.local.storageClass }}
+  {{- if eq "-" .Values.backups.target.local.storageClass }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.backups.target.local.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}

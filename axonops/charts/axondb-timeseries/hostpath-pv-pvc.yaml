@@ -1,0 +1,96 @@
+# PersistentVolume and PersistentVolumeClaim definitions for hostPath
+# Use this with Option 2 in values-hostpath-example.yaml
+
+---
+# PersistentVolume for data directory
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cassandra-data-pv
+  labels:
+    type: local
+    app: axondb-timeseries
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/data/cassandra"  # Path on the host
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - your-node-name  # Replace with actual node name
+
+---
+# PersistentVolumeClaim for data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cassandra-data-pvc
+  namespace: default  # Change to your namespace
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  selector:
+    matchLabels:
+      type: local
+      app: axondb-timeseries
+
+---
+# PersistentVolume for commitlog directory
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cassandra-commitlog-pv
+  labels:
+    type: local
+    app: axondb-timeseries-commitlog
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/data/cassandra-commitlog"  # Path on the host
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - your-node-name  # Replace with actual node name
+
+---
+# PersistentVolumeClaim for commitlog
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cassandra-commitlog-pvc
+  namespace: default  # Change to your namespace
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  selector:
+    matchLabels:
+      type: local
+      app: axondb-timeseries-commitlog

@@ -21,4 +21,3 @@ ROTATE_KEEP="${BACKUP_LOG_ROTATE_KEEP:-5}"
 
 # Exit with backup script's exit code
 exit $BACKUP_EXIT
-

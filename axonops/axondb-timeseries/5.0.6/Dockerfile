@@ -1,11 +1,27 @@
 # Supply chain security: Use immutable digest instead of mutable tag
 # UBI 9 minimal base image digest (latest as of 2025-12-10)
 # Points to: registry.access.redhat.com/ubi9/ubi-minimal:latest
-ARG UBI9_MINIMAL_DIGEST=sha256:80f3902b6dcb47005a90e14140eef9080ccc1bb22df70ee16b27d5891524edb2
+ARG UBI9_MINIMAL_DIGEST=sha256:6fc28bcb6776e387d7a35a2056d9d2b985dc4e26031e98a2bd35a7137cd6fd71
 
 # Cassandra version and SHA512 checksum (from official Apache Cassandra)
 ARG CASSANDRA_VERSION=5.0.6
 ARG CASSANDRA_SHA512=cab82049269e91ecd13e525254427d9b6139d8982fd1ddb8256ac7ebebc2fae412721750d7b30b1ee4e86f81d1960a87a2220d4a4a34d11f05c5aca0be6cd649
+
+FROM --platform=$BUILDPLATFORM alpine:latest AS extractor
+ARG CASSANDRA_VERSION
+ARG CASSANDRA_SHA512
+
+RUN apk add --no-cache wget tar gnupg
+
+# Download and install Apache Cassandra with SHA512 verification
+RUN CASSANDRA_TARBALL="apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz" && \
+    echo "Downloading Cassandra ${CASSANDRA_VERSION} from Apache mirrors..." && \
+    wget -q "https://dlcdn.apache.org/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" -O /tmp/$CASSANDRA_TARBALL || \
+    wget -q "https://archive.apache.org/dist/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" -O /tmp/$CASSANDRA_TARBALL && \
+    echo "${CASSANDRA_SHA512} /tmp/${CASSANDRA_TARBALL}" | sha512sum -c - && \
+    mkdir -p /opt/tmp && \
+    tar -xzf "/tmp/${CASSANDRA_TARBALL}" --no-same-owner -C /opt/tmp && \
+    mv "/opt/tmp/apache-cassandra-${CASSANDRA_VERSION}" /opt/tmp/cassandra
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal@${UBI9_MINIMAL_DIGEST}
 
@@ -121,19 +137,13 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.
     ldconfig && \
     microdnf remove -y epel-release && \
     microdnf clean all && \
-    rm -rf /var/cache/yum /var/cache/dnf
+    rm -rf /var/cache/yum /var/cache/dnf /opt/cassandra
+
+COPY --from=extractor /opt/tmp/cassandra /opt/cassandra
 
 # Download and install Apache Cassandra with SHA512 verification
-RUN mkdir -p "$CASSANDRA_HOME" /licenses && \
-    cd /tmp && \
-    CASSANDRA_TARBALL="apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz" && \
-    echo "Downloading Cassandra ${CASSANDRA_VERSION} from Apache mirrors..." && \
-    wget -q "https://dlcdn.apache.org/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" || \
-    wget -q "https://archive.apache.org/dist/cassandra/${CASSANDRA_VERSION}/${CASSANDRA_TARBALL}" && \
-    echo "${CASSANDRA_SHA512}  ${CASSANDRA_TARBALL}" | sha512sum -c - && \
-    echo "Extracting Cassandra to ${CASSANDRA_HOME}..." && \
-    tar -xzf "${CASSANDRA_TARBALL}" --strip-components=1 -C "$CASSANDRA_HOME" && \
-    rm "${CASSANDRA_TARBALL}" && \
+RUN mkdir -p /licenses && \
+    cd /opt && \
     cp "$CASSANDRA_HOME/LICENSE.txt" /licenses/LICENSE.txt && \
     mv "$CASSANDRA_HOME/conf" /etc/cassandra && \
     ln -s /etc/cassandra "$CASSANDRA_HOME/conf" && \
@@ -201,10 +211,6 @@ RUN mkdir -p ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod 775 /var/lib/cassandra ${CASSANDRA_DATA_DIR} ${CASSANDRA_LOG_DIR} && \
     chmod a+rwX ${CASSANDRA_PATH} /etc/cassandra
 
-# Copy our healthcheck script
-COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
-RUN chmod 755 /usr/local/bin/healthcheck.sh
-
 # Copy initialization script (handles both keyspace init and user creation)
 COPY scripts/init-system-keyspaces.sh /usr/local/bin/init-system-keyspaces.sh
 RUN chmod 755 /usr/local/bin/init-system-keyspaces.sh
@@ -242,7 +248,8 @@ RUN mkdir -p /etc/axonops && \
 
 # AxonDB entrypoint
 COPY scripts/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
+COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh /usr/local/bin/healthcheck.sh && \
     ln -sf /usr/local/bin/docker-entrypoint.sh /docker-entrypoint.sh && \
     ln -sf /proc/mounts /etc/mtab
 

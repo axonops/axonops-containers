@@ -1,0 +1,99 @@
+# Example values file for using hostPath volumes with axondb-timeseries
+# This demonstrates three different approaches to using hostPath volumes
+
+# =========================================================================
+# OPTION 1: Using extraVolumes for hostPath (simplest approach)
+# =========================================================================
+# This approach bypasses the persistence configuration and uses hostPath directly
+# Note: You need to disable persistence when using this approach
+
+persistence:
+  enabled: false  # Disable PVC-based persistence
+
+# Define hostPath volumes using extraVolumes
+extraVolumes:
+  - name: data
+    hostPath:
+      path: /data/cassandra  # Host directory path
+      type: DirectoryOrCreate  # Creates directory if it doesn't exist
+  - name: commitlog
+    hostPath:
+      path: /data/cassandra-commitlog
+      type: DirectoryOrCreate
+
+# Mount the hostPath volumes
+extraVolumeMounts:
+  - name: data
+    mountPath: /var/lib/cassandra
+  - name: commitlog
+    mountPath: /var/lib/cassandra/commitlog
+
+# =========================================================================
+# OPTION 2: Using PVC with hostPath PersistentVolume
+# =========================================================================
+# This requires creating a PV with hostPath backend first, then using existingClaim
+# Uncomment below to use this approach (and comment out Option 1 above)
+
+# persistence:
+#   enabled: true
+#   data:
+#     # Reference the PVC that's bound to a hostPath PV
+#     existingClaim: "cassandra-data-pvc"
+#   commitlog:
+#     enabled: true
+#     existingClaim: "cassandra-commitlog-pvc"
+
+# =========================================================================
+# OPTION 3: Using local storage class (for dynamic provisioning)
+# =========================================================================
+# This requires a local-storage StorageClass that supports hostPath
+# Uncomment below to use this approach (and comment out Options 1 & 2 above)
+
+# persistence:
+#   enabled: true
+#   data:
+#     storageClass: "local-storage"  # Must be a StorageClass that uses hostPath
+#     size: 10Gi
+#   commitlog:
+#     enabled: true
+#     storageClass: "local-storage"
+#     size: 5Gi
+
+# =========================================================================
+# Additional Configurations
+# =========================================================================
+
+# Important: When using hostPath, ensure proper permissions
+podSecurityContext:
+  fsGroup: 999  # Cassandra group
+  # You might need to adjust based on your host directory permissions
+
+securityContext:
+  runAsUser: 999  # Cassandra user
+  runAsNonRoot: true
+  readOnlyRootFilesystem: false
+
+# Node selector to ensure pod schedules on the correct node
+# (Important for hostPath as the data is node-specific)
+nodeSelector: {}
+  # kubernetes.io/hostname: "node-with-data"
+
+# Prevent pod from being moved to another node
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - your-specific-node  # Replace with actual node name
+
+# Other standard configurations
+replicaCount: 1
+heapSize: 1024M
+
+image:
+  repository: ghcr.io/axonops/axondb-timeseries
+  pullPolicy: IfNotPresent
+  tag: ""

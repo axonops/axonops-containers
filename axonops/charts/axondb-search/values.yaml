@@ -56,6 +56,88 @@ config:
     # Bind to all interfaces because we don't know what IP address Docker will assign to us.
     network.host: 0.0.0.0
 
+backups:
+  # Enable scheduled backups via CronJob
+  enabled: true
+
+  # Cron schedule for backups (default: daily at 8am UTC)
+  schedule: "0 8 * * *"
+
+  # Number of successful/failed job history to keep
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+  # Backup container image
+  image:
+    repository: "ghcr.io/axonops/axondb-search-backups"
+    # Override image tag (defaults to Chart.AppVersion)
+    tag: ""
+    pullPolicy: "IfNotPresent"
+
+  # Snapshot repository name in OpenSearch
+  snapshotRepo: "axon-backup-repo"
+
+  # Snapshot name prefix
+  snapshotPrefix: "snapshot"
+
+  # Number of snapshots to retain (empty = keep all)
+  retentionCount: ""
+
+  # Indices to backup (default: all)
+  indices: "_all"
+
+  # Resource requests/limits for the backup job
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+  # Pod annotations for the backup job
+  podAnnotations: {}
+
+  # Node selector for the backup job
+  nodeSelector: {}
+
+  # Tolerations for the backup job
+  tolerations: []
+
+  # Affinity rules for the backup job
+  affinity: {}
+
+  # Extra environment variables for the backup container
+  extraEnvs: []
+  #  - name: MY_VAR
+  #    value: "my-value"
+
+  # Backup target configuration
+  # Supported types: local, s3, gcs, azure
+  target:
+    # Backup target type
+    type: local
+
+    # =========================================================================
+    # Local/Filesystem backup configuration
+    # =========================================================================
+    # For local backups, ensure the path is registered in opensearch.yml:
+    #   path.repo: ["/mnt/backups"]
+    # And mount the volume to both OpenSearch and backup pods
+    local:
+      path: "/mnt/backups"
+      # PVC size for backup storage
+      size: "10Gi"
+      # Storage class for the backup PVC (empty = default, "-" = no storage class)
+      storageClass: ""
+      # Use an existing PVC instead of creating one
+      existingClaim: ""
+
+  # Advanced: Override the full repository settings JSON
+  # This takes precedence over the target-specific configuration above
+  # repoSettings: '{"bucket":"my-bucket","region":"us-east-1"}'
+  repoSettings: ""
+
 # OpenSearch initial admin password
 # Chart version 2.18.0 and App Version OpenSearch 2.12.0 onwards a custom strong password needs to be provided in order to setup demo admin user.
 # Cluster will not spin-up without this unless demo config install is disabled.

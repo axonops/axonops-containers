@@ -85,7 +85,7 @@
 23:-XX:CompileCommand=dontinline,java/lang/invoke/MethodHandle.setAsTypeCache
 23:-XX:CompileCommand=dontinline,java/lang/invoke/MethodHandle.asTypeUncached
 
-21-:-javaagent:/opt/opensearch/agent/opensearch-agent.jar
+21-:-javaagent:/usr/share/opensearch/agent/opensearch-agent.jar
 21-:--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED
 
 # For cases with high memory-mapped file counts, a lower value can improve stability and

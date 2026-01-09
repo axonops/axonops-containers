@@ -1,0 +1,195 @@
+name: Strimzi Development Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'feat/**'
+      - 'fix/**'
+      - 'bug/**'
+    paths:
+      - 'strimzi/**'
+      - '!strimzi/**/*.md'
+      - '.github/workflows/strimzi-development-build-and-test.yml'
+      - '.github/actions/strimzi-*/**'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'strimzi/**'
+      - '!strimzi/**/*.md'
+      - '.github/workflows/strimzi-development-build-and-test.yml'
+      - '.github/actions/strimzi-*/**'
+  workflow_call:
+    inputs:
+      strimzi_version:
+        description: 'Strimzi version to build'
+        required: false
+        type: string
+        default: '0.47.0'
+      kafka_version:
+        description: 'Kafka version to build'
+        required: false
+        type: string
+        default: '3.9.0'
+      axon_version:
+        description: 'AxonOps version to include'
+        required: false
+        type: string
+        default: '2.0.12'
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  # Strimzi base image digests - hardcoded for security and reproducibility
+  # Format: "strimzi_version+kafka_version": "sha256:digest"
+  STRIMZI_DIGESTS: |
+    {
+      "0.43.0+3.7.0": "sha256:d27cf5bf3624e18ba705246b14f92d12b8a15eb8551b13abf027cf71b549baf0",
+      "0.43.0+3.7.1": "sha256:ad06ead5125bce87498b1582a76e78143a6d21408ac4b12bb7e6007aa4cabd84",
+      "0.43.0+3.8.0": "sha256:b2f4e8895e9ed66228512ce14aec685101fa75dc329128d47cb1c15e3aef3c9c",
+      "0.44.0+3.7.0": "sha256:238bb080825b7ecebaa819be09788bc3d056ae8162ebcd41444076dc22f85740",
+      "0.44.0+3.7.1": "sha256:98d332b7fa5c9e48f60b516e00ed5812bd9268e014fd2337284e7cc3e664f1eb",
+      "0.44.0+3.8.0": "sha256:9a4224635e09ece2c1d3ffe9d715813cf63037461c9f06c1b5f53554aed5ecdc",
+      "0.45.0+3.8.0": "sha256:1fb0cac58be6798c07e850102b86f97d9b6e829dc8ce7846fcd13bcc25a115ed",
+      "0.45.0+3.8.1": "sha256:b2b5f2ee4e4e6fcf99592e830561c39af4b29a2b5eec8943861afa30a7cf5309",
+      "0.45.0+3.9.0": "sha256:e73e191d671cab3fe93dce6f1e151efcb9381bc60697472fef999ca3e208b784",
+      "0.45.1+3.8.0": "sha256:efd0ffeb947120fd65d458a40d20025bbea8b06cd16e3adbf0782afd8e79c17e",
+      "0.45.1+3.8.1": "sha256:beb52e066ec8c5c33ca65075309b3158236a8dca917ddd9074df1e935db98cf1",
+      "0.45.1+3.9.0": "sha256:53cffb2cd769b77442a0a57673439c9917bebe5267583c4d32af343c15a9006b",
+      "0.45.1+3.9.1": "sha256:d5b01dab055b67a778a148a0ca71a164522fd1e618f6585050fc6d0c0549041a",
+      "0.46.0+3.9.0": "sha256:3c976468f590b464bd224fdf0adb45556fccfba6025bc6b770e3fa69f7398b04",
+      "0.46.1+3.9.0": "sha256:f3837f8cb2a60e906e84486128c41c398424f4085df2348e9e0486bfc12089fd",
+      "0.47.0+3.9.0": "sha256:1bb6ad2cfdee6158e445af962cfb4b48da6cdaf3dc800c7f55a164c674b99823",
+      "0.47.0+3.9.1": "sha256:7942736f66e3379e2b14623c78b4c24174ffb560ebf0134d9704568e94b6a250",
+      "0.47.0+3.9.0": "sha256:1bb6ad2cfdee6158e445af962cfb4b48da6cdaf3dc800c7f55a164c674b99823",
+      "0.47.0+3.9.1": "sha256:7942736f66e3379e2b14623c78b4c24174ffb560ebf0134d9704568e94b6a250",
+      "0.48.0+4.0.0": "sha256:48db05ad2e9fa39eb388089e7e25654bcbf4da1ddc3a5635d675056c28bbcb96",
+      "0.48.0+4.1.0": "sha256:34450afc1a3399a9026fc3c6ec90e9f6adfec9faf6520545b4d84e90cda34964",
+      "0.49.0+4.0.0": "sha256:4597937c5addc051f3c623b18f7dab95c7ecb45a6a3a36bb53680838058b4498",
+      "0.49.0+4.0.1": "sha256:ef62adf737d52e98e0c09d6c988b4c82491916fe94f188a2b0b556b8fcb886ae",
+      "0.49.0+4.1.0": "sha256:7a08fc4adddd559469921a200763c566003b5606ec2f86d3b21b0ceb4b4a5e89",
+      "0.49.0+4.1.1": "sha256:435fcab3d03d2b829c54d602e2860a5d6769ad2d30bf05261e78126b5b716ec5",
+      "0.49.1+4.0.0": "sha256:8f775ee53622bf68b791c405e40299baa3d845b98e282d1a9269f9466018e990",
+      "0.49.1+4.0.1": "sha256:d495d3b6c98d1ea22ed3bdf0d6d06d6cda1c5b35087c817e8cf807892b178520",
+      "0.49.1+4.1.0": "sha256:73799dcf5bc7d1bb19f500f345d8892a1f91cf0213e01d9b59d3a1a53cc80aca",
+      "0.49.1+4.1.1": "sha256:bfbee54f85beb3731cf41483befa39d8c5ebe5db002df6265c6ea95b6a156749"
+    }
+
+jobs:
+  strimzi-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - strimzi_version: ${{ inputs.strimzi_version || '0.47.0' }}
+            kafka_version: ${{ inputs.kafka_version || '3.9.0' }}
+            axon_version: ${{ inputs.axon_version || '2.0.12' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set build metadata
+        id: meta
+        run: |
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          echo "✓ Strimzi: ${{ matrix.strimzi_version }}"
+          echo "✓ Kafka: ${{ matrix.kafka_version }}"
+          echo "✓ Axon Agent: ${{ matrix.axon_version }}"
+
+      - name: Resolve Strimzi base image digest
+        id: strimzi
+        run: |
+          OPERATOR_VERSION="${{ matrix.strimzi_version }}"
+          KAFKA_VERSION="${{ matrix.kafka_version }}"
+          COMPOSITE_KEY="${OPERATOR_VERSION}+${KAFKA_VERSION}"
+
+          # Get digest for this composite key
+          DIGEST=$(echo '${{ env.STRIMZI_DIGESTS }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+
+          if [ "$DIGEST" = "null" ] || [ -z "$DIGEST" ]; then
+            echo "ERROR: No digest found for Strimzi ${OPERATOR_VERSION} + Kafka ${KAFKA_VERSION}"
+            echo "Composite key: $COMPOSITE_KEY"
+            exit 1
+          fi
+
+          # Determine the correct Kafka agent package based on version
+          if [[ "$KAFKA_VERSION" == 4.* ]]; then
+            KAFKA_AGENT_PACKAGE=axon-kafka4-agent
+          else
+            KAFKA_AGENT_PACKAGE=axon-kafka3-agent
+          fi
+
+          echo "KAFKA_AGENT_PACKAGE=$KAFKA_AGENT_PACKAGE" >> $GITHUB_ENV
+
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "✓ Strimzi: $OPERATOR_VERSION"
+          echo "✓ Kafka: $KAFKA_VERSION"
+          echo "✓ Base digest: $DIGEST"
+          echo "✓ AxonOps Kafka: $KAFKA_AGENT_PACKAGE"
+
+      - name: Build image for testing
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./strimzi
+          file: ./strimzi/Dockerfile
+          # Build only for the runner's platform in tests to enable loading
+          # Multi-platform builds are done in the publish workflows
+          load: true
+          tags: axonops-strimzi:test
+          build-args: |
+            STRIMZI_VERSION=${{ matrix.strimzi_version }}
+            KAFKA_VERSION=${{ matrix.kafka_version }}
+            STRIMZI_BASE_DIGEST=${{ steps.strimzi.outputs.digest }}
+            AXONOPS_REPO_FILE=${{ vars.AXONOPS_REPO_FILE || 'axonops.repo.release' }}
+            AXON_AGENT_VERSION=${{ matrix.axon_version }}
+            KAFKA_AGENT_PACKAGE=${{ env.KAFKA_AGENT_PACKAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image layers
+        run: |
+          echo "Inspecting built image layers..."
+          docker history axonops-strimzi:test
+          docker inspect axonops-strimzi:test
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axonops-strimzi:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'strimzi/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axonops-strimzi:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'strimzi/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rmi axonops-strimzi:test || true

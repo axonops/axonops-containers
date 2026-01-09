@@ -1,4 +1,3 @@
-
 # Cassandra storage config YAML
 
 # NOTE:
@@ -118,7 +117,7 @@ max_hints_file_size: 128MiB
 auto_hints_cleanup_enabled: false
 
 # Enable/disable transfering hints to a peer during decommission. Even when enabled, this does not guarantee
-# consistency for logged batches, and it may delay decommission when coupled with a strict hinted_handoff_throttle. 
+# consistency for logged batches, and it may delay decommission when coupled with a strict hinted_handoff_throttle.
 # Default: true
 # transfer_hints_on_decommission: true
 
@@ -1122,8 +1121,8 @@ rpc_keepalive: true
 # Set to true to have Cassandra create a hard link to each sstable
 # flushed or streamed locally in a backups/ subdirectory of all the
 # keyspace data in this node.  Removing these links is the operator's
-# responsibility. The operator can also turn off incremental backups 
-# for specified table by setting table parameter incremental_backups to 
+# responsibility. The operator can also turn off incremental backups
+# for specified table by setting table parameter incremental_backups to
 # false, which is set to true by default. See CASSANDRA-15402
 incremental_backups: false
 
@@ -1503,10 +1502,10 @@ slow_query_log_timeout: 2000ms
 #    domain and get its respective value.
 #
 # CloudstackSnitch:
-#    A snitch that assumes a Cloudstack Zone follows the typical convention 
+#    A snitch that assumes a Cloudstack Zone follows the typical convention
 #    country-location-az and uses a country/location tuple as a datacenter
 #    and the availability zone as a rack.
-#    WARNING: This snitch is deprecated and it is scheduled to be removed 
+#    WARNING: This snitch is deprecated and it is scheduled to be removed
 #    in the next major version of Cassandra.
 #
 # Ec2Snitch:

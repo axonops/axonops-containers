@@ -64,8 +64,8 @@ jobs:
         with:
           context: ./k8ssandra/${{ steps.version.outputs.base_version }}
           file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
-          platforms: linux/amd64
-          load: true
+          platforms: linux/amd64,linux/arm64
+          load: false
           tags: axonops-cassandra:scan-${{ matrix.cassandra_version }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}

@@ -67,7 +67,8 @@ jobs:
         with:
           context: ./axonops/axondb-search/opensearch/3.3.2
           file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
-          platforms: linux/amd64
+          # Build only for the runner's platform in tests to enable loading
+          # Multi-platform builds are done in the publish workflows
           load: true
           tags: axondb-search:test
           build-args: |

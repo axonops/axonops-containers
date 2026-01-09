@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# This will set the replicaset count. 
+# This will set the replicaset count.
 # Please note that AxonOps Timeseries is designed to run as a single-node instance and we do not recommend running in a clustered mode.
 replicaCount: 1
 
@@ -64,6 +64,13 @@ service:
 # This setting configures the maximum heap size for the Cassandra JVM.
 # Adjust this value based on your workload and available resources.
 # For a production environment, consider setting this to a higher value, such as 8G or more.
+#
+# IMPORTANT: When setting heapSize, ensure that resources.limits.memory is set
+# to at least heapSize + 512M to account for off-heap memory, metaspace, direct memory,
+# and other JVM overhead. For example:
+#   - heapSize: 1024M requires memory limit of at least 1536Mi
+#   - heapSize: 4096M requires memory limit of at least 4608Mi
+#   - heapSize: 8192M requires memory limit of at least 8704Mi
 heapSize: 1024M
 
 # Authentication Configuration for AxonOps Timeseries Database
@@ -112,13 +119,23 @@ authentication:
   db_password: ""
   db_secret: ""
 
-resources: {}
-  # limits:
-  #   cpu: 2000m
-  #   memory: 1024Mi
-  # requests:
-  #   cpu: 1000m
-  #   memory: 512Mi
+# Resource Configuration
+# =====================
+# CRITICAL: Memory limits MUST be higher than the configured heapSize to prevent OOMKilled pods.
+# The memory limit should be at least heapSize + 512M to account for:
+#   - Off-heap memory (direct buffers, file mappings)
+#   - JVM metaspace and code cache
+#   - Native memory and thread stacks
+#   - Operating system overhead
+#
+# Default configuration for heapSize: 1024M
+resources:
+  limits:
+    cpu: 2000m
+    memory: 1536Mi  # heapSize (1024M) + 512M overhead
+  requests:
+    cpu: 1000m
+    memory: 1536Mi  # Same as limits to guarantee pod placement
 
 # TLS/SSL Configuration
 tls:
@@ -196,12 +213,23 @@ tls:
     internode:
       # Encryption options: none, dc, rack, all
       encryption: "all"
+      # Require client authentication for internode communication
+      requireClientAuth: true
       # Protocol version
       protocol: "TLS"
       # Accepted protocols (comma-separated)
       acceptedProtocols: "TLSv1.2,TLSv1.3"
       # Cipher suites (leave empty for JVM defaults)
       cipherSuites: []
+
+    # Client-to-node encryption settings
+    clientToNode:
+      # Enable client-to-node encryption
+      enabled: true
+      # Optional encryption (if false, encryption is required)
+      requireClientAuth: false
+      # Protocol version
+      protocol: "TLS"
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:

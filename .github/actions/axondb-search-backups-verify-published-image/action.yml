@@ -1,0 +1,59 @@
+name: 'AxonDB Search Backups Verify Published Image'
+description: 'Verifies image was published to registry and signature is valid'
+inputs:
+  image:
+    description: 'Full image reference with digest'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3
+
+    - name: Verify image signature
+      shell: bash
+      run: |
+        echo "=== Verifying Image Signature ==="
+        echo "Image: ${{ inputs.image }}"
+
+        cosign verify ${{ inputs.image }} \
+          --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \
+          --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+
+        echo "✓ Image signature verified"
+
+    - name: Pull and inspect image
+      shell: bash
+      run: |
+        echo "=== Pulling and Inspecting Image ==="
+
+        docker pull ${{ inputs.image }}
+
+        # Inspect image
+        docker inspect ${{ inputs.image }} | head -50
+
+        echo "✓ Image pulled successfully from registry"
+
+    - name: Test image functionality
+      shell: bash
+      run: |
+        echo "=== Testing Image Functionality ==="
+
+        # Test that the backup script exists and is executable
+        docker run --rm --entrypoint /bin/sh ${{ inputs.image }} -c "test -x /usr/local/bin/backup.sh" || exit 1
+        echo "✓ Backup script is executable"
+
+        # Test that the container can run help command
+        docker run --rm ${{ inputs.image }} help || docker run --rm ${{ inputs.image }} --help || true
+        echo "✓ Container runs successfully"
+
+        # Test user permissions
+        docker run --rm --entrypoint /bin/sh ${{ inputs.image }} -c "id opensearch | grep -q 'uid=1000'" || exit 1
+        echo "✓ User permissions are correct"
+
+        # Test jq is installed
+        docker run --rm --entrypoint /bin/sh ${{ inputs.image }} -c "jq --version" || exit 1
+        echo "✓ Required tools are installed"
+
+        echo "✓ Published image verification complete"

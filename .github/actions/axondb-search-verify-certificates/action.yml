@@ -44,6 +44,11 @@ runs:
 
         echo "✓ All demo certificates removed"
 
+    - name: Check container is listening on 9200
+      shell: bash
+      run: |
+        curl -vk https://localhost:${{ inputs.port }}/
+
     - name: Verify AxonOps certificate is served
       shell: bash
       run: |

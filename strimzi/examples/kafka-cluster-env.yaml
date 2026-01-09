@@ -1,0 +1,140 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-logging-cm
+  namespace: kafka
+data:
+  log4j.properties: |
+    log4j.rootLogger=INFO, FILE
+    log4j.appender.FILE=org.apache.log4j.RollingFileAppender
+    log4j.appender.FILE.File=/${kafka.logs.dir}/server.log
+    log4j.appender.FILE.MaxFileSize=10MB
+    log4j.appender.FILE.MaxBackupIndex=5
+    log4j.appender.FILE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.FILE.layout.ConversionPattern=[%d] %p %m (%c)%n
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: my-cluster-controller
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  replicas: 3
+  roles:
+    - controller
+#  storage:
+#    type: ephemeral
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 5Gi
+        deleteClaim: false
+        kraftMetadata: shared
+
+  template:
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              strimzi.io/name: my-cluster-kafka
+    kafkaContainer:
+        env:
+        - name: KAFKA_NODE_TYPE
+          value: kraft-controller
+        - name: AXON_AGENT_SERVER_HOST
+          value: YOUR_AXONOPS_HOST
+        - name: AXON_AGENT_KEY
+          value: YOUR_AXONOPS_API_KEY
+        - name: AGENT_CLUSTER_NAME
+          value: YOUR_CLUSTER_NAME
+        - name: AXON_AGENT_ORG
+          value: YOUR_ORG_NAME
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: broker-pool
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  replicas: 2
+  roles:
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 1
+        type: persistent-claim
+        size: 5Gi
+        deleteClaim: false
+  template:
+    kafkaContainer:
+        env:
+        - name: KAFKA_CLIENT_BROKERS
+          value: 0.0.0.0:9092
+        - name: KAFKA_NODE_TYPE
+          value: kraft-broker
+        - name: AXON_AGENT_SERVER_HOST
+          value: YOUR_AXONOPS_HOST
+        - name: AXON_AGENT_KEY
+          value: YOUR_AXONOPS_API_KEY
+        - name: AGENT_CLUSTER_NAME
+          value: YOUR_CLUSTER_NAME
+        - name: AXON_AGENT_ORG
+          value: YOUR_ORG_NAME
+---
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: my-cluster
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 3.9.0
+    image: ghcr.io/axonops/strimzi/kafka:0.47.0-3.9.0
+    rack:
+      topologyKey: topology.kubernetes.io/zone
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+    jvmOptions:
+      javaSystemProperties:
+        - name: kafka.logs.dir
+          value: /var/log/kafka
+    logging:
+      type: inline
+      loggers:
+        log4j.rootLogger: "INFO, FILE"
+        log4j.appender.FILE: "org.apache.log4j.RollingFileAppender"
+        log4j.appender.FILE.File: "/${kafka.logs.dir}/server.log"
+        log4j.appender.FILE.MaxFileSize: "10MB"
+        log4j.appender.FILE.MaxBackupIndex: "5"
+        log4j.appender.FILE.layout: "org.apache.log4j.PatternLayout"
+        log4j.appender.FILE.layout.ConversionPattern: "[%d] %p %m (%c)%n"
+        log4j.logger.axonops.io.netty: "ERROR"

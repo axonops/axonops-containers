@@ -6,7 +6,7 @@ set -e
 
 # Detect host architecture and map to Docker TARGETARCH naming
 HOST_ARCH=$(uname -m)
-if [ "$HOST_ARCH" = "arm64" ]; then
+if [ "$HOST_ARCH" = "arm64" ] || [ "$HOST_ARCH" = "aarch64" ]; then
     TARGETARCH="arm64"
     PLATFORM="linux/arm64"
 elif [ "$HOST_ARCH" = "x86_64" ]; then
@@ -16,6 +16,9 @@ else
     echo "ERROR: Unsupported architecture: $HOST_ARCH"
     exit 1
 fi
+
+IMAGE_NAME=${1:-axondb-timeseries:latest}
+shift
 
 echo "=========================================="
 echo "Building AxonDB Time-Series Cassandra"
@@ -31,7 +34,7 @@ podman build \
     --platform "$PLATFORM" \
     --build-arg TARGETARCH="$TARGETARCH" \
     --build-arg CQLAI_VERSION=0.0.31 \
-    -t axondb-timeseries:latest \
+    -t $IMAGE_NAME \
     "$@" \
     .
 

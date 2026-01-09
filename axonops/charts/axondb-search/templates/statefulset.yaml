@@ -251,6 +251,11 @@ spec:
         secret:
           secretName: {{ .Values.securityConfig.tenantsSecret }}
       {{- end }}
+      {{- if eq .Values.backups.target.type "local" }}
+      - name: backups
+        persistentVolumeClaim:
+          claimName: {{ .Values.backups.target.local.existingClaim | default (printf "%s-backups" (include "opensearch.uname" .)) }}
+      {{- end }}
       {{- if .Values.extraVolumes }}
       # Currently some extra blocks accept strings
       # to continue with backwards compatibility this is being kept
@@ -445,6 +450,10 @@ spec:
         - name: AXONOPS_SEARCH_PASSWORD
           value: {{ .Values.authentication.opensearch_password | quote }}
       {{- end }}
+        {{- if eq .Values.backups.target.type "local" }}
+        - name: AXONOPS_SEARCH_BACKUS_PATH
+          value: {{ .Values.backups.target.local.path }}
+        {{- end }}
       {{- if .Values.tls.enabled }}
         # TLS/SSL Environment Variables
         {{- if .Values.tls.certManager.enabled }}
@@ -586,6 +595,10 @@ spec:
           subPath: {{ $path }}
         {{- end -}}
         {{- end -}}
+        {{- if eq .Values.backups.target.type "local" }}
+        - name: backups
+          mountPath: {{ .Values.backups.target.local.path }}
+        {{- end }}
         {{- if .Values.extraVolumeMounts }}
         # Currently some extra blocks accept strings
         # to continue with backwards compatibility this is being kept
