@@ -71,7 +71,7 @@ backups:
   image:
     repository: "ghcr.io/axonops/axondb-search-backups"
     # Override image tag (defaults to Chart.AppVersion)
-    tag: ""
+    tag: "1.2.0"
     pullPolicy: "IfNotPresent"
 
   # Snapshot repository name in OpenSearch
