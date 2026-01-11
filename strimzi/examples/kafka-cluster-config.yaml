@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: controller-axon-config
-  namespace: kafka
+  namespace: ${STRIMZI_NAMESPACE}
 data:
   axon-agent.yml: |
     axon-server:
@@ -25,7 +25,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: broker-axon-config
-  namespace: kafka
+  namespace: ${STRIMZI_NAMESPACE}
 data:
   axon-agent.yml: |
     axon-server:
@@ -52,7 +52,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kafka-logging-cm
-  namespace: kafka
+  namespace: ${STRIMZI_NAMESPACE}
 data:
   log4j.properties: |
     log4j.rootLogger=INFO, FILE
@@ -68,10 +68,10 @@ data:
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
-  name: my-cluster-controller
-  namespace: kafka
+  name: ${STRIMZI_CLUSTER_NAME}-controller
+  namespace: ${STRIMZI_NAMESPACE}
   labels:
-    strimzi.io/cluster: my-cluster
+    strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
 spec:
   replicas: 3
   roles:
@@ -90,7 +90,7 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              strimzi.io/name: my-cluster-kafka
+              strimzi.io/name: ${STRIMZI_CLUSTER_NAME}-kafka
     kafkaContainer:
       volumeMounts:
         - name: axon-agent-config-vol
@@ -102,9 +102,9 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
   name: broker-pool
-  namespace: kafka
+  namespace: ${STRIMZI_NAMESPACE}
   labels:
-    strimzi.io/cluster: my-cluster
+    strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
 spec:
   replicas: 2
   roles:
@@ -127,7 +127,7 @@ spec:
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
-  name: my-cluster
+  name: ${STRIMZI_CLUSTER_NAME}
   annotations:
     strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled

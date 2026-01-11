@@ -1,0 +1,55 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: ${STRIMZI_CLUSTER_NAME}
+  namespace: ${STRIMZI_NAMESPACE}
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 4.1.1
+    image: ghcr.io/axonops/development/strimzi:0.49.1-4.1.1-2.0.12
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+    jvmOptions:
+      javaSystemProperties:
+        - name: kafka.logs.dir
+          value: /var/log/kafka
+    logging:
+      type: inline
+      loggers:
+        rootLogger.level: "INFO"
+        rootLogger.appenderRefs: "file"
+        rootLogger.appenderRef.file.ref: "FILE"
+
+        appender.file.type: "RollingFile"
+        appender.file.name: "FILE"
+        appender.file.fileName: "${sys:kafka.logs.dir}/server.log"
+        appender.file.filePattern: "${sys:kafka.logs.dir}/server.log.%i"
+        appender.file.layout.type: "PatternLayout"
+        appender.file.layout.pattern: "[%d] %p %m (%c)%n"
+        appender.file.policies.type: "Policies"
+        appender.file.policies.size.type: "SizeBasedTriggeringPolicy"
+        appender.file.policies.size.size: "10MB"
+        appender.file.strategy.type: "DefaultRolloverStrategy"
+        appender.file.strategy.max: "5"
+
+        logger.netty.name: "axonops.io.netty"
+        logger.netty.level: "ERROR"
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}

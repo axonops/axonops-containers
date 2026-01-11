@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ${STRIMZI_CLUSTER_NAME}-kafka-broker-binding
+  labels:
+    strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: strimzi-kafka-broker
+subjects:
+- kind: ServiceAccount
+  name: ${STRIMZI_CLUSTER_NAME}-kafka
+  namespace: ${STRIMZI_NAMESPACE}
