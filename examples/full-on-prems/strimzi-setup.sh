@@ -57,7 +57,8 @@ STRIMZI_STORAGECLASS_FILE="${STRIMZI_STORAGECLASS_FILE:-strimzi-storageclass.yam
 STRIMZI_CONTROLLER_VOLUMES_FILE="${STRIMZI_CONTROLLER_VOLUMES_FILE:-strimzi-controller-volumes.yaml}"
 STRIMZI_BROKER_VOLUMES_FILE="${STRIMZI_BROKER_VOLUMES_FILE:-strimzi-broker-volumes.yaml}"
 STRIMZI_KAFKA_RBAC_FILE="${STRIMZI_KAFKA_RBAC_FILE:-strimzi-kafka-rbac.yaml}"
-STRIMZI_NODE_POOLS_FILE="${STRIMZI_NODE_POOLS_FILE:-strimzi-node-pools.yaml}"
+STRIMZI_BROKER_POOLS_FILE="${STRIMZI_BROKER_POOLS_FILE:-strimzi-broker-pools.yaml}"
+STRIMZI_CONTROLLER_POOLS_FILE="${STRIMZI_CONTROLLER_POOLS_FILE:-strimzi-controller-pools.yaml}"
 STRIMZI_KAFKA_CLUSTER_FILE="${STRIMZI_KAFKA_CLUSTER_FILE:-strimzi-kafka-cluster.yaml}"
 
 # Node affinity / host configuration (must match PV manifests)
@@ -477,7 +478,8 @@ apply_strimzi_resources() {
   info "Checking for required YAML files..."
   local required_files=(
     "$STRIMZI_KAFKA_RBAC_FILE"
-    "$STRIMZI_NODE_POOLS_FILE"
+    "$STRIMZI_CONTROLLER_POOLS_FILE"
+    "$STRIMZI_BROKER_POOLS_FILE"
     "$STRIMZI_KAFKA_CLUSTER_FILE"
   )
 
@@ -596,37 +598,44 @@ apply_strimzi_resources() {
   # Apply NodePools (needs substitution for AxonOps agent config and storage)
   info "Applying Kafka NodePools..."
 
-  # Process NodePools YAML with dynamic storage class insertion
-  local nodepool_yaml=$(envsubst < "strimzi/$STRIMZI_NODE_POOLS_FILE")
+  for pool in $STRIMZI_BROKER_POOLS_FILE $STRIMZI_CONTROLLER_POOLS_FILE; do
+    if [[ ! -f "strimzi/$pool" ]]; then
+      error "NodePools file not found: $pool"
+      exit 1
+    fi
 
-  # Add storage class fields based on storage mode
-  if [[ "$STORAGE_MODE" == "hostPath" ]]; then
-    # Insert storage class after size for both nodepools (using the same storage class)
-    nodepool_yaml=$(echo "$nodepool_yaml" | awk '
-      /size: .*Gi$/ {print $0 "\n      class: strimzi-hostpath-manual"; next}
-      {print}
-    ')
-  elif [[ -n "$STORAGE_CLASS" ]]; then
-    # Insert specified storage class for both nodepools
-    nodepool_yaml=$(echo "$nodepool_yaml" | awk -v sc="$STORAGE_CLASS" '
-      /size: .*Gi$/ {print $0 "\n      class: " sc; next}
-      {print}
-    ')
-  fi
-  # If PVC with default storage class (empty STORAGE_CLASS), don't add class field
+    # Process NodePools YAML with dynamic storage class insertion
+    local nodepool_yaml=$(envsubst < "strimzi/$pool")
 
-  if [[ "$AXONOPS_AVAILABLE" == "true" ]]; then
-    info "Configuring NodePools with AxonOps agent..."
-    echo "$nodepool_yaml" | $KUBECTL_BIN apply -n $NS_KAFKA -f -
-  else
-    warn "Applying NodePools without AxonOps agent configuration..."
-    # Remove AxonOps agent annotations if AxonOps is not available
-    echo "$nodepool_yaml" | sed '/axon.ops.io/d' | $KUBECTL_BIN -n $NS_KAFKA apply -f -
-  fi
+    # Add storage class fields based on storage mode
+    if [[ "$STORAGE_MODE" == "hostPath" ]]; then
+      # Insert storage class after size for both nodepools (using the same storage class)
+      nodepool_yaml=$(echo "$nodepool_yaml" | awk '
+        /size: .*Gi$/ {print $0 "\n      class: strimzi-hostpath-manual"; next}
+        {print}
+      ')
+    elif [[ -n "$STORAGE_CLASS" ]]; then
+      # Insert specified storage class for both nodepools
+      nodepool_yaml=$(echo "$nodepool_yaml" | awk -v sc="$STORAGE_CLASS" '
+        /size: .*Gi$/ {print $0 "\n      class: " sc; next}
+        {print}
+      ')
+    fi
+    # If PVC with default storage class (empty STORAGE_CLASS), don't add class field
 
-  # Apply Kafka cluster (may need substitution)
-  info "Applying Kafka cluster configuration..."
-  envsubst < "strimzi/$STRIMZI_KAFKA_CLUSTER_FILE" | $KUBECTL_BIN -n $NS_KAFKA apply -f -
+    if [[ "$AXONOPS_AVAILABLE" == "true" ]]; then
+      info "Configuring NodePools with AxonOps agent..."
+      echo "$nodepool_yaml" | $KUBECTL_BIN apply -n $NS_KAFKA -f -
+    else
+      warn "Applying NodePools without AxonOps agent configuration..."
+      # Remove AxonOps agent annotations if AxonOps is not available
+      echo "$nodepool_yaml" | sed '/axon.ops.io/d' | $KUBECTL_BIN -n $NS_KAFKA apply -f -
+    fi
+
+    # Apply Kafka cluster (may need substitution)
+    info "Applying Kafka cluster configuration..."
+    envsubst < "strimzi/$STRIMZI_KAFKA_CLUSTER_FILE" | $KUBECTL_BIN -n $NS_KAFKA apply -f -
+  done
 }
 
 ############################################
