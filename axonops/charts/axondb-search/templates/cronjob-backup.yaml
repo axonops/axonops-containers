@@ -181,7 +181,7 @@ spec:
             {{- if .Values.tls.certManager.enabled }}
             - name: tls-certs
               secret:
-                secretName: {{ .Values.tls.certManager.certificate.secretName | default (printf "%s-tls" (include "opensearch.uname" .)) }}
+                secretName: {{ .Values.tls.certManager.certificate.secretName | default (printf "%s-tls" (include "opensearch.fullname" .)) }}
             {{- else if .Values.tls.manual.existingSecret }}
             - name: tls-certs
               secret:

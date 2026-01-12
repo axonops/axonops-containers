@@ -255,8 +255,22 @@ done
 
 # Apply heap size override to jvm17-server.options if env var set
 if [ -n "$CASSANDRA_HEAP_SIZE" ]; then
-    echo "-Xms${CASSANDRA_HEAP_SIZE}" >> "/etc/cassandra/jvm17-server.options"
-    echo "-Xmx${CASSANDRA_HEAP_SIZE}" >> "/etc/cassandra/jvm17-server.options"
+    # Check if -Xms and -Xmx lines already exist and update them, or add new ones
+    if grep -q "^-Xms" "/etc/cassandra/jvm17-server.options"; then
+        _sed-in-place "/etc/cassandra/jvm17-server.options" -r 's|^-Xms.*|-Xms'"${CASSANDRA_HEAP_SIZE}"'|'
+    else
+        echo "-Xms${CASSANDRA_HEAP_SIZE}" >> "/etc/cassandra/jvm17-server.options"
+    fi
+
+    if grep -q "^-Xmx" "/etc/cassandra/jvm17-server.options"; then
+        _sed-in-place "/etc/cassandra/jvm17-server.options" -r 's|^-Xmx.*|-Xmx'"${CASSANDRA_HEAP_SIZE}"'|'
+    else
+        echo "-Xmx${CASSANDRA_HEAP_SIZE}" >> "/etc/cassandra/jvm17-server.options"
+    fi
+
+    # Confirm the heap size was set correctly
+    echo "✓ Heap size set to ${CASSANDRA_HEAP_SIZE} (Xms and Xmx)"
+    echo "  JVM options updated in /etc/cassandra/jvm17-server.options"
 fi
 
 echo "✓ Configuration applied to cassandra.yaml"
