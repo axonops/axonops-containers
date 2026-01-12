@@ -7,7 +7,7 @@ metadata:
     strimzi.io/pool: broker-pool
 spec:
   capacity:
-    storage: ${STRIMZI_BROKER_DISK_SIZE:-5Gi}
+    storage: ${STRIMZI_BROKER_DISK_SIZE}
   accessModes:
   - ReadWriteOnce
   volumeMode: Filesystem

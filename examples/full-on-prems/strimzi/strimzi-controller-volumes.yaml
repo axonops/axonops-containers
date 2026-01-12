@@ -7,7 +7,7 @@ metadata:
     strimzi.io/pool: ${STRIMZI_CLUSTER_NAME}-controller
 spec:
   capacity:
-    storage: ${STRIMZI_CONTROLLER_DISK_SIZE:-5Gi}
+    storage: ${STRIMZI_CONTROLLER_DISK_SIZE}
   accessModes:
   - ReadWriteOnce
   volumeMode: Filesystem
