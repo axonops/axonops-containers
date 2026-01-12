@@ -61,6 +61,9 @@ STRIMZI_BROKER_POOLS_FILE="${STRIMZI_BROKER_POOLS_FILE:-strimzi-broker-pools.yam
 STRIMZI_CONTROLLER_POOLS_FILE="${STRIMZI_CONTROLLER_POOLS_FILE:-strimzi-controller-pools.yaml}"
 STRIMZI_KAFKA_CLUSTER_FILE="${STRIMZI_KAFKA_CLUSTER_FILE:-strimzi-kafka-cluster.yaml}"
 
+STRIMZI_CONTROLLER_REPLICAS="${STRIMZI_CONTROLLER_REPLICAS:-2}"
+STRIMZI_BROKER_REPLICAS="${STRIMZI_BROKER_REPLICAS:-3}"
+
 # Node affinity / host configuration (must match PV manifests)
 # This MUST be set to your actual Kubernetes node hostname
 STRIMZI_NODE_HOSTNAME="${STRIMZI_NODE_HOSTNAME:-$(hostname)}"  # Default to current hostname, override with actual K8s node name
@@ -598,14 +601,70 @@ apply_strimzi_resources() {
   # Apply NodePools (needs substitution for AxonOps agent config and storage)
   info "Applying Kafka NodePools..."
 
+  # Set default node variables for pools (in case they're referenced)
+  # These will be overridden if node selectors are used, but provide fallback
+  export STRIMZI_CONTROLLER_NODE="${STRIMZI_NODE_HOSTNAME}"
+  export STRIMZI_BROKER_NODE="${STRIMZI_NODE_HOSTNAME}"
+
   for pool in $STRIMZI_BROKER_POOLS_FILE $STRIMZI_CONTROLLER_POOLS_FILE; do
     if [[ ! -f "strimzi/$pool" ]]; then
       error "NodePools file not found: $pool"
       exit 1
     fi
 
-    # Process NodePools YAML with dynamic storage class insertion
+    # Process NodePools YAML with variable substitution
     local nodepool_yaml=$(envsubst < "strimzi/$pool")
+
+    # Determine which node selectors to use for this pool
+    local node_list=()
+    if [[ "$pool" == "$STRIMZI_BROKER_POOLS_FILE" ]] && [[ -n "$KAFKA_BROKER_NODE_SELECTORS" ]]; then
+      # Get unique nodes from broker node selectors
+      for i in "${!broker_nodes[@]}"; do
+        local node="${broker_nodes[$i]}"
+        if [[ ! " ${node_list[@]} " =~ " ${node} " ]]; then
+          node_list+=("$node")
+        fi
+      done
+    elif [[ "$pool" == "$STRIMZI_CONTROLLER_POOLS_FILE" ]] && [[ -n "$KAFKA_CONTROLLER_NODE_SELECTORS" ]]; then
+      # Get unique nodes from controller node selectors
+      for i in "${!controller_nodes[@]}"; do
+        local node="${controller_nodes[$i]}"
+        if [[ ! " ${node_list[@]} " =~ " ${node} " ]]; then
+          node_list+=("$node")
+        fi
+      done
+    fi
+
+    # Add node affinity for hostPath storage with node selectors
+    if [[ "$STORAGE_MODE" == "hostPath" ]] && [[ ${#node_list[@]} -gt 0 ]]; then
+      info "Adding node affinity for pool $pool to nodes: ${node_list[*]}"
+
+      # Build the node values list for YAML
+      local node_values=""
+      for node in "${node_list[@]}"; do
+        node_values="${node_values}            - $node\n"
+      done
+
+      # Inject node affinity after the pod: line
+      nodepool_yaml=$(echo "$nodepool_yaml" | awk -v nodes="$node_values" '
+        /^  template:/ { in_template=1 }
+        /^    pod:/ && in_template {
+          print $0
+          print "      affinity:"
+          print "        nodeAffinity:"
+          print "          requiredDuringSchedulingIgnoredDuringExecution:"
+          print "            nodeSelectorTerms:"
+          print "            - matchExpressions:"
+          print "              - key: kubernetes.io/hostname"
+          print "                operator: In"
+          print "                values:"
+          printf "%s", nodes
+          pod_done=1
+          next
+        }
+        { print }
+      ')
+    fi
 
     # Add storage class fields based on storage mode
     if [[ "$STORAGE_MODE" == "hostPath" ]]; then
@@ -624,18 +683,18 @@ apply_strimzi_resources() {
     # If PVC with default storage class (empty STORAGE_CLASS), don't add class field
 
     if [[ "$AXONOPS_AVAILABLE" == "true" ]]; then
-      info "Configuring NodePools with AxonOps agent..."
+      info "Configuring NodePool $pool with AxonOps agent..."
       echo "$nodepool_yaml" | $KUBECTL_BIN apply -n $NS_KAFKA -f -
     else
-      warn "Applying NodePools without AxonOps agent configuration..."
+      warn "Applying NodePool $pool without AxonOps agent configuration..."
       # Remove AxonOps agent annotations if AxonOps is not available
       echo "$nodepool_yaml" | sed '/axon.ops.io/d' | $KUBECTL_BIN -n $NS_KAFKA apply -f -
     fi
-
-    # Apply Kafka cluster (may need substitution)
-    info "Applying Kafka cluster configuration..."
-    envsubst < "strimzi/$STRIMZI_KAFKA_CLUSTER_FILE" | $KUBECTL_BIN -n $NS_KAFKA apply -f -
   done
+
+  # Apply Kafka cluster configuration (only once, after all pools)
+  info "Applying Kafka cluster configuration..."
+  envsubst < "strimzi/$STRIMZI_KAFKA_CLUSTER_FILE" | $KUBECTL_BIN -n $NS_KAFKA apply -f -
 }
 
 ############################################

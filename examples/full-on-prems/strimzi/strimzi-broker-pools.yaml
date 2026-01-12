@@ -6,7 +6,7 @@ metadata:
   labels:
     strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
 spec:
-  replicas: 3
+  replicas: ${STRIMZI_BROKER_REPLICAS}
   roles: [broker]
   storage:
     type: jbod
@@ -17,7 +17,14 @@ spec:
       deleteClaim: false
   template:
     pod:
-      # Removed topologySpreadConstraints for single-node hostPath deployment
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: "kubernetes.io/hostname"
+          whenUnsatisfiable: DoNotSchedule # Or "ScheduleAnyway" if you only have one node
+          labelSelector:
+            matchLabels:
+              strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
+              strimzi.io/pool-name: broker-pool
     kafkaContainer:
         env:
         - name: KAFKA_NODE_TYPE
