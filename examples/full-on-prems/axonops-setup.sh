@@ -91,7 +91,8 @@ AXON_SERVER_DASH_URL="${AXON_SERVER_DASH_URL:-https://axonops.example.com}"
 # CQL / Cassandra configuration
 AXON_SERVER_CQL_HOSTS="${AXON_SERVER_CQL_HOSTS:-axondb-timeseries-headless.$NS_AXONOPS.svc.cluster.local}"
 AXON_SERVER_CQL_PASSWORD="${AXON_SERVER_CQL_PASSWORD:-cassandra}"
-AXON_SERVER_CQL_USERNAME="${AXON_SERVER_CQL_USERNAME:-cassandra}"
+AXON_SERVER_CQL_USERNAME="${AXON_SERVER_CQL_USERNAME}"
+
 AXON_SERVER_CQL_LOCAL_DC="${AXON_SERVER_CQL_LOCAL_DC:-axonopsdb_dc1}"
 AXON_SERVER_CQL_REPLICATION="${AXON_SERVER_CQL_REPLICATION:-{ \"class\": \"NetworkTopologyStrategy\", \"axonopsdb_dc1\": 1 }}"
 AXON_SERVER_CQL_SSL_ENABLED="${AXON_SERVER_CQL_SSL_ENABLED:-true}"
@@ -532,7 +533,13 @@ main() {
     error "Please set it before running: export AXON_SEARCH_PASSWORD='your-secure-password'"
     exit 1
   fi
-
+  
+  if [[ -z "${AXON_SERVER_CQL_PASSWORD:-}" ]]; then
+    error "AXON_SERVER_CQL_PASSWORD environment variable is required for security"
+    error "Please set it before running: export AXON_SERVER_CQL_PASSWORD='your-secure-password'"
+    exit 1
+  fi
+  
   install_cert_manager
 
   prepare_timeseries_hostpath
