@@ -642,7 +642,7 @@ apply_strimzi_resources() {
       # Build the node values list for YAML
       local node_values=""
       for node in "${node_list[@]}"; do
-        node_values="${node_values}            - $node\n"
+        node_values="${node_values}                - $node\n"
       done
 
       # Inject node affinity after the pod: line
