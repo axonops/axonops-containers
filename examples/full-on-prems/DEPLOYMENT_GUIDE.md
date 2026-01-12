@@ -1,16 +1,47 @@
 # AxonOps and Strimzi Kafka On-Premises Deployment Guide
 
-This guide helps you deploy AxonOps monitoring services and Strimzi Kafka cluster using hostPath storage for testing purposes.
+This guide helps you deploy AxonOps monitoring services and Strimzi Kafka cluster with flexible storage and node placement options.
+
+## Quick Start
+
+For a basic single-node deployment with default settings:
+
+```bash
+# Set the Kubernetes node hostname
+export STRIMZI_NODE_HOSTNAME='your-node-name'
+
+# Deploy Strimzi Kafka
+./strimzi-setup.sh
+```
+
+For a full deployment with AxonOps monitoring:
+
+```bash
+# Deploy AxonOps first
+export AXON_SERVER_SEARCH_DB_PASSWORD='your-password'
+./axonops-setup.sh
+
+# Then deploy Strimzi with AxonOps integration
+source axonops-config.env
+export STRIMZI_NODE_HOSTNAME='your-node-name'
+./strimzi-setup.sh
+```
+
+That's it! Continue reading for detailed configuration options and advanced scenarios.
+
+---
 
 ## Overview
 
 The deployment has been split into two modular scripts for better flexibility:
 - **`axonops-setup.sh`** - Deploys AxonOps monitoring and management services
-- **`strimzi-setup.sh`** - Deploys Strimzi Kafka cluster with optional AxonOps integration
+- **`strimzi-setup.sh`** - Deploys Strimzi Kafka cluster with optional AxonOps integration and node selector support
 
 ## Prerequisites
 
-1. **Single Kubernetes Node Setup** (due to hostPath storage limitations)
+1. **Kubernetes Cluster** (single or multi-node)
+   - Single-node: Ideal for testing with hostPath storage
+   - Multi-node: Supported with node selectors for distributed deployments
 2. **Required Tools**:
    - `kubectl` - Kubernetes CLI
    - `helm` - Helm package manager
@@ -69,6 +100,15 @@ export STRIMZI_HOST_BASE_DIR="/data/strimzi"  # Base directory for Kafka data
 # AxonOps storage configuration
 export AXON_SEARCH_USE_HOSTPATH="false"     # Set to "true" to use hostPath storage for Search DB (default: false)
 export AXON_TIMESERIES_USE_HOSTPATH="false" # Set to "true" to use hostPath storage for Timeseries DB (default: false)
+
+# Node selector configuration (for multi-node deployments)
+export KAFKA_BROKER_NODE_SELECTORS="broker-0:node1,broker-1:node2,broker-2:node3"
+export KAFKA_CONTROLLER_NODE_SELECTORS="controller-0:node1,controller-1:node1,controller-2:node1"
+
+# Storage mode (default: hostPath)
+export STORAGE_MODE="hostPath"    # Options: "hostPath" or "pvc"
+export STORAGE_CLASS="fast-ssd"   # For PVC mode only
+export STORAGE_SIZE="50Gi"        # For PVC mode only
 ```
 
 **Note about AxonOps Storage Options:**
@@ -76,6 +116,13 @@ export AXON_TIMESERIES_USE_HOSTPATH="false" # Set to "true" to use hostPath stor
 - When set to `true`, the databases will use hostPath storage bound to specific directories on the node
 - Use hostPath storage (`true`) only for single-node testing environments
 - For production, keep these as `false` and configure proper persistent storage
+
+**Note about Node Selectors:**
+- Use node selectors to pin specific brokers and controllers to designated nodes
+- Format: `"replica-id:node-name,replica-id:node-name"`
+- Examples: `"broker-0:worker-1"`, `"ctrl-0:control-1"`, or just `"0:node1"`
+- When using hostPath storage, node affinity is automatically configured to match storage placement
+- See [NODE_SELECTOR_GUIDE.md](NODE_SELECTOR_GUIDE.md) for detailed configuration examples
 
 ## Running the Deployment
 
@@ -277,11 +324,17 @@ kubectl get svc -n axonops axon-server-agent
 
 ## Limitations
 
-⚠️ **This setup uses hostPath storage which has the following limitations:**
-- All Kafka pods must run on the same node
-- No high availability or failover capabilities
+⚠️ **When using hostPath storage mode:**
 - Data is stored directly on the node's filesystem
-- Not suitable for production use
+- Each pod must be pinned to the node where its storage resides
+- Moving pods requires data migration
+- Limited high availability compared to distributed storage
+- Recommended for testing and development environments only
+
+**For production deployments:**
+- Use PVC mode (`STORAGE_MODE=pvc`) with a distributed storage provider
+- Configure proper backup and disaster recovery procedures
+- Implement monitoring and alerting
 
 ## Cleanup
 

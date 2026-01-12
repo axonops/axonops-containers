@@ -2,36 +2,48 @@
 
 ## Overview
 
-This guide explains how to use the enhanced Strimzi deployment script to pin Kafka brokers and controllers to specific Kubernetes nodes. This is essential when you need to:
+This guide explains how to use the Strimzi deployment script to pin Kafka brokers and controllers to specific Kubernetes nodes. This is essential when you need to:
 
 - Ensure data locality for performance
 - Pin components to nodes with specific hardware (NVMe, high memory, etc.)
 - Distribute brokers across availability zones
 - Control storage placement for persistent volumes
 
+**Key Features:**
+- Automatic node affinity configuration for hostPath storage
+- Support for both single-node and multi-node deployments
+- Flexible replica-to-node mapping
+- Pre-deployment validation of node availability
+- Post-deployment verification of pod placement
+
 ## Quick Start
 
-### Basic Usage
+### Single Node Deployment
 
 ```bash
-# Pin brokers to specific nodes
-export KAFKA_BROKER_NODE_SELECTORS="broker-0:node1,broker-1:node2,broker-2:node3"
+# Default behavior - all components on one node
+export STRIMZI_NODE_HOSTNAME='your-node-name'
+./strimzi-setup.sh
+```
 
-# Pin controllers to specific nodes
-export KAFKA_CONTROLLER_NODE_SELECTORS="controller-0:node1,controller-1:node2,controller-2:node3"
+### Multi-Node Deployment
+
+```bash
+# Distribute brokers across nodes
+export KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1,broker-1:worker-2,broker-2:worker-3"
+
+# Keep controllers together on one node
+export KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,ctrl-1:control-1,ctrl-2:control-1"
 
 # Run the deployment
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
 
-### Default Behavior (No Node Selectors)
-
-If you don't specify node selectors, all components will be deployed to the default node:
-
-```bash
-# Uses STRIMZI_NODE_HOSTNAME (defaults to current hostname)
-./strimzi-setup-with-node-selectors.sh
-```
+That's it! The script will:
+- Validate all specified nodes exist and are ready
+- Create PersistentVolumes with node affinity (for hostPath mode)
+- Inject node affinity into KafkaNodePools automatically
+- Verify pod placement after deployment
 
 ## Configuration Options
 
@@ -50,16 +62,27 @@ If you don't specify node selectors, all components will be deployed to the defa
 
 Node selectors use the format: `replica-id:node-name`
 
-- **Replica ID**: Can be full name (`broker-0`) or just number (`0`)
+- **Replica ID**: Can be in multiple formats:
+  - Full broker name: `broker-0`, `broker-1`, etc.
+  - Full controller name: `controller-0`, `controller-1`, etc.
+  - Short controller name: `ctrl-0`, `ctrl-1`, etc.
+  - Number only: `0`, `1`, `2`, etc.
 - **Node Name**: Must be exact Kubernetes node name
 
 Examples:
 ```bash
-# Full format
-KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1,broker-1:worker-2"
+# Broker formats (all equivalent for broker 0)
+KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1"
+KAFKA_BROKER_NODE_SELECTORS="0:worker-1"
 
-# Short format (numbers only)
-KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-2"
+# Controller formats (all equivalent for controller 0)
+KAFKA_CONTROLLER_NODE_SELECTORS="controller-0:control-1"
+KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1"
+KAFKA_CONTROLLER_NODE_SELECTORS="0:control-1"
+
+# Mixed formats work too
+KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1,1:worker-2,broker-2:worker-3"
+KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,controller-1:control-1,2:control-1"
 ```
 
 ## Deployment Scenarios
@@ -71,24 +94,24 @@ KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-2"
 export KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-1,2:worker-1"
 export KAFKA_CONTROLLER_NODE_SELECTORS="0:worker-1,1:worker-1,2:worker-1"
 
-# Or use default behavior (simpler)
+# Or use default behavior (simpler and recommended)
 export STRIMZI_NODE_HOSTNAME="worker-1"
 unset KAFKA_BROKER_NODE_SELECTORS
 unset KAFKA_CONTROLLER_NODE_SELECTORS
 
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
 
 ### Scenario 2: Distributed Brokers, Co-located Controllers
 
 ```bash
-# Brokers across different nodes
+# Brokers across different nodes for better throughput
 export KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-2,2:worker-3"
 
-# Controllers on a single control node
-export KAFKA_CONTROLLER_NODE_SELECTORS="0:control-1,1:control-1,2:control-1"
+# Controllers on a single control node for better coordination
+export KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,ctrl-1:control-1,ctrl-2:control-1"
 
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
 
 ### Scenario 3: High Availability Across Zones
@@ -98,29 +121,29 @@ export KAFKA_CONTROLLER_NODE_SELECTORS="0:control-1,1:control-1,2:control-1"
 export KAFKA_BROKER_NODE_SELECTORS="0:az1-node1,1:az2-node1,2:az3-node1"
 export KAFKA_CONTROLLER_NODE_SELECTORS="0:az1-node2,1:az2-node2,2:az3-node2"
 
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
 
 ### Scenario 4: Storage-Optimized Placement
 
 ```bash
-# Pin to nodes with NVMe storage
+# Pin to nodes with NVMe storage for better performance
 export KAFKA_BROKER_NODE_SELECTORS="0:nvme-node-1,1:nvme-node-2,2:nvme-node-3"
 
-# Controllers on standard nodes
+# Controllers on standard nodes (less I/O intensive)
 export KAFKA_CONTROLLER_NODE_SELECTORS="0:standard-node-1,1:standard-node-1,2:standard-node-1"
 
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
 
-### Scenario 5: Mixed Deployment
+### Scenario 5: Partial Node Selectors
 
 ```bash
 # Only specify some replicas, others use default
-export KAFKA_BROKER_NODE_SELECTORS="0:special-node-1"  # Only broker-0
-export STRIMZI_NODE_HOSTNAME="default-node"  # Others use this
+export KAFKA_BROKER_NODE_SELECTORS="0:special-node-1"  # Only broker-0 pinned
+export STRIMZI_NODE_HOSTNAME="default-node"  # broker-1 and broker-2 use this
 
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
 
 ## Storage Considerations
@@ -138,8 +161,9 @@ When using `hostPath` storage mode with node selectors:
    sudo chmod -R 755 /data/strimzi
    ```
 
-2. **PersistentVolumes are automatically created** with node affinity:
+2. **PersistentVolumes are automatically created** with node affinity matching pod placement:
    ```yaml
+   # Example: Broker 0 on worker-1
    nodeAffinity:
      required:
        nodeSelectorTerms:
@@ -147,8 +171,31 @@ When using `hostPath` storage mode with node selectors:
          - key: kubernetes.io/hostname
            operator: In
            values:
-           - worker-1  # Matches broker/controller placement
+           - worker-1  # Matches KAFKA_BROKER_NODE_SELECTORS for broker-0
    ```
+
+3. **KafkaNodePools automatically get node affinity** to ensure pods start on nodes with their storage:
+   ```yaml
+   # Automatically injected by the script
+   template:
+     pod:
+       affinity:
+         nodeAffinity:
+           requiredDuringSchedulingIgnoredDuringExecution:
+             nodeSelectorTerms:
+             - matchExpressions:
+               - key: kubernetes.io/hostname
+                 operator: In
+                 values:
+                 - worker-1  # All nodes used by this pool
+                 - worker-2
+                 - worker-3
+   ```
+
+   This ensures that:
+   - Pods can only be scheduled on nodes where storage exists
+   - Storage and compute are co-located for optimal performance
+   - Failed pods won't be scheduled on nodes without their data
 
 ### PVC Mode
 
@@ -159,11 +206,13 @@ export STORAGE_MODE="pvc"
 export STORAGE_CLASS="fast-ssd"  # Or leave empty for default
 export STORAGE_SIZE="100Gi"
 
-# Node selectors still control pod placement
+# Node selectors still control pod placement (no node affinity injection needed)
 export KAFKA_BROKER_NODE_SELECTORS="0:node1,1:node2,2:node3"
 
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
+
+**Note:** In PVC mode, node affinity is NOT automatically injected into KafkaNodePools since the storage provisioner handles volume placement. Pods can be scheduled more flexibly based on resource availability.
 
 ## Pre-Deployment Validation
 
@@ -383,7 +432,7 @@ sudo chown -R 1001:1001 /data/strimzi
 export KAFKA_BROKER_NODE_SELECTORS="0:new-node-1,1:new-node-2,2:new-node-3"
 
 # Run migration (consider doing this during maintenance window)
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 ```
 
 ## Advanced Configuration
@@ -460,7 +509,7 @@ export STRIMZI_BROKER_STORAGE_SIZE="100Gi"
 export STRIMZI_CONTROLLER_STORAGE_SIZE="10Gi"
 
 # 6. Deploy
-./strimzi-setup-with-node-selectors.sh
+./strimzi-setup.sh
 
 # 7. Verify
 kubectl get pods -n kafka-prod -o wide
