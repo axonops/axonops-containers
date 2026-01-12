@@ -1,0 +1,44 @@
+apiVersion: k8ssandra.io/v1alpha1
+kind: K8ssandraCluster
+metadata:
+  name: axonops-k8ssandra-5
+  namespace: k8ssandra-operator
+spec:
+  cassandra:
+    serverVersion: "5.0.6"
+    serverImage: ${IMAGE_NAME}
+    softPodAntiAffinity: true
+    resources:
+      limits:
+        cpu: 1
+        memory: 2Gi
+      requests:
+        cpu: 1
+        memory: 1Gi
+    datacenters:
+      - metadata:
+          name: dc1
+        size: 3
+        # 1. Move 'env' inside a 'containers' block
+        containers:
+          - name: cassandra  # 2. Target the specific container
+            env:             # 3. Use list format (name/value), not key:value map
+              - name: AXON_AGENT_KEY
+                value: "KEY-GOES-HERE"
+              - name: AXON_AGENT_ORG
+                value: "ORG-GOES-HERE"
+              - name: AXON_AGENT_HOST
+                value: "agents.axonops.cloud"
+        config:
+          jvmOptions:
+            heap_initial_size: 1G
+            heap_max_size: 1G
+        storageConfig:
+          cassandraDataVolumeClaimSpec:
+            storageClassName: local-path
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 2Gi
+
