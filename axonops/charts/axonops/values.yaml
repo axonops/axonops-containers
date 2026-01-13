@@ -1,5 +1,6 @@
 # AxonOps Meta-Chart Default Values
 # This file contains default values for deploying the complete AxonOps stack
+# with production-ready heap sizes (8G) for both TimeSeries and Search databases
 #
 # WARNING: Default passwords are provided for development/testing only.
 # ALWAYS change these passwords in production deployments!
@@ -26,6 +27,7 @@ global:
 
 #============================================================================
 # AxonOps Time-Series Database (Cassandra 5.0.6)
+# Configured with 8G heap for production workloads
 #============================================================================
 axondb-timeseries:
   # Enable/disable this component
@@ -38,16 +40,19 @@ axondb-timeseries:
   replicaCount: 1
 
   # JVM heap size configuration
-  heapSize: 1024M
+  # Default: 8G heap for production workloads
+  # For development/testing, you can reduce this to 1024M or 2048M
+  heapSize: 8192M
 
   # Resource allocation
+  # Memory should be at least heapSize + 2Gi for off-heap, metaspace, etc.
   resources:
     limits:
-      memory: 2Gi
-      cpu: 1000m
+      memory: 10Gi
+      cpu: 2000m
     requests:
-      memory: 1536Mi
-      cpu: 500m
+      memory: 9Gi
+      cpu: 1000m
 
   # Authentication configuration
   # WARNING: Change these credentials in production!
@@ -60,7 +65,7 @@ axondb-timeseries:
   # Storage configuration
   persistence:
     enabled: true
-    size: 10Gi
+    size: 100Gi
     # storageClass: "" # Uncomment and set if you need specific storage class
 
   # Service configuration
@@ -71,6 +76,7 @@ axondb-timeseries:
 
 #============================================================================
 # AxonOps Search Backend (OpenSearch 3.3.2)
+# Configured with 8G heap for production workloads
 #============================================================================
 axondb-search:
   # Enable/disable this component
@@ -79,6 +85,8 @@ axondb-search:
   # Ensures predictable service name: axondb-search-cluster-master
   clusterName: "axondb-search-cluster"
   nodeGroup: "master"
+
+  opensearchHeapSize: "8g"
 
   # Single-node mode for development
   singleNode: true
@@ -92,16 +100,14 @@ axondb-search:
     - remote_cluster_client
 
   # Resource allocation
+  # Memory should be at least heap size + overhead for OS cache and operations
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
       cpu: 1000m
-      memory: 2Gi
-
-  # OpenSearch JVM configuration
-  opensearchJavaOpts: "-Xmx512M -Xms512M"
+      memory: 9Gi
+    limits:
+      cpu: 2000m
+      memory: 10Gi
 
   # Security configuration
   # WARNING: Change this password in production!
@@ -119,7 +125,7 @@ axondb-search:
   persistence:
     enabled: true
     enableInitChown: true
-    size: 10Gi
+    size: 100Gi
     # storageClass: "" # Uncomment and set if you need specific storage class
 
   # Service configuration
@@ -217,10 +223,11 @@ axon-server:
       # Cassandra connection settings
       cql_hosts:
         - axondb-timeseries-headless
-      cql_username: "axonops"  # Must match axondb-timeseries.cassandra.auth.username
-      cql_password: "axonops"  # Must match axondb-timeseries.cassandra.auth.password
+      cql_username: "cassandra"
+      cql_password: "cassandra"
       cql_port: 9042
       cql_keyspace: "axonops"
+      cql_ssl: false
 
       # Metrics retention settings
       retention:

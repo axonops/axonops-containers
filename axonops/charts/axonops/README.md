@@ -18,10 +18,10 @@ The meta-chart deploys the following components in order:
 - Kubernetes 1.19+
 - Helm 3.8+
 - PV provisioner support in the cluster (for persistent storage)
-- Minimum cluster resources:
-  - 4 CPU cores
-  - 8GB RAM
-  - 20GB storage
+- Minimum cluster resources (with default 8G heap settings):
+  - 8 CPU cores
+  - 40GB RAM (for 8G heap on both databases + overhead)
+  - 200GB storage (100GB per database)
 
 ## Installation
 
