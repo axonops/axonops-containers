@@ -56,6 +56,7 @@ config:
     # Bind to all interfaces because we don't know what IP address Docker will assign to us.
     network.host: 0.0.0.0
 
+# Plese refer to the S3_BACKUP_CONFIGURATION.md file for details on configuring S3 backups
 backups:
   # Enable scheduled backups via CronJob
   enabled: true
