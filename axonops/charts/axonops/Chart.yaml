@@ -39,7 +39,7 @@ dependencies:
 
   # 2. Search backend (OpenSearch)
   - name: axondb-search
-    version: 0.2.2
+    version: 0.2.3
     repository: oci://ghcr.io/axonops/charts
     condition: axondb-search.enabled
     tags:

@@ -54,12 +54,12 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: {{ .Values.authentication.opensearch_secret }}
-                      key: username
+                      key: AXONOPS_SEARCH_USER
                 - name: AXONOPS_SEARCH_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: {{ .Values.authentication.opensearch_secret }}
-                      key: password
+                      key: AXONOPS_SEARCH_PASSWORD
                 {{- else if and .Values.authentication.opensearch_user .Values.authentication.opensearch_password }}
                 - name: AXONOPS_SEARCH_USER
                   value: {{ .Values.authentication.opensearch_user | quote }}
