@@ -27,6 +27,116 @@ env:
   HELM_VERSION: v3.13.0
 
 jobs:
+  validate-dependency-versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate meta-chart dependency versions
+        run: |
+          set -e
+
+          echo "================================================"
+          echo "Validating Dependency Versions"
+          echo "================================================"
+          echo ""
+
+          ERRORS=0
+          META_CHART_DIR="axonops/charts/axonops"
+          CHARTS_BASE_DIR="axonops/charts"
+
+          # Function to extract version from Chart.yaml
+          get_chart_version() {
+            local chart_path=$1
+            if [ ! -f "$chart_path" ]; then
+              echo "ERROR: Chart.yaml not found at $chart_path"
+              return 1
+            fi
+            grep "^version:" "$chart_path" | awk '{print $2}' | tr -d '"' | tr -d "'"
+          }
+
+          # Function to extract dependency version from meta-chart
+          get_dependency_version() {
+            local chart_name=$1
+            local meta_chart_yaml="$META_CHART_DIR/Chart.yaml"
+
+            awk -v name="$chart_name" '
+              /^dependencies:/ { in_deps=1; next }
+              in_deps && /^[^ ]/ { in_deps=0 }
+              in_deps && /- name:/ {
+                if ($3 == name || $3 == "\"" name "\"" || $3 == "'\''" name "'\''") {
+                  found=1
+                  next
+                }
+              }
+              found && /version:/ {
+                print $2
+                exit
+              }
+            ' "$meta_chart_yaml" | tr -d '"' | tr -d "'"
+          }
+
+          # Array of charts to validate (chart-name:directory-name)
+          declare -a CHARTS=(
+            "axondb-timeseries:axondb-timeseries"
+            "axondb-search:axondb-search"
+            "axon-server:axon-server"
+            "axon-dash:axon-dash"
+          )
+
+          echo "Checking dependency versions..."
+          echo ""
+
+          for CHART_INFO in "${CHARTS[@]}"; do
+            IFS=':' read -r CHART_NAME CHART_DIR <<< "$CHART_INFO"
+
+            # Get the actual chart version
+            ACTUAL_VERSION=$(get_chart_version "$CHARTS_BASE_DIR/$CHART_DIR/Chart.yaml")
+            if [ $? -ne 0 ]; then
+              echo "❌ $CHART_NAME: Failed to read chart version"
+              ((ERRORS++))
+              continue
+            fi
+
+            # Get the version specified in the meta-chart dependency
+            DEPENDENCY_VERSION=$(get_dependency_version "$CHART_NAME")
+            if [ -z "$DEPENDENCY_VERSION" ]; then
+              echo "❌ $CHART_NAME: Not found in dependencies"
+              ((ERRORS++))
+              continue
+            fi
+
+            # Compare versions
+            if [ "$ACTUAL_VERSION" = "$DEPENDENCY_VERSION" ]; then
+              echo "✅ $CHART_NAME: $ACTUAL_VERSION (matches)"
+            else
+              echo "❌ $CHART_NAME: Version mismatch!"
+              echo "    Expected (from $CHART_DIR/Chart.yaml): $ACTUAL_VERSION"
+              echo "    Found in dependencies: $DEPENDENCY_VERSION"
+              ((ERRORS++))
+            fi
+          done
+
+          echo ""
+          echo "================================================"
+
+          if [ $ERRORS -eq 0 ]; then
+            echo "✅ All dependency versions are correct!"
+            echo "================================================"
+            exit 0
+          else
+            echo "❌ Found $ERRORS version mismatch(es)!"
+            echo "================================================"
+            echo ""
+            echo "To fix this, update the dependency versions in:"
+            echo "  $META_CHART_DIR/Chart.yaml"
+            echo ""
+            echo "Then run: helm dependency update $META_CHART_DIR"
+            exit 1
+          fi
+
   helm-test:
     runs-on: ubuntu-latest
     timeout-minutes: 30

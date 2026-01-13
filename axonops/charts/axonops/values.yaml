@@ -277,7 +277,7 @@ axon-dash:
   # Dashboard configuration
   config:
     # API server connection (internal cluster DNS)
-    apiUrl: http://axon-server:8080
+    axonServerUrl: http://axonops-axon-server-api:8080
 
     # Additional environment variables
     env: {}
