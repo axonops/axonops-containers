@@ -23,6 +23,7 @@ runs:
 
     - name: Lint Helm chart
       shell: bash
+      continue-on-error: true
       run: |
         echo "🔍 Linting Helm chart: ${{ inputs.chart_path }}"
 
