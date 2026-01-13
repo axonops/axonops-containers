@@ -450,10 +450,75 @@ spec:
         - name: AXONOPS_SEARCH_PASSWORD
           value: {{ .Values.authentication.opensearch_password | quote }}
       {{- end }}
-        {{- if eq .Values.backups.target.type "local" }}
-        - name: AXONOPS_SEARCH_BACKUS_PATH
+      {{- if eq .Values.backups.target.type "local" }}
+        - name: AXONOPS_SEARCH_BACKUP_PATH
           value: {{ .Values.backups.target.local.path }}
+      {{- end }}
+      {{- if eq .Values.backups.target.type "s3" }}
+        - name: AXONOPS_SEARCH_BACKUP_TARGET
+          value: "s3"
+        - name: AXONOPS_SEARCH_BACKUP_S3_BUCKET
+          value: {{ .Values.backups.target.s3.bucket | quote }}
+        {{- if .Values.backups.target.s3.region }}
+        - name: AXONOPS_SEARCH_BACKUP_S3_REGION
+          value: {{ .Values.backups.target.s3.region | quote }}
         {{- end }}
+        {{- if .Values.backups.target.s3.basePath }}
+        - name: AXONOPS_SEARCH_BACKUP_S3_BASE_PATH
+          value: {{ .Values.backups.target.s3.basePath | quote }}
+        {{- end }}
+        {{- if .Values.backups.target.s3.endpoint }}
+        - name: AXONOPS_SEARCH_BACKUP_S3_ENDPOINT
+          value: {{ .Values.backups.target.s3.endpoint | quote }}
+        {{- end }}
+        {{- if .Values.backups.target.s3.protocol }}
+        - name: AXONOPS_SEARCH_BACKUP_S3_PROTOCOL
+          value: {{ .Values.backups.target.s3.protocol | quote }}
+        {{- end }}
+        {{- if .Values.backups.target.s3.pathStyleAccess }}
+        - name: AXONOPS_SEARCH_BACKUP_S3_PATH_STYLE_ACCESS
+          value: "true"
+        {{- end }}
+      {{- end }}
+      {{- if and (eq .Values.backups.target.type "s3") (or .Values.backups.target.s3.credentials.existingSecret (and .Values.backups.target.s3.credentials.accessKeyId .Values.backups.target.s3.credentials.secretAccessKey)) }}
+        # AWS credentials for S3 backups
+        {{- if .Values.backups.target.s3.credentials.existingSecret }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.backups.target.s3.credentials.existingSecret }}
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.backups.target.s3.credentials.existingSecret }}
+              key: aws-secret-access-key
+        - name: AWS_SESSION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.backups.target.s3.credentials.existingSecret }}
+              key: aws-session-token
+              optional: true
+        {{- else if and .Values.backups.target.s3.credentials.accessKeyId .Values.backups.target.s3.credentials.secretAccessKey }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ printf "%s-s3-credentials" (include "opensearch.uname" .) }}
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ printf "%s-s3-credentials" (include "opensearch.uname" .) }}
+              key: aws-secret-access-key
+        {{- if .Values.backups.target.s3.credentials.sessionToken }}
+        - name: AWS_SESSION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ printf "%s-s3-credentials" (include "opensearch.uname" .) }}
+              key: aws-session-token
+        {{- end }}
+        {{- end }}
+      {{- end }}
       {{- if .Values.tls.enabled }}
         # TLS/SSL Environment Variables
         {{- if .Values.tls.certManager.enabled }}

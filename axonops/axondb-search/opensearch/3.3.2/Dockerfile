@@ -139,7 +139,8 @@ RUN if [ "${TARGETARCH}" = "amd64" ]; then \
           /etc/opensearch/securityadmin_demo.sh && \
     echo "✓ Demo certificates removed in same layer" && \
     echo "Removing performance analyzer" && \
-    /usr/share/opensearch/bin/opensearch-plugin remove opensearch-performance-analyzer
+    /usr/share/opensearch/bin/opensearch-plugin remove opensearch-performance-analyzer && \
+    /usr/share/opensearch/bin/opensearch-plugin install --batch repository-s3
 
 # Overlay our custom config files to /etc/opensearch (before SSL setup)
 COPY --chown=opensearch:root config/jvm.options /etc/opensearch/jvm.options

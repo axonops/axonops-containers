@@ -113,9 +113,9 @@ backups:
   #    value: "my-value"
 
   # Backup target configuration
-  # Supported types: local, s3, gcs, azure
+  # Supported types: local, s3
   target:
-    # Backup target type
+    # Backup target type (local or s3)
     type: local
 
     # =========================================================================
@@ -132,6 +132,51 @@ backups:
       storageClass: ""
       # Use an existing PVC instead of creating one
       existingClaim: ""
+
+    # =========================================================================
+    # S3 backup configuration (AWS S3 or S3-compatible storage)
+    # =========================================================================
+    s3:
+      # S3 bucket name (required for S3 backups)
+      bucket: ""
+
+      # AWS region (optional - auto-detected if not set)
+      region: ""
+
+      # Base path within the bucket (optional)
+      basePath: ""
+
+      # S3-compatible storage endpoint (optional - for MinIO, Ceph, etc.)
+      # Example: "http://minio.example.com:9000"
+      endpoint: ""
+
+      # Protocol for S3-compatible storage (http/https)
+      # Auto-detected from endpoint if not set
+      protocol: ""
+
+      # Enable path-style access (required for most S3-compatible storage)
+      # Set to true for MinIO, Ceph, etc.
+      pathStyleAccess: false
+
+      # AWS credentials configuration
+      credentials:
+        # Method 1: Use existing Kubernetes secret containing AWS credentials
+        # The secret must contain these keys:
+        #   - aws-access-key-id
+        #   - aws-secret-access-key
+        #   - aws-session-token (optional, for temporary credentials)
+        existingSecret: ""
+
+        # Method 2: Inline credentials (NOT RECOMMENDED for production)
+        # Use existingSecret instead for better security
+        # These will be created as a secret if provided
+        accessKeyId: ""
+        secretAccessKey: ""
+        sessionToken: ""
+
+      # For EKS with IRSA/Pod Identity, leave credentials empty and configure:
+      # rbac.serviceAccountAnnotations:
+      #   eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/opensearch-backup
 
   # Advanced: Override the full repository settings JSON
   # This takes precedence over the target-specific configuration above
