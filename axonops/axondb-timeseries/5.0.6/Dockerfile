@@ -171,7 +171,7 @@ RUN ARCH=$(uname -m) && \
       exit 1; \
     fi && \
     chmod +x /usr/local/bin/yq && \
-    rpm -Uvh https://downloads.rclone.org/v1.72.1/rclone-v1.72.1-linux-${YQ_ARCH}.rpm \
+    rpm -Uvh https://downloads.rclone.org/v1.72.1/rclone-v1.72.1-linux-${YQ_ARCH}.rpm && \
     rm -f /tmp/checksums.txt
 
 # Install cqlai
