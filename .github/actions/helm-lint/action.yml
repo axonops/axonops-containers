@@ -36,7 +36,7 @@ runs:
           LINT_ARGS="$LINT_ARGS --values ${{ inputs.values_file }}"
           echo "  Values file: ${{ inputs.values_file }}"
         fi
-
+        helm dependency bulid ${{ inputs.chart_path }} || true
         helm lint ${{ inputs.chart_path }} $LINT_ARGS
 
         if [ $? -eq 0 ]; then
