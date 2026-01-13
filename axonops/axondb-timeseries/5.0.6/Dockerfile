@@ -125,7 +125,6 @@ RUN microdnf install -y --nodocs \
     gzip \
     wget \
     rsync \
-    rclone \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
@@ -172,6 +171,7 @@ RUN ARCH=$(uname -m) && \
       exit 1; \
     fi && \
     chmod +x /usr/local/bin/yq && \
+    rm -Uvh https://downloads.rclone.org/v1.72.1/rclone-v1.72.1-linux-${YQ_ARCH}.rpm \
     rm -f /tmp/checksums.txt
 
 # Install cqlai
