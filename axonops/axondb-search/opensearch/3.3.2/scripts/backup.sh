@@ -254,6 +254,27 @@ create_or_update_repo() {
         if [[ "${HTTP_CODE}" != "200" && "${HTTP_CODE}" != "201" ]]; then
           log_error "Failed to update repository: HTTP ${HTTP_CODE}"
           log_error "Response: ${HTTP_BODY}"
+
+          # Check for common S3 errors and provide helpful guidance
+          if [[ "$AXONOPS_SEARCH_BACKUP_TARGET" = "s3" ]]; then
+            if echo "$HTTP_BODY" | grep -qi "credentials\|access\|authorization"; then
+              log_error ""
+              log_error "Credential Error Troubleshooting:"
+              log_error "  1. If using env vars: Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set"
+              log_error "  2. If using Pod Identity: Verify serviceAccount has correct IAM role annotation"
+              log_error "  3. Check keystore contains credentials:"
+              log_error "     /usr/share/opensearch/bin/opensearch-keystore list"
+            elif echo "$HTTP_BODY" | grep -qi "bucket\|s3:"; then
+              log_error ""
+              log_error "S3 Bucket Error: Verify AXONOPS_SEARCH_S3_BUCKET exists and is accessible"
+              log_error "  Bucket name: ${AXONOPS_SEARCH_S3_BUCKET:-not set}"
+              log_error "  Check IAM permissions for s3:ListBucket, s3:PutObject, s3:GetObject"
+            elif echo "$HTTP_BODY" | grep -qi "plugin"; then
+              log_error ""
+              log_error "Plugin Error: Verify repository-s3 plugin is installed"
+              log_error "  Check: /usr/share/opensearch/bin/opensearch-plugin list | grep repository-s3"
+            fi
+          fi
           exit 3
         fi
         log "Repository updated."
@@ -271,6 +292,27 @@ create_or_update_repo() {
     if [[ "${HTTP_CODE}" != "200" && "${HTTP_CODE}" != "201" ]]; then
       log_error "Failed to create repository: HTTP ${HTTP_CODE}"
       log_error "Response: ${HTTP_BODY}"
+
+      # Check for common S3 errors and provide helpful guidance
+      if [[ "$AXONOPS_SEARCH_BACKUP_TARGET" = "s3" ]]; then
+        if echo "$HTTP_BODY" | grep -qi "credentials\|access\|authorization"; then
+          log_error ""
+          log_error "Credential Error Troubleshooting:"
+          log_error "  1. If using env vars: Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set"
+          log_error "  2. If using Pod Identity: Verify serviceAccount has correct IAM role annotation"
+          log_error "  3. Check keystore contains credentials:"
+          log_error "     /usr/share/opensearch/bin/opensearch-keystore list"
+        elif echo "$HTTP_BODY" | grep -qi "bucket\|s3:"; then
+          log_error ""
+          log_error "S3 Bucket Error: Verify AXONOPS_SEARCH_S3_BUCKET exists and is accessible"
+          log_error "  Bucket name: ${AXONOPS_SEARCH_S3_BUCKET:-not set}"
+          log_error "  Check IAM permissions for s3:ListBucket, s3:PutObject, s3:GetObject"
+        elif echo "$HTTP_BODY" | grep -qi "plugin"; then
+          log_error ""
+          log_error "Plugin Error: Verify repository-s3 plugin is installed"
+          log_error "  Check: /usr/share/opensearch/bin/opensearch-plugin list | grep repository-s3"
+        fi
+      fi
       exit 3
     fi
     log "Repository created."
@@ -284,6 +326,20 @@ create_or_update_repo() {
   if [[ "${HTTP_CODE}" != "200" ]]; then
     log_error "Repository verification failed: HTTP ${HTTP_CODE}"
     log_error "Response: ${HTTP_BODY}"
+
+    # Check for common S3 errors and provide helpful guidance
+    if [[ "$AXONOPS_SEARCH_BACKUP_TARGET" = "s3" ]]; then
+      if echo "$HTTP_BODY" | grep -qi "credentials\|access\|authorization"; then
+        log_error ""
+        log_error "Credential Error During Verification:"
+        log_error "  Repository created but verification failed - check IAM permissions"
+        log_error "  Required: s3:ListBucket, s3:PutObject, s3:GetObject, s3:DeleteObject"
+      elif echo "$HTTP_BODY" | grep -qi "region\|location"; then
+        log_error ""
+        log_error "Region Error: Bucket may be in a different region"
+        log_error "  Try setting: AXONOPS_SEARCH_S3_REGION to match bucket region"
+      fi
+    fi
     exit 3
   fi
   log "Repository verified successfully."
@@ -470,6 +526,30 @@ main() {
   log "OpenSearch URL: ${AXONOPS_SEARCH_URL}"
   log "Target: ${AXONOPS_SEARCH_BACKUP_TARGET}"
   log "Repository: ${AXONOPS_SEARCH_SNAPSHOT_REPO}"
+
+  # Log S3-specific configuration if using S3 target
+  if [[ "$AXONOPS_SEARCH_BACKUP_TARGET" = "s3" ]]; then
+    log "S3 Configuration:"
+    log "  Bucket: ${AXONOPS_SEARCH_S3_BUCKET:-not set}"
+    log "  Region: ${AXONOPS_SEARCH_S3_REGION:-default}"
+    log "  Base Path: ${AXONOPS_SEARCH_S3_BASE_PATH:-/}"
+
+    # Check if using S3-compatible storage
+    if [[ -n "${AXONOPS_SEARCH_S3_ENDPOINT:-}" ]]; then
+        log "  Endpoint: ${AXONOPS_SEARCH_S3_ENDPOINT} (S3-compatible storage)"
+        log "  Protocol: ${AXONOPS_SEARCH_S3_PROTOCOL:-auto-detect}"
+        log "  Path Style: ${AXONOPS_SEARCH_S3_PATH_STYLE_ACCESS:-false}"
+    else
+        log "  Endpoint: AWS default"
+    fi
+
+    # Log credential source (without exposing actual credentials)
+    if [[ -n "${AWS_ACCESS_KEY_ID:-}" ]]; then
+        log "  Credentials: Explicit (env vars)"
+    else
+        log "  Credentials: IAM Role (Pod Identity/IRSA/Instance Profile)"
+    fi
+  fi
 
   case "$command" in
     backup)

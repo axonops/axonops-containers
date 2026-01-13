@@ -186,17 +186,41 @@ if [ -n "$OPENSEARCH_SECURITY_ADMIN_DN" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's|^  - ".*axondbsearch.*"|  - "'"$OPENSEARCH_SECURITY_ADMIN_DN"'"|'
 fi
 
+# ============================================================================
+# Backup Repository Configuration
+# ============================================================================
+
 : "${AXONOPS_SEARCH_SNAPSHOT_REPO:=axon-backup-repo}"
 : "${AXONOPS_SEARCH_BACKUP_TARGET:=local}"
-: "${AXONOPS_SEARCH_BACKUS_PATH:=/mnt/backups}"
+: "${AXONOPS_SEARCH_BACKUP_PATH:=/mnt/backups}"  # Fixed typo: was BACKUS_PATH
 
-if [ $AXONOPS_SEARCH_BACKUP_TARGET = "local" ]; then
-    if [ -d $AXONOPS_SEARCH_BACKUP_TARGET ]; then
-        echo "path.repo: [\"$AXONOPS_SEARCH_BACKUS_PATH\"]" >> "/etc/opensearch/opensearch.yml"
+echo "=== Backup Configuration ==="
+echo "  Backup Target: ${AXONOPS_SEARCH_BACKUP_TARGET}"
+echo "  Repository Name: ${AXONOPS_SEARCH_SNAPSHOT_REPO}"
+
+if [ "$AXONOPS_SEARCH_BACKUP_TARGET" = "local" ]; then
+    # Local filesystem backups
+    if [ -d "$AXONOPS_SEARCH_BACKUP_PATH" ]; then  # Fixed: check actual path
+        echo "  Backup Path: ${AXONOPS_SEARCH_BACKUP_PATH}"
+        echo "path.repo: [\"${AXONOPS_SEARCH_BACKUP_PATH}\"]" >> "/etc/opensearch/opensearch.yml"
+        echo "  ✓ Local backup repository path configured"
     else
-        echo "WARNING: $AXONOPS_SEARCH_BACKUP_TARGET not found. Backups disabled"
+        echo "  WARNING: Backup path not found: ${AXONOPS_SEARCH_BACKUP_PATH}"
+        echo "  Backups will be disabled until path is available"
     fi
+elif [ "$AXONOPS_SEARCH_BACKUP_TARGET" = "s3" ]; then
+    # S3 backups - no path.repo needed, configured via repository API
+    echo "  S3 bucket: ${AXONOPS_SEARCH_S3_BUCKET:-not set}"
+    echo "  S3 region: ${AXONOPS_SEARCH_S3_REGION:-auto-detect}"
+    if [ -n "${AXONOPS_SEARCH_S3_ENDPOINT:-}" ]; then
+        echo "  S3 endpoint: ${AXONOPS_SEARCH_S3_ENDPOINT} (S3-compatible storage)"
+    fi
+    if [ "${AXONOPS_SEARCH_S3_PATH_STYLE_ACCESS:-false}" = "true" ]; then
+        echo "  Path style access: enabled (required for some S3-compatible storage)"
+    fi
+    echo "  S3 credentials will be configured via keystore"
 fi
+echo ""
 
 # Apply security nodes DN if env var set (for custom certificate scenarios)
 # Supports multiple DNs separated by semicolon (;)
@@ -342,6 +366,116 @@ else
         echo "RESULT=skipped"
         echo "REASON=disabled_by_env_var"
     } > "$CERT_SEMAPHORE"
+    echo ""
+fi
+
+# ============================================================================
+# S3 Repository Plugin and Credential Configuration
+# ============================================================================
+
+if [ "$AXONOPS_SEARCH_BACKUP_TARGET" = "s3" ]; then
+    echo "=== S3 Backup Configuration ==="
+
+    # 1. Check if repository-s3 plugin is installed
+    echo "  Checking for repository-s3 plugin..."
+    if "${OPENSEARCH_HOME}/bin/opensearch-plugin" list | grep -q "repository-s3"; then
+        echo "  ✓ repository-s3 plugin is installed"
+    else
+        echo "  ✗ repository-s3 plugin not found"
+        echo "  ERROR: S3 backups require repository-s3 plugin"
+        echo "  Please install via Dockerfile:"
+        echo "    RUN /usr/share/opensearch/bin/opensearch-plugin install --batch repository-s3"
+        exit 1
+    fi
+
+    # 2. Initialize keystore if it doesn't exist
+    KEYSTORE_PATH="${OPENSEARCH_HOME}/config/opensearch.keystore"
+    if [ ! -f "$KEYSTORE_PATH" ]; then
+        echo "  Creating OpenSearch keystore..."
+        if "${OPENSEARCH_HOME}/bin/opensearch-keystore" create; then
+            echo "  ✓ Keystore created"
+        else
+            echo "  ✗ Failed to create keystore"
+            exit 1
+        fi
+    else
+        echo "  ✓ Keystore already exists"
+    fi
+
+    # 3. Configure S3 credentials based on availability
+    if [ -n "${AWS_ACCESS_KEY_ID:-}" ] && [ -n "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+        echo "  Configuring explicit AWS credentials in keystore..."
+
+        # Add access key
+        echo "$AWS_ACCESS_KEY_ID" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.access_key
+
+        # Add secret key
+        echo "$AWS_SECRET_ACCESS_KEY" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.secret_key
+
+        # Add session token if provided (for temporary credentials)
+        if [ -n "${AWS_SESSION_TOKEN:-}" ]; then
+            echo "$AWS_SESSION_TOKEN" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.session_token
+            echo "  ✓ AWS credentials (including session token) added to keystore"
+        else
+            echo "  ✓ AWS credentials added to keystore"
+        fi
+
+        echo "  Credential source: Environment variables"
+    else
+        echo "  No explicit AWS credentials provided (AWS_ACCESS_KEY_ID not set)"
+        echo "  Will use Pod Identity / IRSA / Instance Profile"
+        echo "  Credential source: IAM Role (Pod Identity/IRSA/Instance Profile)"
+
+        # For Pod Identity/IRSA, we don't need keystore credentials
+        # OpenSearch will use AWS SDK default credential chain:
+        # - Environment variables (AWS_ROLE_ARN, AWS_WEB_IDENTITY_TOKEN_FILE for IRSA)
+        # - EC2 instance metadata service
+        # - ECS container credentials
+    fi
+
+    # 4. Configure S3-compatible storage settings (endpoint, region, path style)
+    if [ -n "${AXONOPS_SEARCH_S3_ENDPOINT:-}" ]; then
+        echo "  Configuring S3-compatible storage endpoint: ${AXONOPS_SEARCH_S3_ENDPOINT}"
+        echo "$AXONOPS_SEARCH_S3_ENDPOINT" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.endpoint
+
+        # S3-compatible storage often requires path style access
+        if [ "${AXONOPS_SEARCH_S3_PATH_STYLE_ACCESS:-false}" = "true" ]; then
+            echo "  Enabling path style access for S3-compatible storage"
+            echo "true" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.path_style_access
+        fi
+
+        # Protocol setting (http/https) - derive from endpoint if not explicitly set
+        if [ -n "${AXONOPS_SEARCH_S3_PROTOCOL:-}" ]; then
+            echo "  Setting S3 protocol: ${AXONOPS_SEARCH_S3_PROTOCOL}"
+            echo "$AXONOPS_SEARCH_S3_PROTOCOL" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.protocol
+        elif echo "$AXONOPS_SEARCH_S3_ENDPOINT" | grep -q "^http://"; then
+            echo "  Detected HTTP protocol from endpoint"
+            echo "http" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.protocol
+        fi
+    fi
+
+    # Configure region if explicitly set
+    if [ -n "${AXONOPS_SEARCH_S3_REGION:-}" ]; then
+        echo "  Configuring S3 region: ${AXONOPS_SEARCH_S3_REGION}"
+        echo "$AXONOPS_SEARCH_S3_REGION" | "${OPENSEARCH_HOME}/bin/opensearch-keystore" add --stdin --force s3.client.default.region
+    fi
+
+    # Validate S3 bucket is configured
+    if [ -z "${AXONOPS_SEARCH_S3_BUCKET:-}" ]; then
+        echo "  WARNING: AXONOPS_SEARCH_S3_BUCKET not set"
+        echo "  S3 backups will fail without a bucket name"
+    fi
+
+    # Show summary for S3-compatible storage
+    if [ -n "${AXONOPS_SEARCH_S3_ENDPOINT:-}" ]; then
+        echo ""
+        echo "  S3-Compatible Storage Summary:"
+        echo "    Endpoint: ${AXONOPS_SEARCH_S3_ENDPOINT}"
+        echo "    Bucket: ${AXONOPS_SEARCH_S3_BUCKET:-not set}"
+        echo "    Path style: ${AXONOPS_SEARCH_S3_PATH_STYLE_ACCESS:-false}"
+        echo "    Protocol: ${AXONOPS_SEARCH_S3_PROTOCOL:-auto}"
+    fi
+
     echo ""
 fi
 
