@@ -840,7 +840,23 @@ if [ ! -f "$CLEANUP_SEMAPHORE" ]; then
 fi
 
 # ============================================================================
-# 15. Cleanup Snapshot (via trap handler)
+# 17. Send backups to Remote Storage (optional)
+# ============================================================================
+if [ -f /config/rclone.conf ] || [ -n "${RCLONE_CONFIG_CASS_TYPE+x}" ]; then
+    log "Remote backup script found - starting remote backup..."
+
+    if /usr/local/bin/cassandra-remote-backup.sh >> /var/log/cassandra/remote-backup.log 2>&1; then
+        log "✓ Remote backup completed successfully"
+    else
+        log "WARNING: Remote backup script failed"
+        log "Check /var/log/cassandra/remote-backup.log for details"
+    fi
+else
+    log "No remote backup script found - skipping remote backup"
+fi
+
+# ============================================================================
+# 16. Cleanup Snapshot (via trap handler)
 # ============================================================================
 
 log "Cleanup will be performed via trap handler..."

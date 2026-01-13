@@ -125,6 +125,7 @@ RUN microdnf install -y --nodocs \
     gzip \
     wget \
     rsync \
+    rclone \
     && microdnf clean all \
     && rm -rf /var/cache/yum /var/cache/dnf
 
@@ -216,6 +217,7 @@ COPY scripts/init-system-keyspaces.sh /usr/local/bin/init-system-keyspaces.sh
 RUN chmod 755 /usr/local/bin/init-system-keyspaces.sh
 
 # Copy backup and restore scripts
+COPY scripts/cassandra-remote-backup.sh /usr/local/bin/cassandra-remote=backup.sh
 COPY scripts/cassandra-backup.sh /usr/local/bin/cassandra-backup.sh
 COPY scripts/cassandra-restore.sh /usr/local/bin/cassandra-restore.sh
 COPY scripts/backup-cron-wrapper.sh /usr/local/bin/backup-cron-wrapper.sh
@@ -225,7 +227,7 @@ COPY scripts/retention-cleanup.sh /usr/local/bin/retention-cleanup.sh
 COPY scripts/log-rotate.sh /usr/local/bin/log-rotate.sh
 COPY scripts/semaphore-monitor.sh /usr/local/bin/semaphore-monitor.sh
 COPY scripts/post-restore-create-user.sh /usr/local/bin/post-restore-create-user.sh
-RUN chmod 755 /usr/local/bin/cassandra-backup.sh /usr/local/bin/cassandra-restore.sh /usr/local/bin/backup-cron-wrapper.sh /usr/local/bin/backup-scheduler.sh /usr/local/bin/cassandra-wrapper.sh /usr/local/bin/retention-cleanup.sh /usr/local/bin/log-rotate.sh /usr/local/bin/semaphore-monitor.sh /usr/local/bin/post-restore-create-user.sh
+RUN chmod 755 /usr/local/bin/*.sh
 
 # Generate comprehensive build information for runtime startup banner
 # Values are quoted for safe sourcing in bash

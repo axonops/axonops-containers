@@ -335,12 +335,9 @@ backup:
 
   # Backup scheduling (if using CronJob)
   schedule:
-    # Enable scheduled backups via CronJob
-    enabled: false
-
     # Cron schedule expression
-    # Default: Daily at 2 AM UTC
-    cronSchedule: "0 2 * * *"
+    # Default: Every 4 hours
+    cronSchedule: "0 */4 * * *"
 
     # Job history limits
     successfulJobsHistoryLimit: 3
@@ -401,6 +398,65 @@ backup:
     # Additional rsync options
     # Example: "--exclude=*.tmp --exclude=*.log"
     extraOpts: ""
+
+  # rclone configuration for remote backup storage
+  rclone:
+    # Enable rclone remote backup
+    enabled: false
+
+    # Remote storage configuration
+    remote:
+      # Name of the configured rclone remote (e.g., "s3", "gcs", "azure")
+      # Must match an existing rclone configuration
+      name: ""
+
+      # Path in the remote storage (e.g., "my-bucket/cassandra-backups")
+      path: ""
+
+    # Additional rclone flags (e.g., "--verbose --stats 60s")
+    flags: "--verbose --stats 60s"
+
+    # Verify backup after upload
+    verify: false
+
+    # Create LATEST.txt marker file
+    createLatestMarker: true
+
+    # Remote retention settings
+    # Number of days to retain backups in remote storage
+    # Empty means no automatic cleanup
+    retentionDays: ""
+
+    # Authentication method
+    # Options: "env" (environment variables), "config" (rclone config file), "service-account" (GCP/AWS IAM)
+    authMethod: "env"
+
+    # Secret containing rclone configuration or credentials
+    # Required keys depend on authMethod:
+    # - env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY or equivalent
+    # - config: rclone.conf (complete rclone configuration file)
+    # - service-account: service-account.json or similar
+    secretName: ""
+
+    # Resource limits for rclone operations
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+    # Bandwidth limit in KB/s (empty = no limit)
+    # Prevents backup from consuming all network bandwidth
+    bwLimitKB: ""
+
+    # Additional environment variables for rclone
+    extraEnvVars: []
+      # - name: RCLONE_CONFIG_S3_TYPE
+      #   value: "s3"
+      # - name: RCLONE_CONFIG_S3_PROVIDER
+      #   value: "AWS"
 
   # Cleanup configuration
   cleanup:
