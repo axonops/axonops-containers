@@ -38,3 +38,4 @@ go.work.sum
 **/tests/smoke-test-results.txt
 **/tests/smoke-output.log
 sergio-scripts/
+*.tgz

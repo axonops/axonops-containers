@@ -1,0 +1,65 @@
+apiVersion: v2
+name: axonops
+description: AxonOps complete observability stack for Apache Cassandra and Kafka - Meta-chart for unified deployment
+type: application
+version: 1.0.0
+appVersion: "latest"
+home: https://axonops.com
+icon: https://github.com/axonops/axonops-workbench/raw/main/renderer/assets/images/axonops-icon-512x512.png
+maintainers:
+  - name: AxonOps Team
+    email: info@axonops.com
+    url: https://axonops.com
+sources:
+  - https://github.com/axonops/axonops-containers
+keywords:
+  - cassandra
+  - monitoring
+  - observability
+  - kafka
+  - axonops
+  - timeseries
+  - opensearch
+  - dashboard
+
+# Kubernetes version constraint
+kubeVersion: ">=1.19.0-0"
+
+# Dependencies ordered by deployment sequence
+# Databases must be deployed first, then the server, then the dashboard
+dependencies:
+  # 1. Time-series database (Cassandra)
+  - name: axondb-timeseries
+    version: 0.1.1
+    repository: oci://ghcr.io/axonops/charts/axondb-timeseries
+    condition: axondb-timeseries.enabled
+    tags:
+      - backend
+      - database
+
+  # 2. Search backend (OpenSearch)
+  - name: axondb-search
+    version: 0.2.1
+    repository: oci://ghcr.io/axonops/charts/axondb-search
+    condition: axondb-search.enabled
+    tags:
+      - backend
+      - search
+
+  # 3. Core observability server
+  - name: axon-server
+    version: 2.1.0
+    repository: oci://ghcr.io/axonops/charts/axon-server
+    condition: axon-server.enabled
+    tags:
+      - backend
+      - server
+
+  # 4. Dashboard UI
+  - name: axon-dash
+    version: 0.1.0
+    repository: oci://ghcr.io/axonops/charts/axon-dash
+    condition: axon-dash.enabled
+    tags:
+      - frontend
+      - ui

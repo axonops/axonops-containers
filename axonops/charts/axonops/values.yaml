@@ -1,0 +1,340 @@
+# AxonOps Meta-Chart Default Values
+# This file contains default values for deploying the complete AxonOps stack
+#
+# WARNING: Default passwords are provided for development/testing only.
+# ALWAYS change these passwords in production deployments!
+#
+# To install with custom values:
+#   helm install axonops ./axonops/charts/axonops -f custom-values.yaml
+#
+# To disable specific components:
+#   helm install axonops ./axonops/charts/axonops --set axon-dash.enabled=false
+
+# Global settings applied to all sub-charts
+global:
+  # Set if you want to change the default docker registry, e.g. a private one
+  dockerRegistry: ""
+
+  # Storage class for persistent volumes (leave empty to use cluster default)
+  storageClass: ""
+
+#============================================================================
+# Component Enable/Disable Flags
+#============================================================================
+# Set any component to enabled: false to skip its installation
+# Dependencies are: timeseries & search -> server -> dashboard
+
+#============================================================================
+# AxonOps Time-Series Database (Cassandra 5.0.6)
+#============================================================================
+axondb-timeseries:
+  # Enable/disable this component
+  enabled: true
+
+  # Ensures predictable service name: axondb-timeseries-headless
+  fullnameOverride: "axondb-timeseries"
+
+  # Single-node deployment for development (increase for production)
+  replicaCount: 1
+
+  # JVM heap size configuration
+  heapSize: 1024M
+
+  # Resource allocation
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+    requests:
+      memory: 1536Mi
+      cpu: 500m
+
+  # Authentication configuration
+  # WARNING: Change these credentials in production!
+  cassandra:
+    auth:
+      enabled: true
+      username: "axonops"
+      password: "axonops"
+
+  # Storage configuration
+  persistence:
+    enabled: true
+    size: 10Gi
+    # storageClass: "" # Uncomment and set if you need specific storage class
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 9042
+    jmxEnabled: false  # Enable for monitoring JMX metrics
+
+#============================================================================
+# AxonOps Search Backend (OpenSearch 3.3.2)
+#============================================================================
+axondb-search:
+  # Enable/disable this component
+  enabled: true
+
+  # Ensures predictable service name: axondb-search-cluster-master
+  clusterName: "axondb-search-cluster"
+  nodeGroup: "master"
+
+  # Single-node mode for development
+  singleNode: true
+  replicas: 1
+
+  # Node roles
+  roles:
+    - master
+    - ingest
+    - data
+    - remote_cluster_client
+
+  # Resource allocation
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  # OpenSearch JVM configuration
+  opensearchJavaOpts: "-Xmx512M -Xms512M"
+
+  # Security configuration
+  # WARNING: Change this password in production!
+  security:
+    enabled: true
+    config:
+      enabled: true
+      # Use the built-in security configuration
+      securityConfigSecret: ""
+      internalUsersSecret: ""
+    # Admin password for OpenSearch
+    adminPassword: "MyS3cur3P@ss2025"
+
+  # Storage configuration
+  persistence:
+    enabled: true
+    enableInitChown: true
+    size: 10Gi
+    # storageClass: "" # Uncomment and set if you need specific storage class
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    httpPortName: http
+    transportPortName: transport
+    metricsPortName: metrics
+
+  # HTTP and transport ports
+  httpPort: 9200
+  transportPort: 9300
+  metricsPort: 9600
+
+  # Backup configuration (disabled by default)
+  backups:
+    enabled: false
+    schedule: "0 8 * * *"  # Daily at 8am UTC
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+
+#============================================================================
+# AxonOps Server (Core Observability Platform)
+#============================================================================
+axon-server:
+  # Enable/disable this component
+  enabled: true
+
+  # Ensures predictable service name
+  fullnameOverride: ""
+
+  # Image configuration
+  image:
+    repository: registry.axonops.com/axonops-public/axonops-docker/axon-server
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # Resource allocation
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    apiPort: 8080
+    agentsPort: 1888
+
+  # Database connections
+  # These must match the credentials set in axondb-search and axondb-timeseries
+  searchDb:
+    hosts:
+      - https://axondb-search-cluster-master:9200
+    username: "admin"
+    password: "MyS3cur3P@ss2025"  # Must match axondb-search.security.adminPassword
+    skip_verify: true  # Set to false in production with proper certificates
+
+  # Public dashboard URL (update this for your environment)
+  dashboardUrl: https://axonops.example.com
+
+  # AxonOps configuration
+  config:
+    # REQUIRED: Set your organization name
+    org_name: "example"
+
+    # REQUIRED: Add your AxonOps license key
+    license_key: ""
+
+    listener:
+      host: 0.0.0.0
+      api_port: 8080
+      agents_port: 1888
+
+    tls:
+      mode: "disabled"  # Options: disabled, TLS, mTLS
+
+    auth:
+      enabled: false
+      # Uncomment and configure for LDAP authentication
+      # type: "LDAP"
+      # settings:
+      #   host: "ldap.example.com"
+      #   port: 636
+      #   base: "dc=example,dc=com"
+      #   useSSL: true
+      #   bindDN: "cn=admin,dc=example,dc=com"
+      #   bindPassword: "password"
+
+    # Additional configuration for database connections
+    extraConfig:
+      # Cassandra connection settings
+      cql_hosts:
+        - axondb-timeseries-headless
+      cql_username: "axonops"  # Must match axondb-timeseries.cassandra.auth.username
+      cql_password: "axonops"  # Must match axondb-timeseries.cassandra.auth.password
+      cql_port: 9042
+      cql_keyspace: "axonops"
+
+      # Metrics retention settings
+      retention:
+        high_resolution: 7  # Days
+        medium_resolution: 30  # Days
+        low_resolution: 365  # Days
+
+  # Deployment annotations
+  deployment:
+    annotations: {}
+    env: {}
+    secretEnv: ""
+
+#============================================================================
+# AxonOps Dashboard (Web UI)
+#============================================================================
+axon-dash:
+  # Enable/disable this component
+  enabled: true
+
+  # Ensures predictable service name
+  fullnameOverride: ""
+
+  # Image configuration
+  image:
+    repository: registry.axonops.com/axonops-public/axonops-docker/axon-dash
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # Resource allocation
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+
+  # Replica count for high availability
+  replicaCount: 1
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 3000
+
+  # Dashboard configuration
+  config:
+    # API server connection (internal cluster DNS)
+    apiUrl: http://axon-server:8080
+
+    # Additional environment variables
+    env: {}
+
+  # Ingress configuration (uncomment to enable)
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: axonops.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    #  - secretName: axonops-tls
+    #    hosts:
+    #      - axonops.example.com
+
+#============================================================================
+# Additional Global Settings
+#============================================================================
+
+# Pod Security Policy (if enabled in your cluster)
+podSecurityPolicy:
+  enabled: false
+
+# Network Policies (for network segmentation)
+networkPolicy:
+  enabled: false
+
+# Service Monitor for Prometheus Operator (if installed)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  path: /metrics
+
+# Pod Disruption Budgets
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Priority Classes
+priorityClassName: ""
+
+# Node Selectors (to pin pods to specific nodes)
+nodeSelector: {}
+
+# Tolerations (for tainted nodes)
+tolerations: []
+
+# Affinity rules (for pod placement)
+affinity: {}
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Init Containers (for setup tasks)
+initContainers: []
+
+# Sidecar Containers (for additional functionality)
+sidecarContainers: []
