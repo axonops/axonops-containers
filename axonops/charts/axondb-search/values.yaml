@@ -68,6 +68,17 @@ backups:
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
 
+  # Snapshot retention policy
+  retention:
+    # Number of days to keep snapshots (default: 30 days)
+    # Set to 0 to disable retention-based cleanup
+    days: 30
+
+    # Optional: Maximum number of snapshots to keep regardless of age
+    # If both days and count are set, snapshots are deleted if they exceed either limit
+    # Leave empty to only use age-based retention
+    count: ""
+
   # Backup container image
   image:
     repository: "ghcr.io/axonops/axondb-search-backups"

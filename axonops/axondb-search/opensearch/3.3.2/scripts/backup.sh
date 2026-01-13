@@ -393,8 +393,13 @@ EOF
 }
 
 cleanup_old_snapshots() {
-  if [[ -z "${AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT}" ]]; then
-    log "Snapshot retention not configured, skipping cleanup."
+  # Support both retention days and count - days takes precedence
+  local retention_days="${AXONOPS_SEARCH_SNAPSHOT_RETENTION_DAYS:-30}"  # Default to 30 days
+  local retention_count="${AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT:-}"
+
+  # If retention_days is 0 or negative, skip cleanup
+  if [[ "$retention_days" -le 0 ]]; then
+    log "Snapshot retention disabled (retention_days=0), skipping cleanup."
     return 0
   fi
 
@@ -403,8 +408,11 @@ cleanup_old_snapshots() {
     return 0
   fi
 
-  local retention="${AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT}"
-  log "Cleaning up old snapshots, keeping last ${retention} snapshots..."
+  # Calculate cutoff timestamp (milliseconds since epoch)
+  local cutoff_timestamp_ms
+  cutoff_timestamp_ms=$(( ($(date +%s) - (retention_days * 86400)) * 1000 ))
+
+  log "Cleaning up snapshots older than ${retention_days} days..."
 
   local result
   result=$(http_code GET "/_snapshot/${AXONOPS_SEARCH_SNAPSHOT_REPO}/_all")
@@ -415,16 +423,37 @@ cleanup_old_snapshots() {
     return 1
   fi
 
-  # Get snapshots sorted by start_time, filter by prefix, and identify ones to delete
+  # Get snapshots to delete based on age (and optionally count)
   local snapshots_to_delete
-  snapshots_to_delete=$(printf '%s' "$HTTP_BODY" | jq -r --arg prefix "${AXONOPS_SEARCH_SNAPSHOT_PREFIX}" --argjson keep "$retention" '
-    .snapshots
-    | map(select(.snapshot | startswith($prefix)))
-    | sort_by(.start_time_in_millis)
-    | reverse
-    | .[($keep):]
-    | .[].snapshot
-  ')
+  if [[ -n "$retention_count" ]] && [[ "$retention_count" -gt 0 ]]; then
+    # Both age and count retention - delete snapshots that are either too old OR exceed count
+    log "Also enforcing maximum of ${retention_count} snapshots"
+    snapshots_to_delete=$(printf '%s' "$HTTP_BODY" | jq -r \
+      --arg prefix "${AXONOPS_SEARCH_SNAPSHOT_PREFIX}" \
+      --argjson cutoff "$cutoff_timestamp_ms" \
+      --argjson keep "$retention_count" '
+      .snapshots
+      | map(select(.snapshot | startswith($prefix)))
+      | sort_by(.start_time_in_millis)
+      | reverse
+      | (
+          (.[($keep):] // []) +
+          (map(select(.start_time_in_millis < $cutoff)) // [])
+        )
+      | unique
+      | .[].snapshot
+    ')
+  else
+    # Only age-based retention
+    snapshots_to_delete=$(printf '%s' "$HTTP_BODY" | jq -r \
+      --arg prefix "${AXONOPS_SEARCH_SNAPSHOT_PREFIX}" \
+      --argjson cutoff "$cutoff_timestamp_ms" '
+      .snapshots
+      | map(select(.snapshot | startswith($prefix)))
+      | map(select(.start_time_in_millis < $cutoff))
+      | .[].snapshot
+    ')
+  fi
 
   if [[ -z "$snapshots_to_delete" ]]; then
     log "No old snapshots to delete."
@@ -432,6 +461,11 @@ cleanup_old_snapshots() {
   fi
 
   local count=0
+  local total_count
+  total_count=$(echo "$snapshots_to_delete" | grep -c '^' || true)
+
+  log "Found ${total_count} snapshot(s) to delete based on retention policy"
+
   while IFS= read -r snapshot_name; do
     [[ -z "$snapshot_name" ]] && continue
     log "Deleting old snapshot: ${snapshot_name}"
@@ -446,7 +480,7 @@ cleanup_old_snapshots() {
     fi
   done <<< "$snapshots_to_delete"
 
-  log "Deleted ${count} old snapshot(s)."
+  log "Deleted ${count} of ${total_count} old snapshot(s)."
 }
 
 list_snapshots() {
@@ -526,6 +560,17 @@ main() {
   log "OpenSearch URL: ${AXONOPS_SEARCH_URL}"
   log "Target: ${AXONOPS_SEARCH_BACKUP_TARGET}"
   log "Repository: ${AXONOPS_SEARCH_SNAPSHOT_REPO}"
+
+  # Log retention policy
+  local retention_days="${AXONOPS_SEARCH_SNAPSHOT_RETENTION_DAYS:-30}"
+  if [[ "$retention_days" -gt 0 ]]; then
+    log "Retention: ${retention_days} days"
+    if [[ -n "${AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT:-}" ]]; then
+      log "Max snapshots: ${AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT}"
+    fi
+  else
+    log "Retention: Disabled"
+  fi
 
   # Log S3-specific configuration if using S3 target
   if [[ "$AXONOPS_SEARCH_BACKUP_TARGET" = "s3" ]]; then

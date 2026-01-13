@@ -73,6 +73,53 @@ rbac:
     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/opensearch-backup-role
 ```
 
+### Snapshot Retention Policy
+
+Configure automatic cleanup of old snapshots:
+
+```yaml
+backups:
+  retention:
+    # Keep snapshots for specified number of days (default: 30)
+    # Set to 0 to disable retention-based cleanup
+    days: 30
+
+    # Optional: Maximum number of snapshots to keep
+    # If both days and count are set, snapshots are deleted
+    # if they exceed either limit
+    count: 100  # Keep maximum 100 snapshots
+```
+
+**Retention Examples:**
+
+1. **Time-based only (default)**:
+   ```yaml
+   retention:
+     days: 30    # Delete snapshots older than 30 days
+     count: ""   # No limit on number of snapshots
+   ```
+
+2. **Count-based only**:
+   ```yaml
+   retention:
+     days: 0     # Disable age-based deletion
+     count: 50   # Keep only the latest 50 snapshots
+   ```
+
+3. **Combined retention**:
+   ```yaml
+   retention:
+     days: 30    # Delete snapshots older than 30 days
+     count: 100  # AND keep maximum 100 snapshots
+   ```
+
+4. **Disable retention**:
+   ```yaml
+   retention:
+     days: 0     # No automatic cleanup
+     count: ""
+   ```
+
 ### S3-Compatible Storage (MinIO, Ceph, etc.)
 
 For S3-compatible storage systems like MinIO or Ceph:
@@ -99,7 +146,11 @@ backups:
 backups:
   enabled: true
   schedule: "0 2 * * *"  # Daily at 2 AM
-  retention: 30  # Keep backups for 30 days
+
+  # Snapshot retention policy
+  retention:
+    days: 30  # Keep snapshots for 30 days (default)
+    count: ""  # Optional: max number of snapshots to keep
 
   target:
     type: s3

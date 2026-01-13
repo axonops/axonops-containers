@@ -90,7 +90,15 @@ spec:
                   value: {{ .Values.backups.snapshotPrefix | quote }}
                 - name: AXONOPS_SEARCH_SNAPSHOT_INDICES
                   value: {{ .Values.backups.indices | quote }}
-                {{- if .Values.backups.retentionCount }}
+                {{- if and .Values.backups.retention .Values.backups.retention.days }}
+                - name: AXONOPS_SEARCH_SNAPSHOT_RETENTION_DAYS
+                  value: {{ .Values.backups.retention.days | quote }}
+                {{- end }}
+                {{- if and .Values.backups.retention .Values.backups.retention.count }}
+                - name: AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT
+                  value: {{ .Values.backups.retention.count | quote }}
+                {{- else if .Values.backups.retentionCount }}
+                # Deprecated: Use backups.retention.count instead
                 - name: AXONOPS_SEARCH_SNAPSHOT_RETENTION_COUNT
                   value: {{ .Values.backups.retentionCount | quote }}
                 {{- end }}
