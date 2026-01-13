@@ -5,8 +5,9 @@ This guide covers deploying AxonOps monitoring and management services on Kubern
 ## Quick Start
 
 ```bash
-# Set the required password
-export AXON_SERVER_SEARCH_DB_PASSWORD='your-secure-password'
+# Set the required passwords
+export AXON_SEARCH_PASSWORD='your-secure-password'
+export AXON_SERVER_CQL_PASSWORD='your-secure-password'
 
 # Deploy AxonOps services
 ./axonops-setup.sh
@@ -37,10 +38,11 @@ AxonOps provides comprehensive monitoring and management for Apache Kafka cluste
 
 ### Required Configuration
 
-**CRITICAL**: Set the search database password before deploying:
+**CRITICAL**: Set the required passwords before deploying:
 
 ```bash
-export AXON_SERVER_SEARCH_DB_PASSWORD='YourSecurePasswordHere'
+export AXON_SEARCH_PASSWORD='YourSecurePasswordHere'
+export AXON_SERVER_CQL_PASSWORD='YourSecureCQLPasswordHere'
 ```
 
 ### Optional Configuration
@@ -52,16 +54,16 @@ Customize the deployment by setting these environment variables:
 export NS_AXONOPS="axonops"           # Default namespace for AxonOps
 
 # AxonOps Server configuration
-export AXON_SERVER_AGENTS_PORT="1888"           # Port for Kafka agents (default: 1888)
-export AXON_SERVER_BACKUP_ENDPOINT_PORT="8080"  # Backup endpoint port
+export AXON_SERVER_AGENTS_PORT="1888"       # Port for Kafka agents (default: 1888)
+export AXON_SERVER_API_PORT="8080"          # API port (default: 8080)
 
 # Storage configuration
 export AXON_SEARCH_USE_HOSTPATH="false"     # Use hostPath for Search DB (default: false)
 export AXON_TIMESERIES_USE_HOSTPATH="false" # Use hostPath for Timeseries DB (default: false)
 
 # Storage sizes (for PVC mode)
-export AXON_TIMESERIES_STORAGE_SIZE="10Gi"  # Timeseries DB storage
-export AXON_SEARCH_STORAGE_SIZE="5Gi"       # Search DB storage
+export AXON_TIMESERIES_VOLUME_SIZE="10Gi"   # Timeseries DB storage
+export AXON_SEARCH_VOLUME_SIZE="10Gi"       # Search DB storage
 
 # Dashboard access
 export AXON_DASH_INGRESS_ENABLED="false"    # Enable Ingress (default: false)
@@ -88,8 +90,8 @@ Uses dynamic PersistentVolumeClaims with your cluster's default or specified sto
 ./axonops-setup.sh
 
 # Or specify storage sizes
-export AXON_TIMESERIES_STORAGE_SIZE="50Gi"
-export AXON_SEARCH_STORAGE_SIZE="20Gi"
+export AXON_TIMESERIES_VOLUME_SIZE="50Gi"
+export AXON_SEARCH_VOLUME_SIZE="20Gi"
 ./axonops-setup.sh
 ```
 
@@ -125,10 +127,11 @@ sudo chmod -R 755 /data/axon-timeseries /data/axon-search
 
 ## Deployment Steps
 
-### Step 1: Set Required Password
+### Step 1: Set Required Passwords
 
 ```bash
-export AXON_SERVER_SEARCH_DB_PASSWORD='your-secure-password'
+export AXON_SEARCH_PASSWORD='your-secure-password'
+export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
 ```
 
 ### Step 2: (Optional) Customize Configuration
@@ -138,8 +141,8 @@ export AXON_SERVER_SEARCH_DB_PASSWORD='your-secure-password'
 export NS_AXONOPS="monitoring"
 
 # Example: Use larger storage
-export AXON_TIMESERIES_STORAGE_SIZE="100Gi"
-export AXON_SEARCH_STORAGE_SIZE="50Gi"
+export AXON_TIMESERIES_VOLUME_SIZE="100Gi"
+export AXON_SEARCH_VOLUME_SIZE="50Gi"
 ```
 
 ### Step 3: Run Deployment Script
@@ -311,18 +314,19 @@ kubectl describe pod <pod-name> -n axonops
 
 ```bash
 # Verify secret exists
-kubectl get secret axon-server-search-password -n axonops
+kubectl get secret axon-server-config -n axonops
 
-# Check if password was set during deployment
-kubectl get secret axon-server-search-password -n axonops -o jsonpath='{.data.password}' | base64 -d
+# Check server configuration
+kubectl get secret axon-server-config -n axonops -o jsonpath='{.data.axon-server\.yml}' | base64 -d
 ```
 
 **Solution:**
 
 ```bash
 # Recreate the secret with correct password
-kubectl delete secret axon-server-search-password -n axonops
-export AXON_SERVER_SEARCH_DB_PASSWORD='your-password'
+kubectl delete secret axon-server-config -n axonops
+export AXON_SEARCH_PASSWORD='your-password'
+export AXON_SERVER_CQL_PASSWORD='your-cql-password'
 ./axonops-setup.sh
 ```
 
@@ -374,11 +378,10 @@ kubectl describe certificate -n axonops
 After deployment, `axonops-config.env` is created with these variables:
 
 ```bash
-AXONOPS_AVAILABLE=true
-AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-AXON_AGENT_SERVER_PORT=1888
-AXON_SERVER_BACKUP_ENDPOINT_PORT=8080
 NS_AXONOPS=axonops
+AXON_SERVER_AGENTS_PORT=1888
+AXON_SERVER_API_PORT=8080
+AXON_SERVER_ORG_NAME=example
 ```
 
 Source this file before deploying Kafka to enable automatic integration.

@@ -39,7 +39,7 @@ AXON_TIMESERIES_PERSISTENCE_ENABLED="${AXON_TIMESERIES_PERSISTENCE_ENABLED:-fals
 AXON_TIMESERIES_USE_HOSTPATH="${AXON_TIMESERIES_USE_HOSTPATH:-false}"
 AXON_TIMESERIES_STORAGE_CLASS="${AXON_TIMESERIES_STORAGE_CLASS:-}"
 # unless using hostPath, set up the volume size
-AXON_TIMESEARCH_VOLUME_SIZE="${AXON_TIMESEARCH_VOLUME_SIZE:-10Gi}"
+AXON_TIMESERIES_VOLUME_SIZE="${AXON_TIMESERIES_VOLUME_SIZE:-10Gi}"
 AXON_TIMESERIES_HOSTPATH_DIR="${AXON_TIMESERIES_HOSTPATH_DIR:-/data/axon-timeseries}"
 AXON_TIMESERIES_HOST_UID="${AXON_TIMESERIES_HOST_UID:-999}"
 AXON_TIMESERIES_HOST_GID="${AXON_TIMESERIES_HOST_GID:-999}"
@@ -90,8 +90,8 @@ AXON_SERVER_DASH_URL="${AXON_SERVER_DASH_URL:-https://axonops.example.com}"
 
 # CQL / Cassandra configuration
 AXON_SERVER_CQL_HOSTS="${AXON_SERVER_CQL_HOSTS:-axondb-timeseries-headless.$NS_AXONOPS.svc.cluster.local}"
+AXON_SERVER_CQL_USERNAME="${AXON_SERVER_CQL_USERNAME:-axonops}"
 AXON_SERVER_CQL_PASSWORD="${AXON_SERVER_CQL_PASSWORD:-cassandra}"
-AXON_SERVER_CQL_USERNAME="${AXON_SERVER_CQL_USERNAME}"
 
 AXON_SERVER_CQL_LOCAL_DC="${AXON_SERVER_CQL_LOCAL_DC:-axonopsdb_dc1}"
 AXON_SERVER_CQL_REPLICATION="${AXON_SERVER_CQL_REPLICATION:-{ \"class\": \"NetworkTopologyStrategy\", \"axonopsdb_dc1\": 1 }}"
@@ -230,7 +230,7 @@ persistence:
   enableInitChown: true
   storageClass: "${AXON_TIMESERIES_STORAGE_CLASS}"
   accessMode: ReadWriteOnce
-  size: ${AXON_TIMESEARCH_VOLUME_SIZE}
+  size: ${AXON_TIMESERIES_VOLUME_SIZE}
   # existingClaim: ""
   annotations: {}
 EOF
@@ -533,13 +533,13 @@ main() {
     error "Please set it before running: export AXON_SEARCH_PASSWORD='your-secure-password'"
     exit 1
   fi
-  
+
   if [[ -z "${AXON_SERVER_CQL_PASSWORD:-}" ]]; then
     error "AXON_SERVER_CQL_PASSWORD environment variable is required for security"
     error "Please set it before running: export AXON_SERVER_CQL_PASSWORD='your-secure-password'"
     exit 1
   fi
-  
+
   install_cert_manager
 
   prepare_timeseries_hostpath
