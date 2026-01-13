@@ -144,6 +144,8 @@ spec:
           {{- end }}
           {{- if .Values.backup.enabled }}
             # Backup configuration environment variables
+            - name: BACKUP_SCHEDULE
+              value: {{ .Values.backup.schedule.cronSchedule | default "0 8 * * *" | quote }}
             - name: BACKUP_VOLUME
               value: {{ .Values.backup.volume.mountPath | default "/backup" }}
             - name: BACKUP_TAG_PREFIX
