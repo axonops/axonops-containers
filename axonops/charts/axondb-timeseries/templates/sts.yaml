@@ -142,6 +142,42 @@ spec:
             - name: AXONOPS_DB_PASSWORD
               value: {{ .Values.authentication.db_password | quote }}
           {{- end }}
+          {{- if .Values.backup.enabled }}
+            # Backup configuration environment variables
+            - name: BACKUP_VOLUME
+              value: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            - name: BACKUP_TAG_PREFIX
+              value: {{ .Values.backup.settings.tagPrefix | default "backup" | quote }}
+            - name: BACKUP_RETENTION_HOURS
+              value: {{ .Values.backup.settings.retentionHours | default 168 | quote }}
+            - name: BACKUP_MINIMUM_RETENTION_COUNT
+              value: {{ .Values.backup.settings.minimumRetentionCount | default 3 | quote }}
+            - name: BACKUP_USE_HARDLINKS
+              value: {{ .Values.backup.settings.useHardlinks | default true | quote }}
+            - name: BACKUP_CALCULATE_STATS
+              value: {{ .Values.backup.settings.calculateStats | default false | quote }}
+            - name: BACKUP_STUCK_TIMEOUT_MINUTES
+              value: {{ .Values.backup.settings.stuckTimeoutMinutes | default 60 | quote }}
+            - name: SNAPSHOT_RETENTION_DAYS
+              value: {{ .Values.backup.settings.snapshotRetentionDays | default 7 | quote }}
+            - name: BACKUP_RSYNC_RETRIES
+              value: {{ .Values.backup.rsync.retries | default 3 | quote }}
+            - name: BACKUP_RSYNC_TIMEOUT_MINUTES
+              value: {{ .Values.backup.rsync.timeoutMinutes | default 120 | quote }}
+            {{- if .Values.backup.rsync.bwLimitKB }}
+            - name: RSYNC_BWLIMIT_KB
+              value: {{ .Values.backup.rsync.bwLimitKB | quote }}
+            {{- end }}
+            {{- if .Values.backup.rsync.extraOpts }}
+            - name: BACKUP_RSYNC_EXTRA_OPTS
+              value: {{ .Values.backup.rsync.extraOpts | quote }}
+            {{- end }}
+            - name: RETENTION_CLEANUP_TIMEOUT_MINUTES
+              value: {{ .Values.backup.cleanup.timeoutMinutes | default 60 | quote }}
+            {{- with .Values.backup.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           {{- if .Values.envVars }}
             {{- toYaml .Values.envVars | nindent 12 }}
           {{- end }}
@@ -228,6 +264,10 @@ spec:
               mountPath: {{ .Values.persistence.commitlog.mountPath | default "/var/lib/cassandra/commitlog" }}
             {{- end }}
             {{- end }}
+            {{- if .Values.backup.enabled }}
+            - name: backup
+              mountPath: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -276,6 +316,16 @@ spec:
           emptyDir: {}
         {{- if .Values.persistence.commitlog.enabled }}
         - name: commitlog
+          emptyDir: {}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.backup.enabled }}
+        {{- if .Values.backup.volume.existingClaim }}
+        - name: backup
+          persistentVolumeClaim:
+            claimName: {{ .Values.backup.volume.existingClaim }}
+        {{- else }}
+        - name: backup
           emptyDir: {}
         {{- end }}
         {{- end }}
@@ -341,5 +391,28 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.commitlog.size | default "5Gi" }}
+    {{- end }}
+    {{- if and .Values.backup.enabled (not .Values.backup.volume.existingClaim) }}
+    - metadata:
+        name: backup
+        labels:
+          {{- include "axon-cassandra.labels" . | nindent 10 }}
+        {{- with .Values.backup.volume.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.backup.volume.accessMode | default "ReadWriteOnce" }}
+        {{- if .Values.backup.volume.storageClass }}
+        {{- if (eq "-" .Values.backup.volume.storageClass) }}
+        storageClassName: ""
+        {{- else }}
+        storageClassName: {{ .Values.backup.volume.storageClass }}
+        {{- end }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.backup.volume.size | default "50Gi" }}
     {{- end }}
   {{- end }}

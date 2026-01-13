@@ -299,6 +299,130 @@ persistence:
     # Mount path for commitlog volume
     mountPath: /var/lib/cassandra/commitlog
 
+# Backup Configuration
+# ====================
+# Configuration for Cassandra snapshot-based backups with rsync deduplication
+# NOTE: AxonDB Timeseries is designed for single-node deployments only.
+# Multi-node clusters are not supported for backup operations.
+backup:
+  # Enable backup functionality
+  enabled: false
+
+  # Volume configuration for backup storage
+  volume:
+    # Use an existing PVC for backup storage
+    # If not specified, a new PVC will be created
+    existingClaim: ""
+
+    # Storage class for backup volume
+    # If undefined or null, uses the default provisioner
+    # If "-", disables dynamic provisioning
+    storageClass: ""
+
+    # Access mode for the backup volume
+    accessMode: ReadWriteOnce
+
+    # Size of the backup volume
+    # Consider: Each backup requires space for full data size initially,
+    # but subsequent backups use hardlinks for deduplication
+    size: 50Gi
+
+    # Annotations for the backup PVC
+    annotations: {}
+
+    # Mount path for backup volume inside container
+    mountPath: /backup
+
+  # Backup scheduling (if using CronJob)
+  schedule:
+    # Enable scheduled backups via CronJob
+    enabled: false
+
+    # Cron schedule expression
+    # Default: Daily at 2 AM UTC
+    cronSchedule: "0 2 * * *"
+
+    # Job history limits
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+
+    # Job timeout (should be less than backup interval)
+    activeDeadlineSeconds: 7200  # 2 hours
+
+    # Restart policy for failed jobs
+    restartPolicy: OnFailure
+
+    # Concurrency policy (Forbid, Allow, Replace)
+    concurrencyPolicy: Forbid
+
+  # Core backup settings
+  settings:
+    # Prefix for backup snapshot tags
+    # Backups will be named: {prefix}-YYYYMMDD-HHMMSS
+    tagPrefix: "backup"
+
+    # Retention period in hours
+    # Default: 168 hours (7 days)
+    retentionHours: 168
+
+    # Minimum number of backups to keep regardless of age
+    # Safety net to prevent accidental deletion of all backups
+    minimumRetentionCount: 3
+
+    # Enable hardlink-based deduplication
+    # Significantly reduces storage usage for incremental backups
+    # Requires filesystem support (ext4, xfs, btrfs)
+    useHardlinks: true
+
+    # Calculate detailed backup statistics
+    # May be slow on large datasets, disabled by default
+    calculateStats: false
+
+    # Timeout for stuck backup detection (minutes)
+    # If a backup lock is older than this, it's considered stale
+    stuckTimeoutMinutes: 60
+
+    # Retention period for orphaned snapshots (days)
+    # Snapshots left behind from failed backups
+    snapshotRetentionDays: 7
+
+  # rsync configuration for backup transfer
+  rsync:
+    # Number of retry attempts for failed rsync operations
+    retries: 3
+
+    # Timeout for each rsync operation (minutes)
+    timeoutMinutes: 120
+
+    # Bandwidth limit in KB/s (empty = no limit)
+    # Useful to prevent backup from consuming all network bandwidth
+    bwLimitKB: ""
+
+    # Additional rsync options
+    # Example: "--exclude=*.tmp --exclude=*.log"
+    extraOpts: ""
+
+  # Cleanup configuration
+  cleanup:
+    # Timeout for retention cleanup operations (minutes)
+    # Async deletion of old backups
+    timeoutMinutes: 60
+
+  # Resource limits for backup jobs (if using CronJob)
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Additional environment variables for backup script
+  # These will be added to the backup container/job
+  extraEnvVars: []
+    # - name: CUSTOM_BACKUP_VAR
+    #   value: "custom-value"
+
 ## @param envVars Extra environment variables to be set on cassandra container
 ## For example:
 ##  - name: FOO

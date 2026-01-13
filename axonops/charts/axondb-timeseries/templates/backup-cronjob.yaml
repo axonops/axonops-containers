@@ -1,0 +1,156 @@
+{{- if and .Values.backup.enabled .Values.backup.schedule.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "axon-cassandra.fullname" . }}-backup
+  labels:
+    {{- include "axon-cassandra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.schedule.cronSchedule | quote }}
+  concurrencyPolicy: {{ .Values.backup.schedule.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.backup.schedule.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.backup.schedule.failedJobsHistoryLimit }}
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "axon-cassandra.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backup
+    spec:
+      {{- if .Values.backup.schedule.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ .Values.backup.schedule.activeDeadlineSeconds }}
+      {{- end }}
+      template:
+        metadata:
+          labels:
+            {{- include "axon-cassandra.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: {{ .Values.backup.schedule.restartPolicy }}
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "axon-cassandra.serviceAccountName" . }}
+          {{- with .Values.podSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: backup
+              {{- with .Values.securityContext }}
+              securityContext:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  echo "Starting scheduled backup..."
+                  /usr/local/bin/cassandra-backup.sh
+              env:
+                # Cassandra connection settings
+                - name: CASSANDRA_NATIVE_TRANSPORT_PORT
+                  value: {{ .Values.service.port | default 9042 | quote }}
+                - name: CASSANDRA_DATA_DIR
+                  value: "/var/lib/cassandra/data"
+
+                # Backup configuration
+                - name: BACKUP_VOLUME
+                  value: {{ .Values.backup.volume.mountPath | default "/backup" }}
+                - name: BACKUP_TAG_PREFIX
+                  value: {{ .Values.backup.settings.tagPrefix | default "backup" | quote }}
+                - name: BACKUP_RETENTION_HOURS
+                  value: {{ .Values.backup.settings.retentionHours | default 168 | quote }}
+                - name: BACKUP_MINIMUM_RETENTION_COUNT
+                  value: {{ .Values.backup.settings.minimumRetentionCount | default 3 | quote }}
+                - name: BACKUP_USE_HARDLINKS
+                  value: {{ .Values.backup.settings.useHardlinks | default true | quote }}
+                - name: BACKUP_CALCULATE_STATS
+                  value: {{ .Values.backup.settings.calculateStats | default false | quote }}
+                - name: BACKUP_STUCK_TIMEOUT_MINUTES
+                  value: {{ .Values.backup.settings.stuckTimeoutMinutes | default 60 | quote }}
+                - name: SNAPSHOT_RETENTION_DAYS
+                  value: {{ .Values.backup.settings.snapshotRetentionDays | default 7 | quote }}
+
+                # rsync configuration
+                - name: BACKUP_RSYNC_RETRIES
+                  value: {{ .Values.backup.rsync.retries | default 3 | quote }}
+                - name: BACKUP_RSYNC_TIMEOUT_MINUTES
+                  value: {{ .Values.backup.rsync.timeoutMinutes | default 120 | quote }}
+                {{- if .Values.backup.rsync.bwLimitKB }}
+                - name: RSYNC_BWLIMIT_KB
+                  value: {{ .Values.backup.rsync.bwLimitKB | quote }}
+                {{- end }}
+                {{- if .Values.backup.rsync.extraOpts }}
+                - name: BACKUP_RSYNC_EXTRA_OPTS
+                  value: {{ .Values.backup.rsync.extraOpts | quote }}
+                {{- end }}
+
+                # Cleanup configuration
+                - name: RETENTION_CLEANUP_TIMEOUT_MINUTES
+                  value: {{ .Values.backup.cleanup.timeoutMinutes | default 60 | quote }}
+
+                # Authentication (if configured)
+                {{- if .Values.authentication.db_secret }}
+                - name: AXONOPS_DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.authentication.db_secret }}
+                      key: AXONOPS_DB_USER
+                - name: AXONOPS_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.authentication.db_secret }}
+                      key: AXONOPS_DB_PASSWORD
+                {{- else if and .Values.authentication.db_user .Values.authentication.db_password }}
+                - name: AXONOPS_DB_USER
+                  value: {{ .Values.authentication.db_user | quote }}
+                - name: AXONOPS_DB_PASSWORD
+                  value: {{ .Values.authentication.db_password | quote }}
+                {{- end }}
+
+                {{- with .Values.backup.extraEnvVars }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+
+              {{- with .Values.backup.resources }}
+              resources:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+
+              volumeMounts:
+                - name: backup
+                  mountPath: {{ .Values.backup.volume.mountPath | default "/backup" }}
+                - name: data
+                  mountPath: /var/lib/cassandra
+                  readOnly: true
+
+          volumes:
+            - name: backup
+              {{- if .Values.backup.volume.existingClaim }}
+              persistentVolumeClaim:
+                claimName: {{ .Values.backup.volume.existingClaim }}
+              {{- else }}
+              persistentVolumeClaim:
+                claimName: {{ include "axon-cassandra.fullname" . }}-0-backup
+              {{- end }}
+            - name: data
+              persistentVolumeClaim:
+                claimName: data-{{ include "axon-cassandra.fullname" . }}-0
+
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
