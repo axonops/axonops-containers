@@ -31,7 +31,7 @@ dependencies:
   # 1. Time-series database (Cassandra)
   - name: axondb-timeseries
     version: 0.1.1
-    repository: oci://ghcr.io/axonops/charts/axondb-timeseries
+    repository: oci://ghcr.io/axonops/charts
     condition: axondb-timeseries.enabled
     tags:
       - backend
@@ -40,7 +40,7 @@ dependencies:
   # 2. Search backend (OpenSearch)
   - name: axondb-search
     version: 0.2.1
-    repository: oci://ghcr.io/axonops/charts/axondb-search
+    repository: oci://ghcr.io/axonops/charts
     condition: axondb-search.enabled
     tags:
       - backend
@@ -49,7 +49,7 @@ dependencies:
   # 3. Core observability server
   - name: axon-server
     version: 2.1.0
-    repository: oci://ghcr.io/axonops/charts/axon-server
+    repository: oci://ghcr.io/axonops/charts
     condition: axon-server.enabled
     tags:
       - backend
@@ -58,7 +58,7 @@ dependencies:
   # 4. Dashboard UI
   - name: axon-dash
     version: 0.1.0
-    repository: oci://ghcr.io/axonops/charts/axon-dash
+    repository: oci://ghcr.io/axonops/charts
     condition: axon-dash.enabled
     tags:
       - frontend
