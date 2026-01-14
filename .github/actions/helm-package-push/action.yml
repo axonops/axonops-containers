@@ -53,6 +53,7 @@ runs:
       run: |
         echo "📦 Packaging Helm chart: ${{ inputs.chart_path }}"
 
+        helm dependency build ${{ inputs.chart_path }} || true
         helm package ${{ inputs.chart_path }} --destination /tmp/charts
 
         CHART_NAME="${{ steps.metadata.outputs.chart_name }}"
