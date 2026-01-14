@@ -413,9 +413,9 @@ backup:
 
     # Rclone image configuration
     image:
-      repository: ttl.sh/timeseries-backups
-      tag: 1h
-      pullPolicy: Always
+      repository: ghcr.io/axonops/axondb-timeseries-backups
+      tag: "1.3.0"
+      pullPolicy: IfNotPresent
 
     # Sync interval in seconds (how often to sync to remote)
     # Default: 3600 (1 hour)
