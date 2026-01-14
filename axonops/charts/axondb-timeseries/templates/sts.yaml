@@ -35,6 +35,56 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if and .Values.backup.enabled .Values.backup.remote.enabled .Values.restoreFromBackup }}
+      initContainers:
+        # Restore from remote backup before Cassandra starts
+        - name: restore-backup
+          image: "{{ .Values.backup.remote.image.repository }}:{{ .Values.backup.remote.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.backup.remote.image.pullPolicy | default "IfNotPresent" }}
+          command:
+            - /bin/sh
+            - -c
+            - "/usr/local/bin/cassandra-remote-restore.sh"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: BACKUP_VOLUME
+              value: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            - name: RCLONE_REMOTE_PATH
+              value: {{ .Values.backup.remote.path | quote }}
+            - name: RESTORE_FROM_BACKUP
+              value: {{ .Values.restoreFromBackup | quote }}
+            - name: BWLIMIT_KB
+              value: {{ .Values.backup.rsync.bwLimitKB | default 0 | quote }}
+            - name: BACKUP_INITIAL_DELAY_SECONDS
+              value: "0"
+            {{- with .Values.backup.remote.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.backup.remote.secretName }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.backup.remote.secretName }}
+          {{- end }}
+          {{- with .Values.backup.remote.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: backup
+              mountPath: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            {{- if eq .Values.backup.remote.authMethod "config" }}
+            - name: rclone-config
+              mountPath: /config/rclone
+              readOnly: true
+            {{- end }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -56,6 +106,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: DEBUG
+              value: "{{ .Values.debug | default true }}"
             - name: AXON_AGENT_ORG
               value: {{ .Values.org | default "self-hosted" }}
             - name: CASSANDRSA_FQDN
@@ -143,6 +195,10 @@ spec:
               value: {{ .Values.authentication.db_password | quote }}
           {{- end }}
           {{- if .Values.backup.enabled }}
+          {{- if .Values.restoreFromBackup}}
+            - name: RESTORE_FROM_BACKUP
+              value: {{ .Values.restoreFromBackup | quote }}
+          {{- end }}
             # Backup configuration environment variables
             - name: BACKUP_SCHEDULE
               value: {{ .Values.backup.schedule.cronSchedule | default "0 8 * * *" | quote }}

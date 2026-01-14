@@ -34,9 +34,12 @@ podman build \
     --platform "$PLATFORM" \
     --build-arg TARGETARCH="$TARGETARCH" \
     --build-arg CQLAI_VERSION=0.0.31 \
-    -t $IMAGE_NAME \
+    -t $IMAGE_NAME 
     "$@" \
     .
+podman push $IMAGE_NAME
+
+podman build -t ttl.sh/timeseries-backups:1h -f Dockerfile.backups && podman push ttl.sh/timeseries-backups:1h
 
 echo ""
 echo "=========================================="

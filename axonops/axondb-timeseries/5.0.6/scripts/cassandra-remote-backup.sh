@@ -11,6 +11,10 @@
 #   REMOTE_RETENTION_DAYS: Number of days to retain old backups (optional)
 
 set -euo pipefail
+if [ "${DEBUG:-false}" = "true" ]; then
+    set -x
+fi
+
 set -a
 # Default values
 BACKUP_SOURCE_DIR="${BACKUP_VOLUME:-/backup}"

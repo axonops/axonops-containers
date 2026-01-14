@@ -67,8 +67,9 @@ RUN ARCH=$(uname -m) && \
     fi && \
     rpm -Uvh https://downloads.rclone.org/v${RCLONE_VERSION}/rclone-v${RCLONE_VERSION}-linux-${RPM_ARCH}.rpm
 
-COPY scripts/cassandra-remote-backup.sh /usr/loocal/bin/cassandra-remote-backup.sh
-RUN chmod +x /usr/loocal/bin/cassandra-remote-backup.sh
+COPY scripts/cassandra-remote-backup.sh /usr/local/bin/cassandra-remote-backup.sh
+COPY scripts/cassandra-remote-restore.sh /usr/local/bin/cassandra-remote-restore.sh
+RUN chmod +x /usr/local/bin/*.sh
 
 USER cassandra
-CMD ["/usr/loocal/bin/cassandra-remote-backup.sh"]
+CMD ["/usr/local/bin/cassandra-remote-backup.sh"]

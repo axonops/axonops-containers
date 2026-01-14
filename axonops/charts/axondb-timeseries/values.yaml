@@ -300,11 +300,10 @@ persistence:
     # Mount path for commitlog volume
     mountPath: /var/lib/cassandra/commitlog
 
-
-# Restore from Backup
-# ====================
-# Name of an existing backup to restore from on initial deployment
-# e.g., data_backup-20260114-102241
+# Restore from remote backup configuration
+# Name of backup to restore from remote storage on pod initialization
+# Options: "latest" (default), or specific backup name (e.g., "backup-20260114-102241")
+# Leave empty to skip restore
 restoreFromBackup: ""
 
 # Backup Configuration
@@ -415,7 +414,7 @@ backup:
     # Rclone image configuration
     image:
       repository: ttl.sh/timeseries-backups
-      tag: 24h
+      tag: 1h
       pullPolicy: Always
 
     # Sync interval in seconds (how often to sync to remote)
