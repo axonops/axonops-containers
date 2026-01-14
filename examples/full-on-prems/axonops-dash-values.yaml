@@ -1,0 +1,17 @@
+config:
+  axonServerUrl: "http://axon-server-api.axonops.svc.cluster.local:8080"
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: axonops.mycompany.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
