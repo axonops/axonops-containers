@@ -30,7 +30,7 @@ kubeVersion: ">=1.19.0-0"
 dependencies:
   # 1. Time-series database (Cassandra)
   - name: axondb-timeseries
-    version: 0.1.2
+    version: 0.1.4
     repository: oci://ghcr.io/axonops/charts
     condition: axondb-timeseries.enabled
     tags:
