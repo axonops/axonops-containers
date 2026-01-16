@@ -405,12 +405,6 @@ tolerations: []
 # Affinity rules (for pod placement)
 affinity: {}
 
-# Security Context
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 1000
-
 # Init Containers (for setup tasks)
 initContainers: []
 
