@@ -519,9 +519,16 @@ spec:
         {{- end }}
         {{- end }}
       {{- end }}
-      {{- if .Values.tls.enabled }}
+      {{- if not .Values.tls.enabled }}
+        - name: AXONOPS_SEARCH_TLS_ENABLED
+          value: "false"
+        - name: GENERATE_CERTS_ON_STARTUP
+          value: "false"
+      {{- else if .Values.tls.enabled }}
         # TLS/SSL Environment Variables
         {{- if .Values.tls.certManager.enabled }}
+        - name: GENERATE_CERTS_ON_STARTUP
+          value: "false"
         - name: OPENSEARCH_KEYSTORE_PATH
           value: "/etc/opensearch/certs/keystore.jks"
         - name: OPENSEARCH_TRUSTSTORE_PATH
@@ -544,6 +551,8 @@ spec:
         - name: OPENSEARCH_CA_CERT_PATH
           value: "/etc/opensearch/certs/ca.crt"
         {{- else if .Values.tls.manual.existingSecret }}
+        - name: GENERATE_CERTS_ON_STARTUP
+          value: "false"
         - name: OPENSEARCH_KEYSTORE_PATH
           value: "/etc/opensearch/certs/keystore.jks"
         - name: OPENSEARCH_TRUSTSTORE_PATH
@@ -565,10 +574,6 @@ spec:
           value: "/etc/opensearch/certs/tls.crt"
         - name: OPENSEARCH_CA_CERT_PATH
           value: "/etc/opensearch/certs/ca.crt"
-        {{- if not .Values.tls.enabled }}
-        - name: GENERATE_CERTS_ON_STARTUP
-          value: "false"
-        {{- end }}
         {{- end }}
         {{- end }}
 {{- if .Values.singleNode }}

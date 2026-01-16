@@ -318,7 +318,7 @@ GENERATE_CERTS_ON_STARTUP="${GENERATE_CERTS_ON_STARTUP:-true}"
 CERT_SEMAPHORE="${OPENSEARCH_DATA_DIR}/.axonops/generate-certs.done"
 CERT_FILE=${OPENSEARCH_TLS_CERT_PATH:-${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem}
 
-if [ "$GENERATE_CERTS_ON_STARTUP" = "true" ]; then
+if [ "$GENERATE_CERTS_ON_STARTUP" = "true" ] && [ "$AXONOPS_SEARCH_TLS_ENABLED" = "true" ]; then
     echo "=== Certificate Generation (Runtime) ==="
 
     if [ ! -f "$CERT_FILE" ]; then
