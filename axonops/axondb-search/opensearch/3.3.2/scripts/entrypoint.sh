@@ -255,25 +255,34 @@ ${NODES_DN_SECTION}
     echo "  ✓ Configured $(echo "${DN_ARRAY[@]}" | wc -w) node DN(s)"
 fi
 
-# Disable HTTP SSL if AXONOPS_SEARCH_TLS_ENABLED=false
-# This is useful when TLS is terminated at load balancer/ingress
-# Transport layer SSL remains enabled for node-to-node communication
+# Disable SSL completely if AXONOPS_SEARCH_TLS_ENABLED=false
+# This disables both HTTP and transport SSL (no certificates required)
+# Use this for development/testing or when running behind a secure network
 if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
-    echo "Disabling HTTP SSL (AXONOPS_SEARCH_TLS_ENABLED=false)"
-    echo "  TLS will be terminated at load balancer/ingress"
-    echo "  Transport layer SSL remains enabled for node-to-node communication"
-    # Add or update the HTTP SSL setting in opensearch.yml
+    echo "Disabling SSL completely (AXONOPS_SEARCH_TLS_ENABLED=false)"
+    echo "  HTTP SSL: disabled"
+    echo "  Transport SSL: disabled"
+    echo "  ⚠ WARNING: Not recommended for production!"
+
+    # Disable HTTP SSL
     if grep -q "plugins.security.ssl.http.enabled" /etc/opensearch/opensearch.yml; then
         _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.http\.enabled:).*/\2 false/'
     else
         echo "plugins.security.ssl.http.enabled: false" >> /etc/opensearch/opensearch.yml
     fi
+
+    # Disable Transport SSL
+    if grep -q "plugins.security.ssl.transport.enabled" /etc/opensearch/opensearch.yml; then
+        _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.transport\.enabled:).*/\2 false/'
+    else
+        echo "plugins.security.ssl.transport.enabled: false" >> /etc/opensearch/opensearch.yml
+    fi
 fi
 
-# Apply SSL/TLS certificate paths based on environment variables
+# Apply SSL/TLS certificate paths based on environment variables (only if TLS is enabled)
 # Convert absolute paths to relative paths for opensearch.yml (remove the config path prefix)
 # The configuration expects relative paths from the config directory
-if [ -n "$TLS_CERT_PATH" ]; then
+if [ "$AXONOPS_SEARCH_TLS_ENABLED" != "false" ] && [ -n "$TLS_CERT_PATH" ]; then
     # Extract relative path by removing the OPENSEARCH_PATH_CONF prefix
     RELATIVE_CERT_PATH="${TLS_CERT_PATH#${OPENSEARCH_PATH_CONF}/}"
     # Update both transport and HTTP certificate paths
@@ -281,7 +290,7 @@ if [ -n "$TLS_CERT_PATH" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.http\.pemcert_filepath:).*|\1 ${RELATIVE_CERT_PATH}|"
 fi
 
-if [ -n "$TLS_KEY_PATH" ]; then
+if [ "$AXONOPS_SEARCH_TLS_ENABLED" != "false" ] && [ -n "$TLS_KEY_PATH" ]; then
     # Extract relative path by removing the OPENSEARCH_PATH_CONF prefix
     RELATIVE_KEY_PATH="${TLS_KEY_PATH#${OPENSEARCH_PATH_CONF}/}"
     # Update both transport and HTTP key paths
@@ -289,7 +298,7 @@ if [ -n "$TLS_KEY_PATH" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r "s|^(plugins\.security\.ssl\.http\.pemkey_filepath:).*|\1 ${RELATIVE_KEY_PATH}|"
 fi
 
-if [ -n "$CA_CERT_PATH" ]; then
+if [ "$AXONOPS_SEARCH_TLS_ENABLED" != "false" ] && [ -n "$CA_CERT_PATH" ]; then
     # Extract relative path by removing the OPENSEARCH_PATH_CONF prefix
     RELATIVE_CA_PATH="${CA_CERT_PATH#${OPENSEARCH_PATH_CONF}/}"
     # Update both transport and HTTP CA certificate paths
@@ -318,7 +327,7 @@ GENERATE_CERTS_ON_STARTUP="${GENERATE_CERTS_ON_STARTUP:-true}"
 CERT_SEMAPHORE="${OPENSEARCH_DATA_DIR}/.axonops/generate-certs.done"
 CERT_FILE=${OPENSEARCH_TLS_CERT_PATH:-${OPENSEARCH_PATH_CONF}/certs/axondbsearch-default-node.pem}
 
-if [ "$GENERATE_CERTS_ON_STARTUP" = "true" ] && [ "$AXONOPS_SEARCH_TLS_ENABLED" = "true" ]; then
+if [ "$GENERATE_CERTS_ON_STARTUP" = "true" ] && [ "$AXONOPS_SEARCH_TLS_ENABLED" != "false" ]; then
     echo "=== Certificate Generation (Runtime) ==="
 
     if [ ! -f "$CERT_FILE" ]; then
@@ -355,6 +364,17 @@ if [ "$GENERATE_CERTS_ON_STARTUP" = "true" ] && [ "$AXONOPS_SEARCH_TLS_ENABLED" 
             echo "REASON=certs_already_exist"
         } > "$CERT_SEMAPHORE"
     fi
+    echo ""
+elif [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
+    echo "=== Certificate Generation Skipped ==="
+    echo "  TLS is disabled (AXONOPS_SEARCH_TLS_ENABLED=false)"
+    echo "  No certificates required"
+    mkdir -p "$(dirname "$CERT_SEMAPHORE")"
+    {
+        echo "COMPLETED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "RESULT=skipped"
+        echo "REASON=tls_disabled"
+    } > "$CERT_SEMAPHORE"
     echo ""
 else
     echo "=== Certificate Generation Disabled ==="
@@ -585,8 +605,10 @@ if [ ${#opensearch_opts[@]} -gt 0 ]; then
     echo ""
 fi
 
-# Set correct permissions for SSL certs (skip errors in Kube)
-chmod 600 /etc/opensearch/certs/*.pem || true
+# Set correct permissions for SSL certs (skip if TLS disabled or errors in Kube)
+if [ "$AXONOPS_SEARCH_TLS_ENABLED" != "false" ]; then
+    chmod 600 /etc/opensearch/certs/*.pem || true
+fi
 
 echo ""
 echo "=== Starting OpenSearch ==="
