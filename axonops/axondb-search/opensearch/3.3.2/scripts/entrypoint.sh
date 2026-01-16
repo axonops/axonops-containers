@@ -277,6 +277,14 @@ if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
     else
         echo "plugins.security.ssl.transport.enabled: false" >> /etc/opensearch/opensearch.yml
     fi
+
+    sed -i \
+        -e '/plugins.security.ssl.transport.pemcert_filepath:/d' \
+        -e '/plugins.security.ssl.transport.pemkey_filepath:/d' \
+        -e '/plugins.security.ssl.transport.pemtrustedcas_filepath:/d' \
+        -e '/plugins.security.ssl.transport.enforce_hostname_verification:/d' \
+        -e '/plugins.security.ssl.transport.resolve_hostname:/d' \
+        /etc/opensearch/opensearch.yml
 fi
 
 # Apply SSL/TLS certificate paths based on environment variables (only if TLS is enabled)
