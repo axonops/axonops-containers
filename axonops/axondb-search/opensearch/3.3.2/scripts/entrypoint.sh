@@ -264,27 +264,11 @@ if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
     echo "  Transport SSL: disabled"
     echo "  ⚠ WARNING: Not recommended for production!"
 
-    # Disable HTTP SSL
-    if grep -q "plugins.security.ssl.http.enabled" /etc/opensearch/opensearch.yml; then
-        _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.http\.enabled:).*/\2 false/'
-    else
-        echo "plugins.security.ssl.http.enabled: false" >> /etc/opensearch/opensearch.yml
-    fi
+    sed -i '/plugins.security.ssl/d' /etc/opensearch/opensearch.yml
 
-    # Disable Transport SSL
-    if grep -q "plugins.security.ssl.transport.enabled" /etc/opensearch/opensearch.yml; then
-        _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(plugins\.security\.ssl\.transport\.enabled:).*/\2 false/'
-    else
-        echo "plugins.security.ssl.transport.enabled: false" >> /etc/opensearch/opensearch.yml
-    fi
+    echo "plugins.security.ssl.http.enabled: false" >> /etc/opensearch/opensearch.yml
 
-    sed -i \
-        -e '/plugins.security.ssl.transport.pemcert_filepath:/d' \
-        -e '/plugins.security.ssl.transport.pemkey_filepath:/d' \
-        -e '/plugins.security.ssl.transport.pemtrustedcas_filepath:/d' \
-        -e '/plugins.security.ssl.transport.enforce_hostname_verification:/d' \
-        -e '/plugins.security.ssl.transport.resolve_hostname:/d' \
-        /etc/opensearch/opensearch.yml
+    echo "plugins.security.ssl.transport.enabled: false" >> /etc/opensearch/opensearch.yml
 fi
 
 # Apply SSL/TLS certificate paths based on environment variables (only if TLS is enabled)
