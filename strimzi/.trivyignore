@@ -48,3 +48,4 @@ CVE-2025-48734  # commons-beanutils: Apache Commons BeanUtils
 CVE-2025-27818  # pache-kafka: Apache Kafka: Possible RCE attack via SASL
 CVE-2025-6965   # sqlite: Integer Truncation in SQLite
 CVE-2023-52428  # nimbus-jose-jwt: large JWE p2c header value causes Denial of Service (HIGH - fixed in 9.37.2)
+CVE-2024-27309
