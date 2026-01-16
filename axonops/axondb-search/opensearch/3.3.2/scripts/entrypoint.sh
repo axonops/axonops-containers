@@ -269,6 +269,7 @@ if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
     echo "plugins.security.ssl.http.enabled: false" >> /etc/opensearch/opensearch.yml
 
     echo "plugins.security.ssl.transport.enabled: false" >> /etc/opensearch/opensearch.yml
+    echo "plugins.security.disabled: true" >> /etc/opensearch/opensearch.yml
 fi
 
 # Apply SSL/TLS certificate paths based on environment variables (only if TLS is enabled)
