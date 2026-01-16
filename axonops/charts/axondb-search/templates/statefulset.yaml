@@ -565,6 +565,10 @@ spec:
           value: "/etc/opensearch/certs/tls.crt"
         - name: OPENSEARCH_CA_CERT_PATH
           value: "/etc/opensearch/certs/ca.crt"
+        {{- if not .Values.tls.enabled }}
+        - name: GENERATE_CERTS_ON_STARTUP
+          value: "false"
+        {{- end }}
         {{- end }}
         {{- end }}
 {{- if .Values.singleNode }}
