@@ -1,0 +1,27 @@
+heapSize: 2048M
+
+authentication:
+  db_user: "axonops"
+  db_password: "MySecureP4sswordHere@"
+
+tls:
+  enabled: true
+  certManager:
+    enabled: true
+    issuer:
+      name: selfsigned-cluster-issuer
+resources:
+  requests:
+    cpu: 1001m
+    memory: 2Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+persistence:
+  enabled: false
+  enableInitChown: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  # existingClaim: ""
+  annotations: {}

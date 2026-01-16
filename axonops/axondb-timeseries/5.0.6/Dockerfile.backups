@@ -1,0 +1,75 @@
+# Supply chain security: Use immutable digest instead of mutable tag
+# UBI 9 minimal base image digest (latest as of 2025-12-10)
+# Points to: registry.access.redhat.com/ubi9/ubi-minimal:latest
+ARG UBI9_MINIMAL_DIGEST=sha256:6fc28bcb6776e387d7a35a2056d9d2b985dc4e26031e98a2bd35a7137cd6fd71
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal@${UBI9_MINIMAL_DIGEST}
+
+RUN echo "AXONOPS_BUILD: Using UBI 9 minimal base image (registry.access.redhat.com/ubi9/ubi-minimal)"
+RUN echo "AXONOPS_BUILD: Base image digest: ${UBI9_MINIMAL_DIGEST}"
+RUN echo "AXONOPS_BUILD: Will download Cassandra ${CASSANDRA_VERSION} from Apache mirrors"
+
+# Legacy labels (for backward compatibility)
+LABEL maintainer="AxonOps"
+LABEL name="AxonOps AxonDB Time-Series Database (Apache Cassandra ${CASSANDRA_VERSION})"
+LABEL vendor="AxonOps"
+LABEL url="https://axonops.com"
+LABEL release="${CASSANDRA_VERSION}"
+LABEL summary="Apache Cassandra ${CASSANDRA_VERSION} optimized for AxonOps self-hosted deployments with integrated monitoring and time-series workloads"
+LABEL description="Production-ready Apache Cassandra ${CASSANDRA_VERSION} container built on Red Hat UBI 9, featuring system keyspace auto-initialization, jemalloc memory optimization, cqlai v${CQLAI_VERSION}, and AxonOps-optimized configuration for time-series database workloads."
+
+# OCI standard labels
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.authors="AxonOps"
+LABEL org.opencontainers.image.url="https://axonops.com"
+LABEL org.opencontainers.image.documentation="https://github.com/axonops/axonops-containers/blob/main/axonops/axondb-timeseries/README.md"
+LABEL org.opencontainers.image.source="https://github.com/axonops/axonops-containers"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.vendor="AxonOps"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.title="AxonOps AxonDB Time-Series Remote Backups (Apache Cassandra ${CASSANDRA_VERSION})"
+LABEL org.opencontainers.image.description="Sidecar container for performing remote backups of AxonOps AxonDB Time-Series Database (Apache Cassandra ${CASSANDRA_VERSION}) deployments."
+LABEL org.opencontainers.image.ref.name="${IMAGE_FULL_NAME}"
+LABEL org.opencontainers.image.base.name="registry.access.redhat.com/ubi9/ubi-minimal:latest"
+LABEL org.opencontainers.image.base.digest="${UBI9_MINIMAL_DIGEST}"
+
+LABEL com.axonops.build.actor="${GITHUB_ACTOR}"
+
+ARG YQ_VERSION=v4.50.1
+ARG RCLONE_VERSION=1.72.1
+ARG CASSANDRA_HOME=/opt/cassandra
+
+# Create cassandra user and group
+RUN microdnf install -y --nodocs shadow-utils && \
+    groupadd -r cassandra --gid=999 && \
+    useradd -m -d "$CASSANDRA_HOME" -r -g cassandra -G root --uid=999 cassandra && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum
+
+# Install runtime dependencies
+RUN microdnf install -y --nodocs \
+    tar \
+    gzip \
+    wget \
+    rsync \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum /var/cache/dnf
+
+    # Get yq, this will be used to modify the cassandra.yaml if needed
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        RPM_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        RPM_ARCH="arm64"; \
+    else \
+        echo "ERROR: Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    rpm -Uvh https://downloads.rclone.org/v${RCLONE_VERSION}/rclone-v${RCLONE_VERSION}-linux-${RPM_ARCH}.rpm
+
+COPY scripts/cassandra-remote-backup.sh /usr/local/bin/cassandra-remote-backup.sh
+COPY scripts/cassandra-remote-restore.sh /usr/local/bin/cassandra-remote-restore.sh
+RUN chmod +x /usr/local/bin/*.sh
+
+USER cassandra
+CMD ["/usr/local/bin/cassandra-remote-backup.sh"]

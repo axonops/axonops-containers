@@ -840,13 +840,13 @@ if [ ! -f "$CLEANUP_SEMAPHORE" ]; then
 fi
 
 # ============================================================================
-# 15. Cleanup Snapshot (via trap handler)
+# 16. Cleanup Snapshot (via trap handler)
 # ============================================================================
 
 log "Cleanup will be performed via trap handler..."
 
 # ============================================================================
-# 16. Success
+# 17. Success
 # ============================================================================
 
 TOTAL_DURATION=$(get_duration $START_TIME)

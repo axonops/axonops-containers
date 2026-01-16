@@ -1,0 +1,258 @@
+name: AxonDB Time-Series Backups Publish Signed to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      main_git_tag:
+        description: 'Git tag on main branch to build (e.g., axondb-timeseries-backups-1.0.0)'
+        required: true
+        type: string
+      container_version:
+        description: 'Container version for GHCR (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: axonops/axondb-timeseries-backups
+
+jobs:
+  axondb-timeseries-backups-validate:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Verify tag is on main branch
+        run: |
+          echo "Checking if tag ${{ inputs.main_git_tag }} is on main branch..."
+          TAG_COMMIT=$(git rev-parse ${{ inputs.main_git_tag }})
+          echo "Tag commit: $TAG_COMMIT"
+          git fetch origin main
+          if git merge-base --is-ancestor $TAG_COMMIT origin/main; then
+            echo "✓ Tag ${{ inputs.main_git_tag }} is on main branch"
+          else
+            echo "ERROR: Tag ${{ inputs.main_git_tag }} is not on main branch"
+            exit 1
+          fi
+
+      - name: Check if container version already exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Checking if version ${{ inputs.container_version }} exists..."
+          TAG="${{ inputs.container_version }}"
+          echo "Checking for tag: $TAG in axondb-timeseries-backups"
+          if gh api --paginate "/orgs/axonops/packages/container/axondb-timeseries-backups/versions" \
+            --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .metadata.container.tags[]" 2>/dev/null | grep -q "$TAG"; then
+            echo "ERROR: Container version $TAG already exists"
+            exit 1
+          fi
+          echo "✓ Container version ${{ inputs.container_version }} is available"
+
+  axondb-timeseries-backups-test:
+    needs: axondb-timeseries-backups-validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-timeseries/5.0.6
+          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile.backups
+          platforms: linux/amd64
+          load: true
+          tags: axondb-timeseries-backups:test
+          build-args: |
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.main_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image was built
+        run: |
+          docker images | grep axondb-timeseries-backups
+          docker inspect axondb-timeseries-backups:test
+
+      - name: Verify backup scripts are present
+        run: |
+          echo "Verifying backup and restore scripts are present in the container..."
+          docker run --rm axondb-timeseries-backups:test ls -la /usr/local/bin/cassandra-remote-backup.sh
+          docker run --rm axondb-timeseries-backups:test ls -la /usr/local/bin/cassandra-remote-restore.sh
+
+      - name: Verify rclone is installed
+        run: |
+          echo "Verifying rclone is installed..."
+          docker run --rm axondb-timeseries-backups:test rclone version
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-timeseries-backups:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: 'axondb-timeseries-backups:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  axondb-timeseries-backups-create-release:
+    needs: axondb-timeseries-backups-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ inputs.main_git_tag }}',
+              name: `axondb-timeseries-backups-${{ inputs.container_version }}`,
+              body: `AxonDB Time-Series Backups release ${{ inputs.container_version }}\n\nImage: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}\nSigned with Cosign`,
+              draft: false,
+              prerelease: false
+            });
+            console.log(`Release created: ${release.data.html_url}`);
+            return release.data.id;
+
+  axondb-timeseries-backups-build-push-sign:
+    needs: [axondb-timeseries-backups-test, axondb-timeseries-backups-create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (multi-arch)
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-timeseries/5.0.6
+          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile.backups
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.main_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Sign container image
+        uses: ./.github/actions/axondb-timeseries-sign-container
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Re-push tags after signing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops/axondb-timeseries/5.0.6
+          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile.backups
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.main_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}
+          cache-from: type=gha
+
+      - name: Production image published and signed
+        run: |
+          echo "✓ Production image published and signed to GHCR"
+          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
+
+  axondb-timeseries-backups-verify-published:
+    needs: axondb-timeseries-backups-build-push-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify published image
+        uses: ./.github/actions/axondb-timeseries-verify-published-image
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.container_version }}
+          image_digest: ${{ needs.axondb-timeseries-backups-build-push-sign.outputs.digest }}

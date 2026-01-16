@@ -1,0 +1,20 @@
+opensearchHeapSize: "2g"
+
+authentication:
+  opensearch_user: "admin"
+  opensearch_password: "MySecureP4sswordHere@"
+
+tls:
+  enabled: true
+  certManager:
+    enabled: true
+    issuer:
+      name: selfsigned-cluster-issuer
+persistence:
+  enabled: false
+  enableInitChown: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  # existingClaim: ""
+  annotations: {}

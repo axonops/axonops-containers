@@ -39,3 +39,4 @@ go.work.sum
 **/tests/smoke-output.log
 sergio-scripts/
 *.tgz
+Chart.lock

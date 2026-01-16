@@ -1,3 +1,32 @@
+{{- if .Values.restoreFromBackup }}
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                              ⚠️  CRITICAL WARNING ⚠️                        ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+  RESTORE FROM BACKUP IS ENABLED!
+
+  Backup to restore: {{ .Values.restoreFromBackup }}
+
+  ⚠️  IMPORTANT: You MUST remove the 'restoreFromBackup' setting after the database
+     has been successfully restored!
+
+  If you leave this setting in place:
+    - The backup will be restored EVERY TIME the pod restarts
+    - This will OVERWRITE your current data with the backup data
+    - You may lose new data written after the initial restore
+
+  To remove the restore setting, update your values.yaml:
+    restoreFromBackup: ""
+
+  Then upgrade your release:
+    helm upgrade {{ .Release.Name }} {{ .Chart.Name }} -n {{ .Release.Namespace }} -f values.yaml
+
+  Check restore status:
+    kubectl logs -n {{ .Release.Namespace }} {{ include "axon-cassandra.fullname" . }}-0 -c restore-backup
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+{{- end }}
+
 1. Cassandra has been deployed successfully!
 
 2. To connect to Cassandra:

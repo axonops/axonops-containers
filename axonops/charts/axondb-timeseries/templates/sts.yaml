@@ -35,6 +35,56 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if and .Values.backup.enabled .Values.backup.remote.enabled .Values.restoreFromBackup }}
+      initContainers:
+        # Restore from remote backup before Cassandra starts
+        - name: restore-backup
+          image: "{{ .Values.backup.remote.image.repository }}:{{ .Values.backup.remote.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.backup.remote.image.pullPolicy | default "IfNotPresent" }}
+          command:
+            - /bin/sh
+            - -c
+            - "/usr/local/bin/cassandra-remote-restore.sh"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: BACKUP_VOLUME
+              value: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            - name: RCLONE_REMOTE_PATH
+              value: {{ .Values.backup.remote.path | quote }}
+            - name: RESTORE_FROM_BACKUP
+              value: {{ .Values.restoreFromBackup | quote }}
+            - name: BWLIMIT_KB
+              value: {{ .Values.backup.rsync.bwLimitKB | default 0 | quote }}
+            - name: BACKUP_INITIAL_DELAY_SECONDS
+              value: "0"
+            {{- with .Values.backup.remote.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.backup.remote.secretName }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.backup.remote.secretName }}
+          {{- end }}
+          {{- with .Values.backup.remote.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: backup
+              mountPath: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            {{- if eq .Values.backup.remote.authMethod "config" }}
+            - name: rclone-config
+              mountPath: /config/rclone
+              readOnly: true
+            {{- end }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -56,6 +106,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: DEBUG
+              value: "{{ .Values.debug | default true }}"
             - name: AXON_AGENT_ORG
               value: {{ .Values.org | default "self-hosted" }}
             - name: CASSANDRSA_FQDN
@@ -141,6 +193,48 @@ spec:
               value: {{ .Values.authentication.db_user | quote }}
             - name: AXONOPS_DB_PASSWORD
               value: {{ .Values.authentication.db_password | quote }}
+          {{- end }}
+          {{- if .Values.backup.enabled }}
+          {{- if .Values.restoreFromBackup}}
+            - name: RESTORE_FROM_BACKUP
+              value: {{ .Values.restoreFromBackup | quote }}
+          {{- end }}
+            # Backup configuration environment variables
+            - name: BACKUP_SCHEDULE
+              value: {{ .Values.backup.schedule.cronSchedule | default "0 8 * * *" | quote }}
+            - name: BACKUP_VOLUME
+              value: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            - name: BACKUP_TAG_PREFIX
+              value: {{ .Values.backup.settings.tagPrefix | default "backup" | quote }}
+            - name: BACKUP_RETENTION_HOURS
+              value: {{ .Values.backup.settings.retentionHours | default 168 | quote }}
+            - name: BACKUP_MINIMUM_RETENTION_COUNT
+              value: {{ .Values.backup.settings.minimumRetentionCount | default 3 | quote }}
+            - name: BACKUP_USE_HARDLINKS
+              value: {{ .Values.backup.settings.useHardlinks | default true | quote }}
+            - name: BACKUP_CALCULATE_STATS
+              value: {{ .Values.backup.settings.calculateStats | default false | quote }}
+            - name: BACKUP_STUCK_TIMEOUT_MINUTES
+              value: {{ .Values.backup.settings.stuckTimeoutMinutes | default 60 | quote }}
+            - name: SNAPSHOT_RETENTION_DAYS
+              value: {{ .Values.backup.settings.snapshotRetentionDays | default 7 | quote }}
+            - name: BACKUP_RSYNC_RETRIES
+              value: {{ .Values.backup.rsync.retries | default 3 | quote }}
+            - name: BACKUP_RSYNC_TIMEOUT_MINUTES
+              value: {{ .Values.backup.rsync.timeoutMinutes | default 120 | quote }}
+            {{- if .Values.backup.rsync.bwLimitKB }}
+            - name: RSYNC_BWLIMIT_KB
+              value: {{ .Values.backup.rsync.bwLimitKB | quote }}
+            {{- end }}
+            {{- if .Values.backup.rsync.extraOpts }}
+            - name: BACKUP_RSYNC_EXTRA_OPTS
+              value: {{ .Values.backup.rsync.extraOpts | quote }}
+            {{- end }}
+            - name: RETENTION_CLEANUP_TIMEOUT_MINUTES
+              value: {{ .Values.backup.cleanup.timeoutMinutes | default 60 | quote }}
+            {{- with .Values.backup.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
           {{- if .Values.envVars }}
             {{- toYaml .Values.envVars | nindent 12 }}
@@ -228,9 +322,63 @@ spec:
               mountPath: {{ .Values.persistence.commitlog.mountPath | default "/var/lib/cassandra/commitlog" }}
             {{- end }}
             {{- end }}
+            {{- if .Values.backup.enabled }}
+            - name: backup
+              mountPath: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+        {{- if .Values.backup.remote.enabled }}
+        # Remote backup sidecar using rclone
+        - name: backup-sync
+          image: "{{ .Values.backup.remote.image.repository }}:{{ .Values.backup.remote.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.backup.remote.image.pullPolicy | default "IfNotPresent" }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: BACKUP_VOLUME
+              value: {{ .Values.backup.volume.mountPath | default "/backup" }}
+            - name: RCLONE_REMOTE_PATH
+              value: {{ .Values.backup.remote.path | quote }}
+            - name: SYNC_INERVAL_SECONDS
+              value: {{ .Values.backup.remote.syncIntervalSeconds | default 3600 | quote }}
+            - name: BWLIMIT_KB
+              value: {{ .Values.backup.rsync.bwLimitKB | default 0 | quote }}
+            - name: BACKUP_INITIAL_DELAY_SECONDS
+              value: {{ .Values.backup.remote.initialDelaySeconds | default 300 | quote }}
+            {{- if .Values.backup.remote.retentionDays }}
+            - name: REMOTE_RETENTION_DAYS
+              value: {{ .Values.backup.remote.retentionDays | quote }}
+            {{- end }}
+            {{- with .Values.backup.remote.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.backup.remote.secretName }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.backup.remote.secretName }}
+          {{- end }}
+          {{- with .Values.backup.remote.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: backup
+              mountPath: {{ .Values.backup.volume.mountPath | default "/backup" }}
+              readOnly: true
+            {{- if eq .Values.backup.remote.authMethod "config" }}
+            - name: rclone-config
+              mountPath: /config/rclone
+              readOnly: true
+            {{- end }}
+        {{- end }}
       volumes:
         {{- if .Values.tls.enabled }}
         # TLS/SSL certificate volumes
@@ -279,6 +427,11 @@ spec:
           emptyDir: {}
         {{- end }}
         {{- end }}
+        {{- if and .Values.backup.enabled .Values.backup.volume.existingClaim }}
+        - name: backup
+          persistentVolumeClaim:
+            claimName: {{ .Values.backup.volume.existingClaim }}
+        {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -294,9 +447,9 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{- if .Values.persistence.enabled }}
+  {{- if or .Values.persistence.enabled (and .Values.backup.enabled (not .Values.backup.volume.existingClaim)) }}
   volumeClaimTemplates:
-    {{- if not .Values.persistence.data.existingClaim }}
+    {{- if and .Values.persistence.enabled (not .Values.persistence.data.existingClaim) }}
     - metadata:
         name: data
         labels:
@@ -319,7 +472,7 @@ spec:
           requests:
             storage: {{ .Values.persistence.data.size | default "10Gi" }}
     {{- end }}
-    {{- if and .Values.persistence.commitlog.enabled (not .Values.persistence.commitlog.existingClaim) }}
+    {{- if and .Values.persistence.enabled .Values.persistence.commitlog.enabled (not .Values.persistence.commitlog.existingClaim) }}
     - metadata:
         name: commitlog
         labels:
@@ -341,5 +494,28 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.commitlog.size | default "5Gi" }}
+    {{- end }}
+    {{- if and .Values.backup.enabled (not .Values.backup.volume.existingClaim) }}
+    - metadata:
+        name: backup
+        labels:
+          {{- include "axon-cassandra.labels" . | nindent 10 }}
+        {{- with .Values.backup.volume.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.backup.volume.accessMode | default "ReadWriteOnce" }}
+        {{- if .Values.backup.volume.storageClass }}
+        {{- if (eq "-" .Values.backup.volume.storageClass) }}
+        storageClassName: ""
+        {{- else }}
+        storageClassName: {{ .Values.backup.volume.storageClass }}
+        {{- end }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.backup.volume.size | default "50Gi" }}
     {{- end }}
   {{- end }}
