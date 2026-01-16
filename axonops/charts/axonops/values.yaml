@@ -54,19 +54,58 @@ axondb-timeseries:
       memory: 9Gi
       cpu: 1000m
 
-  # Authentication configuration
-  # WARNING: Change these credentials in production!
-  cassandra:
-    auth:
-      enabled: true
-      username: "axonops"
-      password: "axonops"
+# Authentication Configuration for AxonOps Timeseries Database
+# =============================================================
+# By default, the timeseries database will not have dedicated authentication users for AxonOps.
+# It is strongly recommended to configure authentication credentials in production environments.
+#
+# You have two options for providing authentication credentials:
+#
+# Option 1: Using a Kubernetes Secret (Recommended for Production)
+# -----------------------------------------------------------------
+# Provide the name of an existing Kubernetes secret containing the credentials.
+# The secret MUST contain these exact keys:
+#   - AXONOPS_DB_USER: The database username for AxonOps
+#   - AXONOPS_DB_PASSWORD: The database password for AxonOps
+#
+# Example secret creation:
+#   kubectl create secret generic axonops-db-credentials \
+#     --from-literal=AXONOPS_DB_USER=axonops \
+#     --from-literal=AXONOPS_DB_PASSWORD=secure-password
+#
+# Then configure:
+#   authentication:
+#     db_secret: "axonops-db-credentials"
+#
+# Option 2: Using Direct Values (For Development/Testing Only)
+# ------------------------------------------------------------
+# Provide the username and password directly in the values file.
+# Note: This method stores credentials in plain text and should NOT be used in production.
+#
+# Example configuration:
+#   authentication:
+#     db_user: "axonops"
+#     db_password: "axonops_password"
+#
+# When Configured:
+# ---------------
+# The credentials will be passed to the container as environment variables:
+# - AXONOPS_DB_USER: The username for database authentication
+# - AXONOPS_DB_PASSWORD: The password for database authentication
+#
+# These environment variables can be used by the application to authenticate with the database.
+
+  authentication:
+    db_user: ""
+    db_password: ""
+    db_secret: ""
 
   # Storage configuration
   persistence:
     enabled: true
-    size: 100Gi
-    # storageClass: "" # Uncomment and set if you need specific storage class
+    data:
+      size: 100Gi
+      # storageClass: "" # Uncomment and set if you need specific storage class
 
   # Service configuration
   service:
@@ -109,17 +148,49 @@ axondb-search:
       cpu: 2000m
       memory: 10Gi
 
+  # Authentication Configuration for AxonOps Search Database
+  # =========================================================
+  # By default, the search database will not have dedicated authentication users for AxonOps.
+  # It is strongly recommended to configure authentication credentials in production environments.
+  #
+  # You have two options for providing authentication credentials:
+  #
+  # Option 1: Using a Kubernetes Secret (Recommended for Production)
+  # -----------------------------------------------------------------
+  # Provide the name of an existing Kubernetes secret containing the credentials.
+  # The secret MUST contain these exact keys:
+  #   - AXONOPS_SEARCH_USER: OpenSearch username
+  #   - AXONOPS_SEARCH_PASSWORD: OpenSearch password
+  #
+  # Example secret creation:
+  #   kubectl create secret generic axonops-search-credentials \
+  #     --from-literal=AXONOPS_SEARCH_USER=axonops \
+  #     --from-literal=AXONOPS_SEARCH_PASSWORD=secure-password
+  #
+  # Then configure:
+  #   authentication:
+  #     opensearch_secret: "axonops-search-credentials"
+  #
+  # Option 2: Using Direct Values (For Development/Testing Only)
+  # ------------------------------------------------------------
+  # Provide the username and password directly in the values file.
+  # Note: This method stores credentials in plain text and should NOT be used in production.
+  #
+  # Example configuration:
+  #   authentication:
+  #     opensearch_user: "admin"
+  #     opensearch_password: "admin_password"
+
+  authentication:
+    opensearch_user: ""
+    opensearch_password: ""
+    opensearch_secret: ""
+
   # Security configuration
-  # WARNING: Change this password in production!
-  security:
+  securityConfig:
     enabled: true
     config:
-      enabled: true
-      # Use the built-in security configuration
       securityConfigSecret: ""
-      internalUsersSecret: ""
-    # Admin password for OpenSearch
-    adminPassword: "MyS3cur3P@ss2025"
 
   # Storage configuration
   persistence:
