@@ -1,0 +1,14 @@
+{{- if and .Values.tls.enabled .Values.tls.certManager.enabled .Values.tls.certManager.issuer.createSelfSigned (not .Values.tls.certManager.issuer.name) }}
+---
+apiVersion: cert-manager.io/v1
+kind: {{ .Values.tls.certManager.issuer.kind | default "ClusterIssuer" }}
+metadata:
+  name: {{ include "opensearch.fullname" . }}-issuer
+  {{- if eq (.Values.tls.certManager.issuer.kind | default "ClusterIssuer") "Issuer" }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
+  labels:
+    {{- include "opensearch.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}
