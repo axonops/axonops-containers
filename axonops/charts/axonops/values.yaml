@@ -100,6 +100,23 @@ axondb-timeseries:
     db_password: ""
     db_secret: ""
 
+  # vals-operator integration for external secret management
+  # When enabled, credentials are fetched from external secret stores
+  # See axondb-timeseries chart documentation for details
+  vals:
+    enabled: false
+    ttl: 3600
+    labels: {}
+    annotations: {}
+    authentication:
+      db_user: ""       # e.g., "ref+awssecrets://axonops/timeseries#username"
+      db_password: ""   # e.g., "ref+awssecrets://axonops/timeseries#password"
+    tls:
+      keystorePassword: ""
+    backup:
+      awsAccessKeyId: ""
+      awsSecretAccessKey: ""
+
   # Storage configuration
   persistence:
     enabled: true
@@ -185,6 +202,27 @@ axondb-search:
     opensearch_user: ""
     opensearch_password: ""
     opensearch_secret: ""
+
+  # vals-operator integration for external secret management
+  # When enabled, credentials are fetched from external secret stores
+  # See axondb-search chart documentation for details
+  vals:
+    enabled: false
+    ttl: 3600
+    labels: {}
+    annotations: {}
+    authentication:
+      opensearch_user: ""      # e.g., "ref+awssecrets://axonops/search#username"
+      opensearch_password: ""  # e.g., "ref+awssecrets://axonops/search#password"
+    tls:
+      keystorePassword: ""
+    s3Credentials:
+      accessKeyId: ""
+      secretAccessKey: ""
+      sessionToken: ""
+    serviceMonitor:
+      username: ""
+      password: ""
 
   # Security configuration
   securityConfig:
@@ -311,6 +349,19 @@ axon-server:
     annotations: {}
     env: {}
     secretEnv: ""
+
+  # vals-operator integration for external secret management
+  # When enabled, the entire axon-server.yml config file is fetched from an external secret store
+  # See axon-server chart documentation for details
+  vals:
+    enabled: false
+    ttl: 3600
+    labels: {}
+    annotations: {}
+    # Reference to the entire axon-server.yml config file stored in external secret store
+    # Example: "ref+awssecrets://axonops/axon-server#config"
+    # Example: "ref+vault://secret/data/axonops/axon-server#config"
+    configRef: ""
 
 #============================================================================
 # AxonOps Dashboard (Web UI)
