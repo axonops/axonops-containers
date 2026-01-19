@@ -134,14 +134,18 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-      {{- if not .Values.configurationSecret }}
+      {{- if .Values.vals.enabled }}
       - name: config
         secret:
-          secretName: {{ include "axon-server.fullname" . }}
-      {{- else }}
+          secretName: {{ include "axon-server.fullname" . }}-vals
+      {{- else if .Values.configurationSecret }}
       - name: config
         secret:
           secretName: {{ .Values.configurationSecret }}
+      {{- else }}
+      - name: config
+        secret:
+          secretName: {{ include "axon-server.fullname" . }}
       {{- end }}
       - name: logs
         emptyDir: {}

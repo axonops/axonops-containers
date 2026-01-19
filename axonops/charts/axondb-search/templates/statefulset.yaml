@@ -431,7 +431,19 @@ spec:
           value: "{{ template "opensearch.roles" . }}"
         - name: OPENSEARCH_JAVA_OPTS
           value: "{{ .Values.opensearchJavaOps }}"
-      {{- if .Values.authentication.opensearch_secret }}
+      {{- if .Values.vals.enabled }}
+        # Authentication credentials from vals-operator managed secret
+        - name: AXONOPS_SEARCH_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "opensearch.uname" . }}-vals
+              key: AXONOPS_SEARCH_USER
+        - name: AXONOPS_SEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "opensearch.uname" . }}-vals
+              key: AXONOPS_SEARCH_PASSWORD
+      {{- else if .Values.authentication.opensearch_secret }}
         # Authentication credentials from secret
         - name: AXONOPS_SEARCH_USER
           valueFrom:

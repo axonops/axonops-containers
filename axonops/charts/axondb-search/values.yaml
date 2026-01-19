@@ -752,3 +752,67 @@ serviceMonitor:
   #   password: my-password
   basicAuth:
     enabled: false
+
+# vals-operator Integration for External Secret Management
+# =========================================================
+# vals-operator enables secrets to be fetched from external stores like
+# AWS Secrets Manager, HashiCorp Vault, Google Secret Manager, Azure Key Vault, etc.
+#
+# When enabled, a ValsSecret resource is created which vals-operator reconciles
+# into a standard Kubernetes Secret. This allows you to reference secrets using
+# expressions like: ref+awssecrets://path/to/secret#key
+#
+# Prerequisites:
+#   1. vals-operator must be installed in your cluster:
+#      helm repo add digitalis https://digitalis-io.github.io/helm-charts
+#      helm install vals-operator digitalis/vals-operator
+#   2. Configure vals-operator with access to your secret stores
+#
+# Reference: https://github.com/digitalis-io/vals-operator
+vals:
+  # Enable vals-operator integration
+  enabled: false
+
+  # TTL in seconds for secret refresh (how often vals-operator checks for updates)
+  # Default: 3600 (1 hour)
+  ttl: 3600
+
+  # Additional labels for the ValsSecret resource
+  labels: {}
+
+  # Additional annotations for the ValsSecret resource
+  annotations: {}
+
+  # OpenSearch authentication credentials via vals references
+  # Example values:
+  #   opensearch_user: "ref+awssecrets://axonops/search#username"
+  #   opensearch_password: "ref+awssecrets://axonops/search#password"
+  # Or for HashiCorp Vault:
+  #   opensearch_user: "ref+vault://secret/data/axonops/search#username"
+  #   opensearch_password: "ref+vault://secret/data/axonops/search#password"
+  authentication:
+    opensearch_user: ""
+    opensearch_password: ""
+
+  # TLS keystore password via vals reference
+  # Example: "ref+awssecrets://axonops/tls#keystore-password"
+  tls:
+    keystorePassword: ""
+
+  # S3 backup credentials via vals references
+  # Example values:
+  #   accessKeyId: "ref+awssecrets://axonops/s3#access-key-id"
+  #   secretAccessKey: "ref+awssecrets://axonops/s3#secret-access-key"
+  #   sessionToken: "ref+awssecrets://axonops/s3#session-token"  (optional)
+  s3Credentials:
+    accessKeyId: ""
+    secretAccessKey: ""
+    sessionToken: ""
+
+  # ServiceMonitor basic auth credentials via vals references
+  # Example values:
+  #   username: "ref+awssecrets://axonops/monitoring#username"
+  #   password: "ref+awssecrets://axonops/monitoring#password"
+  serviceMonitor:
+    username: ""
+    password: ""

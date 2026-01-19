@@ -576,3 +576,57 @@ serviceMonitor:
 
   # Sample limit for metrics
   # sampleLimit: 10000
+
+# vals-operator Integration for External Secret Management
+# =========================================================
+# vals-operator enables secrets to be fetched from external stores like
+# AWS Secrets Manager, HashiCorp Vault, Google Secret Manager, Azure Key Vault, etc.
+#
+# When enabled, a ValsSecret resource is created which vals-operator reconciles
+# into a standard Kubernetes Secret. This allows you to reference secrets using
+# expressions like: ref+awssecrets://path/to/secret#key
+#
+# Prerequisites:
+#   1. vals-operator must be installed in your cluster:
+#      helm repo add digitalis https://digitalis-io.github.io/helm-charts
+#      helm install vals-operator digitalis/vals-operator
+#   2. Configure vals-operator with access to your secret stores
+#
+# Reference: https://github.com/digitalis-io/vals-operator
+vals:
+  # Enable vals-operator integration
+  enabled: false
+
+  # TTL in seconds for secret refresh (how often vals-operator checks for updates)
+  # Default: 3600 (1 hour)
+  ttl: 3600
+
+  # Additional labels for the ValsSecret resource
+  labels: {}
+
+  # Additional annotations for the ValsSecret resource
+  annotations: {}
+
+  # Database authentication credentials via vals references
+  # Example values:
+  #   db_user: "ref+awssecrets://axonops/timeseries#username"
+  #   db_password: "ref+awssecrets://axonops/timeseries#password"
+  # Or for HashiCorp Vault:
+  #   db_user: "ref+vault://secret/data/axonops/timeseries#username"
+  #   db_password: "ref+vault://secret/data/axonops/timeseries#password"
+  authentication:
+    db_user: ""
+    db_password: ""
+
+  # TLS keystore password via vals reference
+  # Example: "ref+awssecrets://axonops/tls#keystore-password"
+  tls:
+    keystorePassword: ""
+
+  # Remote backup credentials via vals references (for AWS S3 or compatible storage)
+  # Example values:
+  #   awsAccessKeyId: "ref+awssecrets://axonops/backup#access-key-id"
+  #   awsSecretAccessKey: "ref+awssecrets://axonops/backup#secret-access-key"
+  backup:
+    awsAccessKeyId: ""
+    awsSecretAccessKey: ""

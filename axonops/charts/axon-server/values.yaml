@@ -318,3 +318,21 @@ updateStrategy:
 
 # Pod management policy for StatefulSet
 podManagementPolicy: OrderedReady
+
+# vals-operator integration for external secret management
+# See VALS_OPERATOR.md for usage instructions
+vals:
+  # Enable vals-operator integration
+  enabled: false
+  # Secret refresh interval in seconds
+  ttl: 3600
+  # Additional labels for ValsSecret
+  labels: {}
+  # Additional annotations for ValsSecret
+  annotations: {}
+  # Reference to the entire axon-server.yml config file stored in external secret store
+  # The config file must contain the complete axon-server configuration in YAML format
+  # Example: "ref+awssecrets://axonops/axon-server#config"
+  # Example: "ref+vault://secret/data/axonops/axon-server#config"
+  # Example: "ref+gcpsecrets://project/axon-server-config/versions/latest"
+  configRef: ""

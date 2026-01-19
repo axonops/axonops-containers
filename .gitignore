@@ -40,3 +40,4 @@ go.work.sum
 sergio-scripts/
 *.tgz
 Chart.lock
+TAGGING.md

@@ -67,7 +67,11 @@ spec:
             {{- with .Values.backup.remote.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          {{- if .Values.backup.remote.secretName }}
+          {{- if .Values.vals.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ include "axon-cassandra.fullname" . }}-vals
+          {{- else if .Values.backup.remote.secretName }}
           envFrom:
             - secretRef:
                 name: {{ .Values.backup.remote.secretName }}
@@ -116,7 +120,30 @@ spec:
               value: "{{ .Values.heapSize }}"
           {{- if .Values.tls.enabled }}
             # TLS/SSL Environment Variables
-            {{- if .Values.tls.certManager.enabled }}
+            {{- if and .Values.vals.enabled .Values.vals.tls.keystorePassword }}
+            # TLS keystore password from vals-operator managed secret
+            - name: CASSANDRA_KEYSTORE_PATH
+              value: "/etc/cassandra/certs/keystore.jks"
+            - name: CASSANDRA_TRUSTSTORE_PATH
+              value: "/etc/cassandra/certs/truststore.jks"
+            - name: CASSANDRA_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "axon-cassandra.fullname" . }}-vals
+                  key: KEYSTORE_PASSWORD
+            - name: CASSANDRA_TRUSTSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "axon-cassandra.fullname" . }}-vals
+                  key: KEYSTORE_PASSWORD
+            # PEM certificate paths
+            - name: CASSANDRA_TLS_KEY_PATH
+              value: "/etc/cassandra/certs/tls.key"
+            - name: CASSANDRA_TLS_CERT_PATH
+              value: "/etc/cassandra/certs/tls.crt"
+            - name: CASSANDRA_CA_CERT_PATH
+              value: "/etc/cassandra/certs/ca.crt"
+            {{- else if .Values.tls.certManager.enabled }}
             - name: CASSANDRA_KEYSTORE_PATH
               value: "/etc/cassandra/certs/keystore.jks"
             - name: CASSANDRA_TRUSTSTORE_PATH
@@ -175,7 +202,19 @@ spec:
             - name: CASSANDRA_CLIENT_PROTOCOL
               value: "{{ .Values.tls.cassandra.clientToNode.protocol }}"
           {{- end }}
-          {{- if .Values.authentication.db_secret }}
+          {{- if .Values.vals.enabled }}
+            # Authentication credentials from vals-operator managed secret
+            - name: AXONOPS_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "axon-cassandra.fullname" . }}-vals
+                  key: AXONOPS_DB_USER
+            - name: AXONOPS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "axon-cassandra.fullname" . }}-vals
+                  key: AXONOPS_DB_PASSWORD
+          {{- else if .Values.authentication.db_secret }}
             # Authentication credentials from secret
             - name: AXONOPS_DB_USER
               valueFrom:
@@ -360,7 +399,11 @@ spec:
             {{- with .Values.backup.remote.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          {{- if .Values.backup.remote.secretName }}
+          {{- if .Values.vals.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ include "axon-cassandra.fullname" . }}-vals
+          {{- else if .Values.backup.remote.secretName }}
           envFrom:
             - secretRef:
                 name: {{ .Values.backup.remote.secretName }}
