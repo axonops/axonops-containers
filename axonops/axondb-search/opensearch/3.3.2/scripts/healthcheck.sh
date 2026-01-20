@@ -10,10 +10,12 @@ TIMEOUT="${HEALTH_CHECK_TIMEOUT:-10}"
 OPENSEARCH_DATA_DIR="${OPENSEARCH_DATA_DIR:-/var/lib/opensearch}"
 AXONOPS_SEARCH_USER="${AXONOPS_SEARCH_USER:-}"
 AXONOPS_SEARCH_PASSWORD="${AXONOPS_SEARCH_PASSWORD:-}"
+DISABLE_SECURITY_PLUGIN="${DISABLE_SECURITY_PLUGIN:-false}"
 
 # Determine protocol (HTTP or HTTPS) based on TLS setting
+# When security plugin is disabled, always use HTTP
 AXONOPS_SEARCH_TLS_ENABLED="${AXONOPS_SEARCH_TLS_ENABLED:-true}"
-if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
+if [ "$DISABLE_SECURITY_PLUGIN" = "true" ] || [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
   PROTOCOL="http"
 else
   PROTOCOL="https"
@@ -21,7 +23,10 @@ fi
 
 # Set authentication options if security plugin is enabled
 CURL_OPTS=""
-if ! grep -q '^plugins.security.disabled: true' /etc/opensearch/opensearch.yml; then
+SECURITY_ENABLED="true"
+if [ "$DISABLE_SECURITY_PLUGIN" = "true" ] || grep -q '^plugins.security.disabled: true' /etc/opensearch/opensearch.yml 2>/dev/null; then
+  SECURITY_ENABLED="false"
+else
   CURL_OPTS="-u ${AXONOPS_SEARCH_USER:-admin}:${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}"
 fi
 
@@ -62,20 +67,27 @@ case "$MODE" in
       exit 1
     fi
 
-    # Check security plugin health endpoint
-    SECURITY_HEALTH=$(timeout "$TIMEOUT" curl -s --insecure $CURL_OPTS "${PROTOCOL}://localhost:${HTTP_PORT}/_plugins/_security/health" 2>/dev/null || echo "")
-    if [ -z "$SECURITY_HEALTH" ] || ! echo "$SECURITY_HEALTH" | grep -q "message"; then
-      log "Security health endpoint not responding"
-      exit 1
+    # Check health endpoint (security plugin endpoint if enabled, otherwise cluster health)
+    if [ "$SECURITY_ENABLED" = "true" ]; then
+      HEALTH_CHECK=$(timeout "$TIMEOUT" curl -s --insecure $CURL_OPTS "${PROTOCOL}://localhost:${HTTP_PORT}/_plugins/_security/health" 2>/dev/null || echo "")
+      if [ -z "$HEALTH_CHECK" ] || ! echo "$HEALTH_CHECK" | grep -q "message"; then
+        log "Security health endpoint not responding"
+        exit 1
+      fi
+      log "Startup check passed (init: ${SECURITY_RESULT}, process running, port listening, security health OK)"
+    else
+      HEALTH_CHECK=$(timeout "$TIMEOUT" curl -s "${PROTOCOL}://localhost:${HTTP_PORT}/_cluster/health" 2>/dev/null || echo "")
+      if [ -z "$HEALTH_CHECK" ] || ! echo "$HEALTH_CHECK" | grep -q "status"; then
+        log "Cluster health endpoint not responding"
+        exit 1
+      fi
+      log "Startup check passed (init: ${SECURITY_RESULT}, process running, port listening, cluster health OK)"
     fi
-
-    log "Startup check passed (init: ${SECURITY_RESULT}, process running, port listening, security health OK)"
     exit 0
     ;;
 
   liveness)
     # Ultra-lightweight liveness check (runs every 10 seconds)
-    # NO authentication required - uses security plugin health endpoint
     log "Checking liveness"
 
     # Check if OpenSearch process is running
@@ -90,19 +102,27 @@ case "$MODE" in
       exit 1
     fi
 
-    # Check security plugin health endpoint
-    SECURITY_HEALTH=$(timeout "$TIMEOUT" curl -s --insecure $CURL_OPTS "${PROTOCOL}://localhost:${HTTP_PORT}/_plugins/_security/health" 2>/dev/null || echo "")
-    if [ -z "$SECURITY_HEALTH" ] || ! echo "$SECURITY_HEALTH" | grep -q "message"; then
-      log "ERROR: Security health endpoint not responding"
-      exit 1
+    # Check health endpoint (security plugin endpoint if enabled, otherwise cluster health)
+    if [ "$SECURITY_ENABLED" = "true" ]; then
+      HEALTH_CHECK=$(timeout "$TIMEOUT" curl -s --insecure $CURL_OPTS "${PROTOCOL}://localhost:${HTTP_PORT}/_plugins/_security/health" 2>/dev/null || echo "")
+      if [ -z "$HEALTH_CHECK" ] || ! echo "$HEALTH_CHECK" | grep -q "message"; then
+        log "ERROR: Security health endpoint not responding"
+        exit 1
+      fi
+      log "Liveness check passed (process running + port listening + security health OK)"
+    else
+      HEALTH_CHECK=$(timeout "$TIMEOUT" curl -s "${PROTOCOL}://localhost:${HTTP_PORT}/_cluster/health" 2>/dev/null || echo "")
+      if [ -z "$HEALTH_CHECK" ] || ! echo "$HEALTH_CHECK" | grep -q "status"; then
+        log "ERROR: Cluster health endpoint not responding"
+        exit 1
+      fi
+      log "Liveness check passed (process running + port listening + cluster health OK)"
     fi
-
-    log "Liveness check passed (process running + port listening + security health OK)"
     exit 0
     ;;
 
   readiness)
-    # Readiness check with authenticated cluster health verification
+    # Readiness check with cluster health verification
     log "Checking readiness"
 
     # Check if port 9200 is listening (TCP check)
@@ -112,9 +132,13 @@ case "$MODE" in
     fi
 
     # Make HTTP GET request to /_cluster/health
-    # Note: Using --insecure because we're using demo SSL certificates
-    # CURL_OPTS contains auth credentials when security plugin is enabled
-    HEALTH_RESPONSE=$(timeout "$TIMEOUT" curl -s --insecure $CURL_OPTS -XGET "${PROTOCOL}://localhost:${HTTP_PORT}/_cluster/health" 2>/dev/null || echo "")
+    # When security is enabled: use --insecure (demo SSL certs) and auth credentials
+    # When security is disabled: plain HTTP, no auth
+    if [ "$SECURITY_ENABLED" = "true" ]; then
+      HEALTH_RESPONSE=$(timeout "$TIMEOUT" curl -s --insecure $CURL_OPTS -XGET "${PROTOCOL}://localhost:${HTTP_PORT}/_cluster/health" 2>/dev/null || echo "")
+    else
+      HEALTH_RESPONSE=$(timeout "$TIMEOUT" curl -s -XGET "${PROTOCOL}://localhost:${HTTP_PORT}/_cluster/health" 2>/dev/null || echo "")
+    fi
 
     if [ -z "$HEALTH_RESPONSE" ]; then
       log "ERROR: Failed to get cluster health response"
