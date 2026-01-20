@@ -17,6 +17,9 @@ search_db:
 org_name: "${AXONOPS_ORG_NAME}"
 license_key: "${AXONOPS_LICENSE_KEY}"
 
+# Dashboard URL (for links in notifications/emails)
+axon_dash_url: "http://axon-dash:3000"
+
 # Logging
 log_file: /dev/stdout
 
