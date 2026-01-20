@@ -90,7 +90,6 @@ services:
       - AXONOPS_LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
       - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
       - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
-      - AXONOPS_DASHBOARD_URL=${AXONOPS_DASHBOARD_URL:-http://localhost:3000}
       - AXONOPS_CQL_SSL=${AXONOPS_CASSANDRA_SSL:-true}
     volumes:
       - axon-server-data:/var/lib/axonops

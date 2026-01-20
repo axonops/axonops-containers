@@ -46,7 +46,6 @@ Deploy the complete AxonOps observability stack using Docker Compose. This provi
 | `AXONOPS_LICENSE_KEY` | (empty) | License key (optional for trial) |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Cassandra password |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | OpenSearch admin password |
-| `AXONOPS_DASHBOARD_URL` | `http://localhost:3000` | External dashboard URL |
 | `AXONOPS_CASSANDRA_HEAP_SIZE` | `4G` | Cassandra JVM heap |
 | `AXONOPS_OPENSEARCH_HEAP_SIZE` | `4g` | OpenSearch JVM heap |
 
