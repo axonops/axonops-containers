@@ -19,6 +19,7 @@ ARG GIT_TAG=unknown
 ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME=unknown
+ARG YQ_VERSION=v4.50.1
 
 # Target architecture for multi-arch builds (will be set by Docker buildx)
 ARG TARGETARCH
