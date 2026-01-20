@@ -10,7 +10,6 @@ spec:
     matchLabels:
       {{- include "axon-server.selectorLabels" . | nindent 6 }}
   serviceName: {{ include "axon-server.fullname" . }}
-  podManagementPolicy: {{ .Values.podManagementPolicy }}
   updateStrategy:
     {{- toYaml .Values.updateStrategy | nindent 4 }}
   template:

@@ -977,7 +977,6 @@ curl http://localhost:8080/api/v1/healthz
 | persistence.storageClass | string | `""` | Storage class name |
 | podAnnotations | object | `{}` | Pod annotations |
 | podLabels | object | `{}` | Pod labels |
-| podManagementPolicy | string | `"OrderedReady"` | Pod management policy |
 | podSecurityContext.enabled | bool | `false` | Enable pod security context |
 | podSecurityContext.fsGroup | int | `9988` | FSGroup for pod |
 | podSecurityContext.runAsNonRoot | bool | `true` | Run as non-root |

@@ -316,9 +316,6 @@ persistence:
 updateStrategy:
   type: RollingUpdate
 
-# Pod management policy for StatefulSet
-podManagementPolicy: OrderedReady
-
 # vals-operator integration for external secret management
 # See VALS_OPERATOR.md for usage instructions
 vals:
