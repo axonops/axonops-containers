@@ -538,33 +538,8 @@ spec:
           value: "false"
       {{- else if .Values.tls.enabled }}
         # TLS/SSL Environment Variables
-        {{- if and .Values.tls.certManager.enabled .Values.vals.enabled }}
-        # cert-manager + vals: keystore password from vals secret
-        - name: GENERATE_CERTS_ON_STARTUP
-          value: "false"
-        - name: OPENSEARCH_KEYSTORE_PATH
-          value: "/etc/opensearch/certs/keystore.jks"
-        - name: OPENSEARCH_TRUSTSTORE_PATH
-          value: "/etc/opensearch/certs/truststore.jks"
-        - name: OPENSEARCH_KEYSTORE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "opensearch.uname" . }}-vals
-              key: KEYSTORE_PASSWORD
-        - name: OPENSEARCH_TRUSTSTORE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "opensearch.uname" . }}-vals
-              key: KEYSTORE_PASSWORD
-        # PEM certificate paths
-        - name: OPENSEARCH_TLS_KEY_PATH
-          value: "/etc/opensearch/certs/tls.key"
-        - name: OPENSEARCH_TLS_CERT_PATH
-          value: "/etc/opensearch/certs/tls.crt"
-        - name: OPENSEARCH_CA_CERT_PATH
-          value: "/etc/opensearch/certs/ca.crt"
-        {{- else if .Values.tls.certManager.enabled }}
-        # cert-manager without vals: keystore password from dedicated secret
+        {{- if .Values.tls.certManager.enabled }}
+        # cert-manager: keystore password from dedicated secret (regular or ValsSecret)
         - name: GENERATE_CERTS_ON_STARTUP
           value: "false"
         - name: OPENSEARCH_KEYSTORE_PATH
