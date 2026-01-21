@@ -20,6 +20,16 @@ fullnameOverride: ""
 
 configurationSecret: ""
 
+# Authentication Configuration
+# You can provide OpenSearch credentials via a Kubernetes secret.
+# The secret must contain the following keys:
+#   - AXONOPS_SEARCH_USER: OpenSearch username
+#   - AXONOPS_SEARCH_PASSWORD: OpenSearch password
+#
+# kubectl create secret generic -n axonops timeseries-credentials \
+# --from-literal=AXONOPS_SEARCH_USER=axonops \
+# --from-literal=AXONOPS_SEARCH_PASSWORD=secure-password
+
 # Configure the Elasticsearch endpoint
 searchDb:
   hosts:
@@ -27,6 +37,8 @@ searchDb:
   username: "admin"
   password: "MyS3cur3P@ss2025"
   skip_verify: true
+  search_secret: ""
+
 
 # dashboardUrl should be set to the publicly-accessible URL for the AxonOps Dashboard
 dashboardUrl: https://axonops.example.com
@@ -92,12 +104,19 @@ config:
     #       adminRole: "cn=xxxx"
     #       backupAdminRole: "cn=xxxx"
 
+  # Example secret creation for the timeseries DB credentials:
+  #   kubectl create secret generic axonops-db-credentials \
+  #     --from-literal=AXONOPS_DB_USER=axonops \
+  #     --from-literal=AXONOPS_DB_PASSWORD=secure-password
+
+  db_secret: ""
+
   # Additional configuration options
   extraConfig:
     cql_hosts:
       - axondb-timeseries-headless.sergio.svc.cluster.local
-    cql_username: "axonops"
-    cql_password: "axonops"
+    # cql_username: "axonops" # uncomment if using a secret for the credentials, see above
+    # cql_password: "axonops" # uncomment if using a secret for the credentials, see above
     cql_local_dc: axonopsdb_dc1
     cql_proto_version: 4
     cql_max_searchqueriesparallelism: 100

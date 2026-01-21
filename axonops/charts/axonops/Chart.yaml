@@ -48,7 +48,7 @@ dependencies:
 
   # 3. Core observability server
   - name: axon-server
-    version: 2.1.2
+    version: 2.1.3
     repository: oci://ghcr.io/axonops/charts
     condition: axon-server.enabled
     tags:

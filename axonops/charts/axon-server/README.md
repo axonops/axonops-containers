@@ -1,6 +1,6 @@
 # AxonOps Server
 
-![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
+![Version: 2.1.3](https://img.shields.io/badge/Version-2.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Server - the unified observability platform for Apache Cassandra. The AxonOps Server is the central component that collects metrics and logs from Cassandra clusters, stores them in the timeseries and search databases, and provides APIs for the AxonOps Dashboard.
 
@@ -14,6 +14,7 @@ A Helm chart for deploying the AxonOps Server - the unified observability platfo
 - [Installation Examples](#installation-examples)
   - [Basic Installation](#basic-installation)
   - [Installation with External Databases](#installation-with-external-databases)
+  - [Installation with Database Credentials from Secrets](#installation-with-database-credentials-from-secrets)
   - [Installation with External Configuration Secret](#installation-with-external-configuration-secret)
   - [Installation with Ingress](#installation-with-ingress)
   - [Installation with TLS/mTLS](#installation-with-tlsmtls)
@@ -246,6 +247,67 @@ Install:
 ```bash
 helm install axon-server ./axon-server -f values-external-dbs.yaml
 ```
+
+### Installation with Database Credentials from Secrets
+
+Instead of storing database credentials directly in Helm values, you can reference external Kubernetes Secrets for both Cassandra (timeseries) and OpenSearch credentials. This approach is recommended for production environments.
+
+Create the credentials secrets:
+
+```bash
+# Cassandra/timeseries credentials (keys: AXONOPS_DB_USER, AXONOPS_DB_PASSWORD)
+kubectl create secret generic cassandra-credentials \
+  --from-literal=AXONOPS_DB_USER=axonops \
+  --from-literal=AXONOPS_DB_PASSWORD=your-cassandra-password
+
+# OpenSearch credentials (keys: AXONOPS_SEARCH_USER, AXONOPS_SEARCH_PASSWORD)
+kubectl create secret generic opensearch-credentials \
+  --from-literal=AXONOPS_SEARCH_USER=axonops \
+  --from-literal=AXONOPS_SEARCH_PASSWORD=your-opensearch-password
+```
+
+Configure the Helm values to reference the secrets:
+
+```yaml
+# values-db-secrets.yaml
+config:
+  org_name: "my-organization"
+  license_key: "YOUR_LICENSE_KEY_HERE"
+
+  # Reference the external secret for Cassandra credentials
+  db_secret: "cassandra-credentials"
+
+  extraConfig:
+    cql_hosts:
+      - axondb-timeseries-headless.default.svc.cluster.local
+    # Note: cql_username and cql_password are ignored when db_secret is set
+    cql_local_dc: "datacenter1"
+    cql_ssl: true
+    cql_skip_verify: true
+
+# Search database configuration using external secret
+searchDb:
+  hosts:
+    - https://axondb-search-cluster-master:9200
+  skip_verify: true
+  # Reference the external secret for OpenSearch credentials
+  search_secret: "opensearch-credentials"
+
+dashboardUrl: "https://axonops.example.com"
+```
+
+Install the chart:
+
+```bash
+helm install axon-server ./axon-server -f values-db-secrets.yaml
+```
+
+Important notes:
+
+- When `config.db_secret` is set, Cassandra credentials are injected as environment variables (`CQL_USERNAME`, `CQL_PASSWORD`)
+- When `searchDb.search_secret` is set, OpenSearch credentials are injected as environment variables (`SEARCH_DB_USERNAME`, `SEARCH_DB_PASSWORD`)
+- The inline `cql_username`/`cql_password` and `searchDb.username`/`searchDb.password` values are ignored when using secrets
+- The OpenSearch secret key names (`AXONOPS_SEARCH_USER`, `AXONOPS_SEARCH_PASSWORD`) are compatible with the axondb-search chart, allowing you to share the same secret between both charts
 
 ### Installation with External Configuration Secret
 
@@ -887,8 +949,10 @@ curl http://localhost:8080/api/v1/healthz
 | `config.auth.enabled` | Enable authentication | `false` |
 | `config.extraConfig.cql_hosts` | Cassandra hosts for timeseries DB | `[]` |
 | `config.extraConfig.cql_username` | Cassandra username | `""` |
+| `config.db_secret` | Kubernetes secret name containing Cassandra credentials | `""` |
 | `searchDb.hosts` | Search database hosts | `[]` |
 | `searchDb.username` | Search database username | `""` |
+| `searchDb.search_secret` | Kubernetes secret name containing OpenSearch credentials | `""` |
 | `dashboardUrl` | Public URL for AxonOps Dashboard | `""` |
 | `apiIngress.enabled` | Enable API ingress | `false` |
 | `agentIngress.enabled` | Enable agent ingress | `false` |
@@ -947,6 +1011,7 @@ curl http://localhost:8080/api/v1/healthz
 | configurationSecret | string | `""` | External Secret name containing axon-server.yml configuration |
 | config.alerting.notification_interval | string | `"3h"` | Alert notification interval |
 | config.auth.enabled | bool | `false` | Enable authentication |
+| config.db_secret | string | `""` | Kubernetes secret name containing Cassandra credentials (keys: AXONOPS_DB_USER, AXONOPS_DB_PASSWORD) |
 | config.extraConfig | object | `{}` | Additional configuration options |
 | config.license_key | string | `""` | AxonOps license key |
 | config.listener.agents_port | int | `1888` | Agent listener port |
@@ -985,6 +1050,7 @@ curl http://localhost:8080/api/v1/healthz
 | resources | object | `{}` | Resource limits and requests |
 | searchDb.hosts | list | `[]` | Search database hosts |
 | searchDb.password | string | `""` | Search database password |
+| searchDb.search_secret | string | `""` | Kubernetes secret name containing OpenSearch credentials (keys: AXONOPS_SEARCH_USER, AXONOPS_SEARCH_PASSWORD) |
 | searchDb.skip_verify | bool | `true` | Skip TLS verification for search DB |
 | searchDb.username | string | `""` | Search database username |
 | securityContext | object | `{"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false,"runAsNonRoot":true,"runAsUser":9988}` | Container security context |

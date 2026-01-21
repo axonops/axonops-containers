@@ -70,12 +70,34 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command: ["/usr/share/axonops/axon-server", "-o", "stdout"]
-        {{- if .Values.deployment.env }}
         env:
         {{- range $key, $value := .Values.deployment.env }}
         - name: {{ $key | quote }}
           value: {{ $value | quote }}
         {{- end }}
+        {{- if .Values.searchDb.search_secret }}
+        - name: SEARCH_DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.searchDb.search_secret }}
+              key: AXONOPS_SEARCH_USER
+        - name: SEARCH_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.searchDb.search_secret }}
+              key: AXONOPS_SEARCH_PASSWORD
+        {{- end }}
+        {{- if .Values.config.db_secret }}
+        - name: CQL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.config.db_secret }}
+              key: AXONOPS_DB_USER
+        - name: CQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.config.db_secret }}
+              key: AXONOPS_DB_PASSWORD
         {{- end }}
         {{- if .Values.deployment.secretEnv }}
         envFrom:
