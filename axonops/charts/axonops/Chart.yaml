@@ -2,7 +2,7 @@ apiVersion: v2
 name: axonops
 description: AxonOps complete observability stack for Apache Cassandra and Kafka - Meta-chart for unified deployment
 type: application
-version: 1.1.1
+version: 1.1.2
 appVersion: "latest"
 home: https://axonops.com
 icon: https://github.com/axonops/axonops-workbench/raw/main/renderer/assets/images/axonops-icon-512x512.png

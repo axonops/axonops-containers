@@ -381,11 +381,11 @@ axon-dash:
 
   # Resource allocation
   resources:
+    limits:
+      cpu: 800m
+      memory: 800Mi
     requests:
       cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 200m
       memory: 512Mi
 
   # Replica count for high availability
