@@ -115,8 +115,8 @@ config:
   extraConfig:
     cql_hosts:
       - axondb-timeseries-headless.sergio.svc.cluster.local
-    cql_username: "axonops" # ignored if using a secret for the credentials, see above
-    cql_password: "axonops" # ignored if using a secret for the credentials, see above
+    # cql_username: "axonops" # uncomment if using a secret for the credentials, see above
+    # cql_password: "axonops" # uncomment if using a secret for the credentials, see above
     cql_local_dc: axonopsdb_dc1
     cql_proto_version: 4
     cql_max_searchqueriesparallelism: 100
