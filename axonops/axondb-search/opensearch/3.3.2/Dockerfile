@@ -24,6 +24,7 @@ ARG IMAGE_FULL_NAME=unknown
 ARG TARGETARCH
 
 ENV OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
+ENV AXONOPS_SEARCH_ENABLE_BACKUPS=true
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
 
 RUN echo "AXONOPS_BUILD: Using UBI 9 minimal base image (registry.access.redhat.com/ubi9/ubi-minimal)"

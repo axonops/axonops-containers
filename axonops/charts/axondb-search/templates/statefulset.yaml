@@ -466,6 +466,8 @@ spec:
         - name: AXONOPS_SEARCH_BACKUP_PATH
           value: {{ .Values.backups.target.local.path }}
       {{- end }}
+        - name: AXONOPS_SEARCH_ENABLE_BACKUPS
+          value: "{{ .Values.backups.enabled }}"
       {{- if and .Values.backups.enabled (eq .Values.backups.target.type "s3") }}
         - name: AXONOPS_SEARCH_BACKUP_TARGET
           value: "s3"

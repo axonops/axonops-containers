@@ -1,0 +1,161 @@
+# AxonOps Docker Compose Stack
+# This compose file deploys the complete AxonOps observability platform
+#
+# Quick Start:
+#   1. Copy .env.example to .env and configure your settings
+#   2. Run: docker compose up -d
+#   3. Access dashboard at http://localhost:3000
+#
+# For more information, see README.md
+
+services:
+  # =============================================================================
+  # axondb-timeseries: Apache Cassandra 5.0.6 for metrics storage
+  # =============================================================================
+  axondb-timeseries:
+    image: ghcr.io/axonops/axondb-timeseries:5.0.6
+    container_name: axondb-timeseries
+    hostname: axondb-timeseries
+    networks:
+      - axonops-network
+    environment:
+      # Cluster configuration
+      - CASSANDRA_CLUSTER_NAME=axonopsdb-timeseries
+      - CASSANDRA_DC=axonopsdb_dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_NUM_TOKENS=16
+      - CASSANDRA_HEAP_SIZE=${AXONOPS_CASSANDRA_HEAP_SIZE:-4G}
+      # Authentication
+      - AXONOPS_DB_USER=axonops
+      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      # SSL/TLS (client-to-node encryption)
+      - CASSANDRA_CLIENT_ENCRYPTION_ENABLED=${AXONOPS_CASSANDRA_SSL:-true}
+      - CASSANDRA_CLIENT_ENCRYPTION_REQUIRE_CLIENT_AUTH=false
+    volumes:
+      - axondb-timeseries-data:/var/lib/cassandra
+      - axondb-timeseries-logs:/var/log/cassandra
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  # =============================================================================
+  # axondb-search: OpenSearch 3.3.2 for logs and search functionality
+  # =============================================================================
+  axondb-search:
+    image: ghcr.io/axonops/axondb-search:3.3.2
+    container_name: axondb-search
+    hostname: axondb-search
+    networks:
+      - axonops-network
+    environment:
+      # Cluster configuration
+      - OPENSEARCH_CLUSTER_NAME=axonopsdb-search
+      - OPENSEARCH_DISCOVERY_TYPE=single-node
+      - OPENSEARCH_HEAP_SIZE=${AXONOPS_OPENSEARCH_HEAP_SIZE:-4g}
+      # Authentication
+      - AXONOPS_SEARCH_USER=admin
+      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      # SSL/TLS (enabled by default with auto-generated self-signed certs)
+      - AXONOPS_SEARCH_TLS_ENABLED=${AXONOPS_OPENSEARCH_SSL:-true}
+    volumes:
+      - axondb-search-data:/var/lib/opensearch
+      - axondb-search-logs:/var/log/opensearch
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    depends_on:
+      axondb-timeseries:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # =============================================================================
+  # axon-server: AxonOps backend API and agent endpoint
+  # =============================================================================
+  axon-server:
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:latest
+    container_name: axon-server
+    hostname: axon-server
+    networks:
+      - axonops-network
+    environment:
+      # These are used by init-config.sh to generate the config file
+      - AXONOPS_ORG_NAME=${AXONOPS_ORG_NAME:-example}
+      - AXONOPS_LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
+      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - AXONOPS_CQL_SSL=${AXONOPS_CASSANDRA_SSL:-true}
+    volumes:
+      - axon-server-data:/var/lib/axonops
+      - ./config/axon-server.yml.template:/config/axon-server.yml.template:ro
+      - ./config/init-config.sh:/config/init-config.sh:ro
+    entrypoint: ["/config/init-config.sh"]
+    command: ["axon-server"]
+    ports:
+      # Agent port - exposed for external Cassandra/Kafka agents to connect
+      - "1888:1888"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      axondb-timeseries:
+        condition: service_healthy
+      axondb-search:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # =============================================================================
+  # axon-dash: AxonOps web dashboard
+  # =============================================================================
+  axon-dash:
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:latest
+    container_name: axon-dash
+    hostname: axon-dash
+    networks:
+      - axonops-network
+    environment:
+      - AXON_SERVER_URL=http://axon-server:8080
+    ports:
+      # Dashboard web interface
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  axonops-network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  axondb-timeseries-data:
+    name: axonops-timeseries-data
+  axondb-timeseries-logs:
+    name: axonops-timeseries-logs
+  axondb-search-data:
+    name: axonops-search-data
+  axondb-search-logs:
+    name: axonops-search-logs
+  axon-server-data:
+    name: axonops-server-data

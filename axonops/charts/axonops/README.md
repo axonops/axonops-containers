@@ -202,6 +202,51 @@ helm install axonops . \
   --set axon-server.config.extraConfig.cql_password="YOUR_SECURE_PASSWORD"
 ```
 
+### Using Kubernetes Secrets for Database Credentials (Recommended)
+
+For production environments, it is recommended to store database credentials in Kubernetes secrets rather than in Helm values. This approach provides better security and allows for easier credential rotation.
+
+#### Step 1: Create the secrets
+
+```bash
+# Create secret for Cassandra/timeseries database credentials
+kubectl create secret generic cassandra-credentials -n axonops \
+  --from-literal=AXONOPS_DB_USER=axonops \
+  --from-literal=AXONOPS_DB_PASSWORD=$(openssl rand -base64 32)
+
+# Create secret for OpenSearch credentials
+kubectl create secret generic opensearch-credentials -n axonops \
+  --from-literal=AXONOPS_SEARCH_USER=axonops \
+  --from-literal=AXONOPS_SEARCH_PASSWORD=$(openssl rand -base64 32)
+```
+
+#### Step 2: Configure axon-server to use the secrets
+
+```yaml
+axon-server:
+  config:
+    # Reference the Cassandra credentials secret
+    db_secret: "cassandra-credentials"
+    extraConfig:
+      cql_hosts:
+        - axondb-timeseries-headless.axonops.svc.cluster.local
+      cql_local_dc: "datacenter1"
+      # Note: cql_username and cql_password are ignored when db_secret is set
+
+  # Reference the OpenSearch credentials secret
+  searchDb:
+    hosts:
+      - https://axondb-search-cluster-master:9200
+    search_secret: "opensearch-credentials"
+    # Note: username and password are ignored when search_secret is set
+```
+
+Important notes:
+
+- The Cassandra secret must contain keys: `AXONOPS_DB_USER` and `AXONOPS_DB_PASSWORD`
+- The OpenSearch secret must contain keys: `AXONOPS_SEARCH_USER` and `AXONOPS_SEARCH_PASSWORD`
+- These key names are compatible with the axondb-timeseries and axondb-search charts, allowing you to share secrets between charts
+
 ### TLS Configuration
 
 Enable TLS for axon-server:
