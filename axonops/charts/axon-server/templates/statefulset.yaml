@@ -79,13 +79,25 @@ spec:
         - name: SEARCH_DB_USERNAME
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.authentication.search_secret }}
+              name: {{ .Values.searchDb.search_secret }}
               key: AXONOPS_SEARCH_USER
         - name: SEARCH_DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.authentication.search_secret }}
+              name: {{ .Values.searchDb.search_secret }}
               key: AXONOPS_SEARCH_PASSWORD
+        {{- end }}
+        {{- if .Values.config.db_secret }}
+        - name: CQL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.config.db_secret }}
+              key: AXONOPS_DB_USER
+        - name: CQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.config.db_secret }}
+              key: AXONOPS_DB_PASSWORD
         {{- end }}
         {{- if .Values.deployment.secretEnv }}
         envFrom:
