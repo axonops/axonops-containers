@@ -18,6 +18,10 @@ A Helm chart for deploying the AxonOps Search DB on Kubernetes. This search data
   - [Installation with TLS (cert-manager)](#installation-with-tls-cert-manager)
   - [Multi-Node Cluster Installation](#multi-node-cluster-installation)
   - [Production-Ready Installation](#production-ready-installation)
+- [Backup Configuration](#backup-configuration)
+  - [Local Backups](#local-backups)
+  - [S3 Backups](#s3-backups)
+- [External Secret Management (vals-operator)](#external-secret-management-vals-operator)
 - [Configuration](#configuration)
 - [Upgrading](#upgrading)
 - [Uninstalling](#uninstalling)
@@ -622,6 +626,175 @@ kubectl port-forward svc/axondb-search-cluster-master 9200:9200 -n axonops
 curl -k -u admin:ChangeThisSecurePassword123! https://localhost:9200/_cluster/health
 ```
 
+## Backup Configuration
+
+The axondb-search chart includes built-in backup functionality using OpenSearch snapshots. Backups can be stored locally or in S3-compatible storage.
+
+### Local Backups
+
+Configure local filesystem backups with a dedicated PVC:
+
+```yaml
+# values-backup-local.yaml
+backups:
+  enabled: true
+  schedule: "0 8 * * *"  # Daily at 8am UTC
+
+  # Snapshot retention
+  retention:
+    days: 30
+    count: ""  # Optional: max number of snapshots
+
+  # Local backup target
+  target:
+    type: local
+    local:
+      path: "/mnt/backups"
+      size: "50Gi"
+      storageClass: ""  # Uses default storage class
+```
+
+Install:
+
+```bash
+helm install axondb-search ./axondb-search -f values-backup-local.yaml
+```
+
+### S3 Backups
+
+Configure backups to AWS S3 or S3-compatible storage (MinIO, Ceph, etc.):
+
+#### Using AWS S3
+
+```yaml
+# values-backup-s3.yaml
+backups:
+  enabled: true
+  schedule: "0 */6 * * *"  # Every 6 hours
+
+  retention:
+    days: 30
+
+  target:
+    type: s3
+    s3:
+      bucket: "my-opensearch-backups"
+      region: "us-east-1"
+      basePath: "axondb-search"
+
+      # Method 1: Use existing Kubernetes secret (recommended)
+      credentials:
+        existingSecret: "aws-backup-credentials"
+        # Secret must contain keys: aws-access-key-id, aws-secret-access-key
+
+      # Method 2: Inline credentials (NOT recommended for production)
+      # credentials:
+      #   accessKeyId: "AKIAIOSFODNN7EXAMPLE"
+      #   secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+```
+
+Create the credentials secret:
+
+```bash
+kubectl create secret generic aws-backup-credentials \
+  --from-literal=aws-access-key-id=AKIAIOSFODNN7EXAMPLE \
+  --from-literal=aws-secret-access-key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+#### Using S3-Compatible Storage (MinIO)
+
+```yaml
+# values-backup-minio.yaml
+backups:
+  enabled: true
+  schedule: "0 */4 * * *"
+
+  target:
+    type: s3
+    s3:
+      bucket: "opensearch-backups"
+      endpoint: "http://minio.minio.svc.cluster.local:9000"
+      pathStyleAccess: true  # Required for MinIO
+
+      credentials:
+        existingSecret: "minio-credentials"
+```
+
+#### Using AWS IAM Roles (EKS with IRSA)
+
+For EKS clusters with IAM Roles for Service Accounts:
+
+```yaml
+# values-backup-irsa.yaml
+backups:
+  enabled: true
+  target:
+    type: s3
+    s3:
+      bucket: "my-opensearch-backups"
+      region: "us-east-1"
+      # Leave credentials empty for IRSA
+
+rbac:
+  create: true
+  serviceAccountAnnotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/opensearch-backup-role
+```
+
+## External Secret Management (vals-operator)
+
+The chart supports [vals-operator](https://github.com/digitalis-io/vals-operator) for fetching secrets from external stores like AWS Secrets Manager, HashiCorp Vault, Google Secret Manager, and Azure Key Vault.
+
+### vals-operator Setup
+
+Install vals-operator in your cluster:
+
+```bash
+helm repo add digitalis https://digitalis-io.github.io/helm-charts
+helm install vals-operator digitalis/vals-operator
+```
+
+### vals-operator Configuration
+
+```yaml
+# values-vals.yaml
+vals:
+  enabled: true
+  ttl: 3600  # Refresh interval in seconds
+
+  # OpenSearch authentication from external secret store
+  authentication:
+    # AWS Secrets Manager example
+    opensearch_user: "ref+awssecrets://axonops/search#username"
+    opensearch_password: "ref+awssecrets://axonops/search#password"
+
+    # HashiCorp Vault example
+    # opensearch_user: "ref+vault://secret/data/axonops/search#username"
+    # opensearch_password: "ref+vault://secret/data/axonops/search#password"
+
+  # TLS keystore password (if using TLS)
+  tls:
+    keystorePassword: "ref+awssecrets://axonops/tls#keystore-password"
+
+  # S3 backup credentials
+  s3Credentials:
+    accessKeyId: "ref+awssecrets://axonops/s3#access-key-id"
+    secretAccessKey: "ref+awssecrets://axonops/s3#secret-access-key"
+
+  # ServiceMonitor basic auth (if using Prometheus)
+  serviceMonitor:
+    username: "ref+awssecrets://axonops/monitoring#username"
+    password: "ref+awssecrets://axonops/monitoring#password"
+```
+
+Install:
+
+```bash
+helm install axondb-search ./axondb-search -f values-vals.yaml
+```
+
+When vals-operator is enabled, a `ValsSecret` resource is created which vals-operator reconciles into a standard Kubernetes Secret. This allows seamless integration with external secret stores.
+
 ## Configuration
 
 ### Key Configuration Options
@@ -631,7 +804,7 @@ curl -k -u admin:ChangeThisSecurePassword123! https://localhost:9200/_cluster/he
 | `replicas` | Number of search database replicas | `1` |
 | `singleNode` | Enable single-node mode (disables clustering) | `true` |
 | `opensearchHeapSize` | JVM heap size | `2g` |
-| `image.repository` | Container image repository | `ghcr.io/axonops/development/axondb-search` |
+| `image.repository` | Container image repository | `ghcr.io/axonops/axondb-search` |
 | `image.tag` | Container image tag | `""` (uses appVersion) |
 | `authentication.opensearch_user` | Username (dev only) | `""` |
 | `authentication.opensearch_password` | Password (dev only) | `""` |
@@ -715,7 +888,7 @@ extraEnvs:
 | fullnameOverride | string | `""` | Override the full resource name |
 | httpPort | int | `9200` | HTTP port for the service |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
-| image.repository | string | `"ghcr.io/axonops/development/axondb-search"` | Container image repository |
+| image.repository | string | `"ghcr.io/axonops/axondb-search"` | Container image repository |
 | image.tag | string | `""` | Image tag (defaults to chart appVersion) |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
 | ingress.enabled | bool | `false` | Enable ingress |

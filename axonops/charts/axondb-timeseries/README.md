@@ -17,6 +17,11 @@ A Helm chart for deploying the AxonOps timeseries database (Cassandra-based) on 
   - [Installation with TLS (Manual Certificates)](#installation-with-tls-manual-certificates)
   - [Installation with TLS (cert-manager)](#installation-with-tls-cert-manager)
   - [Production-Ready Installation](#production-ready-installation)
+- [Backup Configuration](#backup-configuration)
+  - [Local Backups](#local-backups)
+  - [Remote Backups (S3)](#remote-backups-s3)
+  - [Restoring from Backup](#restoring-from-backup)
+- [External Secret Management (vals-operator)](#external-secret-management-vals-operator)
 - [Configuration](#configuration)
 - [Upgrading](#upgrading)
 - [Uninstalling](#uninstalling)
@@ -346,7 +351,7 @@ A complete production configuration with all recommended settings:
 replicaCount: 3
 
 image:
-  repository: ghcr.io/axonops/development/axondb-timeseries
+  repository: ghcr.io/axonops/axondb-timeseries
   pullPolicy: IfNotPresent
   tag: ""  # Uses chart appVersion
 
@@ -481,6 +486,189 @@ helm install axondb-timeseries ./axondb-timeseries \
   --create-namespace
 ```
 
+## Backup Configuration
+
+The axondb-timeseries chart includes comprehensive backup functionality using Cassandra snapshots with rsync-based deduplication. Backups can be stored locally or synced to remote S3-compatible storage.
+
+**Note:** AxonDB Timeseries is designed for single-node deployments only. Multi-node clusters are not supported for backup operations.
+
+### Local Backups
+
+Configure local snapshot-based backups with hardlink deduplication:
+
+```yaml
+# values-backup-local.yaml
+backups:
+  enabled: true
+
+  # Backup volume configuration
+  volume:
+    size: "50Gi"
+    storageClass: ""  # Uses default storage class
+    mountPath: /backup
+
+  # Backup schedule (cron format)
+  schedule:
+    cronSchedule: "0 */4 * * *"  # Every 4 hours
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+
+  # Backup settings
+  settings:
+    tagPrefix: "backup"
+    retentionHours: 168  # 7 days
+    minimumRetentionCount: 3  # Always keep at least 3 backups
+    useHardlinks: true  # Enable deduplication
+```
+
+Install:
+
+```bash
+helm install axondb-timeseries ./axondb-timeseries -f values-backup-local.yaml
+```
+
+### Remote Backups (S3)
+
+Configure backups to sync to AWS S3 or S3-compatible storage using rclone:
+
+```yaml
+# values-backup-remote.yaml
+backups:
+  enabled: true
+
+  volume:
+    size: "50Gi"
+
+  schedule:
+    cronSchedule: "0 */4 * * *"
+
+  settings:
+    retentionHours: 168
+    useHardlinks: true
+
+  # Remote sync configuration
+  remote:
+    enabled: true
+    syncIntervalSeconds: 3600  # Sync to remote every hour
+    initialDelaySeconds: 300   # Wait 5 minutes before first sync
+
+    # Remote storage path (rclone format)
+    name: "s3"  # rclone remote name
+    path: "my-bucket/cassandra-backups"
+
+    # Retention in remote storage
+    retentionDays: "30"
+
+    # Authentication via Kubernetes secret
+    authMethod: "env"
+    secretName: "backup-s3-credentials"
+
+    # Resource limits for rclone sidecar
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+```
+
+Create the S3 credentials secret:
+
+```bash
+kubectl create secret generic backup-s3-credentials \
+  --from-literal=AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
+  --from-literal=AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
+  --from-literal=AWS_DEFAULT_REGION=us-east-1
+```
+
+For S3-compatible storage (MinIO, Ceph), add endpoint configuration:
+
+```bash
+kubectl create secret generic backup-s3-credentials \
+  --from-literal=AWS_ACCESS_KEY_ID=minioadmin \
+  --from-literal=AWS_SECRET_ACCESS_KEY=minioadmin \
+  --from-literal=AWS_ENDPOINT_URL=http://minio.minio.svc.cluster.local:9000
+```
+
+### Restoring from Backup
+
+To restore from a remote backup on pod initialization:
+
+```yaml
+# values-restore.yaml
+# Restore from the latest backup
+restoreFromBackup: "latest"
+
+# Or restore from a specific backup
+# restoreFromBackup: "backup-20260114-102241"
+
+backups:
+  enabled: true
+  remote:
+    enabled: true
+    name: "s3"
+    path: "my-bucket/cassandra-backups"
+    secretName: "backup-s3-credentials"
+```
+
+Install with restore:
+
+```bash
+helm install axondb-timeseries ./axondb-timeseries -f values-restore.yaml
+```
+
+**Important:** The restore process will download the specified backup from remote storage and restore it before Cassandra starts.
+
+## External Secret Management (vals-operator)
+
+The chart supports [vals-operator](https://github.com/digitalis-io/vals-operator) for fetching secrets from external stores like AWS Secrets Manager, HashiCorp Vault, Google Secret Manager, and Azure Key Vault.
+
+### vals-operator Setup
+
+Install vals-operator in your cluster:
+
+```bash
+helm repo add digitalis https://digitalis-io.github.io/helm-charts
+helm install vals-operator digitalis/vals-operator
+```
+
+### vals-operator Configuration
+
+```yaml
+# values-vals.yaml
+vals:
+  enabled: true
+  ttl: 3600  # Refresh interval in seconds
+
+  # Database authentication from external secret store
+  authentication:
+    # AWS Secrets Manager example
+    db_user: "ref+awssecrets://axonops/timeseries#username"
+    db_password: "ref+awssecrets://axonops/timeseries#password"
+
+    # HashiCorp Vault example
+    # db_user: "ref+vault://secret/data/axonops/timeseries#username"
+    # db_password: "ref+vault://secret/data/axonops/timeseries#password"
+
+  # TLS keystore password (if using TLS)
+  tls:
+    keystorePassword: "ref+awssecrets://axonops/tls#keystore-password"
+
+  # Remote backup credentials
+  backup:
+    awsAccessKeyId: "ref+awssecrets://axonops/backup#access-key-id"
+    awsSecretAccessKey: "ref+awssecrets://axonops/backup#secret-access-key"
+```
+
+Install:
+
+```bash
+helm install axondb-timeseries ./axondb-timeseries -f values-vals.yaml
+```
+
+When vals-operator is enabled, a `ValsSecret` resource is created which vals-operator reconciles into a standard Kubernetes Secret. This allows seamless integration with external secret stores.
+
 ## Configuration
 
 ### Key Configuration Options
@@ -489,7 +677,7 @@ helm install axondb-timeseries ./axondb-timeseries \
 |-----------|-------------|---------|
 | `replicaCount` | Number of database replicas | `1` |
 | `heapSize` | JVM heap size for Cassandra | `1024M` |
-| `image.repository` | Container image repository | `ghcr.io/axonops/development/axondb-timeseries` |
+| `image.repository` | Container image repository | `ghcr.io/axonops/axondb-timeseries` |
 | `image.tag` | Container image tag | `""` (uses appVersion) |
 | `authentication.db_user` | Database username (dev only) | `""` |
 | `authentication.db_password` | Database password (dev only) | `""` |
@@ -521,7 +709,7 @@ helm install axondb-timeseries ./axondb-timeseries \
 | fullnameOverride | string | `""` | Override the full resource name |
 | heapSize | string | `"1024M"` | JVM heap size (e.g., 1024M, 8G) |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
-| image.repository | string | `"ghcr.io/axonops/development/axondb-timeseries"` | Container image repository |
+| image.repository | string | `"ghcr.io/axonops/axondb-timeseries"` | Container image repository |
 | image.tag | string | `""` | Image tag (defaults to chart appVersion) |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
