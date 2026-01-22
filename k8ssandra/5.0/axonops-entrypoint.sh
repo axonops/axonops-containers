@@ -114,7 +114,9 @@ fi
 # Ensure the config file exists to avoid axon-agent startup errors
 # But do not overwrite if it already exists (e.g., mounted config)
 if [ ! -f /etc/axonops/axon-agent.yml ]; then
-  echo "cassandra:" > /etc/axonops/axon-agent.yml
+  echo "# all agent configurations occur through environment variables" > /etc/axonops/axon-agent.yml
+  echo "cassandra:" >> /etc/axonops/axon-agent.yml
+  echo "# intentionally left empty" >> /etc/axonops/axon-agent.yml
 fi
 
 # Add AxonOps JVM options to cassandra-env.sh
