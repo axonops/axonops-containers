@@ -355,12 +355,6 @@ axon-server:
       cql_keyspace: "axonops"
       cql_ssl: false
 
-      # Metrics retention settings
-      retention:
-        high_resolution: 7  # Days
-        medium_resolution: 30  # Days
-        low_resolution: 365  # Days
-
   # Deployment annotations
   deployment:
     annotations: {}
