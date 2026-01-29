@@ -1,8 +1,13 @@
 # Trivy ignore file - suppress known upstream vulnerabilities
 # These should be reviewed periodically and removed when fixed upstream
 
-# OS - expat (base UBI image)
+# OS - base image packages (UBI/EL9)
 CVE-2025-59375
+CVE-2025-68973  # gnupg2: Information disclosure and potential arbitrary code execution (fixed in 2.3.3-5.el9_7)
+CVE-2025-64720  # java-17-openjdk-headless: libpng buffer overflow (fixed in 17.0.18.0.8-1.el9)
+CVE-2025-65018  # java-17-openjdk-headless: libpng heap buffer overflow (fixed in 17.0.18.0.8-1.el9)
+CVE-2026-21945  # java-17-openjdk-headless: Enhance Certificate Checking - Oracle CPU 2026-01 (fixed in 17.0.18.0.8-1.el9)
+CVE-2025-15467  # openssl: Remote code execution or Denial of Service (fixed in 3.5.1-7.el9_7)
 
 # Java - AxonOps Cassandra Agent (agent-c4-2.3.2-all.jar)
 # Requires AxonOps team to update dependencies
