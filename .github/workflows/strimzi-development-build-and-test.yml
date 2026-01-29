@@ -39,7 +39,7 @@ on:
         description: 'AxonOps version to include'
         required: false
         type: string
-        default: '2.0.12'
+        default: '2.0.15'
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -90,7 +90,7 @@ jobs:
         include:
           - strimzi_version: ${{ inputs.strimzi_version || '0.47.0' }}
             kafka_version: ${{ inputs.kafka_version || '3.9.0' }}
-            axon_version: ${{ inputs.axon_version || '2.0.12' }}
+            axon_version: ${{ inputs.axon_version || '2.0.15' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
