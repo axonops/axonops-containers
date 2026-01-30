@@ -494,6 +494,10 @@ jobs:
 
   strimzi-build-push-sign:
     needs: [strimzi-validate, strimzi-generate-matrix]
+    if: |
+      always() &&
+      needs.strimzi-validate.result == 'success' &&
+      needs.strimzi-generate-matrix.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 3
