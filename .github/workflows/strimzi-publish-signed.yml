@@ -426,7 +426,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: '${{ inputs.main_git_tag }}',
-              name: `strimzi-${{ steps.version.outputs.operator_version || inputs.operator_version }}-${{ needs.strimzi-validate.outputs.tag_version }}`,
+              name: `strimzi-${{ inputs.operator_version && format('{0}-', inputs.operator_version) || 'all-' }}${{ needs.strimzi-validate.outputs.tag_version }}`,
               body: body,
               draft: false,
               prerelease: false
