@@ -234,7 +234,7 @@ This script will:
 Set up your AxonOps credentials:
 
 ```bash
-export AXON_AGENT_KEY="your-axonops-api-key" # Obtained from AxonOps Cloud Console
+export AXON_AGENT_KEY="your-axonops-agent-key" # Obtained from AxonOps Cloud Console
 export AXON_AGENT_ORG="your-organization-id" # AxonOps Cloud organization name
 export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 ```
