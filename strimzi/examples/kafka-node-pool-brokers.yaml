@@ -1,0 +1,45 @@
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: axonops-brokers
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: axonops-kafka
+spec:
+  replicas: 6
+  roles:
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 20Gi
+        deleteClaim: false
+        class: ""
+  template:
+    kafkaContainer:
+      env:
+        - name: KAFKA_NODE_TYPE
+          value: kraft-broker
+        - name: AXON_AGENT_SERVER_HOST
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_SERVER_HOST
+        - name: AXON_AGENT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_KEY
+        - name: AGENT_CLUSTER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_CLUSTER_NAME
+        - name: AXON_AGENT_ORG
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_ORG

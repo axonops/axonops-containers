@@ -1,0 +1,54 @@
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: axonops-controller
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: axonops-kafka
+spec:
+  replicas: 3
+  roles:
+    - controller
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 5Gi
+        deleteClaim: false
+        class: ""
+        kraftMetadata: shared
+  template:
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: csi.hetzner.cloud/location
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              strimzi.io/name: axonops-kafka
+    kafkaContainer:
+      env:
+        - name: KAFKA_NODE_TYPE
+          value: kraft-controller
+        - name: AXON_AGENT_SERVER_HOST
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_SERVER_HOST
+        - name: AXON_AGENT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_KEY
+        - name: AGENT_CLUSTER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_CLUSTER_NAME
+        - name: AXON_AGENT_ORG
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_ORG
