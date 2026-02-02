@@ -109,7 +109,7 @@ jobs:
           docker run --rm axondb-timeseries-backups:test rclone version
 
       - name: Run Trivy container security scan
-        uses: aquasecurity/trivy-action@0.33.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axondb-timeseries-backups:test'
           format: 'table'
@@ -119,7 +119,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axondb-timeseries-backups:test'
           format: 'sarif'

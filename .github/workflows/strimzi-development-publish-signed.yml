@@ -242,7 +242,7 @@ jobs:
           trivyignores: 'strimzi/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axonops-strimzi:test'
           format: 'sarif'
