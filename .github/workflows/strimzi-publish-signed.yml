@@ -494,10 +494,13 @@ jobs:
 
   strimzi-build-push-sign:
     needs: [strimzi-validate, strimzi-generate-matrix]
+<<<<<<< HEAD
     if: |
       always() &&
       needs.strimzi-validate.result == 'success' &&
       needs.strimzi-generate-matrix.result == 'success'
+=======
+>>>>>>> f57b523 (Rebase main (#107))
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 3
