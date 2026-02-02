@@ -29,9 +29,14 @@ export KAFKA_OPTS="${KAFKA_OPTS} \
   --add-exports=java.management/com.sun.jmx.interceptor=ALL-UNNAMED"
 
 # Move /var/lib/axonops to a persistent directory
-if [ ! -d /var/lib/kafka/data-0/axonops ]; then
-  cp -a /var/lib/axonops-template /var/lib/kafka/data-0/axonops
-fi
+for i in {0..30}; do
+  # exit fast if already created
+  [ -d /var/lib/kafka/data-${i}/axonops ] && break
+  if [ -d /var/lib/kafka/data-${i} ] && [ ! -d /var/lib/kafka/data-${i}/axonops ]; then
+    cp -a /var/lib/axonops-template /var/lib/kafka/data-${i}/axonops
+    break
+  fi
+done
 
 # Start the agent
 /usr/share/axonops/axon-agent -o file $AGENT_ARGS &
