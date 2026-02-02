@@ -29,8 +29,12 @@ export KAFKA_OPTS="${KAFKA_OPTS} \
   --add-exports=java.management/com.sun.jmx.interceptor=ALL-UNNAMED"
 
 # Move /var/lib/axonops to a persistent directory
-if [ ! -d /var/lib/kafka/data-0/axonops ]; then
-  cp -a /var/lib/axonops-template /var/lib/kafka/data-0/axonops
+logDir=$(grep log.dirs /tmp/strimzi.properties | awk -F = '{print $2}')
+
+if [ $logDir != "" ]; then
+  if [ -d "${logDir}" ] && [ ! -d ${logDir}/axonops ]; then
+    cp -a /var/lib/axonops-template ${logDir}/axonops
+  fi
 fi
 
 # Start the agent
