@@ -88,7 +88,9 @@ RUN groupadd --gid 9988 axonops && \
     chmod 755 /usr/share/axonops/axon-agent && \
     rm -f /etc/axonops/axon-agent.yml && \
     touch /var/run/utmp && \
+    mkdir -p /var/lib/axonops/cassandra && \
     echo '{"working_dir": "/opt/cassandra","commit_log_dir": "/opt/cassandra/data/commitlog"}' > /var/lib/axonops/cassandra/cassandra_info.json && \
+    chown -R cassandra:cassandra /var/lib/axonops/cassandra && \
     microdnf clean all && \
     setcap cap_chown,cap_fowner+eip /usr/share/axonops/axon-agent && \
     rm -rf /var/cache/yum /var/cache/dnf
