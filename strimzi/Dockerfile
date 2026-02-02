@@ -27,7 +27,7 @@ RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y \
     && microdnf clean all \
     && rm -f /etc/axonops/axon-agent.yml \
     && mv /var/lib/axonops /var/lib/axonops-template \
-    && for i in {0..30}; do ln -sf /var/lib/kafka/data-${i}/axonops /var/lib/axonops;done \
+    && for i in {0..30}; do mkdir -p /var/lib/kafka/data-${i}; ln -sf /var/lib/kafka/data-${i}/axonops /var/lib/axonops;done \
     && chown -R kafka:axonops /var/lib/axonops-template \
     && chmod 770 /var/lib/axonops-template
 
