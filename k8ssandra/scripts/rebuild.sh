@@ -31,7 +31,7 @@ crictl images | grep ttl.sh | awk '{print $3}' | xargs crictl rmi
 # =============================================================================
 
 CASSANDRA_VER=$(basename $(pwd) | cut -d. -f1,2)  # Get 5.0 from directory
-CQLAI_VER=${CQLAI_VERSION:-0.0.31}
+CQLAI_VER=${CQLAI_VERSION:-0.1.2}
 
 # k8ssandra base image - MUST match K8SSANDRA_VERSIONS variable
 # Current: k8ssandra/cass-management-api:5.0.6-ubi-v0.1.110

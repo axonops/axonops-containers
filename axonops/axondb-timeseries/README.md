@@ -37,7 +37,7 @@ Production-ready Apache Cassandra 5.0.6 container optimized for time-series work
 AxonDB Time-Series is a production-ready Apache Cassandra container specifically designed for AxonOps self-hosted deployments. This container is optimized for time-series database workloads and is deployed as part of the complete AxonOps stack using AxonOps Helm charts.
 
 **Container Features:**
-- **Modern CQL Shell**: [cqlai](https://github.com/axonops/cqlai) v0.0.31 for enhanced database interaction
+- **Modern CQL Shell**: [cqlai](https://github.com/axonops/cqlai) v0.1.2 for enhanced database interaction
 - **Memory Optimization**: jemalloc for improved memory management
 - **Automated Setup**: System keyspace initialization and custom user creation
 - **Enterprise Base**: Built on Red Hat UBI 9 minimal for production stability
@@ -145,7 +145,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Minimal build (required args only)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.0.31 \
+  --build-arg CQLAI_VERSION=0.1.2 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 
@@ -153,7 +153,7 @@ docker build \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.0.31 \
+  --build-arg CQLAI_VERSION=0.1.2 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 ```
@@ -463,7 +463,7 @@ Built by: GitHub Actions
 Component Versions:
   Cassandra:          5.0.6
   Java:               OpenJDK Runtime Environment (Red_Hat-17.0.17.0.10-1)
-  cqlai:              v0.0.31
+  cqlai:              v0.1.2
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)
   Platform:           x86_64

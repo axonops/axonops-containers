@@ -168,7 +168,7 @@ IS_PRODUCTION_RELEASE="true"
 CASSANDRA_VERSION="5.0.6"
 UBI9_BASE_DIGEST="sha256:80f3902b..."
 JAVA_VERSION="OpenJDK Runtime Environment..."
-CQLAI_VERSION="v0.0.31"
+CQLAI_VERSION="v0.1.2"
 JEMALLOC_VERSION="jemalloc-5.2.1-2.el9.x86_64"
 OS_VERSION="Red Hat Enterprise Linux 9.7 (Plow) (UBI)"
 PLATFORM="x86_64"
@@ -274,7 +274,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Basic build (local testing)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.0.31 \
+  --build-arg CQLAI_VERSION=0.1.2 \
   --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
   --build-arg VCS_REF=$(git rev-parse --short HEAD) \
   --build-arg VERSION=local-test \
@@ -292,7 +292,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Podman build (same args as Docker)
 podman build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.0.31 \
+  --build-arg CQLAI_VERSION=0.1.2 \
   -t axondb-timeseries:local \
   .
 ```
@@ -388,13 +388,13 @@ echo $?  # Should be 0 if accessible
 **Issue: cqlai download fails**
 ```bash
 # Check cqlai release exists
-curl -I https://github.com/axonops/cqlai/releases/download/v0.0.31/cqlai-0.0.31-1.x86_64.rpm
+curl -I https://github.com/axonops/cqlai/releases/download/v0.1.2/cqlai-0.1.2-1.x86_64.rpm
 ```
 
 **Issue: Build args not passed correctly**
 ```bash
 # Verify build args in image
-docker build --build-arg CASSANDRA_VERSION=5.0.6 --build-arg CQLAI_VERSION=0.0.31 -t test .
+docker build --build-arg CASSANDRA_VERSION=5.0.6 --build-arg CQLAI_VERSION=0.1.2 -t test .
 docker run --rm test cat /etc/axonops/build-info.txt
 ```
 
@@ -504,7 +504,7 @@ When Cassandra releases new versions (e.g., 5.0.7 or 5.1.0):
 5. **Test:**
    ```bash
    cd axonops/axondb-timeseries/5.0.7  # or appropriate dir
-   docker build --build-arg CASSANDRA_VERSION=5.0.7 --build-arg CQLAI_VERSION=0.0.31 -t test .
+   docker build --build-arg CASSANDRA_VERSION=5.0.7 --build-arg CQLAI_VERSION=0.1.2 -t test .
    docker run -d --name test -p 9042:9042 test
    docker logs -f test
    docker exec test nodetool version
@@ -550,7 +550,7 @@ axonops/axondb-timeseries/
 
 Repository variables (`.github` → Settings → Secrets and variables → Actions):
 
-- `AXONDB_TIMESERIES_CQLAI_VERSION` - cqlai version to install (e.g., `0.0.31`)
+- `AXONDB_TIMESERIES_CQLAI_VERSION` - cqlai version to install (e.g., `0.1.2`)
 
 ### Key Files
 
