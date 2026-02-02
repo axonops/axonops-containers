@@ -280,7 +280,7 @@ docker build \
   --build-arg MAJOR_VERSION=5.0 \
   --build-arg K8SSANDRA_BASE_DIGEST=sha256:aa2de19866f3487abe0dff65e6b74f5a68c6c5a7d211b5b7a3e0b961603ba5af \
   --build-arg K8SSANDRA_API_VERSION=0.1.110 \
-  --build-arg CQLAI_VERSION=0.0.31 \
+  --build-arg CQLAI_VERSION=0.1.2 \
   -t your-registry/axonops-cassandra:5.0.6-v0.1.110-1.0.0 \
   .
 
@@ -891,7 +891,7 @@ Component Versions:
   Java:               OpenJDK Runtime Environment (Red_Hat-17.0.17.0.10-1) (build 17.0.17+10-LTS)
   AxonOps Agent:      2.0.11
   AxonOps Java Agent: axon-cassandra5.0-agent-jdk17-1.0.12-1.noarch
-  cqlai:              v0.0.31
+  cqlai:              v0.1.2
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)
   Platform:           x86_64

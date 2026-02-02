@@ -89,7 +89,7 @@ jobs:
           docker run --rm --entrypoint /bin/sh axondb-search-backups:test -c "jq --version && echo '✓ jq is installed' || exit 1"
 
       - name: Run Trivy container security scan
-        uses: aquasecurity/trivy-action@0.33.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axondb-search-backups:test'
           format: 'table'
@@ -100,7 +100,7 @@ jobs:
           trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axondb-search-backups:test'
           format: 'sarif'
