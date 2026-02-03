@@ -141,4 +141,11 @@ ENV JVM_EXTRA_OPTS="-javaagent:/usr/share/axonops/axon-cassandra${MAJOR_VERSION}
 COPY axonops-entrypoint.sh /axonops-entrypoint.sh
 RUN chmod 755 /axonops-entrypoint.sh
 
+# Health check using Management API liveness endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8080/api/v0/probes/liveness || exit 1
+
+# Switch back to cassandra user (base image default)
+USER cassandra
+
 CMD ["/axonops-entrypoint.sh"]
