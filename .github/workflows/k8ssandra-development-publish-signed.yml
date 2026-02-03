@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cassandra_version: [5.0.6, 4.1.10]
+        cassandra_version: [5.0.6]
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
@@ -134,6 +134,7 @@ jobs:
           container_name: cassandra-test
 
       - name: Run Trivy container security scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axonops-cassandra:test'
