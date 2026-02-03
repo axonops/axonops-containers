@@ -12,7 +12,7 @@ spec:
     version: 3.9.0
     image: ghcr.io/axonops/strimzi/kafka:0.47.0-3.9.0
     rack:
-      topologyKey: csi.hetzner.cloud/location
+      topologyKey: topology.kubernetes.io/zone
     listeners:
       - name: plain
         port: 9092

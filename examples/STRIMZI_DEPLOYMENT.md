@@ -156,6 +156,34 @@ export AXON_AGENT_CLUSTER_NAME="$STRIMZI_CLUSTER_NAME"
 export AXON_AGENT_TLS_MODE="false"
 ```
 
+Refer to the [AxonOps Agent Setup documentation](https://axonops.com/docs/get_started/agent_setup/) for details on obtaining your agent credentials.
+
+### Topology Key Configuration
+
+The `topologyKey` controls how pods are distributed across failure domains (zones/regions). The correct value depends on your Kubernetes environment.
+
+To check which topology labels are available on your nodes:
+
+```bash
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{.metadata.labels}{"\n\n"}{end}' | grep -E "topology|zone|region"
+```
+
+**Common topology keys by provider:**
+
+| Provider | Zone key | Region key |
+| --- | --- | --- |
+| Standard Kubernetes | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
+| AWS EKS | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
+| Google GKE | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
+| Azure AKS | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
+
+**Cloud provider documentation:**
+
+- [AWS EKS - Spread workloads across zones](https://docs.aws.amazon.com/prescriptive-guidance/latest/ha-resiliency-amazon-eks-apps/spread-workloads.html)
+- [Google GKE - Node labels](https://cloud.google.com/kubernetes-engine/docs/concepts/node-labels)
+- [Azure AKS - Availability zones](https://learn.microsoft.com/en-us/azure/aks/availability-zones-overview)
+- [Kubernetes - Well-known labels](https://kubernetes.io/docs/reference/labels-annotations-taints/#topologykubernetesiozone)
+
 ## Deployment Steps
 
 ### Step 1: Prepare Storage (hostPath mode only)
@@ -646,5 +674,7 @@ Follow Strimzi upgrade procedures:
 - **Strimzi Documentation**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
 - **Node Selector Guide**: [NODE_SELECTOR_GUIDE.md](NODE_SELECTOR_GUIDE.md)
 - **AxonOps Integration**: [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md)
+- **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
 - **Apache Kafka Documentation**: [https://kafka.apache.org/documentation/](https://kafka.apache.org/documentation/)
 - **KRaft Documentation**: [https://kafka.apache.org/documentation/#kraft](https://kafka.apache.org/documentation/#kraft)
+- **Cloud Example Manifests**: [strimzi/cloud/](strimzi/cloud/) - Ready-to-use Strimzi manifests for cloud deployments

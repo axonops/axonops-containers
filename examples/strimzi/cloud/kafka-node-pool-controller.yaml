@@ -23,7 +23,7 @@ spec:
     pod:
       topologySpreadConstraints:
         - maxSkew: 1
-          topologyKey: csi.hetzner.cloud/location
+          topologyKey: topology.kubernetes.io/zone
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
