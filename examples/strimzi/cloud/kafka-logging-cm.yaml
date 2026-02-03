@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-logging-cm
+  namespace: kafka
+data:
+  log4j.properties: |
+    log4j.rootLogger=INFO, FILE
+    log4j.appender.FILE=org.apache.log4j.RollingFileAppender
+    log4j.appender.FILE.File=/var/log/kafka/server.log
+    log4j.appender.FILE.MaxFileSize=10MB
+    log4j.appender.FILE.MaxBackupIndex=5
+    log4j.appender.FILE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.FILE.layout.ConversionPattern=[%d] %p %m (%c)%n

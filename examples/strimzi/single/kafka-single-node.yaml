@@ -1,0 +1,45 @@
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: ${STRIMZI_CLUSTER_NAME}
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    image: ghcr.io/axonops/strimzi/kafka:0.47.0-3.9.0
+    version: 3.9.0
+    metadataVersion: 3.8-IV0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+    template:
+      pod:
+        volumes:
+          - name: axon-agent-config-vol
+            configMap:
+              name: broker-axon-config
+      kafkaContainer:
+        volumeMounts:
+          - name: axon-agent-config-vol
+            mountPath: /mnt/
+            readOnly: true
+    logging:
+      type: external
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-logging-cm
+          key: log4j.properties

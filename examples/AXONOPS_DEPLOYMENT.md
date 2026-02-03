@@ -454,6 +454,8 @@ For production deployments:
 ## Additional Resources
 
 - **AxonOps Documentation**: [https://docs.axonops.com](https://docs.axonops.com)
+- **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
 - **Strimzi Integration**: See [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md)
+- **Strimzi Cloud Examples**: [strimzi/cloud/](strimzi/cloud/) - Ready-to-use Kubernetes manifests
 - **Helm Charts**: AxonOps Helm repository
 - **Support**: Contact AxonOps support for production deployments
