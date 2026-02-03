@@ -1,0 +1,45 @@
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: axonops-kafka
+  namespace: kafka
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 3.9.0
+    image: ghcr.io/axonops/strimzi/kafka:0.47.0-3.9.0
+    rack:
+      topologyKey: topology.kubernetes.io/zone
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+    jvmOptions:
+      javaSystemProperties:
+        - name: kafka.logs.dir
+          value: /var/log/kafka
+    logging:
+      type: inline
+      loggers:
+        log4j.rootLogger: "INFO, FILE"
+        log4j.appender.FILE: "org.apache.log4j.RollingFileAppender"
+        log4j.appender.FILE.File: "/var/log/kafka/server.log"
+        log4j.appender.FILE.MaxFileSize: "10MB"
+        log4j.appender.FILE.MaxBackupIndex: "5"
+        log4j.appender.FILE.layout: "org.apache.log4j.PatternLayout"
+        log4j.appender.FILE.layout.ConversionPattern: "[%d] %p %m (%c)%n"
+        log4j.logger.axonops.io.netty: "ERROR"

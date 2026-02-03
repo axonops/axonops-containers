@@ -139,6 +139,7 @@ All deployments require:
 
 - **[AxonOps Deployment →](AXONOPS_DEPLOYMENT.md)** - Monitor and manage your data platforms
 - **[Strimzi Kafka Deployment →](STRIMZI_DEPLOYMENT.md)** - Production-ready Apache Kafka
+- **[Strimzi Cloud Examples →](strimzi/cloud/)** - Ready-to-use Kubernetes manifests
 - **Apache Cassandra Deployment** - Coming soon
 
 ---
@@ -146,9 +147,10 @@ All deployments require:
 ## Support
 
 - **AxonOps Documentation**: [https://docs.axonops.com](https://docs.axonops.com)
+- **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
 - **Strimzi Documentation**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
 - **Apache Kafka Documentation**: [https://kafka.apache.org/documentation/](https://kafka.apache.org/documentation/)
 
 ---
 
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-02-03

@@ -1,0 +1,45 @@
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: axonops-connect
+  namespace: kafka
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 3.9.0
+  image: ghcr.io/axonops/development/strimzi:0.46.0-3.9.0-2.0.15-0.1.2
+  replicas: 2
+  bootstrapServers: axonops-kafka-kafka-bootstrap:9092
+  # All Kafka Connect worker configurations move into the config block
+  config:
+    group.id: connect-group
+    config.storage.topic: connect-configs
+    status.storage.topic: connect-status
+    offset.storage.topic: connect-offsets
+    config.storage.replication.factor: -1
+    offset.storage.replication.factor: -1
+    status.storage.replication.factor: -1
+  template:
+    connectContainer:
+      env:
+        - name: AXON_AGENT_SERVER_HOST
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_SERVER_HOST
+        - name: AXON_AGENT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_KEY
+        - name: AXON_AGENT_ORG
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_ORG
+        - name: AGENT_CLUSTER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: axonops-agent
+              key: AXON_AGENT_CLUSTER_NAME
