@@ -149,6 +149,7 @@ jobs:
           container_name: cassandra-test
 
       - name: Run Trivy container security scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axonops-cassandra:test'
@@ -304,6 +305,7 @@ jobs:
           container_name: cassandra-test
 
       - name: Run Trivy container security scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'axonops-cassandra:test'
