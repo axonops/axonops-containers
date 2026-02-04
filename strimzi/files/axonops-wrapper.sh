@@ -32,8 +32,8 @@ export KAFKA_OPTS="${KAFKA_OPTS} \
 logDir=$(grep log.dirs /tmp/strimzi.properties | awk -F = '{print $2}')
 
 if [ $logDir != "" ]; then
-  if [ -d "${logDir}" ] && [ ! -d ${logDir}/axonops ]; then
-    cp -a /var/lib/axonops-template ${logDir}/axonops
+  if [ -d "${logDir}" ] && [ ! -f /var/lib/axonops/local.db ]; then
+    cp -a /var/lib/axonops-template /var/lib/kafka/data-0/axonops
   fi
 fi
 
