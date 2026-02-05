@@ -37,5 +37,15 @@ if [ $logDir != "" ]; then
   fi
 fi
 
+# connect nodes won't use /var/lib/kafka/data-0/axonops so need to explicitly set agent_service
+if [ "$KAFKA_NODE_TYPE" = "connect" ]; then
+    echo "kafka" > /var/lib/axonops/agent_service
+fi
+
+# strimzi logs controller logs as server.log while axonops expects it to be controller.log
+if [ "$KAFKA_NODE_TYPE" = "kraft-controller" ]; then
+    ln -s /var/log/kafka/server.log /var/log/kafka/controller.log
+fi
+
 # Start the agent
 /usr/share/axonops/axon-agent -o file $AGENT_ARGS &

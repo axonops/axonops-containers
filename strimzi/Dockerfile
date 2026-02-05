@@ -28,6 +28,7 @@ RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y \
     && rm -f /etc/axonops/axon-agent.yml \
     && mv /var/lib/axonops /var/lib/axonops-template \
     && mkdir -p /var/lib/kafka/data-0/axonops && ln -sf /var/lib/kafka/data-0/axonops /var/lib/axonops \
+    && chown -R kafka:axonops /var/lib/kafka/data-0/axonops \
     && chown -R kafka:axonops /var/lib/axonops-template \
     && chmod 770 /var/lib/axonops-template
 
@@ -44,7 +45,7 @@ RUN chmod 755 /opt/kafka/axonops-wrapper.sh \
 
 # # Setup permissions and group membership
 RUN usermod -a -G axonops kafka \
-    && touch /opt/kafka/server.log /opt/kafka/controller.log /var/run/utmp \
+    && touch /opt/kafka/server.log /opt/kafka/controller.log /opt/kafka/connect.log /var/run/utmp \
     && mkdir -p /var/log/kafka \
     && chown kafka:axonops /var/log/kafka \
     && chown kafka:axonops /opt/kafka/server.log /opt/kafka/controller.log \
