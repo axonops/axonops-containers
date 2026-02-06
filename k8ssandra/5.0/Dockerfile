@@ -66,6 +66,7 @@ RUN echo "Updating all packages to latest versions..." && \
     rm -rf /var/cache/yum /var/cache/dnf
 
 COPY axonops-yum-repo.repo /etc/yum.repos.d/axonops-yum.repo
+COPY axonops-yum-repo-dev.repo /etc/yum.repos.d/axonops-yum-dev.repo
 
 # Install jemalloc for memory allocation optimization
 # Note: EPEL release RPM is GPG-signed and verified automatically by rpm
