@@ -21,23 +21,14 @@ spec:
         size: 6
 
         containers:
-          - name: cassandra
-            env:
+          - name: cassandra  # 2. Target the specific container
+            env:             # 3. Use list format (name/value), not key:value map
               - name: AXON_AGENT_KEY
-                valueFrom:
-                  secretKeyRef:
-                    name: axonops-agent
-                    key: AXON_AGENT_KEY
+                value: "93ac2add658b0621899e1ad618477ac3"
               - name: AXON_AGENT_ORG
-                valueFrom:
-                  secretKeyRef:
-                    name: axonops-agent
-                    key: AXON_AGENT_ORG
+                value: "mario"
               - name: AXON_AGENT_SERVER_HOST
-                valueFrom:
-                  secretKeyRef:
-                    name: axonops-agent
-                    key: AXON_AGENT_SERVER_HOST
+                value: agents.axonopsdev.com
 
         config:
           jvmOptions:
