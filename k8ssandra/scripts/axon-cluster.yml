@@ -18,7 +18,7 @@ spec:
     datacenters:
       - metadata:
           name: dc1
-        size: 6
+        size: 3
 
         containers:
           - name: cassandra  # 2. Target the specific container
