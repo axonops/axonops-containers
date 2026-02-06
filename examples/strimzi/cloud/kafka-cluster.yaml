@@ -31,7 +31,7 @@ spec:
     jvmOptions:
       javaSystemProperties:
         - name: kafka.logs.dir
-          value: /var/log/kafka      
+          value: /var/log/kafka
     logging:
       type: inline
       loggers:
