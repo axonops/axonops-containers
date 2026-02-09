@@ -1,7 +1,7 @@
 apiVersion: k8ssandra.io/v1alpha1
 kind: K8ssandraCluster
 metadata:
-  name: axonops-k8ssandra-50
+  name: axonops-marc-50
   namespace: k8ssandra-operator
 spec:
   cassandra:
