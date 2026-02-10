@@ -76,6 +76,7 @@ AXON_SERVER_SECRET_NAME="${AXON_SERVER_SECRET_NAME:-axon-server-config}"
 AXON_SERVER_RELEASE_NAME="${AXON_SERVER_RELEASE_NAME:-axon-server}"
 AXON_SERVER_CHART="${AXON_SERVER_CHART:-oci://ghcr.io/axonops/charts/axon-server}"
 AXON_SERVER_CONFIG_FILE="${AXON_SERVER_CONFIG_FILE:-axonops-server-secret.yaml}"
+AXON_SERVER_VALUES_FILE="${AXON_SERVER_VALUES_FILE:-axonops-server-values.yaml}"
 AXON_SERVER_AGENTS_PORT="${AXON_SERVER_AGENTS_PORT:-1888}"
 AXON_SERVER_API_PORT="${AXON_SERVER_API_PORT:-8080}"
 AXON_SERVER_HOST="${AXON_SERVER_HOST:-0.0.0.0}"
@@ -101,6 +102,13 @@ AXON_SERVER_TLS_MODE="${AXON_SERVER_TLS_MODE:-disabled}"
 AXON_SERVER_AUTH_ENABLED="${AXON_SERVER_AUTH_ENABLED:-false}"
 
 AXON_SERVER_HELM_EXTRA_ARGS="${AXON_SERVER_HELM_EXTRA_ARGS:-}"
+
+# API Ingress configuration (for agents)
+AXON_SERVER_API_INGRESS_ENABLED="${AXON_SERVER_API_INGRESS_ENABLED:-false}"
+AXON_SERVER_API_INGRESS_CLASS_NAME="${AXON_SERVER_API_INGRESS_CLASS_NAME:-}"
+AXON_SERVER_API_INGRESS_HOST="${AXON_SERVER_API_INGRESS_HOST:-api.example.com}"
+AXON_SERVER_API_INGRESS_TLS_SECRET_NAME="${AXON_SERVER_API_INGRESS_TLS_SECRET_NAME:-axon-server-api-tls}"
+AXON_SERVER_API_INGRESS_CERT_ISSUER_ANNOTATION="${AXON_SERVER_API_INGRESS_CERT_ISSUER_ANNOTATION:-$CLUSTER_ISSUER_NAME}"
 
 # --- AxonOps Dashboard (axon-dash) ---
 AXON_DASH_RELEASE_NAME="${AXON_DASH_RELEASE_NAME:-axon-dash}"
@@ -375,15 +383,62 @@ stringData:
 EOF
 }
 
+generate_axon_server_values() {
+  info "Generating AxonOps server values file: $AXON_SERVER_VALUES_FILE..."
+
+  # API Ingress configuration
+  if [[ "$AXON_SERVER_API_INGRESS_ENABLED" == "true" ]]; then
+    API_INGRESS_BLOCK=$(cat <<EOS
+apiIngress:
+  enabled: true
+  className: "${AXON_SERVER_API_INGRESS_CLASS_NAME}"
+  annotations:
+    cert-manager.io/cluster-issuer: ${AXON_SERVER_API_INGRESS_CERT_ISSUER_ANNOTATION}
+  hosts:
+    - host: ${AXON_SERVER_API_INGRESS_HOST}
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: ${AXON_SERVER_API_INGRESS_TLS_SECRET_NAME}
+      hosts:
+        - ${AXON_SERVER_API_INGRESS_HOST}
+EOS
+)
+  else
+    API_INGRESS_BLOCK=$(cat <<'EOS'
+apiIngress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+EOS
+)
+  fi
+
+  cat > "$AXON_SERVER_VALUES_FILE" <<EOF
+configurationSecret: ${AXON_SERVER_SECRET_NAME}
+
+${API_INGRESS_BLOCK}
+EOF
+}
+
 install_axon_server() {
   info "Applying AxonOps server Secret..."
   $KUBECTL_BIN apply -f "$AXON_SERVER_CONFIG_FILE"
+
+  generate_axon_server_values
 
   info "Installing AxonOps server (Helm release: $AXON_SERVER_RELEASE_NAME)..."
   $HELM_BIN upgrade --install "$AXON_SERVER_RELEASE_NAME" "$AXON_SERVER_CHART" \
     --namespace "$NS_AXONOPS" \
     --create-namespace \
-    --set "configurationSecret=${AXON_SERVER_SECRET_NAME}" \
+    -f "$AXON_SERVER_VALUES_FILE" \
     $AXON_SERVER_HELM_EXTRA_ARGS
 }
 
@@ -573,6 +628,12 @@ main() {
   else
     echo "  Port-forward: $KUBECTL_BIN port-forward -n $NS_AXONOPS svc/axon-dash 3000:$AXON_DASH_SERVICE_PORT"
     echo "  Then access: http://localhost:3000"
+  fi
+
+  if [[ "$AXON_SERVER_API_INGRESS_ENABLED" == "true" ]]; then
+    info ""
+    info "AxonOps Server API Ingress (for agents):"
+    echo "  https://$AXON_SERVER_API_INGRESS_HOST"
   fi
 
   info ""
