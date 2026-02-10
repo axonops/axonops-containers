@@ -27,8 +27,10 @@ spec:
                 value: "KEY-GOES-HERE"
               - name: AXON_AGENT_ORG
                 value: "ORG-GOES-HERE"
-              - name: AXON_AGENT_HOST
+              - name: AXON_AGENT_SERVER_HOST
                 value: "agents.axonops.cloud"
+              - name: AXON_AGENT_SERVER_PORT
+                value: "443"
         config:
           jvmOptions:
             heap_initial_size: 1G
