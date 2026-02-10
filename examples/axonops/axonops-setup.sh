@@ -610,25 +610,6 @@ wait_for_services() {
 }
 
 ############################################
-# Export configuration for Strimzi script
-############################################
-export_config_for_strimzi() {
-  info "Exporting configuration for Strimzi setup..."
-
-  cat > axonops-config.env <<EOF
-# AxonOps configuration for Strimzi integration
-export NS_AXONOPS="${NS_AXONOPS}"
-export AXON_SERVER_AGENTS_PORT="${AXON_SERVER_AGENTS_PORT}"
-export AXON_SERVER_API_PORT="${AXON_SERVER_API_PORT}"
-export AXON_SERVER_ORG_NAME="${AXON_SERVER_ORG_NAME}"
-EOF
-
-  info "Configuration exported to axonops-config.env"
-  info "Source this file before running strimzi-setup.sh:"
-  echo "  source axonops-config.env"
-}
-
-############################################
 # Main
 ############################################
 main() {
@@ -664,7 +645,6 @@ main() {
   install_axon_dash
 
   wait_for_services
-  export_config_for_strimzi
 
   info "AxonOps services deployment completed successfully!"
   info ""
@@ -693,11 +673,6 @@ main() {
     info "AxonOps Server Agent Ingress (gRPC for agents):"
     echo "  https://$AXON_SERVER_AGENT_INGRESS_HOST"
   fi
-
-  info ""
-  info "Next steps:"
-  echo "  1. Source the configuration file: source axonops-config.env"
-  echo "  2. Run the Strimzi setup script: ./strimzi-setup.sh"
 }
 
 main "$@"
