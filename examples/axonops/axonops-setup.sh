@@ -103,12 +103,20 @@ AXON_SERVER_AUTH_ENABLED="${AXON_SERVER_AUTH_ENABLED:-false}"
 
 AXON_SERVER_HELM_EXTRA_ARGS="${AXON_SERVER_HELM_EXTRA_ARGS:-}"
 
-# API Ingress configuration (for agents)
+# API Ingress configuration (for dashboard/API access)
 AXON_SERVER_API_INGRESS_ENABLED="${AXON_SERVER_API_INGRESS_ENABLED:-false}"
 AXON_SERVER_API_INGRESS_CLASS_NAME="${AXON_SERVER_API_INGRESS_CLASS_NAME:-}"
 AXON_SERVER_API_INGRESS_HOST="${AXON_SERVER_API_INGRESS_HOST:-api.example.com}"
 AXON_SERVER_API_INGRESS_TLS_SECRET_NAME="${AXON_SERVER_API_INGRESS_TLS_SECRET_NAME:-axon-server-api-tls}"
 AXON_SERVER_API_INGRESS_CERT_ISSUER_ANNOTATION="${AXON_SERVER_API_INGRESS_CERT_ISSUER_ANNOTATION:-$CLUSTER_ISSUER_NAME}"
+
+# Agent Ingress configuration (for agents gRPC connection)
+AXON_SERVER_AGENT_INGRESS_ENABLED="${AXON_SERVER_AGENT_INGRESS_ENABLED:-false}"
+AXON_SERVER_AGENT_INGRESS_CLASS_NAME="${AXON_SERVER_AGENT_INGRESS_CLASS_NAME:-nginx}"
+AXON_SERVER_AGENT_INGRESS_HOST="${AXON_SERVER_AGENT_INGRESS_HOST:-agents.example.com}"
+AXON_SERVER_AGENT_INGRESS_TLS_SECRET_NAME="${AXON_SERVER_AGENT_INGRESS_TLS_SECRET_NAME:-axon-server-agents-tls}"
+AXON_SERVER_AGENT_INGRESS_CERT_ISSUER_ANNOTATION="${AXON_SERVER_AGENT_INGRESS_CERT_ISSUER_ANNOTATION:-$CLUSTER_ISSUER_NAME}"
+AXON_SERVER_AGENT_INGRESS_GRPC_ANNOTATION="${AXON_SERVER_AGENT_INGRESS_GRPC_ANNOTATION:-true}"
 
 # --- AxonOps Dashboard (axon-dash) ---
 AXON_DASH_RELEASE_NAME="${AXON_DASH_RELEASE_NAME:-axon-dash}"
@@ -421,10 +429,54 @@ EOS
 )
   fi
 
+  # Agent Ingress configuration (gRPC)
+  if [[ "$AXON_SERVER_AGENT_INGRESS_ENABLED" == "true" ]]; then
+    # Build annotations based on GRPC annotation setting
+    if [[ "$AXON_SERVER_AGENT_INGRESS_GRPC_ANNOTATION" == "true" ]]; then
+      AGENT_ANNOTATIONS="nginx.ingress.kubernetes.io/backend-protocol: \"GRPC\"
+    cert-manager.io/cluster-issuer: ${AXON_SERVER_AGENT_INGRESS_CERT_ISSUER_ANNOTATION}"
+    else
+      AGENT_ANNOTATIONS="cert-manager.io/cluster-issuer: ${AXON_SERVER_AGENT_INGRESS_CERT_ISSUER_ANNOTATION}"
+    fi
+    AGENT_INGRESS_BLOCK=$(cat <<EOS
+agentIngress:
+  enabled: true
+  className: "${AXON_SERVER_AGENT_INGRESS_CLASS_NAME}"
+  annotations:
+    ${AGENT_ANNOTATIONS}
+  hosts:
+    - host: ${AXON_SERVER_AGENT_INGRESS_HOST}
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: ${AXON_SERVER_AGENT_INGRESS_TLS_SECRET_NAME}
+      hosts:
+        - ${AXON_SERVER_AGENT_INGRESS_HOST}
+EOS
+)
+  else
+    AGENT_INGRESS_BLOCK=$(cat <<'EOS'
+agentIngress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: agents.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+EOS
+)
+  fi
+
   cat > "$AXON_SERVER_VALUES_FILE" <<EOF
 configurationSecret: ${AXON_SERVER_SECRET_NAME}
 
 ${API_INGRESS_BLOCK}
+
+${AGENT_INGRESS_BLOCK}
 EOF
 }
 
@@ -632,8 +684,14 @@ main() {
 
   if [[ "$AXON_SERVER_API_INGRESS_ENABLED" == "true" ]]; then
     info ""
-    info "AxonOps Server API Ingress (for agents):"
+    info "AxonOps Server API Ingress:"
     echo "  https://$AXON_SERVER_API_INGRESS_HOST"
+  fi
+
+  if [[ "$AXON_SERVER_AGENT_INGRESS_ENABLED" == "true" ]]; then
+    info ""
+    info "AxonOps Server Agent Ingress (gRPC for agents):"
+    echo "  https://$AXON_SERVER_AGENT_INGRESS_HOST"
   fi
 
   info ""
