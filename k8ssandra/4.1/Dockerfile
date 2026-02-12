@@ -85,7 +85,7 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.
 RUN groupadd --gid 9988 axonops && \
     useradd --gid 9988 --uid 9988 --shell /bin/bash -c "AxonOps" -G cassandra axonops && \
     usermod -aG axonops cassandra && \
-    microdnf -y install axon-cassandra4.1-agent-${AXON_AGENT_JAVA_VERSION} axon-agent-${AXON_AGENT_VERSION} gettext && \
+    microdnf -y install axon-cassandra4.1-agent-jdk8-${AXON_AGENT_JAVA_VERSION} axon-agent-${AXON_AGENT_VERSION} gettext && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
     chmod 755 /usr/share/axonops/axon-agent && \
     rm -f /etc/axonops/axon-agent.yml && \
