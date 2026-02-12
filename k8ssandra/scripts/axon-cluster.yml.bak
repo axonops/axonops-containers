@@ -1,13 +1,13 @@
 apiVersion: k8ssandra.io/v1alpha1
 kind: K8ssandraCluster
 metadata:
-  name: axonops-marc-417
+  name: axonops-marc-50
   namespace: k8ssandra-operator
 spec:
   cassandra:
     serverImage: ttl.sh/marc-axonops-cassandra:1h
     serverType: cassandra
-    serverVersion: 4.1.7
+    serverVersion: 5.0.6
     softPodAntiAffinity: true
     resources:
       limits:
