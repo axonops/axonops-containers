@@ -42,11 +42,20 @@ kubectl create namespace kafka
 
 Choose one of the configuration methods below based on your requirements.
 
-#### Option A: Environment Variable Configuration (Recommended)
+#### Option A: Cloud Deployment (Multi-Node)
 
-This is the simplest approach where all AxonOps configuration is passed via environment variables.
+For production cloud deployments with separate controller and broker pools.
 
-**Update the following values** in [`examples/kafka-cluster-env.yaml`](examples/kafka-cluster-env.yaml):
+See the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory for all required manifests:
+
+- `kafka-cluster.yaml`: Main Kafka cluster configuration
+- `kafka-node-pool-controller.yaml`: Controller node pool
+- `kafka-node-pool-brokers.yaml`: Broker node pool
+- `kafka-logging-cm.yaml`: Logging configuration
+- `axonops-config-secret.yaml`: AxonOps credentials
+
+**Update the following values**:
+
 - `YOUR_AXONOPS_HOST`: Your AxonOps server hostname (e.g., `agents.axonops.com`)
 - `YOUR_AXONOPS_API_KEY`: Your AxonOps organization API key
 - `YOUR_CLUSTER_NAME`: A unique name for this Kafka cluster
@@ -55,40 +64,36 @@ This is the simplest approach where all AxonOps configuration is passed via envi
 Then apply:
 
 ```bash
-kubectl apply -f examples/kafka-cluster-env.yaml -n kafka
+kubectl apply -f ../examples/strimzi/cloud/ -n kafka
 kubectl get pod -n kafka --watch
 ```
 
-#### Option B: ConfigMap Configuration
-
-For more complex configurations, you can use ConfigMaps to provide full AxonOps agent configuration files.
-
-**Update the following values** in [`examples/kafka-cluster-config.yaml`](examples/kafka-cluster-config.yaml):
-- `YOUR_AXONOPS_HOST`: Your AxonOps server hostname
-- `YOUR_AXONOPS_API_KEY`: Your AxonOps organization API key
-- `YOUR_CLUSTER_NAME`: A unique name for this Kafka cluster
-- `YOUR_ORG_NAME`: Your AxonOps organization name
-
-ConfigMaps created:
-- `controller-axon-config`: Configuration for Kafka controllers
-- `broker-axon-config`: Configuration for Kafka brokers
-- `kafka-logging-cm`: Logging configuration for log shipping
-
-Then apply:
-
-```bash
-kubectl apply -f examples/kafka-cluster-config.yaml -n kafka
-kubectl get pod -n kafka --watch
-```
-
-#### Option C: Single Node (Development/Testing)
+#### Option B: Single Node (Development/Testing)
 
 For development or testing, you can deploy a single-node Kafka cluster with combined controller and broker roles.
 
-**Update the values** in [`examples/kafka-single-node.yaml`](examples/kafka-single-node.yaml) and apply:
+See the [`examples/strimzi/single/`](../examples/strimzi/single/) directory:
+
+- `kafka-single-node.yaml`: Single-node Kafka cluster
+- `axonops-agent-config.yaml`: AxonOps agent configuration
+- `axonops-kafka-logging.yaml`: Logging configuration
+- `axonops-kafka-nodepool.yaml`: Node pool configuration
+
+**Update the values** and apply:
 
 ```bash
-kubectl apply -f examples/kafka-single-node.yaml -n kafka
+kubectl apply -f ../examples/strimzi/single/ -n kafka
+kubectl get pod -n kafka --watch
+```
+
+#### Option C: Local Disk Storage
+
+For deployments using local persistent volumes.
+
+See the [`examples/strimzi/local-disk/`](../examples/strimzi/local-disk/) directory for all required manifests.
+
+```bash
+kubectl apply -f ../examples/strimzi/local-disk/ -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -98,7 +103,8 @@ Deploy a Kafka Connect cluster for streaming data between Kafka and other system
 
 **Prerequisites**: Ensure you have a running Kafka cluster (deployed using one of the options above).
 
-**Update the following values** in [`examples/kafka-connect.yaml`](examples/kafka-connect.yaml):
+**Update the following values** in [`examples/strimzi/cloud/kafka-connect.yaml`](../examples/strimzi/cloud/kafka-connect.yaml):
+
 - `YOUR_AXONOPS_HOST`: Your AxonOps server hostname (e.g., `agents.axonops.com`)
 - `YOUR_AXONOPS_API_KEY`: Your AxonOps organization API key
 - `YOUR_CLUSTER_NAME`: A unique name for this Kafka Connect cluster
@@ -109,7 +115,7 @@ Deploy a Kafka Connect cluster for streaming data between Kafka and other system
 Then apply:
 
 ```bash
-kubectl apply -f examples/kafka-connect.yaml -n kafka
+kubectl apply -f ../examples/strimzi/cloud/kafka-connect.yaml -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -144,7 +150,7 @@ The ConfigMap approach allows you to provide a complete `axon-agent.yml` configu
 - Multiple datacenter deployments
 - Fine-grained control over agent behavior
 
-See [`examples/kafka-cluster-config.yaml`](examples/kafka-cluster-config.yaml) for the full structure.
+See [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) for the full structure.
 
 ## Rack Awareness
 
@@ -342,45 +348,43 @@ Key files:
 
 ### Single Node Cluster
 
-**File**: [`examples/kafka-single-node.yaml`](examples/kafka-single-node.yaml)
+**Directory**: [`examples/strimzi/single/`](../examples/strimzi/single/)
 
 - **Topology**: Single node with combined controller + broker role
 - **Replicas**: 1
-- **Storage**: Persistent volume (100Gi)
+- **Storage**: Persistent volume
 - **Configuration Method**: ConfigMap-based
 - **Use Case**: Development, testing, demos
 
-### Multi-Node Cluster with Separate Controllers and Brokers
+### Cloud Deployment (Multi-Node)
 
-**File**: [`examples/kafka-cluster-config.yaml`](examples/kafka-cluster-config.yaml)
+**Directory**: [`examples/strimzi/cloud/`](../examples/strimzi/cloud/)
 
 - **Topology**: Separate controller and broker pools
-- **Controllers**: 3 replicas with ephemeral storage
-- **Brokers**: 2 replicas with ephemeral storage
+- **Controllers**: 3 replicas
+- **Brokers**: 3 replicas
 - **Configuration Method**: ConfigMap-based with full agent configuration
 - **Features**:
   - Rack awareness enabled
   - Custom logging configuration
   - Separate AxonOps config for controllers and brokers
-- **Use Case**: Production deployments requiring full control
+- **Use Case**: Production cloud deployments
 
-### Multi-Node Cluster with Environment Variables
+### Local Disk Storage
 
-**File**: [`examples/kafka-cluster-env.yaml`](examples/kafka-cluster-env.yaml)
+**Directory**: [`examples/strimzi/local-disk/`](../examples/strimzi/local-disk/)
 
 - **Topology**: Separate controller and broker pools
-- **Controllers**: 3 replicas with persistent storage (5Gi)
-- **Brokers**: 2 replicas with persistent storage (5Gi)
-- **Configuration Method**: Environment variable-based (recommended)
+- **Storage**: Local persistent volumes
 - **Features**:
-  - Rack awareness enabled
-  - Inline logging configuration
-  - Simpler configuration management
-- **Use Case**: Production deployments with standard configuration
+  - StorageClass configuration
+  - RBAC setup
+  - Volume provisioning
+- **Use Case**: On-premises deployments with local storage
 
 ### Kafka Connect Cluster
 
-**File**: [`examples/kafka-connect.yaml`](examples/kafka-connect.yaml)
+**File**: [`examples/strimzi/cloud/kafka-connect.yaml`](../examples/strimzi/cloud/kafka-connect.yaml)
 
 - **Component**: Kafka Connect workers
 - **Replicas**: 1 (can be scaled as needed)
@@ -398,19 +402,20 @@ Key files:
 ## Version Compatibility
 
 | Component | Version | Notes |
-|-----------|---------|-------|
-| Strimzi | 0.49.1 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
-| Kafka | 4.1.0 (latest) | Version 0.49.1 supports Kafka 4.0.0, 4.0.1, 4.1.0 |
+| --------- | ------- | ----- |
+| Strimzi | 0.50.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
+| Kafka | 4.1.1 (latest) | Version 0.50.0 supports Kafka 4.0.0, 4.0.1, 4.1.0, 4.1.1 |
 | Kubernetes | 1.24+ | Any CNCF-compliant distribution |
 | AxonOps Agent | Latest | Auto-installed from repository |
 
 ### Strimzi Version History
 
 | Strimzi Version | Supported Kafka Versions | Release Date |
-|-----------------|-------------------------|--------------|
-| 0.49.1 | 4.0.0, 4.0.1, 4.1.0 | Dec 2024 |
-| 0.46.0 | 3.9.0, 4.0.0 | Sep 2024 |
-| 0.45.0 | 3.8.0, 3.8.1, 3.9.0 | Jul 2024 |
+| --------------- | ------------------------ | ------------ |
+| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Feb 2025 |
+| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Dec 2024 |
+| 0.48.0 | 4.0.0, 4.1.0 | Nov 2024 |
+| 0.47.0 | 3.9.0, 3.9.1 | Oct 2024 |
 
 ## Known Limitations and TODOs
 
