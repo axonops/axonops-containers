@@ -3,7 +3,8 @@
 #./build_k8ss.sh "2.0.3.asb14061-1" "1.0.13.asb4142nodetoolscheduler502-1" "5.0.6" "5.0"
 
 
-#./build_k8ss.sh "2.0.3.asb14061-1" "1.0.14-asb3642nodetoolscheduler412-1" "4.1.7" "4.1"
+#./build_k8ss.sh "2.0.3.asb14061-1" "1.0.14.asb3642nodetoolscheduler412-1" "4.1.7" "4.1"
+
 
 AXON_AGENT_VERSION=$1 
 AXON_AGENT_JAVA_VERSION=$2
