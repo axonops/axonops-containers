@@ -24,4 +24,4 @@ docker build --build-arg=CQLAI_VERSION=0.1.1 --build-arg=AXON_AGENT_VERSION=${AX
 docker push ttl.sh/marc-axonops-cassandra:${TAG}
 
 yq -i ".spec.cassandra.serverImage = \"ttl.sh/marc-axonops-cassandra:${TAG}\"" ~/axonops-containers/k8ssandra/scripts/axon-cluster-${MAJOR_VERSION}.yml
-kubectl apply -f ~/axonops-containers/k8ssandra/scripts/axon-cluster.yml
+kubectl apply -f ~/axonops-containers/k8ssandra/scripts/axon-cluster-${MAJOR_VERSION}.yml
