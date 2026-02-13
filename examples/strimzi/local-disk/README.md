@@ -26,7 +26,7 @@ A `strimzi-config.env` file is provided with default configuration values. Edit 
 cat strimzi-config.env
 
 # Source the environment variables
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 ```
 
 ### Configuration Variables
@@ -77,7 +77,7 @@ The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsub
 
 ```bash
 # 1. Source the configuration
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # 2. Create the namespace
 kubectl create namespace $STRIMZI_NAMESPACE
@@ -115,7 +115,7 @@ envsubst < strimzi-kafka-cluster.yaml | kubectl apply -f -
 Apply all manifests in order. Note that you must customize the node names (`node1`, `node2`, `node3`) to match your actual Kubernetes node hostnames:
 
 ```bash
-export $(grep -v '^#' strimzi-config.env | xargs) && \
+source strimzi-config.env && \
 kubectl create namespace $STRIMZI_NAMESPACE --dry-run=client -o yaml | kubectl apply -f - && \
 kubectl apply -f strimzi-storageclass.yaml && \
 # Create broker PVs (adjust node names to match your cluster)
@@ -139,7 +139,7 @@ done
 To generate processed manifests for review or GitOps (adjust node names to match your cluster):
 
 ```bash
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # Generate all processed manifests to a single file
 {

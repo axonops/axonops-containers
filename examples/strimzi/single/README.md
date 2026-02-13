@@ -25,7 +25,7 @@ A `strimzi-config.env` file is provided with default configuration values.
 cat strimzi-config.env
 
 # Source the environment variables
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 ```
 
 ### Configuration Variables
@@ -63,7 +63,7 @@ The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsub
 
 ```bash
 # 1. Source the configuration
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # 2. Edit the AxonOps agent configuration
 # Update axonops-agent-config.yaml with your AxonOps credentials
@@ -82,7 +82,7 @@ envsubst < kafka-single-node.yaml | kubectl apply -f -
 ### One-liner Deployment
 
 ```bash
-export $(grep -v '^#' strimzi-config.env | xargs) && \
+source strimzi-config.env && \
 kubectl apply -f axonops-agent-config.yaml && \
 kubectl apply -f axonops-kafka-logging.yaml && \
 envsubst < axonops-kafka-nodepool.yaml | kubectl apply -f - && \
@@ -94,7 +94,7 @@ envsubst < kafka-single-node.yaml | kubectl apply -f -
 To generate processed manifests for review or GitOps:
 
 ```bash
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # Generate all processed manifests to a single file
 cat axonops-agent-config.yaml > processed-manifests.yaml
