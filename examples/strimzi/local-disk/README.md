@@ -40,7 +40,7 @@ source strimzi-config.env
 | `STRIMZI_CONTROLLER_REPLICAS` | `3` | Number of controller replicas |
 | `STRIMZI_CONTROLLER_STORAGE_SIZE` | `5Gi` | Storage size per controller |
 | `AXON_AGENT_CLUSTER_NAME` | `my-cluster` | AxonOps cluster name |
-| `AXON_AGENT_ORG` | `my-org` | AxonOps organization |
+| `AXON_AGENT_ORG` | `your-org` | AxonOps organization |
 | `AXON_AGENT_TLS_MODE` | `disabled` | AxonOps TLS mode |
 | `AXON_AGENT_SERVER_HOST` | `axon-server.axonops.svc.cluster.local` | AxonOps server host |
 | `AXON_AGENT_SERVER_PORT` | `1888` | AxonOps server port |

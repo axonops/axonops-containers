@@ -908,7 +908,7 @@ Runtime Environment:
 
 AxonOps Configuration:
   Server:             agents.axonops.cloud
-  Organization:       my-org
+  Organization:       your-org
   Agent Key:          ***configured***
 
 ================================================================================
