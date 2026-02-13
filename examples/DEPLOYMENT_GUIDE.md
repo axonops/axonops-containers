@@ -123,7 +123,7 @@ cd strimzi/cloud/
 
 # Configure and source environment variables
 vi strimzi-config.env
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # Create the AxonOps secret
 kubectl create secret generic axonops-agent -n kafka \
@@ -203,7 +203,7 @@ envsubst < manifest.yaml | kubectl apply -f -
 
 ```bash
 # Source configuration
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # Apply all manifests in order
 for f in manifest1.yaml manifest2.yaml manifest3.yaml; do

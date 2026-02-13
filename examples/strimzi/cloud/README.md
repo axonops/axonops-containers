@@ -25,7 +25,7 @@ A `strimzi-config.env` file is provided with default configuration values. These
 cat strimzi-config.env
 
 # Source the environment variables
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 ```
 
 ## AxonOps Agent Configuration
@@ -66,7 +66,7 @@ Apply the manifests in the following order:
 
 ```bash
 # 1. Source the configuration
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # 2. Create the AxonOps agent secret using envsubst (or apply directly if values are hardcoded)
 kubectl apply -f axonops-config-secret.yaml
@@ -91,7 +91,7 @@ kubectl apply -f kafka-connect.yaml
 
 ```bash
 # Source the configuration
-export $(grep -v '^#' strimzi-config.env | xargs)
+source strimzi-config.env
 
 # Create the secret directly from environment variables
 kubectl create secret generic axonops-agent -n kafka \
