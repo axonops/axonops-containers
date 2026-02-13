@@ -8,7 +8,7 @@ metadata:
     strimzi.io/kraft: enabled
 spec:
   kafka:
-    image: ghcr.io/axonops/strimzi/kafka:0.50.0-4.1.1
+    image: ghcr.io/axonops/strimzi/kafka:0.50.0-4.1.1-2.0.15-0.1.5
     version: 4.1.1
     metadataVersion: 4.0-IV3
     listeners:
