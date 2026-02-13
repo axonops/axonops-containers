@@ -71,6 +71,8 @@ The following variables must be set when creating PersistentVolumes. Since each 
 
 ## Deployment
 
+**Prerequisites:** Before proceeding, ensure you have created the local storage directories on each node and set the correct ownership. See [Local Storage Setup](#local-storage-setup) below.
+
 ### Using envsubst
 
 The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsubst` to substitute the values before applying:
@@ -168,15 +170,23 @@ source strimzi-config.env
 
 ## Local Storage Setup
 
-Before deploying, ensure the local storage paths exist on your nodes. The paths follow the pattern `/data/strimzi/${STRIMZI_CLUSTER_NAME}/broker-pool-{ID}` and `/data/strimzi/${STRIMZI_CLUSTER_NAME}/controller-{ID}`:
+**Important:** Before deploying, you must create the local storage directories on each Kubernetes node and set the correct ownership. Kafka runs as user ID 1001, so the directories must be owned by this user.
+
+The paths follow the pattern:
+
+- Brokers: `/data/strimzi/${STRIMZI_CLUSTER_NAME}/broker-pool-${STRIMZI_BROKER_ID}`
+- Controllers: `/data/strimzi/${STRIMZI_CLUSTER_NAME}/controller-${STRIMZI_CONTROLLER_ID}`
 
 ```bash
 # On each node, create the storage directories (using default cluster name 'my-cluster')
 sudo mkdir -p /data/strimzi/my-cluster/broker-pool-{0,1,2}
 sudo mkdir -p /data/strimzi/my-cluster/controller-{0,1,2}
+
+# Set ownership to Kafka user (UID 1001)
+sudo chown -R 1001:1001 /data/strimzi/my-cluster
 ```
 
-Make sure to create the directories on the correct nodes as specified by `STRIMZI_BROKER_NODE` and `STRIMZI_CONTROLLER_NODE` variables.
+Make sure to create the directories on the correct nodes as specified by `STRIMZI_BROKER_NODE` and `STRIMZI_CONTROLLER_NODE` variables. For example, if broker-0 is on node1, create `/data/strimzi/my-cluster/broker-pool-0` on node1.
 
 ## Verification
 
