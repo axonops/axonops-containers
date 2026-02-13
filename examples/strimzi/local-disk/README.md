@@ -45,6 +45,17 @@ export $(grep -v '^#' strimzi-config.env | xargs)
 | `AXON_AGENT_SERVER_HOST` | `axon-server.axonops.svc.cluster.local` | AxonOps server host |
 | `AXON_AGENT_SERVER_PORT` | `1888` | AxonOps server port |
 
+### Per-Node Volume Variables
+
+The following variables must be set when creating PersistentVolumes. Since each broker and controller needs its own PV, you must apply the volume manifests **multiple times** with different values:
+
+| Variable | Description |
+| --- | --- |
+| `STRIMZI_BROKER_ID` | Broker index (0, 1, 2, etc.) - set for each broker volume |
+| `STRIMZI_BROKER_NODE` | Kubernetes node hostname where the broker volume resides |
+| `STRIMZI_CONTROLLER_ID` | Controller index (0, 1, 2, etc.) - set for each controller volume |
+| `STRIMZI_CONTROLLER_NODE` | Kubernetes node hostname where the controller volume resides |
+
 ## Manifests
 
 | File | Description |
@@ -74,64 +85,98 @@ kubectl create namespace $STRIMZI_NAMESPACE
 # 3. Apply the StorageClass
 kubectl apply -f strimzi-storageclass.yaml
 
-# 4. Create PersistentVolumes (process with envsubst)
-envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
+# 4. Create PersistentVolumes for each broker (repeat for each broker ID)
+# You must apply the broker volume manifest once per broker with unique STRIMZI_BROKER_ID and STRIMZI_BROKER_NODE
+export STRIMZI_BROKER_ID=0 STRIMZI_BROKER_NODE=node1 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
+export STRIMZI_BROKER_ID=1 STRIMZI_BROKER_NODE=node2 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
+export STRIMZI_BROKER_ID=2 STRIMZI_BROKER_NODE=node3 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
 
-# 5. Apply RBAC resources
+# 5. Create PersistentVolumes for each controller (repeat for each controller ID)
+# You must apply the controller volume manifest once per controller with unique STRIMZI_CONTROLLER_ID and STRIMZI_CONTROLLER_NODE
+export STRIMZI_CONTROLLER_ID=0 STRIMZI_CONTROLLER_NODE=node1 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
+export STRIMZI_CONTROLLER_ID=1 STRIMZI_CONTROLLER_NODE=node2 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
+export STRIMZI_CONTROLLER_ID=2 STRIMZI_CONTROLLER_NODE=node3 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
+
+# 6. Apply RBAC resources
 envsubst < strimzi-kafka-rbac.yaml | kubectl apply -f -
 
-# 6. Create the controller node pool
+# 7. Create the controller node pool
 envsubst < strimzi-controller-pools.yaml | kubectl apply -f -
 
-# 7. Create the broker node pool
+# 8. Create the broker node pool
 envsubst < strimzi-broker-pools.yaml | kubectl apply -f -
 
-# 8. Create the Kafka cluster
+# 9. Create the Kafka cluster
 envsubst < strimzi-kafka-cluster.yaml | kubectl apply -f -
 ```
 
 ### One-liner Deployment
 
-Apply all manifests in order with a single command:
+Apply all manifests in order. Note that you must customize the node names (`node1`, `node2`, `node3`) to match your actual Kubernetes node hostnames:
 
 ```bash
 export $(grep -v '^#' strimzi-config.env | xargs) && \
 kubectl create namespace $STRIMZI_NAMESPACE --dry-run=client -o yaml | kubectl apply -f - && \
 kubectl apply -f strimzi-storageclass.yaml && \
-for f in strimzi-broker-volumes.yaml strimzi-controller-volumes.yaml strimzi-kafka-rbac.yaml \
-         strimzi-controller-pools.yaml strimzi-broker-pools.yaml strimzi-kafka-cluster.yaml; do
+# Create broker PVs (adjust node names to match your cluster)
+for i in 0 1 2; do
+  export STRIMZI_BROKER_ID=$i STRIMZI_BROKER_NODE=node$((i+1))
+  envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
+done && \
+# Create controller PVs (adjust node names to match your cluster)
+for i in 0 1 2; do
+  export STRIMZI_CONTROLLER_ID=$i STRIMZI_CONTROLLER_NODE=node$((i+1))
+  envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
+done && \
+# Apply remaining manifests
+for f in strimzi-kafka-rbac.yaml strimzi-controller-pools.yaml strimzi-broker-pools.yaml strimzi-kafka-cluster.yaml; do
   envsubst < $f | kubectl apply -f -
 done
 ```
 
 ### Generate Processed Manifests
 
-To generate processed manifests for review or GitOps:
+To generate processed manifests for review or GitOps (adjust node names to match your cluster):
 
 ```bash
 export $(grep -v '^#' strimzi-config.env | xargs)
 
 # Generate all processed manifests to a single file
-for f in strimzi-storageclass.yaml strimzi-broker-volumes.yaml strimzi-controller-volumes.yaml \
-         strimzi-kafka-rbac.yaml strimzi-controller-pools.yaml strimzi-broker-pools.yaml \
-         strimzi-kafka-cluster.yaml; do
+{
   echo "---"
-  envsubst < $f
-done > processed-manifests.yaml
+  cat strimzi-storageclass.yaml
+  # Generate broker PVs
+  for i in 0 1 2; do
+    export STRIMZI_BROKER_ID=$i STRIMZI_BROKER_NODE=node$((i+1))
+    echo "---"
+    envsubst < strimzi-broker-volumes.yaml
+  done
+  # Generate controller PVs
+  for i in 0 1 2; do
+    export STRIMZI_CONTROLLER_ID=$i STRIMZI_CONTROLLER_NODE=node$((i+1))
+    echo "---"
+    envsubst < strimzi-controller-volumes.yaml
+  done
+  # Generate remaining manifests
+  for f in strimzi-kafka-rbac.yaml strimzi-controller-pools.yaml strimzi-broker-pools.yaml \
+           strimzi-kafka-cluster.yaml; do
+    echo "---"
+    envsubst < $f
+  done
+} > processed-manifests.yaml
 ```
 
 ## Local Storage Setup
 
-Before deploying, ensure the local storage paths exist on your nodes:
+Before deploying, ensure the local storage paths exist on your nodes. The paths follow the pattern `/data/strimzi/${STRIMZI_CLUSTER_NAME}/broker-pool-{ID}` and `/data/strimzi/${STRIMZI_CLUSTER_NAME}/controller-{ID}`:
 
 ```bash
-# On each node, create the storage directories
-sudo mkdir -p /mnt/data/kafka/broker-{0,1,2}
-sudo mkdir -p /mnt/data/kafka/controller-{0,1,2}
+# On each node, create the storage directories (using default cluster name 'my-cluster')
+sudo mkdir -p /data/strimzi/my-cluster/broker-pool-{0,1,2}
+sudo mkdir -p /data/strimzi/my-cluster/controller-{0,1,2}
 ```
 
-Update the `strimzi-broker-volumes.yaml` and `strimzi-controller-volumes.yaml` to match your node names and paths.
+Make sure to create the directories on the correct nodes as specified by `STRIMZI_BROKER_NODE` and `STRIMZI_CONTROLLER_NODE` variables.
 
 ## Verification
 
