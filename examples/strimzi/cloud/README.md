@@ -13,12 +13,10 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 ## Prerequisites
 
 - A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
-- A `kafka` namespace created
-- An `axonops-agent` secret in the `kafka` namespace (see below)
 
 ## Configuration
 
-A `strimzi-config.env` file is provided with default configuration values. These values are primarily used for creating the AxonOps agent secret.
+Edit the `strimzi-config.env` file with your settings:
 
 ```bash
 # Review and edit the configuration
@@ -28,24 +26,27 @@ cat strimzi-config.env
 source strimzi-config.env
 ```
 
-## AxonOps Agent Configuration
+### Configuration Variables
 
-The Kafka components require an `axonops-agent` secret with your AxonOps connection details. An example is provided in `axonops-config-secret.yaml`:
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: axonops-agent
-  namespace: kafka
-stringData:
-  AXON_AGENT_SERVER_HOST: agents.axonops.cloud
-  AXON_AGENT_KEY: CHANGEME
-  AXON_AGENT_ORG: example
-  AXON_AGENT_CLUSTER_NAME: kafka
-```
-
-Update the values to match your AxonOps organisation and agent key. Refer to the [AxonOps Agent Setup documentation](https://axonops.com/docs/get_started/agent_setup/) for details on obtaining these values.
+| Variable | Description | Default |
+| --- | --- | --- |
+| `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
+| `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `axonops-kafka` |
+| `KAFKA_VERSION` | Kafka version | `4.1.1` |
+| `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
+| `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
+| `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
+| `STRIMZI_BROKER_STORAGE_CLASS` | Storage class for brokers | `""` (default) |
+| `STRIMZI_CONTROLLER_REPLICAS` | Number of controller replicas | `3` |
+| `STRIMZI_CONTROLLER_STORAGE_SIZE` | Storage size per controller | `5Gi` |
+| `STRIMZI_CONTROLLER_STORAGE_CLASS` | Storage class for controllers | `""` (default) |
+| `KAFKA_CONNECT_REPLICAS` | Number of Kafka Connect replicas | `2` |
+| `KAFKA_CONNECT_IMAGE` | Kafka Connect container image | See .env file |
+| `AXON_AGENT_CLUSTER_NAME` | AxonOps cluster name | `kafka` |
+| `AXON_AGENT_ORG` | AxonOps organisation | `example` |
+| `AXON_AGENT_KEY` | AxonOps agent key | `CHANGEME` |
+| `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
+| `AXON_AGENT_TLS_MODE` | TLS mode for AxonOps connection | `TLS` |
 
 ## Manifests
 
@@ -53,65 +54,64 @@ Update the values to match your AxonOps organisation and agent key. Refer to the
 | --- | --- |
 | `axonops-config-secret.yaml` | Secret with AxonOps agent connection details |
 | `kafka-logging-cm.yaml` | ConfigMap with log4j configuration for Kafka |
-| `kafka-node-pool-controller.yaml` | KafkaNodePool for KRaft controllers (3 replicas) |
-| `kafka-node-pool-brokers.yaml` | KafkaNodePool for brokers (6 replicas) |
+| `kafka-node-pool-controller.yaml` | KafkaNodePool for KRaft controllers |
+| `kafka-node-pool-brokers.yaml` | KafkaNodePool for brokers |
 | `kafka-cluster.yaml` | Kafka cluster resource (KRaft mode) |
-| `kafka-connect.yaml` | KafkaConnect deployment (2 replicas) |
+| `kafka-connect.yaml` | KafkaConnect deployment (optional) |
 
-## Deployment Order
+## Deployment
 
-### Option 1: Using the Secret Template
-
-Apply the manifests in the following order:
+### 1. Source Configuration and Create Namespace
 
 ```bash
-# 1. Source the configuration
+# Source the environment variables
 source strimzi-config.env
 
-# 2. Create the AxonOps agent secret using envsubst (or apply directly if values are hardcoded)
-kubectl apply -f axonops-config-secret.yaml
-
-# 3. Create the logging ConfigMap
-kubectl apply -f kafka-logging-cm.yaml
-
-# 4. Create the KRaft controller node pool
-kubectl apply -f kafka-node-pool-controller.yaml
-
-# 5. Create the broker node pool
-kubectl apply -f kafka-node-pool-brokers.yaml
-
-# 6. Create the Kafka cluster
-kubectl apply -f kafka-cluster.yaml
-
-# 7. (Optional) Deploy Kafka Connect
-kubectl apply -f kafka-connect.yaml
+# Create the namespace
+kubectl create namespace ${KAFKA_NAMESPACE}
 ```
 
-### Option 2: Create Secret from Environment Variables
+### 2. Deploy the AxonOps Agent Secret
 
 ```bash
-# Source the configuration
-source strimzi-config.env
+envsubst < axonops-config-secret.yaml | kubectl apply -f -
+```
 
-# Create the secret directly from environment variables
-kubectl create secret generic axonops-agent -n kafka \
-  --from-literal=AXON_AGENT_CLUSTER_NAME=$AXON_AGENT_CLUSTER_NAME \
-  --from-literal=AXON_AGENT_ORG=$AXON_AGENT_ORG \
-  --from-literal=AXON_AGENT_SERVER_HOST=$AXON_AGENT_SERVER_HOST \
-  --from-literal=AXON_AGENT_KEY=$AXON_AGENT_KEY
+### 3. Deploy the Logging ConfigMap
 
-# Then apply the remaining manifests
-kubectl apply -f kafka-logging-cm.yaml
-kubectl apply -f kafka-node-pool-controller.yaml
-kubectl apply -f kafka-node-pool-brokers.yaml
-kubectl apply -f kafka-cluster.yaml
+```bash
+envsubst < kafka-logging-cm.yaml | kubectl apply -f -
+```
+
+### 4. Deploy the KRaft Controller Node Pool
+
+```bash
+envsubst < kafka-node-pool-controller.yaml | kubectl apply -f -
+```
+
+### 5. Deploy the Broker Node Pool
+
+```bash
+envsubst < kafka-node-pool-brokers.yaml | kubectl apply -f -
+```
+
+### 6. Deploy the Kafka Cluster
+
+```bash
+envsubst < kafka-cluster.yaml | kubectl apply -f -
+```
+
+### 7. (Optional) Deploy Kafka Connect
+
+```bash
+envsubst < kafka-connect.yaml | kubectl apply -f -
 ```
 
 > **Note:** The `kafka-cluster.yaml` must be applied after the node pools, as the Kafka resource references them. KafkaConnect depends on the cluster being ready.
 
 ## Configuration Notes
 
-- The storage class fields (`class`) should be set to match your environment's available StorageClass.
+- The storage class variables (`STRIMZI_BROKER_STORAGE_CLASS`, `STRIMZI_CONTROLLER_STORAGE_CLASS`) should be set to match your environment's available StorageClass.
 - The container images reference AxonOps custom Strimzi images with the agent embedded.
 - Topology spread constraints are configured using `topology.kubernetes.io/zone`. Adjust the `topologyKey` for your infrastructure (see below).
 

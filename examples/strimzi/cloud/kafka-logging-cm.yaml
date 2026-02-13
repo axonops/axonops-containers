@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kafka-logging-cm
-  namespace: kafka
+  namespace: ${KAFKA_NAMESPACE}
 data:
   log4j.properties: |
     log4j.rootLogger=INFO, FILE

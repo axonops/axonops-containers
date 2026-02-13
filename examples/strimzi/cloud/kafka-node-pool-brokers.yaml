@@ -3,11 +3,11 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
   name: axonops-brokers
-  namespace: kafka
+  namespace: ${KAFKA_NAMESPACE}
   labels:
-    strimzi.io/cluster: axonops-kafka
+    strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
 spec:
-  replicas: 6
+  replicas: ${STRIMZI_BROKER_REPLICAS}
   roles:
     - broker
   storage:
@@ -15,9 +15,9 @@ spec:
     volumes:
       - id: 0 ## AxonOps requires there is a volume with index `0`
         type: persistent-claim
-        size: 20Gi
+        size: ${STRIMZI_BROKER_STORAGE_SIZE}
         deleteClaim: false
-        class: ""
+        class: ${STRIMZI_BROKER_STORAGE_CLASS}
   template:
     kafkaContainer:
       env:
