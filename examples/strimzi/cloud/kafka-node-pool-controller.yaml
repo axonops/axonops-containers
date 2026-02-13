@@ -3,11 +3,11 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
   name: axonops-controller
-  namespace: kafka
+  namespace: ${KAFKA_NAMESPACE}
   labels:
-    strimzi.io/cluster: axonops-kafka
+    strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
 spec:
-  replicas: 3
+  replicas: ${STRIMZI_CONTROLLER_REPLICAS}
   roles:
     - controller
   storage:
@@ -15,9 +15,9 @@ spec:
     volumes:
       - id: 0
         type: persistent-claim
-        size: 5Gi
+        size: ${STRIMZI_CONTROLLER_STORAGE_SIZE}
         deleteClaim: false
-        class: ""
+        class: ${STRIMZI_CONTROLLER_STORAGE_CLASS}
         kraftMetadata: shared
   template:
     pod:
@@ -27,7 +27,7 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              strimzi.io/name: axonops-kafka
+              strimzi.io/name: ${STRIMZI_CLUSTER_NAME}
     kafkaContainer:
       env:
         - name: KAFKA_NODE_TYPE

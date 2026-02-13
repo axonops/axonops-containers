@@ -2,15 +2,15 @@
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
-  name: axonops-kafka
-  namespace: kafka
+  name: ${STRIMZI_CLUSTER_NAME}
+  namespace: ${KAFKA_NAMESPACE}
   annotations:
     strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled
 spec:
   kafka:
-    version: 4.1.1
-    image: ghcr.io/axonops/strimzi/kafka:0.50.0-4.1.1-2.0.15-0.1.6
+    version: ${KAFKA_VERSION}
+    image: ${KAFKA_CONTAINER_IMAGE}
     rack:
       topologyKey: topology.kubernetes.io/zone
     listeners:

@@ -3,13 +3,14 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: ${STRIMZI_CLUSTER_NAME}
+  namespace: ${KAFKA_NAMESPACE}
   annotations:
     strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled
 spec:
   kafka:
-    image: ghcr.io/axonops/strimzi/kafka:0.50.0-4.1.1-2.0.15-0.1.6
-    version: 4.1.1
+    image: ${KAFKA_CONTAINER_IMAGE}
+    version: ${KAFKA_VERSION}
     metadataVersion: 4.0-IV3
     listeners:
       - name: plain

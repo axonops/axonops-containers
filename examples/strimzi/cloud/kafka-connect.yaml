@@ -3,15 +3,14 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnect
 metadata:
   name: axonops-connect
-  namespace: kafka
+  namespace: ${KAFKA_NAMESPACE}
   annotations:
     strimzi.io/use-connector-resources: "true"
 spec:
-  version: 3.9.0
-  image: ghcr.io/axonops/development/strimzi:0.46.0-3.9.0-2.0.15-0.1.2
-  replicas: 2
-  bootstrapServers: axonops-kafka-kafka-bootstrap:9092
-  # All Kafka Connect worker configurations move into the config block
+  version: ${KAFKA_VERSION}
+  image: ${KAFKA_CONNECT_IMAGE}
+  replicas: ${KAFKA_CONNECT_REPLICAS}
+  bootstrapServers: ${STRIMZI_CLUSTER_NAME}-kafka-bootstrap:9092
   config:
     group.id: connect-group
     config.storage.topic: connect-configs

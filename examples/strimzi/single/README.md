@@ -32,18 +32,16 @@ source strimzi-config.env
 
 | Variable | Default | Description |
 | --- | --- | --- |
+| `KAFKA_NAMESPACE` | `kafka` | Kubernetes namespace for deployment |
+| `KAFKA_VERSION` | `4.1.1` | Kafka version |
+| `KAFKA_CONTAINER_IMAGE` | `ghcr.io/axonops/strimzi/kafka:...` | Kafka container image with AxonOps agent |
 | `STRIMZI_CLUSTER_NAME` | `axonops-kafka` | Name of the Kafka cluster |
-
-### AxonOps Agent Configuration
-
-The AxonOps agent is configured via a ConfigMap (`axonops-agent-config.yaml`). Update the following values in the ConfigMap:
-
-| Field | Description |
-| --- | --- |
-| `axon-server.hosts` | AxonOps server hostname |
-| `axon-agent.org` | Your AxonOps organization name |
-| `axon-agent.cluster_name` | Cluster name in AxonOps |
-| `axon-agent.key` | Your AxonOps API key |
+| `AXON_AGENT_CLUSTER_NAME` | - | Cluster name in AxonOps |
+| `AXON_AGENT_ORG` | - | Your AxonOps organization name |
+| `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server hostname |
+| `AXON_AGENT_KEY` | - | Your AxonOps API key |
+| `AXON_AGENT_TLS_MODE` | `TLS` | TLS mode (`TLS` for SaaS, `disabled` for on-prem) |
+| `AXON_AGENT_DATACENTER` | `testdc` | Datacenter name for AxonOps |
 
 ## Manifests
 
@@ -65,12 +63,12 @@ The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsub
 # 1. Source the configuration
 source strimzi-config.env
 
-# 2. Edit the AxonOps agent configuration
-# Update axonops-agent-config.yaml with your AxonOps credentials
+# 2. Create the namespace
+kubectl create namespace $KAFKA_NAMESPACE
 
-# 3. Apply the ConfigMaps
-kubectl apply -f axonops-agent-config.yaml
-kubectl apply -f axonops-kafka-logging.yaml
+# 3. Apply the ConfigMaps (process with envsubst)
+envsubst < axonops-agent-config.yaml | kubectl apply -f -
+envsubst < axonops-kafka-logging.yaml | kubectl apply -f -
 
 # 4. Create the node pool (process with envsubst)
 envsubst < axonops-kafka-nodepool.yaml | kubectl apply -f -
@@ -83,8 +81,9 @@ envsubst < kafka-single-node.yaml | kubectl apply -f -
 
 ```bash
 source strimzi-config.env && \
-kubectl apply -f axonops-agent-config.yaml && \
-kubectl apply -f axonops-kafka-logging.yaml && \
+kubectl create namespace $KAFKA_NAMESPACE --dry-run=client -o yaml | kubectl apply -f - && \
+envsubst < axonops-agent-config.yaml | kubectl apply -f - && \
+envsubst < axonops-kafka-logging.yaml | kubectl apply -f - && \
 envsubst < axonops-kafka-nodepool.yaml | kubectl apply -f - && \
 envsubst < kafka-single-node.yaml | kubectl apply -f -
 ```
@@ -97,29 +96,31 @@ To generate processed manifests for review or GitOps:
 source strimzi-config.env
 
 # Generate all processed manifests to a single file
-cat axonops-agent-config.yaml > processed-manifests.yaml
-echo "---" >> processed-manifests.yaml
-cat axonops-kafka-logging.yaml >> processed-manifests.yaml
-echo "---" >> processed-manifests.yaml
-envsubst < axonops-kafka-nodepool.yaml >> processed-manifests.yaml
-echo "---" >> processed-manifests.yaml
-envsubst < kafka-single-node.yaml >> processed-manifests.yaml
+{
+  envsubst < axonops-agent-config.yaml
+  echo "---"
+  envsubst < axonops-kafka-logging.yaml
+  echo "---"
+  envsubst < axonops-kafka-nodepool.yaml
+  echo "---"
+  envsubst < kafka-single-node.yaml
+} > processed-manifests.yaml
 ```
 
 ## Verification
 
 ```bash
 # Check the Kafka cluster status
-kubectl get kafka $STRIMZI_CLUSTER_NAME
+kubectl get kafka -n $KAFKA_NAMESPACE
 
 # Check node pools
-kubectl get kafkanodepool
+kubectl get kafkanodepool -n $KAFKA_NAMESPACE
 
 # Check pods
-kubectl get pods -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME
+kubectl get pods -n $KAFKA_NAMESPACE
 
 # View Kafka logs
-kubectl logs -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME -c kafka
+kubectl logs -n $KAFKA_NAMESPACE -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME -c kafka
 ```
 
 ## Use Cases
