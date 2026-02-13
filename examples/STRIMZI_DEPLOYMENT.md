@@ -4,22 +4,42 @@ This guide covers deploying Apache Kafka using the Strimzi operator on Kubernete
 
 ## Quick Start
 
-### Option 1: Using Setup Script
+### Step 1: Install Strimzi Operator
+
+Before deploying Kafka clusters, install the Strimzi operator using Helm.
+
+**Important:** Check the [Strimzi downloads page](https://strimzi.io/downloads/) to verify which Strimzi version supports your desired Kafka version. The support matrix shows compatible Kafka versions for each Strimzi release.
 
 ```bash
-cd axonops/
+# Add Strimzi Helm repository
+helm repo add strimzi https://strimzi.io/charts/
+helm repo update
 
-# Option A: Configure using environment file
-vi strimzi-setup.env                    # Edit configuration
-source strimzi-setup.env                # Load configuration
-./strimzi-setup.sh                      # Deploy
+# Create namespaces
+kubectl create namespace strimzi
+kubectl create namespace kafka
 
-# Option B: Set variables directly
-export STRIMZI_NODE_HOSTNAME='your-node-name'
-./strimzi-setup.sh
+# Check available versions
+helm search repo strimzi --versions
+
+# Install the operator (specify version based on support matrix)
+# Example: Strimzi 0.45.0 supports Kafka 3.9.0
+helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
+  -n strimzi \
+  --version 0.45.0 \
+  --set watchNamespaces="{kafka}" \
+  --wait
+
+# Verify installation
+kubectl get pods -n strimzi
+kubectl get crd | grep strimzi
 ```
 
-### Option 2: Using Example Manifests
+### Step 2: Deploy Kafka Cluster
+
+Choose one of the following deployment options:
+
+#### Option A: Using Example Manifests (Recommended)
 
 Ready-to-use manifests are available in three configurations:
 
@@ -32,6 +52,11 @@ Ready-to-use manifests are available in three configurations:
 ```bash
 # Example: Deploy using cloud manifests
 cd strimzi/cloud/
+
+# Edit configuration as needed
+vi strimzi-config.env
+
+# Source and apply
 export $(grep -v '^#' strimzi-config.env | xargs)
 kubectl apply -f kafka-logging-cm.yaml
 kubectl apply -f kafka-node-pool-controller.yaml
@@ -39,7 +64,22 @@ kubectl apply -f kafka-node-pool-brokers.yaml
 kubectl apply -f kafka-cluster.yaml
 ```
 
-### With AxonOps Monitoring
+#### Option B: Using Setup Script
+
+For automated deployment with additional features (hostPath storage, node selectors):
+
+```bash
+cd axonops/
+
+# Edit configuration
+vi strimzi-setup.env
+
+# Source and run
+source strimzi-setup.env
+./strimzi-setup.sh
+```
+
+### Step 3: With AxonOps Monitoring (Optional)
 
 ```bash
 cd axonops/
@@ -55,61 +95,30 @@ source strimzi-setup.env                # Load Strimzi configuration (edit first
 ./strimzi-setup.sh
 ```
 
-That's it! Your Kafka cluster will be deployed and ready to use.
-
 ---
 
-## Installing Strimzi Operator
+## Strimzi Version Compatibility
 
-Before deploying Kafka clusters, you need to install the Strimzi operator. The setup script handles this automatically, but you can also install it manually.
+Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before installation to ensure compatibility:
 
-### Using Helm (Recommended)
+| Strimzi Version | Supported Kafka Versions | Kubernetes Versions |
+| --- | --- | --- |
+| 0.45.0 | 3.8.x, 3.9.x | 1.25+ |
+| 0.44.0 | 3.7.x, 3.8.x | 1.25+ |
+| 0.43.0 | 3.7.x, 3.8.x | 1.23+ |
+
+*Note: This table is for reference only. Always verify current compatibility at [strimzi.io/downloads](https://strimzi.io/downloads/).*
+
+### Upgrading Strimzi
 
 ```bash
-# Add Strimzi Helm repository
-helm repo add strimzi https://strimzi.io/charts/
-helm repo update
+# Check current version
+helm list -n strimzi
 
-# Create namespace
-kubectl create namespace strimzi
-
-# Install the operator
-helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
+# Upgrade to new version
+helm upgrade strimzi-kafka-operator strimzi/strimzi-kafka-operator \
   -n strimzi \
-  --set watchNamespaces="{kafka}" \
-  --wait
-
-# Verify installation
-kubectl get pods -n strimzi
-```
-
-### Using YAML Manifests
-
-```bash
-# Install latest Strimzi operator
-kubectl create -f 'https://strimzi.io/install/latest?namespace=strimzi'
-
-# Wait for operator to be ready
-kubectl wait --for=condition=ready pod \
-  -l name=strimzi-cluster-operator \
-  -n strimzi \
-  --timeout=300s
-```
-
-### Verify Operator Installation
-
-```bash
-# Check operator pod
-kubectl get pods -n strimzi
-
-# Check CRDs are installed
-kubectl get crd | grep strimzi
-
-# Expected CRDs:
-# kafkas.kafka.strimzi.io
-# kafkanodepools.kafka.strimzi.io
-# kafkatopics.kafka.strimzi.io
-# kafkausers.kafka.strimzi.io
+  --version <new-version>
 ```
 
 ---
