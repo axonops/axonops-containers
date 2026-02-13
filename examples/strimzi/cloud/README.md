@@ -2,11 +2,31 @@
 
 This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring on cloud Kubernetes environments.
 
+## Overview
+
+- **Kafka Version**: 4.1.1
+- **Mode**: KRaft (no ZooKeeper)
+- **Brokers**: 6 replicas, 20Gi storage
+- **Controllers**: 3 replicas, 5Gi storage
+- **Replication Factor**: 3 (production-ready)
+
 ## Prerequisites
 
 - A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
 - A `kafka` namespace created
 - An `axonops-agent` secret in the `kafka` namespace (see below)
+
+## Configuration
+
+A `strimzi-config.env` file is provided with default configuration values. These values are primarily used for creating the AxonOps agent secret.
+
+```bash
+# Review and edit the configuration
+cat strimzi-config.env
+
+# Source the environment variables
+source strimzi-config.env
+```
 
 ## AxonOps Agent Configuration
 
@@ -40,26 +60,51 @@ Update the values to match your AxonOps organisation and agent key. Refer to the
 
 ## Deployment Order
 
+### Option 1: Using the Secret Template
+
 Apply the manifests in the following order:
 
 ```bash
-# 1. Create the AxonOps agent secret
+# 1. Source the configuration
+source strimzi-config.env
+
+# 2. Create the AxonOps agent secret using envsubst (or apply directly if values are hardcoded)
 kubectl apply -f axonops-config-secret.yaml
 
-# 2. Create the logging ConfigMap
+# 3. Create the logging ConfigMap
 kubectl apply -f kafka-logging-cm.yaml
 
-# 3. Create the KRaft controller node pool
+# 4. Create the KRaft controller node pool
 kubectl apply -f kafka-node-pool-controller.yaml
 
-# 4. Create the broker node pool
+# 5. Create the broker node pool
 kubectl apply -f kafka-node-pool-brokers.yaml
 
-# 5. Create the Kafka cluster
+# 6. Create the Kafka cluster
 kubectl apply -f kafka-cluster.yaml
 
-# 6. (Optional) Deploy Kafka Connect
+# 7. (Optional) Deploy Kafka Connect
 kubectl apply -f kafka-connect.yaml
+```
+
+### Option 2: Create Secret from Environment Variables
+
+```bash
+# Source the configuration
+source strimzi-config.env
+
+# Create the secret directly from environment variables
+kubectl create secret generic axonops-agent -n kafka \
+  --from-literal=AXON_AGENT_CLUSTER_NAME=$AXON_AGENT_CLUSTER_NAME \
+  --from-literal=AXON_AGENT_ORG=$AXON_AGENT_ORG \
+  --from-literal=AXON_AGENT_SERVER_HOST=$AXON_AGENT_SERVER_HOST \
+  --from-literal=AXON_AGENT_KEY=$AXON_AGENT_KEY
+
+# Then apply the remaining manifests
+kubectl apply -f kafka-logging-cm.yaml
+kubectl apply -f kafka-node-pool-controller.yaml
+kubectl apply -f kafka-node-pool-brokers.yaml
+kubectl apply -f kafka-cluster.yaml
 ```
 
 > **Note:** The `kafka-cluster.yaml` must be applied after the node pools, as the Kafka resource references them. KafkaConnect depends on the cluster being ready.

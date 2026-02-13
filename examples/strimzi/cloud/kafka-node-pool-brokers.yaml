@@ -13,7 +13,7 @@ spec:
   storage:
     type: jbod
     volumes:
-      - id: 0
+      - id: 0 ## AxonOps requires there is a volume with index `0`
         type: persistent-claim
         size: 20Gi
         deleteClaim: false

@@ -9,7 +9,7 @@ metadata:
 spec:
   kafka:
     version: 4.1.1
-    image: ghcr.io/axonops/development/strimzi:0.49.1-4.1.1-2.0.12
+    image: ghcr.io/axonops/strimzi/kafka:0.50.0-4.1.1-2.0.15-0.1.5
     listeners:
       - name: plain
         port: 9092
