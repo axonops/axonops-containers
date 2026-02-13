@@ -10,7 +10,7 @@ metadata:
 spec:
   kafka:
     version: 4.1.1
-    image: ghcr.io/axonops/strimzi/kafka:0.50.0-4.1.1-2.0.15-0.1.5
+    image: ghcr.io/axonops/strimzi/kafka:0.50.0-4.1.1-2.0.15-0.1.6
     rack:
       topologyKey: topology.kubernetes.io/zone
     listeners:
