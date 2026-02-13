@@ -72,7 +72,7 @@ STRIMZI_NODE_HOSTNAME="${STRIMZI_NODE_HOSTNAME:-$(hostname)}"  # Default to curr
 STRIMZI_CLUSTER_NAME="${STRIMZI_CLUSTER_NAME:-my-cluster}"
 AXON_AGENT_CLUSTER_NAME="${AXON_AGENT_CLUSTER_NAME:-$STRIMZI_CLUSTER_NAME}"
 AXON_AGENT_ORG="${AXON_AGENT_ORG:-your-org}"
-AXON_AGENT_TLS_MODE="${AXON_AGENT_TLS_MODE:-false}"
+AXON_AGENT_TLS_MODE="${AXON_AGENT_TLS_MODE:-disabled}"  # Options: "disabled", "TLS"; see https://axonops.com/docs/installation/axon-server/axonserver_install/
 
 # AxonOps Server connection (from AxonOps setup or environment)
 AXON_AGENT_SERVER_PORT="${AXON_AGENT_SERVER_PORT:-${AXON_SERVER_AGENTS_PORT:-1888}}"
