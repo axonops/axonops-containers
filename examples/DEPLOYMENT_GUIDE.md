@@ -101,9 +101,12 @@ export AXON_SEARCH_PASSWORD='your-secure-password'
 export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
 ./axonops-setup.sh
 
-# Step 2: Deploy Kafka with automatic monitoring integration
+# Step 2: Configure Strimzi (edit strimzi-setup.env as needed)
+vi strimzi-setup.env
+
+# Step 3: Deploy Kafka with automatic monitoring integration
 source axonops-config.env
-export STRIMZI_NODE_HOSTNAME='your-node-name'
+source strimzi-setup.env
 ./strimzi-setup.sh
 ```
 

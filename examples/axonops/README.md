@@ -23,7 +23,8 @@ AxonOps provides comprehensive monitoring and management for Apache Kafka and Ca
 | File | Description |
 | --- | --- |
 | `axonops-config.env` | Environment variables for AxonOps configuration |
-| `axonops-setup.sh` | Automated deployment script |
+| `axonops-setup.sh` | Automated deployment script for AxonOps |
+| `strimzi-setup.env` | Environment variables for Strimzi Kafka configuration |
 | `strimzi-setup.sh` | Strimzi Kafka deployment script (with AxonOps integration) |
 | `axonops-server-secret.yaml` | Example Secret for axon-server configuration |
 | `axonops-dash-values.yaml` | Helm values for AxonOps Dashboard |
@@ -159,7 +160,20 @@ After deploying AxonOps, integrate with Kafka:
 # Source AxonOps configuration
 source axonops-config.env
 
-# Deploy Strimzi with AxonOps integration
+# Configure Strimzi (edit strimzi-setup.env as needed)
+vi strimzi-setup.env
+
+# Source Strimzi configuration and deploy
+source strimzi-setup.env
+./strimzi-setup.sh
+```
+
+Or use environment variables directly:
+
+```bash
+source axonops-config.env
+export STRIMZI_NODE_HOSTNAME='your-node-name'
+export STRIMZI_CLUSTER_NAME='my-cluster'
 ./strimzi-setup.sh
 ```
 

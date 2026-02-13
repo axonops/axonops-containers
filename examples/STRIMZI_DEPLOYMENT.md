@@ -7,11 +7,15 @@ This guide covers deploying Apache Kafka using the Strimzi operator on Kubernete
 ### Option 1: Using Setup Script
 
 ```bash
-# Set the Kubernetes node hostname
-export STRIMZI_NODE_HOSTNAME='your-node-name'
-
-# Deploy Strimzi Kafka (includes operator installation)
 cd axonops/
+
+# Option A: Configure using environment file
+vi strimzi-setup.env                    # Edit configuration
+source strimzi-setup.env                # Load configuration
+./strimzi-setup.sh                      # Deploy
+
+# Option B: Set variables directly
+export STRIMZI_NODE_HOSTNAME='your-node-name'
 ./strimzi-setup.sh
 ```
 
@@ -38,13 +42,16 @@ kubectl apply -f kafka-cluster.yaml
 ### With AxonOps Monitoring
 
 ```bash
+cd axonops/
+
 # First deploy AxonOps (see AXONOPS_DEPLOYMENT.md)
-export AXON_SERVER_SEARCH_DB_PASSWORD='your-password'
+export AXON_SEARCH_PASSWORD='your-password'
+export AXON_SERVER_CQL_PASSWORD='your-cql-password'
 ./axonops-setup.sh
 
 # Then deploy Strimzi with AxonOps integration
-source axonops-config.env
-export STRIMZI_NODE_HOSTNAME='your-node-name'
+source axonops-config.env               # Load AxonOps connection details
+source strimzi-setup.env                # Load Strimzi configuration (edit first if needed)
 ./strimzi-setup.sh
 ```
 
