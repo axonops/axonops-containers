@@ -451,11 +451,26 @@ For production deployments:
 6. **Backup**: Regular backups of Search and Timeseries databases
 7. **Access Control**: Use Ingress with authentication/authorization
 
+## Example Configurations
+
+Ready-to-use configurations are available in the [axonops/](axonops/) directory:
+
+- `axonops-config.env` - Environment variables
+- `axonops-setup.sh` - Automated deployment script
+- `axonops-server-secret.yaml` - Server configuration example
+- Helm values files for each component
+
 ## Additional Resources
 
 - **AxonOps Documentation**: [https://docs.axonops.com](https://docs.axonops.com)
 - **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
-- **Strimzi Integration**: See [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md)
+- **Strimzi Kafka Integration**: [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md)
+- **K8ssandra Cassandra Integration**: [K8SSANDRA_DEPLOYMENT.md](K8SSANDRA_DEPLOYMENT.md)
 - **Strimzi Cloud Examples**: [strimzi/cloud/](strimzi/cloud/) - Ready-to-use Kubernetes manifests
+- **K8ssandra Examples**: [k8ssandra/](k8ssandra/) - Cassandra cluster examples
 - **Helm Charts**: AxonOps Helm repository
 - **Support**: Contact AxonOps support for production deployments
+
+---
+
+**Last Updated:** 2026-02-13

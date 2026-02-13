@@ -4,14 +4,35 @@ This guide covers deploying Apache Kafka using the Strimzi operator on Kubernete
 
 ## Quick Start
 
-### Basic Deployment
+### Option 1: Using Setup Script
 
 ```bash
 # Set the Kubernetes node hostname
 export STRIMZI_NODE_HOSTNAME='your-node-name'
 
-# Deploy Strimzi Kafka
+# Deploy Strimzi Kafka (includes operator installation)
+cd axonops/
 ./strimzi-setup.sh
+```
+
+### Option 2: Using Example Manifests
+
+Ready-to-use manifests are available in three configurations:
+
+| Directory | Use Case | Description |
+| --- | --- | --- |
+| [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, cloud storage |
+| [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
+| [strimzi/single/](strimzi/single/) | Development | Single dual-role node |
+
+```bash
+# Example: Deploy using cloud manifests
+cd strimzi/cloud/
+export $(grep -v '^#' strimzi-config.env | xargs)
+kubectl apply -f kafka-logging-cm.yaml
+kubectl apply -f kafka-node-pool-controller.yaml
+kubectl apply -f kafka-node-pool-brokers.yaml
+kubectl apply -f kafka-cluster.yaml
 ```
 
 ### With AxonOps Monitoring
@@ -28,6 +49,61 @@ export STRIMZI_NODE_HOSTNAME='your-node-name'
 ```
 
 That's it! Your Kafka cluster will be deployed and ready to use.
+
+---
+
+## Installing Strimzi Operator
+
+Before deploying Kafka clusters, you need to install the Strimzi operator. The setup script handles this automatically, but you can also install it manually.
+
+### Using Helm (Recommended)
+
+```bash
+# Add Strimzi Helm repository
+helm repo add strimzi https://strimzi.io/charts/
+helm repo update
+
+# Create namespace
+kubectl create namespace strimzi
+
+# Install the operator
+helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
+  -n strimzi \
+  --set watchNamespaces="{kafka}" \
+  --wait
+
+# Verify installation
+kubectl get pods -n strimzi
+```
+
+### Using YAML Manifests
+
+```bash
+# Install latest Strimzi operator
+kubectl create -f 'https://strimzi.io/install/latest?namespace=strimzi'
+
+# Wait for operator to be ready
+kubectl wait --for=condition=ready pod \
+  -l name=strimzi-cluster-operator \
+  -n strimzi \
+  --timeout=300s
+```
+
+### Verify Operator Installation
+
+```bash
+# Check operator pod
+kubectl get pods -n strimzi
+
+# Check CRDs are installed
+kubectl get crd | grep strimzi
+
+# Expected CRDs:
+# kafkas.kafka.strimzi.io
+# kafkanodepools.kafka.strimzi.io
+# kafkatopics.kafka.strimzi.io
+# kafkausers.kafka.strimzi.io
+```
 
 ---
 
@@ -669,12 +745,42 @@ Follow Strimzi upgrade procedures:
 2. Update Kafka version in cluster spec
 3. Strimzi handles rolling upgrade automatically
 
+## Example Manifests
+
+Ready-to-use Kubernetes manifests are available for different deployment scenarios:
+
+| Directory | Description | Use Case |
+| --- | --- | --- |
+| [strimzi/cloud/](strimzi/cloud/) | Production cloud deployment | 6 brokers, 3 controllers, cloud storage classes |
+| [strimzi/local-disk/](strimzi/local-disk/) | On-premises with local storage | Configurable with hostPath PVs |
+| [strimzi/single/](strimzi/single/) | Single-node development | Dual-role node for testing |
+
+Each directory contains:
+
+- `strimzi-config.env` - Configuration variables
+- `README.md` - Deployment instructions
+- YAML manifests for Kafka cluster components
+
+### Using envsubst with Examples
+
+```bash
+# Source configuration
+export $(grep -v '^#' strimzi-config.env | xargs)
+
+# Apply manifests with variable substitution
+envsubst < manifest.yaml | kubectl apply -f -
+```
+
 ## Additional Resources
 
 - **Strimzi Documentation**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
+- **Strimzi GitHub**: [https://github.com/strimzi/strimzi-kafka-operator](https://github.com/strimzi/strimzi-kafka-operator)
 - **Node Selector Guide**: [NODE_SELECTOR_GUIDE.md](NODE_SELECTOR_GUIDE.md)
 - **AxonOps Integration**: [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md)
 - **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
 - **Apache Kafka Documentation**: [https://kafka.apache.org/documentation/](https://kafka.apache.org/documentation/)
 - **KRaft Documentation**: [https://kafka.apache.org/documentation/#kraft](https://kafka.apache.org/documentation/#kraft)
-- **Cloud Example Manifests**: [strimzi/cloud/](strimzi/cloud/) - Ready-to-use Strimzi manifests for cloud deployments
+
+---
+
+**Last Updated:** 2026-02-13
