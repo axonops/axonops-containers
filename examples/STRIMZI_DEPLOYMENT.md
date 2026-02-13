@@ -23,10 +23,10 @@ kubectl create namespace kafka
 helm search repo strimzi --versions
 
 # Install the operator (specify version based on support matrix)
-# Example: Strimzi 0.45.0 supports Kafka 3.9.0
+# Example: Strimzi 0.50.0 supports Kafka 4.1.1
 helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
   -n strimzi \
-  --version 0.45.0 \
+  --version 0.50.0 \
   --set watchNamespaces="{kafka}" \
   --wait
 
@@ -49,6 +49,8 @@ Ready-to-use manifests are available in three configurations:
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
 | [strimzi/single/](strimzi/single/) | Development | Single dual-role node |
 
+> *IMPORTANT*: the installation below use the `envsubst` command which is available on most Linux distributions by installing the `gettext` package.
+
 ```bash
 # Example: Deploy using cloud manifests
 cd strimzi/cloud/
@@ -57,11 +59,10 @@ cd strimzi/cloud/
 vi strimzi-config.env
 
 # Source and apply
-export $(grep -v '^#' strimzi-config.env | xargs)
-kubectl apply -f kafka-logging-cm.yaml
-kubectl apply -f kafka-node-pool-controller.yaml
-kubectl apply -f kafka-node-pool-brokers.yaml
-kubectl apply -f kafka-cluster.yaml
+source strimzi-config.env
+for yaml in *.yaml; do
+  cat $yaml | envsubst | kubectl apply -n kafka -f -
+done
 ```
 
 #### Option B: Using Setup Script
