@@ -1,11 +1,6 @@
 name: AxonOps Helm Integration Tests
 
 on:
-  push:
-    branches:
-      - 'main'
-      - helm-integration-tests
-
   pull_request:
     branches:
       - 'main'
