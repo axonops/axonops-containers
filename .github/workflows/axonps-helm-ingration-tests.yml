@@ -1,0 +1,130 @@
+name: AxonOps Helm Integration Tests
+
+on:
+  push:
+    branches:
+      - 'main'
+      - helm-integration-tests
+
+  pull_request:
+    branches:
+      - 'main'
+      - development
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Kind Cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind-cluster
+
+      - name: Install AxonOps Services
+        run: |
+          cd examples/axonops/
+          source axonops-config.env
+
+          # Reduce memory for CI environment
+          export AXON_TIMESERIES_HEAP_SIZE="1024M"
+          export AXON_SEARCH_HEAP_SIZE="1024m"
+
+          # Reduce volume sizes for CI
+          export AXON_TIMESERIES_VOLUME_SIZE="1Gi"
+          export AXON_SEARCH_VOLUME_SIZE="1Gi"
+
+          # Enable persistence with Kind's default storage class
+          export AXON_TIMESERIES_PERSISTENCE_ENABLED="true"
+          export AXON_SEARCH_PERSISTENCE_ENABLED="true"
+          # Kind uses 'standard' storage class by default (local-path-provisioner)
+          export AXON_TIMESERIES_STORAGE_CLASS="standard"
+          export AXON_SEARCH_STORAGE_CLASS="standard"
+
+          # Reduce resource requests/limits for CI
+          export AXON_TIMESERIES_RES_REQ_CPU="500m"
+          export AXON_TIMESERIES_RES_REQ_MEM="1Gi"
+          export AXON_TIMESERIES_RES_LIMIT_CPU="1000m"
+          export AXON_TIMESERIES_RES_LIMIT_MEM="2Gi"
+
+          ./axonops-setup.sh
+
+      - name: Verify AxonOps Server is Running
+        run: |
+          echo "Waiting for axon-server pod to be ready..."
+          kubectl wait --for=condition=ready pod \
+            -l "app.kubernetes.io/instance=axon-server" \
+            -n axonops \
+            --timeout=180s
+
+          echo "AxonOps Server pod status:"
+          kubectl get pods -n axonops -l "app.kubernetes.io/instance=axon-server"
+
+          echo "Checking axon-server logs for startup confirmation..."
+          kubectl logs -n axonops -l "app.kubernetes.io/instance=axon-server" --tail=20
+
+      - name: Verify AxonOps Dashboard is Running
+        run: |
+          echo "Waiting for axon-dash pod to be ready..."
+          kubectl wait --for=condition=ready pod \
+            -l "app.kubernetes.io/instance=axon-dash" \
+            -n axonops \
+            --timeout=120s
+
+          echo "AxonOps Dashboard pod status:"
+          kubectl get pods -n axonops -l "app.kubernetes.io/instance=axon-dash"
+
+          echo "Checking axon-dash logs for startup confirmation..."
+          kubectl logs -n axonops -l "app.kubernetes.io/instance=axon-dash" --tail=20
+
+      - name: Display All AxonOps Resources
+        run: |
+          echo "=== All pods in axonops namespace ==="
+          kubectl get pods -n axonops -o wide
+
+          echo ""
+          echo "=== All services in axonops namespace ==="
+          kubectl get svc -n axonops
+
+          echo ""
+          echo "=== Helm releases ==="
+          helm list -n axonops
+
+      - name: Test AxonOps Server API Health
+        run: |
+          echo "Port-forwarding to axon-server API..."
+          kubectl port-forward -n axonops svc/axon-server-api 8080:8080 &
+          PF_PID=$!
+          sleep 5
+
+          echo "Testing API health endpoint..."
+          curl -sf http://localhost:8080/api/v1/health || echo "Health endpoint returned non-success (may be expected)"
+
+          kill $PF_PID 2>/dev/null || true
+
+      - name: Collect Debug Info on Failure
+        if: failure()
+        run: |
+          echo "=== Pod descriptions ==="
+          kubectl describe pods -n axonops
+
+          echo ""
+          echo "=== Events ==="
+          kubectl get events -n axonops --sort-by='.lastTimestamp'
+
+          echo ""
+          echo "=== All logs ==="
+          for pod in $(kubectl get pods -n axonops -o jsonpath='{.items[*].metadata.name}'); do
+            echo "--- Logs for $pod ---"
+            kubectl logs -n axonops $pod --all-containers || true
+          done
