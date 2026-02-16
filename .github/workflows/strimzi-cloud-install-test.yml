@@ -62,7 +62,6 @@ jobs:
           for yaml in examples/strimzi/single/*.yaml; do
             envsubst < "$yaml" | kubectl apply -f - -n $KAFKA_NAMESPACE
           done
-          kubectl get pods -n $KAFKA_NAMESPACE --show-labels
         env:
           KAFKA_CONTAINER_IMAGE: ghcr.io/axonops/strimzi/kafka:${{ env.STRIMZI_VERSION }}-${{ env.KAFKA_VERSION }}-${{ env.AXONOPS_AGENT_VERSION }}-${{ env.AXONOPS_JAVA_AGENT_VERSION }}
 
