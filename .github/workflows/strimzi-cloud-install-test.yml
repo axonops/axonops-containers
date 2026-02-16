@@ -63,7 +63,7 @@ jobs:
             envsubst < "$yaml" | kubectl apply -f - -n $KAFKA_NAMESPACE
           done
         env:
-          KAFKA_CONTAINER_IMAGE: ghcr.io/axonops/strimzi/kafka:${{ env.STRIMZI_VERSION }}-${{ env.KAFKA_VERSION }}-${{ env.AXONOPS_AGENT_VERSION }}-${{ env.AXONOPS_JAVA_AGENT_VERSION }}
+          KAFKA_CONTAINER_IMAGE: ghcr.io/axonops/strimzi/kafka:${{ env.STRIMZI_VERSION }}-${{ env.KAFKA_VERSION }}
 
       - name: Wait for Kafka Cluster to be Ready
         run: |
