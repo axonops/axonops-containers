@@ -43,3 +43,6 @@ spec:
         log4j.appender.FILE.layout: "org.apache.log4j.PatternLayout"
         log4j.appender.FILE.layout.ConversionPattern: "[%d] %p %m (%c)%n"
         log4j.logger.axonops.io.netty: "ERROR"
+  entityOperator:
+    topicOperator: {} # Enables the Topic Operator
+    userOperator: {}  # Optional: enables user management

@@ -1,0 +1,134 @@
+name: Helm Charts Test
+
+on:
+  push:
+    branches:
+      - development
+      - 'feat/**'
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'strimzi/**'
+      - '.github/workflows/strimzi-cloud-install-test.yml'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'strimzi/**'
+      - '.github/workflows/strimzi-cloud-install-test.yml'
+  workflow_dispatch:
+
+env:
+  STRIMZI_VERSION: "0.50.0"
+  KAFKA_VERSION: "4.1.1"
+  AXONOPS_AGENT_VERSION: "2.0.15"
+  AXONOPS_JAVA_AGENT_VERSION: "0.1.6"
+  KUBERNETES_VERSION: "v1.28.0"
+  STRIMZI_CLUSTER_NAME: github-cluster
+  KAFKA_NAMESPACE: kafka
+  AXON_AGENT_TLS_MODE: TLS
+  AXON_AGENT_CLUSTER_NAME: github-cluster
+  AXON_AGENT_ORG: ${{ secrets.AXON_AGENT_ORG }}
+  AXON_AGENT_KEY: ${{ secrets.AXON_AGENT_KEY }}
+  AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Kind Cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind-cluster
+          node_image: kindest/node:${{ env.KUBERNETES_VERSION }}
+
+      - name: Install Strimzi Helm Chart
+        run: |
+          helm repo add strimzi https://strimzi.io/charts/
+          helm repo update
+          helm install strimzi strimzi/strimzi-kafka-operator --wait \
+            --namespace strimzi --create-namespace \
+            --set watchAnyNamespace=true \
+            --version ${{ env.STRIMZI_VERSION }}
+
+      - name: Create Kafka Cluster using single node example
+        run: |
+          kubectl create namespace $KAFKA_NAMESPACE
+          for yaml in examples/strimzi/single/*.yaml; do
+            envsubst < "$yaml" | kubectl apply -f - -n $KAFKA_NAMESPACE
+          done
+        env:
+          KAFKA_CONTAINER_IMAGE: ghcr.io/axonops/strimzi/kafka:${{ env.STRIMZI_VERSION }}-${{ env.KAFKA_VERSION }}
+
+      - name: Wait for Kafka Cluster to be Ready
+        run: |
+          echo "Waiting for pods to be created..."
+          for i in $(seq 1 60); do
+            POD_COUNT=$(kubectl get pods -n $KAFKA_NAMESPACE -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME --no-headers 2>/dev/null | wc -l)
+            if [ "$POD_COUNT" -gt 0 ]; then
+              echo "Found $POD_COUNT pod(s), waiting for readiness..."
+              break
+            fi
+            echo "No pods yet, retrying in 5s... ($i/60)"
+            sleep 5
+          done
+          if [ "$POD_COUNT" -eq 0 ]; then
+            echo "Timed out waiting for pods to be created"
+            kubectl get all -n $KAFKA_NAMESPACE
+            exit 1
+          fi
+          kubectl wait --namespace $KAFKA_NAMESPACE \
+            --for=condition=ready pod \
+            -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME \
+            --timeout=300s
+
+      - name: Create a topic
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaTopic
+          metadata:
+            name: test-topic
+            namespace: $KAFKA_NAMESPACE
+            labels:
+              strimzi.io/cluster: $STRIMZI_CLUSTER_NAME
+          spec:
+            partitions: 3
+            replicas: 1
+            topicName: test-topic
+          EOF
+
+      - name: Verify Topic Creation
+        run: |
+          kubectl wait --namespace $KAFKA_NAMESPACE \
+            --for=condition=ready kafkatopic/test-topic \
+            --timeout=60s
+          kubectl get kafkatopic/test-topic -n $KAFKA_NAMESPACE -o yaml
+
+      - name: Confirm it registered against AxonOps SaaS
+        run: |
+          COUNT=$(curl -H "Authorization: Bearer ${AXON_API_TOKEN}" \
+            https://dash.axonopsdev.com/${AXON_AGENT_ORG}/api/v1/nodes/${AXON_AGENT_ORG}/kafka/${AXON_CLUSTER_NAME} \
+            | jq '.[]' | grep host_id | wc -l)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "Kafka cluster registered with AxonOps SaaS successfully"
+          else
+            echo "Failed to confirm Kafka cluster registration with AxonOps SaaS"
+            exit 1
+          fi
+          curl -H "Authorization: Bearer ${AXON_API_TOKEN}" \
+            "https://dash.axonopsdev.com/dashboard/api/v1/${AXON_AGENT_ORG}/kafka/${AXON_CLUSTER_NAME}/topics/configs?topicsNames=connect-offsets"
+        env:
+          AXON_API_TOKEN: ${{ secrets.AXON_API_TOKEN }}
+          AXON_CLUSTER_NAME: ${{ env.AXON_AGENT_CLUSTER_NAME }}
+
+      - name: Cleanup
+        run: |
+          helm uninstall strimzi -n strimzi
+          kubectl delete namespace $KAFKA_NAMESPACE
+          kind delete cluster --name kind-cluster
