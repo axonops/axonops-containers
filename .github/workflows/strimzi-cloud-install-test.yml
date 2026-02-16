@@ -49,13 +49,6 @@ jobs:
             --set watchAnyNamespace=true \
             --version ${{ env.STRIMZI_VERSION }}
 
-      - name: Wait for Strimzi Operator to be Ready
-        run: |
-          kubectl wait --namespace strimzi \
-            --for=condition=ready pod \
-            -l app.kubernetes.io/name=strimzi-kafka-operator \
-            --timeout=300s
-
       - name: Create Kafka Cluster using single node example
         run: |
           kubectl create namespace $KAFKA_NAMESPACE
