@@ -102,3 +102,33 @@ jobs:
             replicas: 1
             topicName: test-topic
           EOF
+
+      - name: Verify Topic Creation
+        run: |
+          kubectl wait --namespace $KAFKA_NAMESPACE \
+            --for=condition=ready kafkatopic/test-topic \
+            --timeout=60s
+          kubectl get kafkatopic/test-topic -n $KAFKA_NAMESPACE -o yaml
+
+      - name: Confirm it registered against AxonOps SaaS
+        run: |
+          COUNT=$(curl -H "Authorization: Bearer ${AXON_API_TOKEN}" \
+            https://dash.axonopsdev.com/${AXON_AGENT_ORG}/api/v1/nodes/${AXON_AGENT_ORG}/kafka/${AXON_CLUSTER_NAME} \
+            | jq '.[]' | grep host_id | wc -l)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "Kafka cluster registered with AxonOps SaaS successfully"
+          else
+            echo "Failed to confirm Kafka cluster registration with AxonOps SaaS"
+            exit 1
+          fi
+          curl -H "Authorization: Bearer ${AXON_API_TOKEN}" \
+            "https://dash.axonopsdev.com/dashboard/api/v1/${AXON_AGENT_ORG}/kafka/${AXON_CLUSTER_NAME}/topics/configs?topicsNames=connect-offsets"
+        env:
+          AXON_API_TOKEN: ${{ secrets.AXON_API_TOKEN }}
+          AXON_CLUSTER_NAME: ${{ env.AXON_AGENT_CLUSTER_NAME }}
+
+      - name: Cleanup
+        run: |
+          helm uninstall strimzi -n strimzi
+          kubectl delete namespace $KAFKA_NAMESPACE
+          kind delete cluster --name kind-cluster
