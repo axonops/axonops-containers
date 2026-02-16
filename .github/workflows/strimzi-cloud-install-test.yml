@@ -25,6 +25,13 @@ env:
   AXONOPS_AGENT_VERSION: "2.0.15"
   AXONOPS_JAVA_AGENT_VERSION: "0.1.6"
   KUBERNETES_VERSION: "v1.28.0"
+  STRIMZI_CLUSTER_NAME: github-cluster
+  KAFKA_NAMESPACE: kafka
+  AXON_AGENT_TLS_MODE: TLS
+  AXON_AGENT_CLUSTER_NAME: github-cluster
+  AXON_AGENT_ORG: ${{ secrets.AXON_AGENT_ORG }}
+  AXON_AGENT_KEY: ${{ secrets.AXON_AGENT_KEY }}
+  AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
 
 jobs:
   test:
@@ -55,16 +62,9 @@ jobs:
           for yaml in examples/strimzi/single/*.yaml; do
             envsubst < "$yaml" | kubectl apply -f - -n $KAFKA_NAMESPACE
           done
+          kubectl get pods -n $KAFKA_NAMESPACE --show-labels
         env:
-          STRIMZI_CLUSTER_NAME: github-cluster
-          KAFKA_VERSION: ${{ env.KAFKA_VERSION }}
-          KAFKA_NAMESPACE: kafka
           KAFKA_CONTAINER_IMAGE: ghcr.io/axonops/strimzi/kafka:${{ env.STRIMZI_VERSION }}-${{ env.KAFKA_VERSION }}-${{ env.AXONOPS_AGENT_VERSION }}-${{ env.AXONOPS_JAVA_AGENT_VERSION }}
-          AXON_AGENT_TLS_MODE: TLS
-          AXON_AGENT_CLUSTER_NAME: github-cluster
-          AXON_AGENT_ORG: ${{ secrets.AXON_AGENT_ORG }}
-          AXON_AGENT_KEY: ${{ secrets.AXON_AGENT_KEY }}
-          AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
 
       - name: Wait for Kafka Cluster to be Ready
         run: |
@@ -72,6 +72,4 @@ jobs:
             --for=condition=ready pod \
             -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME \
             --timeout=300s
-        env:
-          STRIMZI_CLUSTER_NAME: github-cluster
-          KAFKA_NAMESPACE: kafka
+
