@@ -87,3 +87,19 @@ jobs:
             --for=condition=ready pod \
             -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME \
             --timeout=300s
+
+      - name: Create a topic
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaTopic
+          metadata:
+            name: test-topic
+            namespace: $KAFKA_NAMESPACE
+            labels:
+              strimzi.io/cluster: $STRIMZI_CLUSTER_NAME
+          spec:
+            partitions: 3
+            replicas: 1
+            topicName: test-topic
+          EOF

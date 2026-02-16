@@ -44,3 +44,6 @@ spec:
         configMapKeyRef:
           name: kafka-logging-cm
           key: log4j.properties
+  entityOperator:
+    topicOperator: {} # Enables the Topic Operator
+    userOperator: {}  # Optional: enables user management
