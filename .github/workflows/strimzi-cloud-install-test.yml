@@ -68,8 +68,22 @@ jobs:
 
       - name: Wait for Kafka Cluster to be Ready
         run: |
+          echo "Waiting for pods to be created..."
+          for i in $(seq 1 60); do
+            POD_COUNT=$(kubectl get pods -n $KAFKA_NAMESPACE -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME --no-headers 2>/dev/null | wc -l)
+            if [ "$POD_COUNT" -gt 0 ]; then
+              echo "Found $POD_COUNT pod(s), waiting for readiness..."
+              break
+            fi
+            echo "No pods yet, retrying in 5s... ($i/60)"
+            sleep 5
+          done
+          if [ "$POD_COUNT" -eq 0 ]; then
+            echo "Timed out waiting for pods to be created"
+            kubectl get all -n $KAFKA_NAMESPACE
+            exit 1
+          fi
           kubectl wait --namespace $KAFKA_NAMESPACE \
             --for=condition=ready pod \
             -l strimzi.io/cluster=$STRIMZI_CLUSTER_NAME \
             --timeout=300s
-
