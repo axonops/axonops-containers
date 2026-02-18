@@ -106,9 +106,9 @@ RUN set -euo pipefail && \
     cd /tmp && grep "${SR_TARBALL}" SHA256SUMS | sha256sum -c - && \
     echo "Extracting to /opt/axonops-schema-registry..." && \
     mkdir -p /opt/axonops-schema-registry/bin && \
-    tar -xzf "/tmp/${SR_TARBALL}" -C /opt/axonops-schema-registry/bin --strip-components=0 && \
-    chmod +x /opt/axonops-schema-registry/bin/axonops-schema-registry && \
-    ln -sf /opt/axonops-schema-registry/bin/axonops-schema-registry /usr/local/bin/axonops-schema-registry && \
+    tar -xzf "/tmp/${SR_TARBALL}" -C /opt/axonops-schema-registry/bin --strip-components=1 && \
+    chmod +x /opt/axonops-schema-registry/bin/schema-registry && \
+    ln -sf /opt/axonops-schema-registry/bin/schema-registry /usr/local/bin/axonops-schema-registry && \
     rm -f "/tmp/${SR_TARBALL}" /tmp/SHA256SUMS && \
     echo "axonops-schema-registry ${SR_VERSION} installed successfully"
 
