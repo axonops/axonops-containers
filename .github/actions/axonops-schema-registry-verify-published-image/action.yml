@@ -1,0 +1,95 @@
+name: 'AxonOps Schema Registry Verify Published Image'
+description: 'Pulls published image from GHCR, verifies signature, and runs smoke tests'
+inputs:
+  image:
+    description: 'Full image reference (e.g., ghcr.io/axonops/axonops-schema-registry:0.2.0-1)'
+    required: true
+  image_digest:
+    description: 'Image digest for signature verification (e.g., sha256:...)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Pull published image from GHCR
+      shell: bash
+      run: |
+        echo "Pulling published image: ${{ inputs.image }}"
+        docker pull ${{ inputs.image }}
+        echo "Image pulled from GHCR"
+
+    - name: Verify Cosign signature
+      shell: bash
+      run: |
+        echo "Installing Cosign..."
+        curl -sLO https://github.com/sigstore/cosign/releases/download/v2.2.0/cosign-linux-amd64
+        chmod +x cosign-linux-amd64
+        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+
+        echo "Verifying signature for: ${{ inputs.image }}@${{ inputs.image_digest }}"
+        cosign verify ${{ inputs.image }}@${{ inputs.image_digest }} \
+          --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \
+          --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+
+        echo "Signature verified"
+
+    - name: Start published container
+      shell: bash
+      run: |
+        echo "Starting container from published image..."
+        docker run -d --name published-sr-test \
+          -p 8181:8081 \
+          ${{ inputs.image }}
+
+        echo "Container started"
+        sleep 5
+
+    - name: Wait for Schema Registry to be ready
+      shell: bash
+      run: |
+        echo "Waiting for Schema Registry startup..."
+        for i in {1..60}; do
+          if docker exec published-sr-test /usr/local/bin/healthcheck.sh readiness > /dev/null 2>&1; then
+            echo "Schema Registry ready (attempt $i)"
+            break
+          fi
+          if [ $((i % 6)) -eq 0 ]; then
+            echo "  Still waiting... attempt $i/60"
+          fi
+          sleep 5
+        done
+
+        if ! docker exec published-sr-test /usr/local/bin/healthcheck.sh readiness; then
+          echo "ERROR: Readiness check failed"
+          docker logs published-sr-test | tail -50
+          exit 1
+        fi
+
+    - name: Run smoke tests on published image
+      shell: bash
+      run: |
+        echo "Running smoke tests..."
+
+        # Test 1: API health endpoint
+        echo "Test 1: Health endpoint"
+        HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8181/ 2>/dev/null || echo "000")
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "Health endpoint returned HTTP 200"
+        else
+          echo "ERROR: Health endpoint returned HTTP $HTTP_CODE"
+          exit 1
+        fi
+
+        # Test 2: Build info exists
+        echo "Test 2: Build info"
+        docker exec published-sr-test cat /etc/axonops/build-info.txt
+        echo "Build info verified"
+
+        echo "All smoke tests passed"
+
+    - name: Cleanup published container
+      if: always()
+      shell: bash
+      run: |
+        docker stop published-sr-test || true
+        docker rm published-sr-test || true

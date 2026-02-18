@@ -1,0 +1,46 @@
+name: 'AxonOps Schema Registry Collect Logs'
+description: 'Collects container logs for debugging'
+inputs:
+  container_name:
+    description: 'Name of the container to collect logs from'
+    required: true
+    default: 'sr-test'
+  artifact_name:
+    description: 'Name for the log artifact'
+    required: false
+    default: 'schema-registry-logs'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create log directory
+      shell: bash
+      run: |
+        mkdir -p /tmp/schema-registry-logs
+
+    - name: Collect Docker container logs
+      shell: bash
+      run: |
+        echo "Collecting Docker stdout/stderr..."
+        docker logs ${{ inputs.container_name }} > /tmp/schema-registry-logs/docker-stdout.log 2>&1 || echo "Docker logs not available" > /tmp/schema-registry-logs/docker-stdout.log
+
+    - name: Collect build info
+      shell: bash
+      run: |
+        echo "Collecting build info..."
+        docker exec ${{ inputs.container_name }} cat /etc/axonops/build-info.txt > /tmp/schema-registry-logs/build-info.txt 2>/dev/null || echo "build-info.txt not found" > /tmp/schema-registry-logs/build-info.txt
+
+    - name: Collect configuration
+      shell: bash
+      run: |
+        echo "Collecting configuration..."
+        docker exec ${{ inputs.container_name }} cat /etc/axonops-schema-registry/config.yaml > /tmp/schema-registry-logs/config.yaml 2>/dev/null || echo "config.yaml not found" > /tmp/schema-registry-logs/config.yaml
+
+    - name: Collect process info
+      shell: bash
+      run: |
+        echo "Collecting process information..."
+        docker exec ${{ inputs.container_name }} ps aux > /tmp/schema-registry-logs/ps-aux.txt 2>/dev/null || echo "ps aux failed" > /tmp/schema-registry-logs/ps-aux.txt
+
+        echo "All logs collected in /tmp/schema-registry-logs/"
+        ls -lh /tmp/schema-registry-logs/

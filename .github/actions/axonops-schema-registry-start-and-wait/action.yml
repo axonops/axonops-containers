@@ -1,0 +1,62 @@
+name: 'AxonOps Schema Registry Start and Wait'
+description: 'Starts Schema Registry container and waits for it to be ready'
+inputs:
+  container_name:
+    description: 'Name for the container'
+    required: true
+    default: 'sr-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start container
+      shell: bash
+      run: |
+        echo "Starting Schema Registry container: ${{ inputs.container_name }}"
+
+        docker run -d --name ${{ inputs.container_name }} \
+          --hostname ${{ inputs.container_name }} \
+          -p 8081:8081 \
+          axonops-schema-registry:test
+
+        echo "Container started, waiting for Schema Registry..."
+
+    - name: Wait for Schema Registry using healthcheck script
+      shell: bash
+      run: |
+        echo "Waiting for Schema Registry using healthcheck.sh (startup probe)..."
+
+        for i in {1..60}; do
+          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup > /dev/null 2>&1; then
+            echo "Schema Registry startup complete (attempt $i, ~$((i*5)) seconds)"
+            docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup
+            break
+          fi
+          if [ $((i % 6)) -eq 0 ]; then
+            echo "Still waiting... attempt $i/60 (~$((i*5)) seconds elapsed)"
+          fi
+          sleep 5
+        done
+
+        # Final verification
+        if ! docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup; then
+          echo "ERROR: Startup healthcheck failed after 5 minutes"
+          docker logs ${{ inputs.container_name }} | tail -50
+          exit 1
+        fi
+
+        echo "Startup probe passed"
+
+    - name: Verify readiness using healthcheck script
+      shell: bash
+      run: |
+        echo "Verifying Schema Registry readiness..."
+
+        if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness; then
+          echo "Readiness probe passed"
+          echo "Container ready - all healthchecks passed"
+        else
+          echo "ERROR: Readiness check failed"
+          docker logs ${{ inputs.container_name }} | tail -20
+          exit 1
+        fi

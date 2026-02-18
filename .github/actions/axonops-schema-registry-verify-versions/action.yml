@@ -1,0 +1,66 @@
+name: 'AxonOps Schema Registry Verify Versions'
+description: 'Verifies Schema Registry version and build number in running container'
+inputs:
+  sr_version:
+    description: 'Expected Schema Registry version (e.g., 0.2.0)'
+    required: true
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'sr-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify SR version in build-info
+      shell: bash
+      run: |
+        echo "=== Verifying Schema Registry version ==="
+        echo "Expected: ${{ inputs.sr_version }}"
+
+        BUILD_INFO=$(docker exec ${{ inputs.container_name }} cat /etc/axonops/build-info.txt 2>/dev/null || echo "")
+
+        if [ -z "$BUILD_INFO" ]; then
+          echo "ERROR: build-info.txt not found"
+          exit 1
+        fi
+
+        echo "Build info contents:"
+        echo "$BUILD_INFO"
+        echo ""
+
+        if echo "$BUILD_INFO" | grep -q "SR_VERSION=\"${{ inputs.sr_version }}\""; then
+          echo "SR version ${{ inputs.sr_version }} verified in build-info.txt"
+        else
+          echo "ERROR: SR version ${{ inputs.sr_version }} not found in build-info.txt"
+          exit 1
+        fi
+
+    - name: Verify SR version in startup banner
+      shell: bash
+      run: |
+        echo "=== Verifying version in startup banner ==="
+
+        BANNER=$(docker logs ${{ inputs.container_name }} 2>&1 | head -30)
+
+        if echo "$BANNER" | grep -q "Schema Registry.*${{ inputs.sr_version }}"; then
+          echo "SR version found in startup banner"
+        else
+          echo "WARNING: SR version not explicitly found in banner title"
+          echo "$BANNER" | head -5
+        fi
+
+    - name: Verify binary is executable
+      shell: bash
+      run: |
+        echo "=== Verifying binary ==="
+
+        BINARY_VERSION=$(docker exec ${{ inputs.container_name }} axonops-schema-registry --version 2>&1 || echo "NOT FOUND")
+        echo "Binary version output: ${BINARY_VERSION}"
+
+        if echo "$BINARY_VERSION" | grep -q "NOT FOUND"; then
+          echo "ERROR: axonops-schema-registry binary not found or not executable"
+          exit 1
+        fi
+
+        echo "Binary is installed and working"
