@@ -5,6 +5,14 @@ inputs:
     description: 'Name for the container'
     required: true
     default: 'sr-test'
+  image:
+    description: 'Docker image to run'
+    required: false
+    default: 'axonops-schema-registry:test'
+  port:
+    description: 'Host port to map to container port 8081'
+    required: false
+    default: '8081'
 
 runs:
   using: 'composite'
@@ -13,11 +21,12 @@ runs:
       shell: bash
       run: |
         echo "Starting Schema Registry container: ${{ inputs.container_name }}"
+        echo "Image: ${{ inputs.image }}"
 
         docker run -d --name ${{ inputs.container_name }} \
           --hostname ${{ inputs.container_name }} \
-          -p 8081:8081 \
-          axonops-schema-registry:test
+          -p ${{ inputs.port }}:8081 \
+          ${{ inputs.image }}
 
         echo "Container started, waiting for Schema Registry..."
 
