@@ -34,7 +34,7 @@ env:
   AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
 
 jobs:
-  test:
+  test-strimzi-installation:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -112,7 +112,7 @@ jobs:
 
       - name: Confirm it registered against AxonOps SaaS
         run: |
-          COUNT=$(curl -H "Authorization: Bearer ${AXON_API_TOKEN}" \
+          COUNT=$(curl -s -H "Authorization: Bearer ${AXON_API_TOKEN}" \
             https://dash.axonopsdev.com/${AXON_AGENT_ORG}/api/v1/nodes/${AXON_AGENT_ORG}/kafka/${AXON_CLUSTER_NAME} \
             | jq '.[]' | grep host_id | wc -l)
           if [ "$COUNT" -gt 0 ]; then
@@ -121,8 +121,6 @@ jobs:
             echo "Failed to confirm Kafka cluster registration with AxonOps SaaS"
             exit 1
           fi
-          curl -H "Authorization: Bearer ${AXON_API_TOKEN}" \
-            "https://dash.axonopsdev.com/dashboard/api/v1/${AXON_AGENT_ORG}/kafka/${AXON_CLUSTER_NAME}/topics/configs?topicsNames=connect-offsets"
         env:
           AXON_API_TOKEN: ${{ secrets.AXON_API_TOKEN }}
           AXON_CLUSTER_NAME: ${{ env.AXON_AGENT_CLUSTER_NAME }}
