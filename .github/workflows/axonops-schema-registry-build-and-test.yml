@@ -1,0 +1,166 @@
+name: AxonOps Schema Registry Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'axonops-schema-registry/**'
+      - '!axonops-schema-registry/**/*.md'
+      - '.github/workflows/axonops-schema-registry-*.yml'
+      - '.github/actions/axonops-schema-registry-*/**'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'axonops-schema-registry/**'
+      - '!axonops-schema-registry/**/*.md'
+      - '.github/workflows/axonops-schema-registry-*.yml'
+      - '.github/actions/axonops-schema-registry-*/**'
+  workflow_call:
+    inputs:
+      sr_version:
+        description: 'Schema Registry version to test'
+        required: false
+        type: string
+        default: '0.2.0'
+  workflow_dispatch:
+    inputs:
+      sr_version:
+        description: 'Schema Registry version to test'
+        required: false
+        type: string
+        default: '0.2.0'
+
+env:
+  REGISTRY: ghcr.io
+  SR_VERSION: 0.2.0
+
+jobs:
+  axonops-schema-registry-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract SR version from Dockerfile
+        id: version
+        run: |
+          set -euo pipefail
+          SR_VER=$(grep "^ARG SR_VERSION=" axonops-schema-registry/0.2.0/Dockerfile | cut -d'=' -f2)
+          echo "sr_version=${SR_VER}" >> $GITHUB_OUTPUT
+          echo "SR version from Dockerfile: ${SR_VER}"
+
+      - name: Build image for testing
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops-schema-registry/0.2.0
+          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          load: true
+          tags: axonops-schema-registry:test
+          build-args: |
+            SR_VERSION=${{ steps.version.outputs.sr_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=test
+            BUILD_NUMBER=1
+            GIT_TAG=test-build
+            GITHUB_ACTOR=${{ github.actor }}
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=axonops-schema-registry:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container and wait for services
+        uses: ./.github/actions/axonops-schema-registry-start-and-wait
+        with:
+          container_name: sr-test
+
+      - name: Verify startup banner
+        uses: ./.github/actions/axonops-schema-registry-verify-startup-banner
+        with:
+          container_name: sr-test
+          expected_image: axonops-schema-registry:test
+          is_production: 'false'
+
+      - name: Verify no startup errors
+        uses: ./.github/actions/axonops-schema-registry-verify-no-startup-errors
+        with:
+          container_name: sr-test
+
+      - name: Verify versions
+        uses: ./.github/actions/axonops-schema-registry-verify-versions
+        with:
+          sr_version: ${{ steps.version.outputs.sr_version }}
+          container_name: sr-test
+
+      - name: Test healthcheck script
+        uses: ./.github/actions/axonops-schema-registry-test-healthcheck
+        with:
+          container_name: sr-test
+
+      - name: Test Schema Registry API
+        uses: ./.github/actions/axonops-schema-registry-test-api
+        with:
+          container_name: sr-test
+
+      - name: Run Trivy container security scan (strict)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: 'axonops-schema-registry:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'axonops-schema-registry/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: 'axonops-schema-registry:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'axonops-schema-registry/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Collect logs
+        if: always()
+        uses: ./.github/actions/axonops-schema-registry-collect-logs
+        with:
+          container_name: sr-test
+          artifact_name: schema-registry-logs
+
+      - name: Upload logs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-registry-logs
+          path: /tmp/schema-registry-logs/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop sr-test || true
+          docker rm -f sr-test || true

@@ -1,0 +1,299 @@
+name: AxonOps Schema Registry Publish Signed to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      main_git_tag:
+        description: 'Git tag on main branch to build (e.g., axonops-schema-registry-0.2.0-1)'
+        required: true
+        type: string
+      sr_version:
+        description: 'Schema Registry version (e.g., 0.2.0)'
+        required: true
+        type: string
+        default: '0.2.0'
+      build_number:
+        description: 'Build number (e.g., 1)'
+        required: true
+        type: string
+        default: '1'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: axonops/axonops-schema-registry
+
+jobs:
+  axonops-schema-registry-validate:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Verify tag is on main branch
+        run: |
+          set -euo pipefail
+          echo "Checking if tag ${{ inputs.main_git_tag }} is on main branch..."
+          TAG_COMMIT=$(git rev-parse ${{ inputs.main_git_tag }})
+          echo "Tag commit: $TAG_COMMIT"
+          git fetch origin main
+          if git merge-base --is-ancestor $TAG_COMMIT origin/main; then
+            echo "Tag ${{ inputs.main_git_tag }} is on main branch"
+          else
+            echo "ERROR: Tag ${{ inputs.main_git_tag }} is not on main branch"
+            exit 1
+          fi
+
+      - name: Check if container version already exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.sr_version }}-${{ inputs.build_number }}"
+          echo "Checking for tag: $TAG in axonops-schema-registry"
+          if gh api --paginate "/orgs/axonops/packages/container/axonops-schema-registry/versions" \
+            --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .metadata.container.tags[]" 2>/dev/null | grep -q "$TAG"; then
+            echo "ERROR: Container version $TAG already exists"
+            exit 1
+          fi
+          echo "Container version $TAG is available"
+
+  axonops-schema-registry-test:
+    needs: axonops-schema-registry-validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops-schema-registry/0.2.0
+          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-schema-registry:test
+          build-args: |
+            SR_VERSION=${{ inputs.sr_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.sr_version }}-${{ inputs.build_number }}
+            BUILD_NUMBER=${{ inputs.build_number }}
+            GIT_TAG=${{ inputs.main_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container and wait for services
+        uses: ./.github/actions/axonops-schema-registry-start-and-wait
+        with:
+          container_name: sr-test
+
+      - name: Verify startup banner
+        uses: ./.github/actions/axonops-schema-registry-verify-startup-banner
+        with:
+          container_name: sr-test
+          expected_image: ghcr.io/axonops/axonops-schema-registry
+          is_production: 'true'
+
+      - name: Verify no startup errors
+        uses: ./.github/actions/axonops-schema-registry-verify-no-startup-errors
+        with:
+          container_name: sr-test
+
+      - name: Verify versions
+        uses: ./.github/actions/axonops-schema-registry-verify-versions
+        with:
+          sr_version: ${{ inputs.sr_version }}
+          container_name: sr-test
+
+      - name: Test healthcheck script
+        uses: ./.github/actions/axonops-schema-registry-test-healthcheck
+        with:
+          container_name: sr-test
+
+      - name: Test Schema Registry API
+        uses: ./.github/actions/axonops-schema-registry-test-api
+        with:
+          container_name: sr-test
+
+      - name: Run Trivy container security scan
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: 'axonops-schema-registry:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'axonops-schema-registry/.trivyignore'
+
+      - name: Run Trivy scan and upload to GitHub Security
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: 'axonops-schema-registry:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          trivyignores: 'axonops-schema-registry/.trivyignore'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker logs sr-test || true
+          docker stop sr-test || true
+          docker rm sr-test || true
+
+  axonops-schema-registry-create-release:
+    needs: axonops-schema-registry-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ inputs.main_git_tag }}',
+              name: `axonops-schema-registry-${{ inputs.sr_version }}-${{ inputs.build_number }}`,
+              body: `AxonOps Schema Registry release ${{ inputs.sr_version }}-${{ inputs.build_number }}\n\nImage: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}\nSchema Registry: ${{ inputs.sr_version }}\nBuild: ${{ inputs.build_number }}\nSigned with Cosign`,
+              draft: false,
+              prerelease: false
+            });
+            console.log(`Release created: ${release.data.html_url}`);
+            return release.data.id;
+
+  axonops-schema-registry-build-push-sign:
+    needs: [axonops-schema-registry-test, axonops-schema-registry-create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (multi-arch)
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops-schema-registry/0.2.0
+          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            SR_VERSION=${{ inputs.sr_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.sr_version }}-${{ inputs.build_number }}
+            BUILD_NUMBER=${{ inputs.build_number }}
+            GIT_TAG=${{ inputs.main_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Sign container image
+        uses: ./.github/actions/axonops-schema-registry-sign-container
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Re-push tags after signing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops-schema-registry/0.2.0
+          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            SR_VERSION=${{ inputs.sr_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.sr_version }}-${{ inputs.build_number }}
+            BUILD_NUMBER=${{ inputs.build_number }}
+            GIT_TAG=${{ inputs.main_git_tag }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=true
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+          cache-from: type=gha
+
+      - name: Production image published and signed
+        run: |
+          echo "Production image published and signed to GHCR"
+          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
+
+  axonops-schema-registry-verify-published:
+    needs: axonops-schema-registry-build-push-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify published image
+        uses: ./.github/actions/axonops-schema-registry-verify-published-image
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+          image_digest: ${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}
