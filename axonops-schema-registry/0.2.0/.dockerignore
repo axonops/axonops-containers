@@ -1,0 +1,17 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Build artifacts
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~

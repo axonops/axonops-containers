@@ -1,0 +1,5 @@
+# AxonOps Schema Registry Trivy Ignore List
+# CVEs that are known, accepted, or have no fix available
+# Review periodically and remove when fixed upstream
+#
+# Format: CVE-YYYY-NNNNN  # Component: reason for ignoring
