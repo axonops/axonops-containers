@@ -38,8 +38,8 @@ runs:
         echo "$BANNER" | grep -q "Schema Registry:" || { echo "ERROR: SR version missing"; exit 1; }
         echo "SR version present"
 
-        echo "$BANNER" | grep -q "Build Number:" || { echo "ERROR: Build number missing"; exit 1; }
-        echo "Build number present"
+        echo "$BANNER" | grep -q "Container Version:" || { echo "ERROR: Container version missing"; exit 1; }
+        echo "Container version present"
 
         echo "$BANNER" | grep -q "Supply Chain Security:" || { echo "ERROR: Supply chain section missing"; exit 1; }
         echo "Supply chain section present"
