@@ -1,0 +1,68 @@
+name: 'AxonOps Schema Registry Calculate Version'
+description: 'Calculates the next container version by querying GHCR for existing tags'
+inputs:
+  sr_version:
+    description: 'Schema Registry application version (e.g., 0.2.0)'
+    required: true
+  registry_path:
+    description: 'GHCR package path (e.g., axonops-schema-registry or development%2Faxonops-schema-registry)'
+    required: false
+    default: 'axonops-schema-registry'
+
+outputs:
+  container_version:
+    description: 'Next container version (e.g., 0.0.2)'
+    value: ${{ steps.calc.outputs.container_version }}
+  full_version:
+    description: 'Combined version: sr_version-container_version (e.g., 0.2.0-0.0.2)'
+    value: ${{ steps.calc.outputs.full_version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Calculate next container version
+      id: calc
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        SR_VERSION="${{ inputs.sr_version }}"
+        REGISTRY_PATH="${{ inputs.registry_path }}"
+
+        echo "=== Calculating Next Container Version ==="
+        echo "SR Version: ${SR_VERSION}"
+        echo "Registry path: ${REGISTRY_PATH}"
+
+        # Query GHCR for existing tags matching this SR version
+        EXISTING=$(gh api --paginate "/orgs/axonops/packages/container/${REGISTRY_PATH}/versions" \
+          --jq ".[] | .metadata.container.tags[]" 2>/dev/null \
+          | grep "^${SR_VERSION}-[0-9]" | sort -V || true)
+
+        if [ -z "$EXISTING" ]; then
+          echo "No existing tags found for SR version ${SR_VERSION}"
+          CONTAINER_VERSION="0.0.1"
+        else
+          echo "Existing tags for ${SR_VERSION}:"
+          echo "$EXISTING"
+
+          LATEST_TAG=$(echo "$EXISTING" | tail -1)
+          echo "Latest tag: ${LATEST_TAG}"
+
+          # Extract the container version part (e.g., "0.0.1" from "0.2.0-0.0.1")
+          CURRENT_CV="${LATEST_TAG#${SR_VERSION}-}"
+          echo "Current container version: ${CURRENT_CV}"
+
+          # Parse and increment patch version
+          IFS='.' read -r MAJ MIN PAT <<< "$CURRENT_CV"
+          CONTAINER_VERSION="${MAJ}.${MIN}.$((PAT + 1))"
+        fi
+
+        FULL_VERSION="${SR_VERSION}-${CONTAINER_VERSION}"
+
+        echo "Next container version: ${CONTAINER_VERSION}"
+        echo "Full version: ${FULL_VERSION}"
+
+        echo "container_version=${CONTAINER_VERSION}" >> $GITHUB_OUTPUT
+        echo "full_version=${FULL_VERSION}" >> $GITHUB_OUTPUT
