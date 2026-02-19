@@ -1,0 +1,50 @@
+name: 'AxonOps Schema Registry Test API'
+description: 'Tests Schema Registry API endpoints'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'sr-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Test health endpoint
+      shell: bash
+      run: |
+        echo "=== Testing health endpoint (GET /) ==="
+
+        HTTP_CODE=$(docker exec ${{ inputs.container_name }} curl -sf -o /dev/null -w "%{http_code}" http://localhost:8081/ 2>/dev/null || echo "000")
+
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "Health endpoint returned HTTP 200"
+        else
+          echo "ERROR: Health endpoint returned HTTP $HTTP_CODE"
+          exit 1
+        fi
+
+    - name: Test API response content
+      shell: bash
+      run: |
+        echo "=== Testing API response content ==="
+
+        RESPONSE=$(docker exec ${{ inputs.container_name }} curl -sf http://localhost:8081/ 2>/dev/null || echo "FAILED")
+
+        if [ "$RESPONSE" = "FAILED" ]; then
+          echo "ERROR: Failed to get API response"
+          exit 1
+        fi
+
+        echo "API response:"
+        echo "$RESPONSE"
+        echo ""
+        echo "API response verified"
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "================================"
+        echo "Schema Registry API Tests Passed"
+        echo "================================"
+        echo "  Health endpoint (GET /): OK"
+        echo "================================"

@@ -1,0 +1,20 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Security scan config
+.trivyignore
+
+# Build artifacts
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
