@@ -1,18 +1,21 @@
-# AxonOps Strimzi Kafka Cloud Examples
+# AxonOps Strimzi Kafka On-Premises Example
 
-This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring on cloud Kubernetes environments.
+This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring, connecting to an **on-premises AxonOps Server** (self-hosted).
 
 ## Overview
 
 - **Kafka Version**: 4.1.1
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 6 replicas, 20Gi storage
-- **Controllers**: 3 replicas, 5Gi storage
+- **Controllers**: 3 replicas, 10Gi storage
 - **Replication Factor**: 3 (production-ready)
+- **AxonOps Connection**: On-premises AxonOps Server (no TLS, no API key required)
 
 ## Prerequisites
 
 - A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
+- An on-premises AxonOps Server accessible from the Kubernetes cluster (e.g. `axon-server-agent.axonops.svc.cluster.local`)
+- `envsubst` available (part of `gettext` package)
 
 ## Configuration
 
@@ -31,27 +34,36 @@ source strimzi-config.env
 | Variable | Description | Default |
 | --- | --- | --- |
 | `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
-| `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `axonops-kafka` |
+| `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `example` |
 | `KAFKA_VERSION` | Kafka version | `4.1.1` |
 | `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
 | `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
 | `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
 | `STRIMZI_BROKER_STORAGE_CLASS` | Storage class for brokers | `""` (default) |
 | `STRIMZI_CONTROLLER_REPLICAS` | Number of controller replicas | `3` |
-| `STRIMZI_CONTROLLER_STORAGE_SIZE` | Storage size per controller | `5Gi` |
+| `STRIMZI_CONTROLLER_STORAGE_SIZE` | Storage size per controller | `10Gi` |
 | `STRIMZI_CONTROLLER_STORAGE_CLASS` | Storage class for controllers | `""` (default) |
-| `KAFKA_CONNECT_REPLICAS` | Number of Kafka Connect replicas | `2` |
-| `KAFKA_CONNECT_IMAGE` | Kafka Connect container image | See .env file |
-| `AXON_AGENT_CLUSTER_NAME` | AxonOps cluster name | `kafka` |
+| `AXON_AGENT_CLUSTER_NAME` | AxonOps cluster name | `example` |
 | `AXON_AGENT_ORG` | AxonOps organisation | `example` |
-| `AXON_AGENT_KEY` | AxonOps agent key | `CHANGEME` |
-| `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
-| `AXON_AGENT_TLS_MODE` | TLS mode for AxonOps connection | `TLS` |
+| `AXON_AGENT_KEY` | AxonOps agent key | `not-used` |
+| `AXON_AGENT_SERVER_HOST` | AxonOps Server hostname | `axon-server-agent.axonops.svc.cluster.local` |
+| `AXON_AGENT_SERVER_PORT` | AxonOps Server agent port | `1888` |
+| `AXON_AGENT_TLS_MODE` | TLS mode for AxonOps connection | `disabled` |
+
+### On-Premises vs Cloud differences
+
+| Setting | On-Premises | Cloud (SaaS) |
+| --- | --- | --- |
+| `AXON_AGENT_SERVER_HOST` | Your AxonOps Server address (e.g. K8s service DNS) | `agents.axonops.cloud` |
+| `AXON_AGENT_SERVER_PORT` | `1888` | `443` |
+| `AXON_AGENT_TLS_MODE` | `disabled` (or `TLS` if configured) | `TLS` |
+| `AXON_AGENT_KEY` | `not-used` | Your AxonOps API key |
 
 ## Manifests
 
 | File | Description |
 | --- | --- |
+| `strimzi-config.env` | Environment variables for all manifests |
 | `axonops-config-secret.yaml` | Secret with AxonOps agent connection details |
 | `kafka-logging-cm.yaml` | ConfigMap with log4j configuration for Kafka |
 | `kafka-node-pool-controller.yaml` | KafkaNodePool for KRaft controllers |
@@ -113,39 +125,33 @@ envsubst < kafka-connect.yaml | kubectl apply -f -
 
 - The storage class variables (`STRIMZI_BROKER_STORAGE_CLASS`, `STRIMZI_CONTROLLER_STORAGE_CLASS`) should be set to match your environment's available StorageClass.
 - The container images reference AxonOps custom Strimzi images with the agent embedded.
-- Topology spread constraints are configured using `topology.kubernetes.io/zone`. Adjust the `topologyKey` for your infrastructure (see below).
+- Topology spread constraints are configured using `topology.kubernetes.io/zone`. For on-premises clusters without zone labels, you may want to change the `topologyKey` to `kubernetes.io/hostname` to spread pods across nodes instead.
+- For Kafka Connect, you need to define `KAFKA_CONNECT_IMAGE` and `KAFKA_CONNECT_REPLICAS` in your environment before deploying.
 
 ## Topology Key Configuration
 
-The `topologyKey` in `kafka-node-pool-controller.yaml` and `kafka-cluster.yaml` controls how pods are distributed across failure domains. The correct value depends on your Kubernetes environment.
+The `topologyKey` in `kafka-cluster.yaml` controls how pods are distributed across failure domains. For on-premises environments, the correct value depends on your cluster's node labels.
 
 To check which topology labels are available on your nodes:
 
 ```bash
-kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{.metadata.labels}{"\n\n"}{end}' | grep -E "topology|zone|region"
+kubectl get nodes --show-labels | grep -E "topology|zone|hostname"
 ```
 
-Or view all labels for a specific node:
+### Common topology keys for on-premises
 
-```bash
-kubectl describe node <node-name> | grep -A 20 "Labels:"
-```
-
-### Common topology keys by provider
-
-| Provider | Zone key | Region key |
+| Scenario | Topology Key | Use Case |
 | --- | --- | --- |
-| Standard Kubernetes | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
-| AWS EKS | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
-| Google GKE | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
-| Azure AKS | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
+| Multi-zone on-prem | `topology.kubernetes.io/zone` | Nodes labelled by rack/zone |
+| Single-zone on-prem | `kubernetes.io/hostname` | Spread across individual nodes |
+| Custom labels | Your custom label key | Custom rack/failure-domain labels |
 
-### Cloud provider documentation
+If your on-premises nodes don't have zone labels, update the `topologyKey` in `kafka-cluster.yaml`:
 
-- [AWS EKS - Spread workloads across zones](https://docs.aws.amazon.com/prescriptive-guidance/latest/ha-resiliency-amazon-eks-apps/spread-workloads.html)
-- [Google GKE - Node labels](https://cloud.google.com/kubernetes-engine/docs/concepts/node-labels)
-- [Azure AKS - Availability zones](https://learn.microsoft.com/en-us/azure/aks/availability-zones-overview)
-- [Kubernetes - Well-known labels](https://kubernetes.io/docs/reference/labels-annotations-taints/#topologykubernetesiozone)
+```yaml
+rack:
+  topologyKey: kubernetes.io/hostname
+```
 
 ## Related Documentation
 
