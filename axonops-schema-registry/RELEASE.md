@@ -39,6 +39,12 @@ This document describes how to create and publish AxonOps Schema Registry contai
   - [Tag Not on Main Branch](#tag-not-on-main-branch)
   - [Image Push Fails](#image-push-fails)
   - [Signature Verification Fails](#signature-verification-fails)
+- [Automated Releases (Cross-Repo)](#automated-releases-cross-repo)
+  - [How It Works](#how-it-works)
+  - [Pipeline Flow](#pipeline-flow)
+  - [Auto-Version Calculation](#auto-version-calculation)
+  - [Triggering from axonops/axonops-schema-registry](#triggering-from-axonopsaxonops-schema-registry)
+  - [Manual Trigger](#manual-trigger)
 - [Re-releasing](#re-releasing)
 - [Checklist](#checklist)
 - [Release Cadence](#release-cadence)
@@ -415,6 +421,76 @@ The Dockerfile is version-agnostic — it downloads the correct SR version at bu
    ```
 
 **Result:** Tags `0.2.0-0.0.2`, `0.2.0` (now points to container version 0.0.2), `latest` published. Tag `0.2.0-0.0.1` remains unchanged.
+
+## Automated Releases (Cross-Repo)
+
+The `axonops-schema-registry-release.yml` workflow enables automated releases triggered from the upstream `axonops/axonops-schema-registry` project.
+
+### How It Works
+
+1. When a new version is released in `axonops/axonops-schema-registry`, it sends a `repository_dispatch` event to this repository
+2. The workflow automatically calculates the next container version by querying GHCR for existing tags
+3. Runs the full pipeline: **test → publish dev → verify dev → publish prod → verify prod**
+
+### Pipeline Flow
+
+```
+setup (calculate version)
+  → test (build + full test suite + Trivy scan)
+    → publish-dev (multi-arch build, push to dev registry, sign)
+      → verify-dev (pull, verify signature, smoke test)
+        → publish-prod (multi-arch build, push to prod registry, sign, create release)
+          → verify-prod (pull, verify signature, smoke test)
+```
+
+### Auto-Version Calculation
+
+The container version (`0.0.1`, `0.0.2`, etc.) is automatically calculated:
+- Queries GHCR for existing tags matching `{SR_VERSION}-*`
+- If no tags exist for this SR version, starts at `0.0.1`
+- Otherwise, increments the patch number of the latest container version
+
+Example: If `0.2.0-0.0.3` is the latest tag for SR `0.2.0`, the next build produces `0.2.0-0.0.4`.
+
+### Triggering from `axonops/axonops-schema-registry`
+
+#### Prerequisites
+
+The upstream repository needs a Personal Access Token (PAT) with `repo` scope stored as a secret (e.g., `CONTAINERS_REPO_PAT`).
+
+#### Using `gh` CLI
+
+```yaml
+- name: Trigger container build
+  run: |
+    gh api repos/axonops/axonops-containers/dispatches \
+      --method POST \
+      -f event_type=schema-registry-release \
+      -f 'client_payload={"sr_version": "${{ github.event.release.tag_name }}"}'
+  env:
+    GH_TOKEN: ${{ secrets.CONTAINERS_REPO_PAT }}
+```
+
+#### Using `peter-evans/repository-dispatch`
+
+```yaml
+- name: Trigger container build
+  uses: peter-evans/repository-dispatch@v3
+  with:
+    token: ${{ secrets.CONTAINERS_REPO_PAT }}
+    repository: axonops/axonops-containers
+    event-type: schema-registry-release
+    client-payload: '{"sr_version": "${{ github.event.release.tag_name }}"}'
+```
+
+### Manual Trigger
+
+The workflow can also be triggered manually via `workflow_dispatch`:
+
+```bash
+gh workflow run axonops-schema-registry-release.yml \
+  -f sr_version=0.2.1
+```
 
 ## Troubleshooting
 

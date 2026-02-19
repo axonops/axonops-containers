@@ -8,6 +8,7 @@ This document covers development practices, workflows, testing, and contribution
   - [Build and Test](#build-and-test-axonops-schema-registry-build-and-testyml)
   - [Production Publish](#production-publish-axonops-schema-registry-publish-signedyml)
   - [Development Publish](#development-publish-axonops-schema-registry-development-publish-signedyml)
+  - [Automated Release](#automated-release-axonops-schema-registry-releaseyml)
 - [Composite Actions](#composite-actions)
   - [Build and Test Actions](#build-and-test-actions)
   - [Action Naming Convention](#action-naming-convention)
@@ -101,6 +102,27 @@ See [RELEASE.md](./RELEASE.md) for complete instructions.
 
 ---
 
+### Automated Release (`axonops-schema-registry-release.yml`)
+**Purpose:** Full automated release pipeline triggered from upstream `axonops/axonops-schema-registry`
+
+**Triggers:**
+- `repository_dispatch` (type: `schema-registry-release`) — cross-repo from upstream
+- `workflow_dispatch` — manual trigger with `sr_version` input
+
+**Auto-Version:** Container version is calculated automatically by querying GHCR for existing tags. No manual version input needed.
+
+**Pipeline:**
+1. **Setup** — Determine SR version, calculate next container version
+2. **Test** — Build and run full test suite
+3. **Publish Dev** — Multi-arch build, push to dev registry, sign
+4. **Verify Dev** — Pull, verify signature, smoke test
+5. **Publish Prod** — Multi-arch build, push to prod registry, sign, create GitHub Release
+6. **Verify Prod** — Pull, verify signature, smoke test
+
+See [RELEASE.md](./RELEASE.md#automated-releases-cross-repo) for upstream integration details.
+
+---
+
 ## Composite Actions
 
 AxonOps Schema Registry uses composite actions to avoid duplication and enable reusability.
@@ -124,6 +146,7 @@ Located in `.github/actions/axonops-schema-registry-*/`
 **Publishing:**
 - `sign-container` - Cosign keyless signing with OIDC
 - `verify-published-image` - Pull from GHCR, verify signature, smoke tests
+- `calculate-version` - Auto-calculate next container version from GHCR tags
 
 ### Action Naming Convention
 - Prefix with `axonops-schema-registry-` for component identification
@@ -374,7 +397,8 @@ axonops-schema-registry/
 ├── workflows/
 │   ├── axonops-schema-registry-build-and-test.yml
 │   ├── axonops-schema-registry-publish-signed.yml
-│   └── axonops-schema-registry-development-publish-signed.yml
+│   ├── axonops-schema-registry-development-publish-signed.yml
+│   └── axonops-schema-registry-release.yml
 └── actions/
     └── axonops-schema-registry-*/  # Composite actions
 ```

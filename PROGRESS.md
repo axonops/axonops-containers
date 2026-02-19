@@ -1,7 +1,7 @@
 # Progress
 
 ## Current Task
-Add axonops-schema-registry as a new component to axonops-containers
+Add axonops-schema-registry as a new component to axonops-containers, with cross-repo automated release pipeline
 
 ## Status
 - [x] Step 1: Research — Read all mandatory docs, study existing components — DONE
@@ -16,6 +16,10 @@ Add axonops-schema-registry as a new component to axonops-containers
 - [x] Step 10: Fix CI issues (tarball extraction, Trivy CVEs, SIGPIPE) — DONE
 - [x] Step 11: Refactor versioning format to {SR_VERSION}-{CONTAINER_VERSION} (e.g., 0.2.0-0.0.1) — DONE
 - [x] Step 12: Rename directory from 0.2.0/ to 0.2/ — DONE
+- [x] Step 13: Move Dockerfile to version-agnostic location (remove 0.2/ subdirectory) — DONE
+- [x] Step 14: Create auto-version calculation composite action — DONE
+- [x] Step 15: Create cross-repo release workflow (repository_dispatch + workflow_dispatch) — DONE
+- [x] Step 16: Update documentation for automated releases — DONE
 
 ## Decisions Made
 - Use tarball download (not RPM) for multi-arch support in Dockerfile
@@ -25,7 +29,9 @@ Add axonops-schema-registry as a new component to axonops-containers
 - Multi-dimensional versioning: `{SR_VERSION}-{CONTAINER_VERSION}` (e.g., 0.2.0-0.0.1)
 - Git tag format: `axonops-schema-registry-{SR_VERSION}-{CONTAINER_VERSION}`
 - Memory storage backend as default config
-- Directory structure: `axonops-schema-registry/0.2/` (major.minor only, no patch directories)
+- Dockerfile is version-agnostic (at component root, not in version subdirectory)
+- Container version auto-calculated by querying GHCR for existing tags
+- Cross-repo release triggered via `repository_dispatch` event
 
 ## Issues Encountered
 - Tarball binary named `schema-registry` not `axonops-schema-registry` — fixed with symlink
@@ -34,19 +40,20 @@ Add axonops-schema-registry as a new component to axonops-containers
 - SIGPIPE exit 141 on arm64 QEMU — fixed with `|| true` in pipe
 
 ## Files Modified
-- `axonops-schema-registry/0.2/Dockerfile` — Container build definition
-- `axonops-schema-registry/0.2/.dockerignore` — Build context exclusions
-- `axonops-schema-registry/0.2/config/config.yaml` — Default configuration
-- `axonops-schema-registry/0.2/scripts/entrypoint.sh` — Container entrypoint with startup banner
-- `axonops-schema-registry/0.2/scripts/healthcheck.sh` — Three-mode healthcheck
+- `axonops-schema-registry/Dockerfile` — Container build definition (version-agnostic)
+- `axonops-schema-registry/.dockerignore` — Build context exclusions
+- `axonops-schema-registry/config/config.yaml` — Default configuration
+- `axonops-schema-registry/scripts/entrypoint.sh` — Container entrypoint with startup banner
+- `axonops-schema-registry/scripts/healthcheck.sh` — Three-mode healthcheck
 - `axonops-schema-registry/.trivyignore` — Security scan exceptions
 - `axonops-schema-registry/README.md` — User-facing documentation
 - `axonops-schema-registry/DEVELOPMENT.md` — Developer documentation
-- `axonops-schema-registry/RELEASE.md` — Release process (two scenarios)
+- `axonops-schema-registry/RELEASE.md` — Release process (manual + automated)
 - `.github/workflows/axonops-schema-registry-build-and-test.yml` — CI test workflow (amd64 + arm64)
 - `.github/workflows/axonops-schema-registry-publish-signed.yml` — Production publish workflow
 - `.github/workflows/axonops-schema-registry-development-publish-signed.yml` — Dev publish workflow
-- `.github/actions/axonops-schema-registry-*/action.yml` — 9 composite actions
+- `.github/workflows/axonops-schema-registry-release.yml` — Cross-repo automated release pipeline
+- `.github/actions/axonops-schema-registry-*/action.yml` — 10 composite actions (including calculate-version)
 - `CLAUDE.md` — Added schema-registry to all relevant sections
 - `README.md` — Added to Components, Acknowledgements, release docs
 - `DEVELOPMENT.md` — Added to component catalog
