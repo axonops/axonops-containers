@@ -78,7 +78,12 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+          driver-opts: |
+            image=moby/buildkit:latest
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
@@ -141,7 +146,7 @@ jobs:
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
-          vuln-type: 'os,library'
+          scanners: 'vuln'
           severity: 'CRITICAL,HIGH'
           trivyignores: 'axonops-schema-registry/.trivyignore'
 
@@ -152,7 +157,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           ignore-unfixed: true
-          vuln-type: 'os,library'
+          scanners: 'vuln'
           trivyignores: 'axonops-schema-registry/.trivyignore'
 
       - name: Upload Trivy scan results to GitHub Security tab
@@ -215,7 +220,12 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+          driver-opts: |
+            image=moby/buildkit:latest
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -295,5 +305,4 @@ jobs:
       - name: Verify published image
         uses: ./.github/actions/axonops-schema-registry-verify-published-image
         with:
-          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}
-          image_digest: ${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}

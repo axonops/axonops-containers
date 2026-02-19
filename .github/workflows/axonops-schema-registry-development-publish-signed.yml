@@ -70,19 +70,20 @@ jobs:
         with:
           ref: ${{ needs.setup.outputs.ref }}
 
-      - name: Set up QEMU for multi-arch builds
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          cleanup: true
+          install: true
+          driver-opts: |
+            image=moby/buildkit:latest
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
           context: ./axonops-schema-registry/0.2
           file: ./axonops-schema-registry/0.2/Dockerfile
+          # Don't specify platforms for test builds - build only for the current runner's platform
+          # This allows 'load: true' to work properly
           load: true
           push: false
           tags: axonops-schema-registry:test
@@ -132,7 +133,7 @@ jobs:
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
-          vuln-type: 'os,library'
+          scanners: 'vuln'
           severity: 'CRITICAL,HIGH'
           trivyignores: 'axonops-schema-registry/.trivyignore'
 
@@ -143,7 +144,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           ignore-unfixed: true
-          vuln-type: 'os,library'
+          scanners: 'vuln'
           trivyignores: 'axonops-schema-registry/.trivyignore'
 
       - name: Upload Trivy scan results to GitHub Security tab
@@ -178,7 +179,13 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        id: buildx2
         uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+          platforms: linux/amd64,linux/arm64
+          driver-opts: |
+            image=moby/buildkit:latest
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -247,7 +254,7 @@ jobs:
           echo "Digest: ${{ steps.build.outputs.digest }}"
 
   axonops-schema-registry-verify-published:
-    needs: [setup, axonops-schema-registry-build-push-sign]
+    needs: axonops-schema-registry-build-push-sign
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -258,5 +265,4 @@ jobs:
       - name: Verify published image
         uses: ./.github/actions/axonops-schema-registry-verify-published-image
         with:
-          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.version }}
-          image_digest: ${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}
