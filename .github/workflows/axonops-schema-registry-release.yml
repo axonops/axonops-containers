@@ -253,10 +253,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Verify published dev image
+      - name: Set up QEMU for arm64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Verify published dev image (amd64)
         uses: ./.github/actions/axonops-schema-registry-verify-published-image
         with:
           image: ghcr.io/${{ env.DEV_IMAGE_NAME }}@${{ needs.publish-dev.outputs.digest }}
+          platform: linux/amd64
+          container_name: verify-dev-amd64
+          port: '8181'
+          verify_signature: 'true'
+
+      - name: Verify published dev image (arm64)
+        uses: ./.github/actions/axonops-schema-registry-verify-published-image
+        with:
+          image: ghcr.io/${{ env.DEV_IMAGE_NAME }}@${{ needs.publish-dev.outputs.digest }}
+          platform: linux/arm64
+          container_name: verify-dev-arm64
+          port: '8182'
+          verify_signature: 'false'
 
   publish-prod:
     needs: [setup, verify-dev]
@@ -371,7 +389,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Verify published prod image
+      - name: Set up QEMU for arm64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Verify published prod image (amd64)
         uses: ./.github/actions/axonops-schema-registry-verify-published-image
         with:
           image: ghcr.io/${{ env.PROD_IMAGE_NAME }}@${{ needs.publish-prod.outputs.digest }}
+          platform: linux/amd64
+          container_name: verify-prod-amd64
+          port: '8181'
+          verify_signature: 'true'
+
+      - name: Verify published prod image (arm64)
+        uses: ./.github/actions/axonops-schema-registry-verify-published-image
+        with:
+          image: ghcr.io/${{ env.PROD_IMAGE_NAME }}@${{ needs.publish-prod.outputs.digest }}
+          platform: linux/arm64
+          container_name: verify-prod-arm64
+          port: '8182'
+          verify_signature: 'false'
