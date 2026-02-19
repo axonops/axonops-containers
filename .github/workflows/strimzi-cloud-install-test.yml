@@ -66,6 +66,7 @@ jobs:
         run: |
           kubectl create namespace $KAFKA_NAMESPACE
           for yaml in examples/strimzi/cloud/*.yaml; do
+            [[ "$yaml" == *kafka-connect* ]] && continue
             envsubst < "$yaml" | kubectl apply -f - -n $KAFKA_NAMESPACE
           done
         env:
