@@ -1,0 +1,205 @@
+name: 'AxonOps Schema Registry Smoke Test'
+description: 'Full smoke test suite: start container, verify startup, healthcheck, API, architecture, non-root. Shared between build-and-test and post-publish verification.'
+inputs:
+  image:
+    description: 'Docker image to test (e.g., axonops-schema-registry:test or ghcr.io/axonops/...@sha256:...)'
+    required: true
+  container_name:
+    description: 'Unique container name for this test run'
+    required: false
+    default: 'sr-smoke-test'
+  port:
+    description: 'Host port to map to container port 8081'
+    required: false
+    default: '8081'
+  platform:
+    description: 'Platform to run (e.g., linux/amd64, linux/arm64). Leave empty for default.'
+    required: false
+    default: ''
+  sr_version:
+    description: 'Expected Schema Registry version for verification (e.g., 0.2.0)'
+    required: false
+    default: ''
+  expected_arch:
+    description: 'Expected architecture (x86_64 or aarch64). Leave empty to skip check.'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start container
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Starting container: ${{ inputs.container_name }} ==="
+        echo "Image: ${{ inputs.image }}"
+        echo "Platform: ${{ inputs.platform || 'default' }}"
+
+        PLATFORM_FLAG=""
+        if [[ -n "${{ inputs.platform }}" ]]; then
+          PLATFORM_FLAG="--platform ${{ inputs.platform }}"
+        fi
+
+        docker run -d --name ${{ inputs.container_name }} \
+          ${PLATFORM_FLAG} \
+          --hostname ${{ inputs.container_name }} \
+          -p ${{ inputs.port }}:8081 \
+          ${{ inputs.image }}
+
+        echo "Container started"
+
+    - name: Wait for readiness
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Waiting for Schema Registry (healthcheck.sh startup)..."
+
+        for i in {1..60}; do
+          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup > /dev/null 2>&1; then
+            echo "Startup complete (attempt $i, ~$((i*5))s)"
+            break
+          fi
+          if [ $((i % 6)) -eq 0 ]; then
+            echo "Still waiting... attempt $i/60 (~$((i*5))s)"
+          fi
+          sleep 5
+        done
+
+        if ! docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup; then
+          echo "ERROR: Startup healthcheck failed after 5 minutes"
+          docker logs ${{ inputs.container_name }} | tail -50
+          exit 1
+        fi
+
+    - name: Verify no startup errors
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Checking for startup errors ==="
+
+        docker logs ${{ inputs.container_name }} > /tmp/${{ inputs.container_name }}-logs.log 2>&1
+
+        if grep -iE "^(ERROR|FATAL)" /tmp/${{ inputs.container_name }}-logs.log | grep -v "healthcheck"; then
+          echo "ERROR: Found ERROR/FATAL messages in logs"
+          exit 1
+        fi
+        echo "No ERROR/FATAL messages"
+
+        if grep -iE "panic|runtime error|segfault" /tmp/${{ inputs.container_name }}-logs.log; then
+          echo "ERROR: Found panic or crash messages"
+          exit 1
+        fi
+        echo "No panic/crash messages"
+
+        if docker exec ${{ inputs.container_name }} pgrep -f axonops-schema-registry > /dev/null 2>&1; then
+          echo "Schema Registry process is running"
+        else
+          echo "ERROR: Schema Registry process not found"
+          docker logs ${{ inputs.container_name }} | tail -20
+          exit 1
+        fi
+
+    - name: Verify versions
+      if: inputs.sr_version != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Verifying Schema Registry version: ${{ inputs.sr_version }} ==="
+
+        BUILD_INFO=$(docker exec ${{ inputs.container_name }} cat /etc/axonops/build-info.txt 2>/dev/null || echo "")
+        if [ -z "$BUILD_INFO" ]; then
+          echo "ERROR: build-info.txt not found"
+          exit 1
+        fi
+
+        if echo "$BUILD_INFO" | grep -q "SR_VERSION=\"${{ inputs.sr_version }}\""; then
+          echo "SR version ${{ inputs.sr_version }} verified"
+        else
+          echo "ERROR: SR version ${{ inputs.sr_version }} not found in build-info.txt"
+          echo "$BUILD_INFO"
+          exit 1
+        fi
+
+        BINARY_VERSION=$(docker exec ${{ inputs.container_name }} axonops-schema-registry --version 2>&1 || echo "NOT FOUND")
+        echo "Binary version: ${BINARY_VERSION}"
+        if echo "$BINARY_VERSION" | grep -q "NOT FOUND"; then
+          echo "ERROR: binary not executable"
+          exit 1
+        fi
+
+    - name: Test healthcheck probes
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Testing healthcheck probes ==="
+
+        echo "--- Startup ---"
+        docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup
+        echo "--- Liveness ---"
+        docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh liveness
+        echo "--- Readiness ---"
+        docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness
+
+        echo "All healthcheck probes passed"
+
+    - name: Test Schema Registry API
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Testing Schema Registry API ==="
+
+        HTTP_CODE=$(docker exec ${{ inputs.container_name }} curl -sf -o /dev/null -w "%{http_code}" http://localhost:8081/ 2>/dev/null || echo "000")
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "ERROR: Health endpoint returned HTTP $HTTP_CODE"
+          docker logs ${{ inputs.container_name }} | tail -20
+          exit 1
+        fi
+        echo "Health endpoint: HTTP 200"
+
+        RESPONSE=$(docker exec ${{ inputs.container_name }} curl -sf http://localhost:8081/ 2>/dev/null || echo "FAILED")
+        if [ "$RESPONSE" = "FAILED" ]; then
+          echo "ERROR: Failed to get API response"
+          exit 1
+        fi
+        echo "API response: $RESPONSE"
+
+    - name: Verify non-root execution
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Verifying non-root execution ==="
+
+        PROC_USER=$(docker exec ${{ inputs.container_name }} ps -o user= -p 1 2>/dev/null || docker exec ${{ inputs.container_name }} ps aux | grep schema-registry | grep -v grep | awk '{print $1}')
+        echo "Process running as: ${PROC_USER}"
+
+        if [ "${PROC_USER}" = "root" ]; then
+          echo "ERROR: Running as root"
+          exit 1
+        fi
+        echo "Non-root verified"
+
+    - name: Verify architecture
+      if: inputs.expected_arch != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Verifying architecture ==="
+
+        ARCH=$(docker exec ${{ inputs.container_name }} uname -m)
+        echo "Container architecture: ${ARCH}"
+
+        if [ "${ARCH}" != "${{ inputs.expected_arch }}" ]; then
+          echo "ERROR: Expected ${{ inputs.expected_arch }}, got ${ARCH}"
+          exit 1
+        fi
+        echo "Architecture verified: ${ARCH}"
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: |
+        echo "=== Cleanup: ${{ inputs.container_name }} ==="
+        docker logs ${{ inputs.container_name }} 2>&1 | tail -20 || true
+        docker stop ${{ inputs.container_name }} || true
+        docker rm -f ${{ inputs.container_name }} || true

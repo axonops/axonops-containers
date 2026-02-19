@@ -88,70 +88,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Start container and wait for services
-        uses: ./.github/actions/axonops-schema-registry-start-and-wait
+      - name: Run smoke tests (amd64)
+        uses: ./.github/actions/axonops-schema-registry-smoke-test
         with:
+          image: axonops-schema-registry:test
           container_name: sr-test
-
-      - name: Verify startup banner
-        uses: ./.github/actions/axonops-schema-registry-verify-startup-banner
-        with:
-          container_name: sr-test
-          expected_image: axonops-schema-registry:test
-          is_production: 'false'
-
-      - name: Verify no startup errors
-        uses: ./.github/actions/axonops-schema-registry-verify-no-startup-errors
-        with:
-          container_name: sr-test
-
-      - name: Verify versions
-        uses: ./.github/actions/axonops-schema-registry-verify-versions
-        with:
+          port: '8081'
           sr_version: ${{ steps.version.outputs.sr_version }}
-          container_name: sr-test
-
-      - name: Test healthcheck script
-        uses: ./.github/actions/axonops-schema-registry-test-healthcheck
-        with:
-          container_name: sr-test
-
-      - name: Test Schema Registry API
-        uses: ./.github/actions/axonops-schema-registry-test-api
-        with:
-          container_name: sr-test
-
-      - name: Verify process runs as non-root
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== Verifying non-root execution ==="
-
-          PROC_USER=$(docker exec sr-test ps -o user= -p 1 2>/dev/null || docker exec sr-test ps aux | grep schema-registry | grep -v grep | awk '{print $1}')
-          echo "Process running as user: ${PROC_USER}"
-
-          if [ "${PROC_USER}" = "root" ]; then
-            echo "ERROR: Schema Registry is running as root"
-            exit 1
-          fi
-
-          echo "Non-root execution verified (user: ${PROC_USER})"
-
-      - name: Verify container architecture (amd64)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== Verifying container architecture ==="
-
-          ARCH=$(docker exec sr-test uname -m)
-          echo "Container architecture: ${ARCH}"
-
-          if [ "${ARCH}" != "x86_64" ]; then
-            echo "ERROR: Expected x86_64 (amd64), got ${ARCH}"
-            exit 1
-          fi
-
-          echo "Architecture verified: ${ARCH} (amd64)"
+          expected_arch: x86_64
 
       - name: Run Trivy container security scan (strict)
         uses: aquasecurity/trivy-action@0.33.1
@@ -179,29 +123,7 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Collect logs
-        if: always()
-        uses: ./.github/actions/axonops-schema-registry-collect-logs
-        with:
-          container_name: sr-test
-          artifact_name: schema-registry-logs-amd64
-
-      - name: Upload logs as artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: schema-registry-logs-amd64
-          path: /tmp/schema-registry-logs/
-          retention-days: 7
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker stop sr-test || true
-          docker rm -f sr-test || true
-
   # ARM64 smoke test via QEMU emulation
-  # Builds and starts the container on arm64 to verify cross-architecture compatibility
   axonops-schema-registry-arm64-smoke-test:
     runs-on: ubuntu-latest
     permissions:
@@ -251,83 +173,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Start arm64 container and wait for services
-        uses: ./.github/actions/axonops-schema-registry-start-and-wait
+      - name: Run smoke tests (arm64)
+        uses: ./.github/actions/axonops-schema-registry-smoke-test
         with:
-          container_name: sr-test-arm64
           image: axonops-schema-registry:test-arm64
+          container_name: sr-test-arm64
           port: '8082'
-
-      - name: Verify container architecture (arm64)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== Verifying container architecture ==="
-
-          ARCH=$(docker exec sr-test-arm64 uname -m)
-          echo "Container architecture: ${ARCH}"
-
-          if [ "${ARCH}" != "aarch64" ]; then
-            echo "ERROR: Expected aarch64 (arm64), got ${ARCH}"
-            exit 1
-          fi
-
-          echo "Architecture verified: ${ARCH} (arm64)"
-
-      - name: Verify no startup errors (arm64)
-        uses: ./.github/actions/axonops-schema-registry-verify-no-startup-errors
-        with:
-          container_name: sr-test-arm64
-
-      - name: Verify versions (arm64)
-        uses: ./.github/actions/axonops-schema-registry-verify-versions
-        with:
+          platform: linux/arm64
           sr_version: ${{ steps.version.outputs.sr_version }}
-          container_name: sr-test-arm64
-
-      - name: Test healthcheck script (arm64)
-        uses: ./.github/actions/axonops-schema-registry-test-healthcheck
-        with:
-          container_name: sr-test-arm64
-
-      - name: Test Schema Registry API (arm64)
-        uses: ./.github/actions/axonops-schema-registry-test-api
-        with:
-          container_name: sr-test-arm64
-
-      - name: Verify process runs as non-root (arm64)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== Verifying non-root execution (arm64) ==="
-
-          PROC_USER=$(docker exec sr-test-arm64 ps -o user= -p 1 2>/dev/null || docker exec sr-test-arm64 ps aux | grep schema-registry | grep -v grep | awk '{print $1}')
-          echo "Process running as user: ${PROC_USER}"
-
-          if [ "${PROC_USER}" = "root" ]; then
-            echo "ERROR: Schema Registry is running as root"
-            exit 1
-          fi
-
-          echo "Non-root execution verified (user: ${PROC_USER})"
-
-      - name: Collect logs (arm64)
-        if: always()
-        uses: ./.github/actions/axonops-schema-registry-collect-logs
-        with:
-          container_name: sr-test-arm64
-          artifact_name: schema-registry-logs-arm64
-
-      - name: Upload logs as artifacts (arm64)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: schema-registry-logs-arm64
-          path: /tmp/schema-registry-logs/
-          retention-days: 7
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker stop sr-test-arm64 || true
-          docker rm -f sr-test-arm64 || true
+          expected_arch: aarch64

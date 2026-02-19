@@ -1,5 +1,5 @@
 name: 'AxonOps Schema Registry Verify Published Image'
-description: 'Verifies published image: signature, pull, start, healthcheck, and API smoke tests for a specific platform'
+description: 'Verifies published image: Cosign signature, then pulls and runs full smoke tests for a specific platform'
 inputs:
   image:
     description: 'Full image reference with digest (e.g., ghcr.io/axonops/axonops-schema-registry@sha256:...)'
@@ -16,8 +16,12 @@ inputs:
     description: 'Host port to map to container port 8081'
     required: false
     default: '8181'
+  sr_version:
+    description: 'Expected SR version for verification (optional)'
+    required: false
+    default: ''
   verify_signature:
-    description: 'Whether to verify Cosign signature (set to false when calling multiple times to avoid redundant checks)'
+    description: 'Whether to verify Cosign signature (set to false to skip for second platform call)'
     required: false
     default: 'true'
 
@@ -45,117 +49,25 @@ runs:
       shell: bash
       run: |
         echo "=== Pulling Image for ${{ inputs.platform }} ==="
-        echo "Image: ${{ inputs.image }}"
-
         docker pull --platform ${{ inputs.platform }} ${{ inputs.image }}
+        echo "Image pulled successfully"
 
-        echo "Image pulled successfully for ${{ inputs.platform }}"
-
-    - name: Start container (${{ inputs.platform }})
+    - name: Determine expected architecture
+      id: arch
       shell: bash
       run: |
-        echo "=== Starting container: ${{ inputs.container_name }} (${{ inputs.platform }}) ==="
-
-        docker run -d --name ${{ inputs.container_name }} \
-          --platform ${{ inputs.platform }} \
-          --hostname ${{ inputs.container_name }} \
-          -p ${{ inputs.port }}:8081 \
-          ${{ inputs.image }}
-
-        echo "Container started, waiting for Schema Registry..."
-
-    - name: Wait for readiness (${{ inputs.platform }})
-      shell: bash
-      run: |
-        echo "Waiting for Schema Registry using healthcheck.sh (startup probe)..."
-
-        for i in {1..60}; do
-          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup > /dev/null 2>&1; then
-            echo "Schema Registry startup complete (attempt $i, ~$((i*5)) seconds)"
-            break
-          fi
-          if [ $((i % 6)) -eq 0 ]; then
-            echo "Still waiting... attempt $i/60 (~$((i*5)) seconds elapsed)"
-          fi
-          sleep 5
-        done
-
-        # Final verification
-        if ! docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup; then
-          echo "ERROR: Startup healthcheck failed after 5 minutes"
-          docker logs ${{ inputs.container_name }} | tail -50
-          exit 1
-        fi
-
-        echo "Startup probe passed"
-
-    - name: Test healthcheck probes (${{ inputs.platform }})
-      shell: bash
-      run: |
-        echo "=== Testing healthcheck probes (${{ inputs.platform }}) ==="
-
-        echo "--- Startup probe ---"
-        docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh startup
-
-        echo "--- Liveness probe ---"
-        docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh liveness
-
-        echo "--- Readiness probe ---"
-        docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh readiness
-
-        echo "All healthcheck probes passed"
-
-    - name: Test Schema Registry API (${{ inputs.platform }})
-      shell: bash
-      run: |
-        echo "=== Testing Schema Registry API (${{ inputs.platform }}) ==="
-
-        HTTP_CODE=$(docker exec ${{ inputs.container_name }} curl -sf -o /dev/null -w "%{http_code}" http://localhost:8081/ 2>/dev/null || echo "000")
-
-        if [ "$HTTP_CODE" = "200" ]; then
-          echo "Health endpoint returned HTTP 200"
+        if [[ "${{ inputs.platform }}" == *"arm64"* ]]; then
+          echo "expected=aarch64" >> $GITHUB_OUTPUT
         else
-          echo "ERROR: Health endpoint returned HTTP $HTTP_CODE"
-          docker logs ${{ inputs.container_name }} | tail -20
-          exit 1
+          echo "expected=x86_64" >> $GITHUB_OUTPUT
         fi
 
-        RESPONSE=$(docker exec ${{ inputs.container_name }} curl -sf http://localhost:8081/ 2>/dev/null || echo "FAILED")
-        if [ "$RESPONSE" = "FAILED" ]; then
-          echo "ERROR: Failed to get API response"
-          exit 1
-        fi
-
-        echo "API response: $RESPONSE"
-        echo "Schema Registry API test passed"
-
-    - name: Verify architecture (${{ inputs.platform }})
-      shell: bash
-      run: |
-        echo "=== Verifying architecture (${{ inputs.platform }}) ==="
-
-        ARCH=$(docker exec ${{ inputs.container_name }} uname -m)
-        echo "Container architecture: ${ARCH}"
-
-        EXPECTED_ARCH=""
-        if [[ "${{ inputs.platform }}" == *"amd64"* ]]; then
-          EXPECTED_ARCH="x86_64"
-        elif [[ "${{ inputs.platform }}" == *"arm64"* ]]; then
-          EXPECTED_ARCH="aarch64"
-        fi
-
-        if [[ -n "$EXPECTED_ARCH" && "$ARCH" != "$EXPECTED_ARCH" ]]; then
-          echo "ERROR: Expected ${EXPECTED_ARCH}, got ${ARCH}"
-          exit 1
-        fi
-
-        echo "Architecture verified: ${ARCH}"
-
-    - name: Cleanup (${{ inputs.platform }})
-      if: always()
-      shell: bash
-      run: |
-        echo "=== Cleanup: ${{ inputs.container_name }} ==="
-        docker logs ${{ inputs.container_name }} 2>&1 | tail -20 || true
-        docker stop ${{ inputs.container_name }} || true
-        docker rm -f ${{ inputs.container_name }} || true
+    - name: Run smoke tests (${{ inputs.platform }})
+      uses: ./.github/actions/axonops-schema-registry-smoke-test
+      with:
+        image: ${{ inputs.image }}
+        container_name: ${{ inputs.container_name }}
+        port: ${{ inputs.port }}
+        platform: ${{ inputs.platform }}
+        sr_version: ${{ inputs.sr_version }}
+        expected_arch: ${{ steps.arch.outputs.expected }}
