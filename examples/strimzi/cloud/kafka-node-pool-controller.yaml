@@ -31,7 +31,7 @@ spec:
     kafkaContainer:
       env:
       - name: KAFKA_NODE_TYPE
-        value: kraft-broker
+        value: kraft-controller
       - name: AXON_AGENT_CLUSTER_NAME
         value: "${AXON_AGENT_CLUSTER_NAME}"
       - name: AXON_AGENT_ORG
