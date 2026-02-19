@@ -80,8 +80,8 @@ jobs:
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2
-          file: ./axonops-schema-registry/0.2/Dockerfile
+          context: ./axonops-schema-registry
+          file: ./axonops-schema-registry/Dockerfile
           # Don't specify platforms for test builds - build only for the current runner's platform
           # This allows 'load: true' to work properly
           load: true
@@ -198,8 +198,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2
-          file: ./axonops-schema-registry/0.2/Dockerfile
+          context: ./axonops-schema-registry
+          file: ./axonops-schema-registry/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -227,8 +227,8 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2
-          file: ./axonops-schema-registry/0.2/Dockerfile
+          context: ./axonops-schema-registry
+          file: ./axonops-schema-registry/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |

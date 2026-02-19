@@ -141,7 +141,7 @@ cosign tree ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 If you prefer to build images yourself instead of using pre-built images:
 
 ```bash
-cd axonops-schema-registry/0.2
+cd axonops-schema-registry
 
 # Minimal build (required args only)
 docker build \

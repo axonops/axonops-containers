@@ -358,31 +358,21 @@ All images are multi-arch: `linux/amd64`, `linux/arm64`
 
 **Key rule:** Container version **resets to 0.0.1**.
 
+The Dockerfile is version-agnostic — it downloads the correct SR version at build time via the `SR_VERSION` build argument. No directory changes are needed for new SR versions.
+
 **Steps:**
 
-1. **Create new version directory:**
+1. **Update default `sr_version` in workflows** (optional — only if you want to change the default):
+   - Update `ARG SR_VERSION=` in `axonops-schema-registry/Dockerfile`
+   - Update default `sr_version` input values in workflow files
+
+2. **Verify the new version builds correctly:**
    ```bash
-   mkdir -p axonops-schema-registry/0.3/{scripts,config}
+   cd axonops-schema-registry
+   docker build --build-arg SR_VERSION=0.3.0 -t axonops-schema-registry:test .
    ```
 
-2. **Copy and update files from previous version:**
-   ```bash
-   cp axonops-schema-registry/0.2/Dockerfile axonops-schema-registry/0.3/
-   cp axonops-schema-registry/0.2/.dockerignore axonops-schema-registry/0.3/
-   cp -r axonops-schema-registry/0.2/scripts/* axonops-schema-registry/0.3/scripts/
-   cp -r axonops-schema-registry/0.2/config/* axonops-schema-registry/0.3/config/
-   ```
-
-3. **Update Dockerfile:**
-   - Change `ARG SR_VERSION=0.3.0`
-   - Verify download URL works for new version
-   - Test build
-
-4. **Update workflows:**
-   - Update default `sr_version` input values
-   - Update Dockerfile path in build context
-
-5. **Merge to main and tag:**
+3. **Merge to main and tag:**
    ```bash
    git tag axonops-schema-registry-0.3.0-0.0.1
    git push origin axonops-schema-registry-0.3.0-0.0.1

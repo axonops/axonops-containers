@@ -6,6 +6,9 @@
 README.md
 *.md
 
+# Security scan config
+.trivyignore
+
 # Build artifacts
 *.log
 

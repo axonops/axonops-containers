@@ -62,7 +62,7 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          SR_VER=$(grep "^ARG SR_VERSION=" axonops-schema-registry/0.2/Dockerfile | cut -d'=' -f2)
+          SR_VER=$(grep "^ARG SR_VERSION=" axonops-schema-registry/Dockerfile | cut -d'=' -f2)
           echo "sr_version=${SR_VER}" >> $GITHUB_OUTPUT
           echo "SR version from Dockerfile: ${SR_VER}"
 
@@ -70,8 +70,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2
-          file: ./axonops-schema-registry/0.2/Dockerfile
+          context: ./axonops-schema-registry
+          file: ./axonops-schema-registry/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axonops-schema-registry:test
@@ -226,15 +226,15 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          SR_VER=$(grep "^ARG SR_VERSION=" axonops-schema-registry/0.2/Dockerfile | cut -d'=' -f2)
+          SR_VER=$(grep "^ARG SR_VERSION=" axonops-schema-registry/Dockerfile | cut -d'=' -f2)
           echo "sr_version=${SR_VER}" >> $GITHUB_OUTPUT
           echo "SR version from Dockerfile: ${SR_VER}"
 
       - name: Build image for arm64
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2
-          file: ./axonops-schema-registry/0.2/Dockerfile
+          context: ./axonops-schema-registry
+          file: ./axonops-schema-registry/Dockerfile
           platforms: linux/arm64
           load: true
           tags: axonops-schema-registry:test-arm64

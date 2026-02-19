@@ -205,7 +205,7 @@ PLATFORM="x86_64"
 ### Docker Build Test
 
 ```bash
-cd axonops-schema-registry/0.2
+cd axonops-schema-registry
 
 # Basic build (local testing)
 docker build \
@@ -221,7 +221,7 @@ docker build \
 ### Podman Build Test
 
 ```bash
-cd axonops-schema-registry/0.2
+cd axonops-schema-registry
 
 # Podman build
 podman build \
@@ -358,14 +358,13 @@ When a new Schema Registry version is released (e.g., 0.3.0):
 ### Repository Structure
 ```
 axonops-schema-registry/
-├── 0.2/                            # SR 0.2.x container
-│   ├── Dockerfile                  # Main container build
-│   ├── .dockerignore               # Build context exclusions
-│   ├── config/                     # Configuration files
-│   │   └── config.yaml             # Default SR configuration
-│   └── scripts/                    # Container scripts
-│       ├── entrypoint.sh           # Main entrypoint
-│       └── healthcheck.sh          # Healthcheck probe script (3 modes)
+├── Dockerfile                      # Main container build (version-agnostic)
+├── .dockerignore                   # Build context exclusions
+├── config/                         # Configuration files
+│   └── config.yaml                 # Default SR configuration
+├── scripts/                        # Container scripts
+│   ├── entrypoint.sh               # Main entrypoint
+│   └── healthcheck.sh              # Healthcheck probe script (3 modes)
 ├── .trivyignore                    # Known CVE suppressions
 ├── README.md                       # User-facing documentation
 ├── DEVELOPMENT.md                  # This file
