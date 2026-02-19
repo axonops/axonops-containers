@@ -16,6 +16,6 @@ spec:
     volumes:
       - id: 0 ## AxonOps requires there is a volume with index `0`
         type: persistent-claim
-        size: 100Gi
+        size: ${STRIMZI_BROKER_STORAGE_SIZE}
         deleteClaim: false
         kraftMetadata: shared
