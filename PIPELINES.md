@@ -2,6 +2,8 @@
 
 All pipelines are triggered via `gh workflow run`. You must create and push a git tag first, then trigger the workflow.
 
+**Important:** Since the default branch is `development`, you must pass `--ref main` for production pipelines and `--ref development` for development pipelines. Otherwise the workflow file will be read from the wrong branch.
+
 ## Production Pipelines
 
 ### AxonDB Time-Series
@@ -11,6 +13,7 @@ git tag axondb-timeseries-1.4.0 origin/main
 git push origin axondb-timeseries-1.4.0
 
 gh workflow run "AxonDB Time-Series Publish Signed to GHCR" \
+  --ref main \
   -f main_git_tag=axondb-timeseries-1.4.0 \
   -f container_version=1.4.0
 ```
@@ -22,6 +25,7 @@ git tag axondb-search-1.6.0 origin/main
 git push origin axondb-search-1.6.0
 
 gh workflow run "AxonDB Search Publish Signed to GHCR" \
+  --ref main \
   -f main_git_tag=axondb-search-1.6.0 \
   -f container_version=1.6.0
 ```
@@ -33,6 +37,7 @@ git tag axondb-search-backups-0.0.27 origin/main
 git push origin axondb-search-backups-0.0.27
 
 gh workflow run "AxonDB Search Backups Publish Signed to GHCR" \
+  --ref main \
   -f main_git_tag=axondb-search-backups-0.0.27 \
   -f container_version=0.0.27
 ```
@@ -44,6 +49,7 @@ git tag axondb-timeseries-backups-1.0.0 origin/main
 git push origin axondb-timeseries-backups-1.0.0
 
 gh workflow run "AxonDB Time-Series Backups Publish Signed to GHCR" \
+  --ref main \
   -f main_git_tag=axondb-timeseries-backups-1.0.0 \
   -f container_version=1.0.0
 ```
@@ -55,6 +61,7 @@ git tag k8ssandra-1.5.0 origin/main
 git push origin k8ssandra-1.5.0
 
 gh workflow run "K8ssandra Publish Signed to GHCR" \
+  --ref main \
   -f main_git_tag=k8ssandra-1.5.0 \
   -f container_version=1.5.0
 ```
@@ -67,10 +74,12 @@ git push origin strimzi-0.2.0
 
 # Build all operator versions (default)
 gh workflow run "Strimzi Publish Signed to GHCR" \
+  --ref main \
   -f main_git_tag=strimzi-0.2.0
 
 # Or build a specific operator version only
 gh workflow run "Strimzi Publish Signed to GHCR" \
+  --ref main \
   -f main_git_tag=strimzi-0.2.0 \
   -f operator_version=0.50.0
 ```
@@ -88,6 +97,7 @@ To release specific charts only:
 
 ```bash
 gh workflow run "Helm Charts Release" \
+  --ref main \
   -f charts_to_release=axondb-timeseries,axondb-search
 ```
 
@@ -97,6 +107,7 @@ gh workflow run "Helm Charts Release" \
 
 ```bash
 gh workflow run "AxonDB Time-Series Development Publish Signed to GHCR" \
+  --ref development \
   -f dev_git_tag=development \
   -f container_version=dev-1.4.0
 ```
@@ -105,6 +116,7 @@ gh workflow run "AxonDB Time-Series Development Publish Signed to GHCR" \
 
 ```bash
 gh workflow run "AxonDB Search Development Publish Signed to GHCR" \
+  --ref development \
   -f dev_git_tag=development \
   -f container_version=dev-1.6.0
 ```
@@ -113,6 +125,7 @@ gh workflow run "AxonDB Search Development Publish Signed to GHCR" \
 
 ```bash
 gh workflow run "AxonDB Search Backups Development Publish Signed to GHCR" \
+  --ref development \
   -f dev_git_tag=development \
   -f container_version=dev-0.0.27
 ```
@@ -121,6 +134,7 @@ gh workflow run "AxonDB Search Backups Development Publish Signed to GHCR" \
 
 ```bash
 gh workflow run "AxonDB Time-Series Backups Development Publish Signed to GHCR" \
+  --ref development \
   -f dev_git_tag=development \
   -f container_version=dev-1.0.0
 ```
@@ -132,6 +146,7 @@ git tag dev-k8ssandra-1.5.0 origin/development
 git push origin dev-k8ssandra-1.5.0
 
 gh workflow run "K8ssandra Development Publish Signed to GHCR" \
+  --ref development \
   -f dev_git_tag=dev-k8ssandra-1.5.0 \
   -f container_version=dev-1.5.0
 ```
@@ -143,6 +158,7 @@ git tag dev-strimzi-0.2.0 origin/development
 git push origin dev-strimzi-0.2.0
 
 gh workflow run "Strimzi Development Publish Signed to GHCR" \
+  --ref development \
   -f dev_git_tag=dev-strimzi-0.2.0 \
   -f operator_version=0.50.0
 ```
