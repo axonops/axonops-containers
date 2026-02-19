@@ -399,6 +399,16 @@ Each component must have a `RELEASE.md` file documenting:
 
 See `k8ssandra/RELEASE.md` for reference implementation.
 
+### Component Catalog
+
+| Component | Directory | Workflows | Composite Actions |
+|-----------|-----------|-----------|-------------------|
+| k8ssandra | `k8ssandra/` | `k8ssandra-build-and-test.yml`, `k8ssandra-publish-signed.yml`, `k8ssandra-development-publish-signed.yml` | `k8ssandra-*` |
+| axondb-timeseries | `axonops/axondb-timeseries/` | `axondb-timeseries-build-and-test.yml`, `axondb-timeseries-publish-signed.yml`, `axondb-timeseries-development-publish-signed.yml` | `axondb-timeseries-*` |
+| axondb-search | `axonops/axondb-search/` | `axondb-search-build-and-test.yml`, `axondb-search-publish-signed.yml`, `axondb-search-development-publish-signed.yml` | `axondb-search-*` |
+| axonops-schema-registry | `axonops-schema-registry/` | `axonops-schema-registry-build-and-test.yml`, `axonops-schema-registry-publish-signed.yml`, `axonops-schema-registry-development-publish-signed.yml` | `axonops-schema-registry-*` |
+| strimzi | `strimzi/` | `strimzi-build-and-test.yml`, `strimzi-publish-signed.yml`, `strimzi-development-publish-signed.yml` | `strimzi-*` |
+
 ## Legal Compliance
 
 ### Adding New Dependencies

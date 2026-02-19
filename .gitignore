@@ -40,3 +40,8 @@ go.work.sum
 *.tgz
 Chart.lock
 TAGGING.md
+
+# Session/progress tracking files
+CLAUDE.md
+PROGRESS.md
+SESSION_RESUME.md
