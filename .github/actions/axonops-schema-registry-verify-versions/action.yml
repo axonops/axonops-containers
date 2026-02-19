@@ -41,7 +41,7 @@ runs:
       run: |
         echo "=== Verifying version in startup banner ==="
 
-        BANNER=$(docker logs ${{ inputs.container_name }} 2>&1 | head -30)
+        BANNER=$(docker logs ${{ inputs.container_name }} 2>&1 | head -30 || true)
 
         if echo "$BANNER" | grep -q "Schema Registry.*${{ inputs.sr_version }}"; then
           echo "SR version found in startup banner"
