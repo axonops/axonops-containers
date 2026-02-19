@@ -115,11 +115,9 @@ envsubst < kafka-cluster.yaml | kubectl apply -f -
 
 ### 7. (Optional) Deploy Kafka Connect
 
-```bash
-envsubst < kafka-connect.yaml | kubectl apply -f -
-```
+> **Note:** Kafka Connect is supported by AxonOps but is out of scope for this example. If you need help setting up Kafka Connect with AxonOps monitoring, please contact [AxonOps](https://axonops.com) or [Digitalis](https://digitalis.io) for support.
 
-> **Note:** The `kafka-cluster.yaml` must be applied after the node pools, as the Kafka resource references them. KafkaConnect depends on the cluster being ready.
+**Note:** The `kafka-cluster.yaml` must be applied after the node pools, as the Kafka resource references them.
 
 ## Configuration Notes
 
