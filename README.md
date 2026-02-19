@@ -23,6 +23,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - [Acknowledgements](#acknowledgements)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [AxonOps Schema Registry](#axonops-schema-registry)
 - [License](#license)
 - [Legal Notices](#legal-notices)
   - [Trademarks](#trademarks)
@@ -34,6 +35,9 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 ### AxonOps Self-Hosted
 - **[axonops/](./axonops/)** - AxonOps self-hosted stack (complete platform components)
+
+### Integrations
+- **[axonops-schema-registry/](./axonops-schema-registry/)** - Confluent-compatible Schema Registry with multi-backend storage support
 
 ## Red Hat Universal Base Image (UBI)
 
@@ -527,6 +531,7 @@ All production images are cryptographically signed. Signature verification prove
 
 Each component has detailed release documentation:
 - [K8ssandra Release Process](./k8ssandra/RELEASE.md)
+- [Schema Registry Release Process](./axonops-schema-registry/RELEASE.md)
 
 ## Acknowledgements
 
@@ -545,6 +550,12 @@ For more information:
 - [K8ssandra Website](https://k8ssandra.io/)
 - [K8ssandra GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [K8ssandra Documentation](https://docs.k8ssandra.io/)
+
+### AxonOps Schema Registry
+We acknowledge [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry) for providing a Confluent-compatible Schema Registry with support for multiple storage backends including PostgreSQL, MySQL, and Apache Cassandra.
+
+For more information:
+- [AxonOps Schema Registry GitHub](https://github.com/axonops/axonops-schema-registry)
 
 ## License
 

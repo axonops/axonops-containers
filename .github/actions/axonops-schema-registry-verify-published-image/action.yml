@@ -1,0 +1,73 @@
+name: 'AxonOps Schema Registry Verify Published Image'
+description: 'Verifies published image: Cosign signature, then pulls and runs full smoke tests for a specific platform'
+inputs:
+  image:
+    description: 'Full image reference with digest (e.g., ghcr.io/axonops/axonops-schema-registry@sha256:...)'
+    required: true
+  platform:
+    description: 'Platform to pull and test (e.g., linux/amd64, linux/arm64)'
+    required: false
+    default: 'linux/amd64'
+  container_name:
+    description: 'Unique container name for this test run'
+    required: false
+    default: 'verify-test'
+  port:
+    description: 'Host port to map to container port 8081'
+    required: false
+    default: '8181'
+  sr_version:
+    description: 'Expected SR version for verification (optional)'
+    required: false
+    default: ''
+  verify_signature:
+    description: 'Whether to verify Cosign signature (set to false to skip for second platform call)'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Cosign
+      if: inputs.verify_signature == 'true'
+      uses: sigstore/cosign-installer@v3
+
+    - name: Verify image signature
+      if: inputs.verify_signature == 'true'
+      shell: bash
+      run: |
+        echo "=== Verifying Image Signature ==="
+        echo "Image: ${{ inputs.image }}"
+
+        cosign verify ${{ inputs.image }} \
+          --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \
+          --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+
+        echo "Image signature verified"
+
+    - name: Pull image for ${{ inputs.platform }}
+      shell: bash
+      run: |
+        echo "=== Pulling Image for ${{ inputs.platform }} ==="
+        docker pull --platform ${{ inputs.platform }} ${{ inputs.image }}
+        echo "Image pulled successfully"
+
+    - name: Determine expected architecture
+      id: arch
+      shell: bash
+      run: |
+        if [[ "${{ inputs.platform }}" == *"arm64"* ]]; then
+          echo "expected=aarch64" >> $GITHUB_OUTPUT
+        else
+          echo "expected=x86_64" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run smoke tests (${{ inputs.platform }})
+      uses: ./.github/actions/axonops-schema-registry-smoke-test
+      with:
+        image: ${{ inputs.image }}
+        container_name: ${{ inputs.container_name }}
+        port: ${{ inputs.port }}
+        platform: ${{ inputs.platform }}
+        sr_version: ${{ inputs.sr_version }}
+        expected_arch: ${{ steps.arch.outputs.expected }}

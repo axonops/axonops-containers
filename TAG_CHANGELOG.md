@@ -6,6 +6,7 @@ This document tracks the relationship between Git tags and the container images 
 
 - **AxonDB Time-Series**: `ghcr.io/axonops/axondb-timeseries:5.0.6-{version}` (Cassandra 5.0.6)
 - **AxonDB Search**: `ghcr.io/axonops/axondb-search:3.3.2-{version}` (OpenSearch 3.3.2)
+- **AxonOps Schema Registry**: `ghcr.io/axonops/axonops-schema-registry:{SR_VERSION}-{CONTAINER_VERSION}` (e.g., 0.2.0-0.0.1)
 - **K8ssandra**: `ghcr.io/axonops/k8ssandra/cassandra:{cass_version}-v{k8s_api}-{version}` (Cassandra 5.0.1-5.0.6)
 - **Strimzi**: `ghcr.io/axonops/strimzi/kafka:{operator}-{kafka}-{agent}-{version}`
 - **Helm Charts**: Published via `helm-release` workflow (OCI to `ghcr.io`)
@@ -84,6 +85,20 @@ This document tracks the relationship between Git tags and the container images 
 | `axondb-search-backups-0.0.3` | `ghcr.io/axonops/axondb-search-backups:3.3.2-0.0.3` | Published |
 | `axondb-search-backups-0.0.2` | `ghcr.io/axonops/axondb-search-backups:3.3.2-0.0.2` | Published |
 | `axondb-search-backups-0.0.1` | `ghcr.io/axonops/axondb-search-backups:3.3.2-0.0.1` | Published |
+
+## AxonOps Schema Registry
+
+| Git Tag | Container Image | Date | Status |
+|---------|-----------------|------|--------|
+| — | — | — | No releases yet |
+
+### Schema Registry Versioning
+
+Schema Registry uses **multi-dimensional versioning** with two axes:
+- **SR_VERSION**: Application version (e.g., `0.2.0`)
+- **CONTAINER_VERSION**: Container version (semver, e.g., `0.0.1`)
+
+Git tag format: `axonops-schema-registry-{SR_VERSION}-{CONTAINER_VERSION}` (e.g., `axonops-schema-registry-0.2.0-0.0.1`)
 
 ## K8ssandra
 
@@ -178,6 +193,20 @@ gh workflow run "AxonDB Search Publish Signed to GHCR" \
   --repo axonops/axonops-containers \
   -f main_git_tag=axondb-search-X.Y.Z \
   -f container_version=X.Y.Z
+```
+
+### Schema Registry
+```bash
+# 1. Create and push tag on main branch
+git tag axonops-schema-registry-0.2.0-0.0.1 origin/main
+git push origin axonops-schema-registry-0.2.0-0.0.1
+
+# 2. Trigger the workflow
+gh workflow run "AxonOps Schema Registry Publish Signed to GHCR" \
+  --repo axonops/axonops-containers \
+  -f main_git_tag=axonops-schema-registry-0.2.0-0.0.1 \
+  -f sr_version=0.2.0 \
+  -f container_version=0.0.1
 ```
 
 ### K8ssandra

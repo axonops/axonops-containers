@@ -1,0 +1,185 @@
+name: AxonOps Schema Registry Development Publish Signed to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      dev_git_tag:
+        description: 'Git tag or branch to build (defaults to current branch)'
+        required: false
+        type: string
+        default: ''
+      sr_version:
+        description: 'Schema Registry version (e.g., 0.2.0)'
+        required: false
+        type: string
+        default: '0.2.0'
+      container_version:
+        description: 'Container version (e.g., 0.0.1)'
+        required: false
+        type: string
+        default: '0.0.1'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: axonops/development/axonops-schema-registry
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.vars.outputs.ref }}
+      version: ${{ steps.vars.outputs.version }}
+    steps:
+      - name: Determine build parameters
+        id: vars
+        run: |
+          set -euo pipefail
+          # Determine the ref to checkout
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.dev_git_tag }}" ]]; then
+            REF="${{ inputs.dev_git_tag }}"
+          else
+            REF="${{ github.ref_name }}"
+          fi
+          echo "ref=${REF}" >> $GITHUB_OUTPUT
+
+          # Determine the container version
+          SR_VER="${{ inputs.sr_version }}"
+          CONTAINER_VER="${{ inputs.container_version }}"
+          if [[ -n "${SR_VER}" && -n "${CONTAINER_VER}" ]]; then
+            VERSION="${SR_VER}-${CONTAINER_VER}"
+          else
+            # Generate version from branch and timestamp
+            BRANCH_NAME="${{ github.ref_name }}"
+            SAFE_BRANCH=$(echo "${BRANCH_NAME}" | sed 's/\//-/g' | tr '[:upper:]' '[:lower:]')
+            VERSION="${SAFE_BRANCH}-${{ github.run_number }}-${GITHUB_SHA::7}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+          echo "Build ref: ${REF}"
+          echo "Container version: ${VERSION}"
+
+  axonops-schema-registry-build-push-sign:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        id: buildx2
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+          platforms: linux/amd64,linux/arm64
+          driver-opts: |
+            image=moby/buildkit:latest
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (multi-arch)
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops-schema-registry
+          file: ./axonops-schema-registry/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            SR_VERSION=${{ inputs.sr_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ needs.setup.outputs.version }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ needs.setup.outputs.ref }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Sign container image
+        uses: ./.github/actions/axonops-schema-registry-sign-container
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Re-push tags after signing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./axonops-schema-registry
+          file: ./axonops-schema-registry/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            SR_VERSION=${{ inputs.sr_version }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ needs.setup.outputs.version }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ needs.setup.outputs.ref }}
+            GITHUB_ACTOR=GitHub Actions
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.version }}
+          cache-from: type=gha
+
+      - name: Development image published and signed
+        run: |
+          echo "Development image pushed and signed to GHCR"
+          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.version }}"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
+
+  axonops-schema-registry-verify-published:
+    needs: [setup, axonops-schema-registry-build-push-sign]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for arm64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Verify published image (amd64)
+        uses: ./.github/actions/axonops-schema-registry-verify-published-image
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}
+          platform: linux/amd64
+          container_name: verify-amd64
+          port: '8181'
+          verify_signature: 'true'
+
+      - name: Verify published image (arm64)
+        uses: ./.github/actions/axonops-schema-registry-verify-published-image
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}
+          platform: linux/arm64
+          container_name: verify-arm64
+          port: '8182'
+          verify_signature: 'false'

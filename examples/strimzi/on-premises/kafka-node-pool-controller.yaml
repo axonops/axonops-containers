@@ -2,27 +2,28 @@
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
-  name: axonops-brokers
+  name: axonops-controller
   namespace: ${KAFKA_NAMESPACE}
   labels:
     strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
 spec:
-  replicas: ${STRIMZI_BROKER_REPLICAS}
+  replicas: ${STRIMZI_CONTROLLER_REPLICAS}
   roles:
-    - broker
+    - controller
   storage:
     type: jbod
     volumes:
-      - id: 0 ## AxonOps requires there is a volume with index `0`
+      - id: 0
         type: persistent-claim
-        size: ${STRIMZI_BROKER_STORAGE_SIZE}
+        size: ${STRIMZI_CONTROLLER_STORAGE_SIZE}
         deleteClaim: false
-        class: ${STRIMZI_BROKER_STORAGE_CLASS}
+        class: ${STRIMZI_CONTROLLER_STORAGE_CLASS}
+        kraftMetadata: shared
   template:
     kafkaContainer:
       env:
       - name: KAFKA_NODE_TYPE
-        value: kraft-broker
+        value: kraft-controller
       - name: AXON_AGENT_CLUSTER_NAME
         value: "${AXON_AGENT_CLUSTER_NAME}"
       - name: AXON_AGENT_ORG

@@ -1,0 +1,15 @@
+# AxonOps Schema Registry Default Configuration
+# This file is the default config shipped with the container image.
+# Override values via environment variables or by mounting a custom config file.
+#
+# Documentation: https://github.com/axonops/axonops-schema-registry
+
+# Server configuration
+server:
+  host: "0.0.0.0"
+  port: 8081
+
+# Storage backend configuration
+# Supported backends: memory, postgres, mysql, cassandra
+storage:
+  type: "memory"

@@ -72,7 +72,7 @@ kubectl get pod -n kafka --watch
 
 For development or testing, you can deploy a single-node Kafka cluster with combined controller and broker roles.
 
-See the [`examples/strimzi/single/`](../examples/strimzi/single/) directory:
+See the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
 
 - `kafka-single-node.yaml`: Single-node Kafka cluster
 - `axonops-agent-config.yaml`: AxonOps agent configuration
@@ -82,7 +82,7 @@ See the [`examples/strimzi/single/`](../examples/strimzi/single/) directory:
 **Update the values** and apply:
 
 ```bash
-kubectl apply -f ../examples/strimzi/single/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/ -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -348,7 +348,7 @@ Key files:
 
 ### Single Node Cluster
 
-**Directory**: [`examples/strimzi/single/`](../examples/strimzi/single/)
+**Directory**: [`examples/strimzi/cloud/`](../examples/strimzi/cloud/)
 
 - **Topology**: Single node with combined controller + broker role
 - **Replicas**: 1

@@ -1,0 +1,53 @@
+name: 'AxonOps Schema Registry Verify No Startup Errors'
+description: 'Verifies container started without errors in logs'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'sr-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check for startup errors in container logs
+      shell: bash
+      run: |
+        echo "=== Checking for startup errors ==="
+
+        docker logs ${{ inputs.container_name }} > /tmp/sr-logs.log 2>&1 || {
+          echo "WARNING: Could not read container logs"
+          exit 0
+        }
+
+        # Check for ERROR level log messages
+        if grep -iE "^(ERROR|FATAL)" /tmp/sr-logs.log | grep -v "healthcheck"; then
+          echo "ERROR: Found ERROR/FATAL messages in logs"
+          exit 1
+        fi
+
+        echo "No ERROR/FATAL messages found"
+
+    - name: Check for panic or crash messages
+      shell: bash
+      run: |
+        echo "Checking for panic/crash messages..."
+
+        if docker logs ${{ inputs.container_name }} 2>&1 | grep -iE "panic|runtime error|segfault"; then
+          echo "ERROR: Found panic or crash messages"
+          exit 1
+        fi
+
+        echo "No panic or crash messages found"
+
+    - name: Verify Schema Registry started
+      shell: bash
+      run: |
+        echo "Verifying Schema Registry is running..."
+
+        if docker exec ${{ inputs.container_name }} pgrep -f axonops-schema-registry > /dev/null 2>&1; then
+          echo "Schema Registry process is running"
+        else
+          echo "ERROR: Schema Registry process not found"
+          docker logs ${{ inputs.container_name }} | tail -20
+          exit 1
+        fi
