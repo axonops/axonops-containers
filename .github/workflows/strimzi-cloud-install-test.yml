@@ -64,6 +64,7 @@ jobs:
 
       - name: Create Kafka Cluster using single node example
         run: |
+          for node in $(kubectl get node -oname); do kubectl label $node topology.kubernetes.io/zone=github;done
           kubectl create namespace $KAFKA_NAMESPACE
           for yaml in examples/strimzi/cloud/*.yaml; do
             [[ "$yaml" == *kafka-connect* ]] && continue
