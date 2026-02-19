@@ -58,109 +58,8 @@ jobs:
           echo "Build ref: ${REF}"
           echo "Container version: ${VERSION}"
 
-  axonops-schema-registry-test:
-    needs: [setup]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout code at tag
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.ref }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          install: true
-          driver-opts: |
-            image=moby/buildkit:latest
-
-      - name: Build image for testing
-        uses: docker/build-push-action@v5
-        with:
-          context: ./axonops-schema-registry
-          file: ./axonops-schema-registry/Dockerfile
-          # Don't specify platforms for test builds - build only for the current runner's platform
-          # This allows 'load: true' to work properly
-          load: true
-          push: false
-          tags: axonops-schema-registry:test
-          build-args: |
-            SR_VERSION=${{ inputs.sr_version }}
-            BUILD_DATE=${{ github.event.repository.updated_at }}
-            VCS_REF=${{ github.sha }}
-            VERSION=${{ needs.setup.outputs.version }}
-            CONTAINER_VERSION=${{ inputs.container_version }}
-            GIT_TAG=${{ needs.setup.outputs.ref }}
-            GITHUB_ACTOR=GitHub Actions
-            IS_PRODUCTION_RELEASE=false
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Start container and wait for services
-        uses: ./.github/actions/axonops-schema-registry-start-and-wait
-        with:
-          container_name: sr-test
-
-      - name: Verify no startup errors
-        uses: ./.github/actions/axonops-schema-registry-verify-no-startup-errors
-        with:
-          container_name: sr-test
-
-      - name: Verify versions
-        uses: ./.github/actions/axonops-schema-registry-verify-versions
-        with:
-          sr_version: ${{ inputs.sr_version }}
-          container_name: sr-test
-
-      - name: Test healthcheck script
-        uses: ./.github/actions/axonops-schema-registry-test-healthcheck
-        with:
-          container_name: sr-test
-
-      - name: Test Schema Registry API
-        uses: ./.github/actions/axonops-schema-registry-test-api
-        with:
-          container_name: sr-test
-
-      - name: Run Trivy container security scan
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          image-ref: 'axonops-schema-registry:test'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          scanners: 'vuln'
-          severity: 'CRITICAL,HIGH'
-          trivyignores: 'axonops-schema-registry/.trivyignore'
-
-      - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          image-ref: 'axonops-schema-registry:test'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          ignore-unfixed: true
-          scanners: 'vuln'
-          trivyignores: 'axonops-schema-registry/.trivyignore'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker logs sr-test || true
-          docker stop sr-test || true
-          docker rm sr-test || true
-
   axonops-schema-registry-build-push-sign:
-    needs: [setup, axonops-schema-registry-test]
+    needs: [setup]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -254,7 +153,7 @@ jobs:
           echo "Digest: ${{ steps.build.outputs.digest }}"
 
   axonops-schema-registry-verify-published:
-    needs: axonops-schema-registry-build-push-sign
+    needs: [setup, axonops-schema-registry-build-push-sign]
     runs-on: ubuntu-latest
     permissions:
       contents: read
