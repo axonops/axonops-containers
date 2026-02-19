@@ -37,7 +37,7 @@ env:
   STRIMZI_BROKER_STORAGE_SIZE: 1Gi
   STRIMZI_BROKER_STORAGE_CLASS: ""
   STRIMZI_CONTROLLER_REPLICAS: 3
-  STRIMZI_CONTROLLER_STORAGE_SIZE=: 1Gi
+  STRIMZI_CONTROLLER_STORAGE_SIZE: 1Gi
   STRIMZI_CONTROLLER_STORAGE_CLASS: ""
 jobs:
   test-strimzi-installation:
@@ -62,14 +62,19 @@ jobs:
             --set watchAnyNamespace=true \
             --version ${{ env.STRIMZI_VERSION }}
 
-      - name: Create Kafka Cluster using single node example
+      - name: Create Kafka Cluster using cloud example
         run: |
-          for node in $(kubectl get node -oname); do kubectl label $node topology.kubernetes.io/zone=github;done
+          for node in $(kubectl get node -oname); do kubectl label $node topology.kubernetes.io/zone=github; done
           kubectl create namespace $KAFKA_NAMESPACE
           for yaml in examples/strimzi/cloud/*.yaml; do
             [[ "$yaml" == *kafka-connect* ]] && continue
-            envsubst < "$yaml" | kubectl apply -f - -n $KAFKA_NAMESPACE
+            [[ "$yaml" == *.md ]] && continue
+            [[ "$yaml" == *.env ]] && continue
+            echo "--- Applying $yaml ---"
+            envsubst < "$yaml" | tee /dev/stderr | kubectl apply -f - -n $KAFKA_NAMESPACE
           done
+          echo "--- Resources in $KAFKA_NAMESPACE ---"
+          kubectl get all,kafka,kafkanodepool,secrets -n $KAFKA_NAMESPACE
         env:
           KAFKA_CONTAINER_IMAGE: ghcr.io/axonops/strimzi/kafka:${{ env.STRIMZI_VERSION }}-${{ env.KAFKA_VERSION }}
 
@@ -82,12 +87,31 @@ jobs:
               echo "Found $POD_COUNT pod(s), waiting for readiness..."
               break
             fi
+            if [ $((i % 6)) -eq 0 ]; then
+              echo "--- Debug: Strimzi operator logs (last 20 lines) ---"
+              kubectl logs -n strimzi -l app.kubernetes.io/name=strimzi-kafka-operator --tail=20 || true
+              echo "--- Debug: Kafka CR status ---"
+              kubectl get kafka -n $KAFKA_NAMESPACE -o yaml 2>/dev/null | grep -A 10 'status:' || true
+              echo "--- Debug: Events in $KAFKA_NAMESPACE ---"
+              kubectl get events -n $KAFKA_NAMESPACE --sort-by='.lastTimestamp' 2>/dev/null | tail -20 || true
+            fi
             echo "No pods yet, retrying in 5s... ($i/60)"
             sleep 5
           done
           if [ "$POD_COUNT" -eq 0 ]; then
-            echo "Timed out waiting for pods to be created"
-            kubectl get all -n $KAFKA_NAMESPACE
+            echo "=== TIMED OUT - Full debug dump ==="
+            echo "--- All resources in $KAFKA_NAMESPACE ---"
+            kubectl get all,kafka,kafkanodepool,secrets -n $KAFKA_NAMESPACE
+            echo "--- Kafka CR full status ---"
+            kubectl get kafka -n $KAFKA_NAMESPACE -o yaml || true
+            echo "--- KafkaNodePool status ---"
+            kubectl get kafkanodepool -n $KAFKA_NAMESPACE -o yaml || true
+            echo "--- Strimzi operator logs (last 50 lines) ---"
+            kubectl logs -n strimzi -l app.kubernetes.io/name=strimzi-kafka-operator --tail=50 || true
+            echo "--- Events in $KAFKA_NAMESPACE ---"
+            kubectl get events -n $KAFKA_NAMESPACE --sort-by='.lastTimestamp' || true
+            echo "--- Events in strimzi namespace ---"
+            kubectl get events -n strimzi --sort-by='.lastTimestamp' || true
             exit 1
           fi
           kubectl wait --namespace $KAFKA_NAMESPACE \
