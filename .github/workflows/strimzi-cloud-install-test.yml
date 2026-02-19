@@ -32,7 +32,13 @@ env:
   AXON_AGENT_ORG: ${{ secrets.AXON_AGENT_ORG }}
   AXON_AGENT_KEY: ${{ secrets.AXON_AGENT_KEY }}
   AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
-
+# Broker Pool Configuration
+  STRIMZI_BROKER_REPLICAS: 3
+  STRIMZI_BROKER_STORAGE_SIZE: 1Gi
+  STRIMZI_BROKER_STORAGE_CLASS: ""
+  STRIMZI_CONTROLLER_REPLICAS: 3
+  STRIMZI_CONTROLLER_STORAGE_SIZE=: 1Gi
+  STRIMZI_CONTROLLER_STORAGE_CLASS: ""
 jobs:
   test-strimzi-installation:
     runs-on: ubuntu-latest
@@ -59,7 +65,7 @@ jobs:
       - name: Create Kafka Cluster using single node example
         run: |
           kubectl create namespace $KAFKA_NAMESPACE
-          for yaml in examples/strimzi/single/*.yaml; do
+          for yaml in examples/strimzi/cloud/*.yaml; do
             envsubst < "$yaml" | kubectl apply -f - -n $KAFKA_NAMESPACE
           done
         env:
