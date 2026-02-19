@@ -13,11 +13,11 @@ on:
         required: false
         type: string
         default: '0.2.0'
-      build_number:
-        description: 'Build number (e.g., 1)'
+      container_version:
+        description: 'Container version (e.g., 0.0.1)'
         required: false
         type: string
-        default: '1'
+        default: '0.0.1'
 
 env:
   REGISTRY: ghcr.io
@@ -44,9 +44,9 @@ jobs:
 
           # Determine the container version
           SR_VER="${{ inputs.sr_version }}"
-          BUILD="${{ inputs.build_number }}"
-          if [[ -n "${SR_VER}" && -n "${BUILD}" ]]; then
-            VERSION="${SR_VER}-${BUILD}"
+          CONTAINER_VER="${{ inputs.container_version }}"
+          if [[ -n "${SR_VER}" && -n "${CONTAINER_VER}" ]]; then
+            VERSION="${SR_VER}-${CONTAINER_VER}"
           else
             # Generate version from branch and timestamp
             BRANCH_NAME="${{ github.ref_name }}"
@@ -81,8 +81,8 @@ jobs:
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2.0
-          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          context: ./axonops-schema-registry/0.2
+          file: ./axonops-schema-registry/0.2/Dockerfile
           load: true
           push: false
           tags: axonops-schema-registry:test
@@ -91,7 +91,7 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ needs.setup.outputs.version }}
-            BUILD_NUMBER=${{ inputs.build_number }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ needs.setup.outputs.ref }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
@@ -191,8 +191,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2.0
-          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          context: ./axonops-schema-registry/0.2
+          file: ./axonops-schema-registry/0.2/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -204,7 +204,7 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ needs.setup.outputs.version }}
-            BUILD_NUMBER=${{ inputs.build_number }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ needs.setup.outputs.ref }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false
@@ -220,8 +220,8 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2.0
-          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          context: ./axonops-schema-registry/0.2
+          file: ./axonops-schema-registry/0.2/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -233,7 +233,7 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ needs.setup.outputs.version }}
-            BUILD_NUMBER=${{ inputs.build_number }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ needs.setup.outputs.ref }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=false

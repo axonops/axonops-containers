@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       main_git_tag:
-        description: 'Git tag on main branch to build (e.g., axonops-schema-registry-0.2.0-1)'
+        description: 'Git tag on main branch to build (e.g., axonops-schema-registry-0.2.0-0.0.1)'
         required: true
         type: string
       sr_version:
@@ -12,11 +12,11 @@ on:
         required: true
         type: string
         default: '0.2.0'
-      build_number:
-        description: 'Build number (e.g., 1)'
+      container_version:
+        description: 'Container version (e.g., 0.0.1)'
         required: true
         type: string
-        default: '1'
+        default: '0.0.1'
 
 env:
   REGISTRY: ghcr.io
@@ -53,7 +53,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="${{ inputs.sr_version }}-${{ inputs.build_number }}"
+          TAG="${{ inputs.sr_version }}-${{ inputs.container_version }}"
           echo "Checking for tag: $TAG in axonops-schema-registry"
           if gh api --paginate "/orgs/axonops/packages/container/axonops-schema-registry/versions" \
             --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .metadata.container.tags[]" 2>/dev/null | grep -q "$TAG"; then
@@ -83,8 +83,8 @@ jobs:
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2.0
-          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          context: ./axonops-schema-registry/0.2
+          file: ./axonops-schema-registry/0.2/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axonops-schema-registry:test
@@ -92,12 +92,12 @@ jobs:
             SR_VERSION=${{ inputs.sr_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
-            VERSION=${{ inputs.sr_version }}-${{ inputs.build_number }}
-            BUILD_NUMBER=${{ inputs.build_number }}
+            VERSION=${{ inputs.sr_version }}-${{ inputs.container_version }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=true
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -187,8 +187,8 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: '${{ inputs.main_git_tag }}',
-              name: `axonops-schema-registry-${{ inputs.sr_version }}-${{ inputs.build_number }}`,
-              body: `AxonOps Schema Registry release ${{ inputs.sr_version }}-${{ inputs.build_number }}\n\nImage: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}\nSchema Registry: ${{ inputs.sr_version }}\nBuild: ${{ inputs.build_number }}\nSigned with Cosign`,
+              name: `axonops-schema-registry-${{ inputs.sr_version }}-${{ inputs.container_version }}`,
+              body: `AxonOps Schema Registry release ${{ inputs.sr_version }}-${{ inputs.container_version }}\n\nImage: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}\nSchema Registry: ${{ inputs.sr_version }}\nContainer Version: ${{ inputs.container_version }}\nSigned with Cosign`,
               draft: false,
               prerelease: false
             });
@@ -228,24 +228,24 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2.0
-          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          context: ./axonops-schema-registry/0.2
+          file: ./axonops-schema-registry/0.2/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           build-args: |
             SR_VERSION=${{ inputs.sr_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
-            VERSION=${{ inputs.sr_version }}-${{ inputs.build_number }}
-            BUILD_NUMBER=${{ inputs.build_number }}
+            VERSION=${{ inputs.sr_version }}-${{ inputs.container_version }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=true
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -257,30 +257,30 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops-schema-registry/0.2.0
-          file: ./axonops-schema-registry/0.2.0/Dockerfile
+          context: ./axonops-schema-registry/0.2
+          file: ./axonops-schema-registry/0.2/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           build-args: |
             SR_VERSION=${{ inputs.sr_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
-            VERSION=${{ inputs.sr_version }}-${{ inputs.build_number }}
-            BUILD_NUMBER=${{ inputs.build_number }}
+            VERSION=${{ inputs.sr_version }}-${{ inputs.container_version }}
+            CONTAINER_VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=GitHub Actions
             IS_PRODUCTION_RELEASE=true
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}
           cache-from: type=gha
 
       - name: Production image published and signed
         run: |
           echo "Production image published and signed to GHCR"
-          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}"
+          echo "Image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}"
           echo "Digest: ${{ steps.build.outputs.digest }}"
 
   axonops-schema-registry-verify-published:
@@ -295,5 +295,5 @@ jobs:
       - name: Verify published image
         uses: ./.github/actions/axonops-schema-registry-verify-published-image
         with:
-          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.build_number }}
+          image: ghcr.io/${{ env.IMAGE_NAME }}:${{ inputs.sr_version }}-${{ inputs.container_version }}
           image_digest: ${{ needs.axonops-schema-registry-build-push-sign.outputs.digest }}

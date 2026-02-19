@@ -2,7 +2,7 @@ name: 'AxonOps Schema Registry Verify Published Image'
 description: 'Pulls published image from GHCR, verifies signature, and runs smoke tests'
 inputs:
   image:
-    description: 'Full image reference (e.g., ghcr.io/axonops/axonops-schema-registry:0.2.0-1)'
+    description: 'Full image reference (e.g., ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1)'
     required: true
   image_digest:
     description: 'Image digest for signature verification (e.g., sha256:...)'

@@ -24,14 +24,14 @@ This document describes how to create and publish AxonOps Schema Registry contai
 - [Inputs Reference](#inputs-reference)
   - [main_git_tag](#main_git_tag)
   - [sr_version](#sr_version)
-  - [build_number](#build_number)
+  - [container_version](#container_version)
 - [Published Artifacts](#published-artifacts)
   - [Container Images (GHCR)](#container-images-ghcr)
   - [GitHub Release](#github-release)
   - [Cosign Signatures](#cosign-signatures)
 - [Release Scenarios](#release-scenarios)
   - [Scenario 1: New SR Application Version](#scenario-1-new-sr-application-version)
-  - [Scenario 2: Build-Only Bump](#scenario-2-build-only-bump)
+  - [Scenario 2: Container-Only Bump](#scenario-2-container-only-bump)
 - [Troubleshooting](#troubleshooting)
   - [Version Already Exists](#version-already-exists)
   - [Tests Fail During Publish](#tests-fail-during-publish)
@@ -70,40 +70,40 @@ AxonOps Schema Registry uses **two-dimensional versioning** with independent axe
 | Dimension | Description | Example | Controlled By |
 |-----------|-------------|---------|---------------|
 | **SR_VERSION** | Upstream Schema Registry application version | `0.2.0` | Upstream releases |
-| **BUILD** | Container build number (integer) | `1`, `2`, `3` | This repository |
+| **CONTAINER_VERSION** | Container version (semver) | `0.0.1`, `0.0.2`, `0.1.0` | This repository |
 
-**Combined format:** `{SR_VERSION}-{BUILD}` (e.g., `0.2.0-1`)
+**Combined format:** `{SR_VERSION}-{CONTAINER_VERSION}` (e.g., `0.2.0-0.0.1`)
 
-**Git tag format:** `axonops-schema-registry-{SR_VERSION}-{BUILD}` (e.g., `axonops-schema-registry-0.2.0-1`)
+**Git tag format:** `axonops-schema-registry-{SR_VERSION}-{CONTAINER_VERSION}` (e.g., `axonops-schema-registry-0.2.0-0.0.1`)
 
 ### Two Release Scenarios
 
 There are exactly **two** scenarios for releasing:
 
-1. **New SR application version** (e.g., 0.2.0 -> 0.3.0): Build number **resets to 1**
-2. **Build-only bump** (e.g., 0.2.0-1 -> 0.2.0-2): Same SR version, **increment build number**
+1. **New SR application version** (e.g., 0.2.0 -> 0.3.0): Container version **resets to 0.0.1**
+2. **Container-only bump** (e.g., 0.2.0-0.0.1 -> 0.2.0-0.0.2): Same SR version, **increment container version**
 
 See [Release Scenarios](#release-scenarios) for detailed step-by-step instructions for each.
 
 ### When to Increment
 
-**New SR Version (build resets to 1):**
+**New SR Version (container version resets to 0.0.1):**
 - Upstream releases a new Schema Registry version
-- Example: `0.2.0-1` -> `0.3.0-1`
+- Example: `0.2.0-0.0.1` -> `0.3.0-0.0.1`
 
-**Build-Only Bump (increment build number):**
+**Container-Only Bump (increment container version):**
 - Base image security patches (UBI 9 updates)
 - Dockerfile improvements (optimizations, best practices)
 - Entrypoint or healthcheck script fixes
 - CI/CD pipeline improvements that affect the built image
-- Example: `0.2.0-1` -> `0.2.0-2`
+- Example: `0.2.0-0.0.1` -> `0.2.0-0.0.2`
 
 ### Pre-release Versions
 
 Use suffixes for pre-releases:
-- `0.2.0-1-alpha` - Alpha release
-- `0.2.0-1-beta` - Beta release
-- `0.2.0-1-rc1` - Release candidate
+- `0.2.0-0.0.1-alpha` - Alpha release
+- `0.2.0-0.0.1-beta` - Beta release
+- `0.2.0-0.0.1-rc.1` - Release candidate
 
 ## Development Release Workflow
 
@@ -140,26 +140,26 @@ To test images before promoting to production, publish to development registry:
 # Tag on development branch
 git checkout development
 git pull origin development
-git tag vdev-axonops-schema-registry-0.2.0-1
-git push origin vdev-axonops-schema-registry-0.2.0-1
+git tag vdev-axonops-schema-registry-0.2.0-0.0.1
+git push origin vdev-axonops-schema-registry-0.2.0-0.0.1
 
 # Trigger development publish workflow
 gh workflow run axonops-schema-registry-development-publish-signed.yml \
   --ref development \
-  -f dev_git_tag=vdev-axonops-schema-registry-0.2.0-1 \
+  -f dev_git_tag=vdev-axonops-schema-registry-0.2.0-0.0.1 \
   -f sr_version=0.2.0 \
-  -f build_number=1
+  -f container_version=0.0.1
 ```
 
 **Images published to:**
-- `ghcr.io/axonops/development/axonops-schema-registry:0.2.0-1`
+- `ghcr.io/axonops/development/axonops-schema-registry:0.2.0-0.0.1`
 - `ghcr.io/axonops/development/axonops-schema-registry:0.2.0`
 - `ghcr.io/axonops/development/axonops-schema-registry:latest`
 
 **Testing development images:**
 ```bash
-docker pull ghcr.io/axonops/development/axonops-schema-registry:0.2.0-1
-docker run -d --name test -p 8081:8081 ghcr.io/axonops/development/axonops-schema-registry:0.2.0-1
+docker pull ghcr.io/axonops/development/axonops-schema-registry:0.2.0-0.0.1
+docker run -d --name test -p 8081:8081 ghcr.io/axonops/development/axonops-schema-registry:0.2.0-0.0.1
 curl -s http://localhost:8081/
 ```
 
@@ -170,7 +170,7 @@ When development images are tested and validated, promote to main:
 ```bash
 # Create PR from development to main
 gh pr create --base main --head development \
-  --title "Release axonops-schema-registry 0.2.0-1" \
+  --title "Release axonops-schema-registry 0.2.0-0.0.1" \
   --body "Promote tested changes to production"
 
 # After PR approved and merged, continue to production release (step 4)
@@ -190,13 +190,13 @@ git checkout main
 git pull origin main
 
 # Tag the release commit
-git tag axonops-schema-registry-0.2.0-1
+git tag axonops-schema-registry-0.2.0-0.0.1
 
 # Push tag to remote
-git push origin axonops-schema-registry-0.2.0-1
+git push origin axonops-schema-registry-0.2.0-0.0.1
 ```
 
-**Tag naming:** Required format: `axonops-schema-registry-{SR_VERSION}-{BUILD}` (e.g., `axonops-schema-registry-0.2.0-1`)
+**Tag naming:** Required format: `axonops-schema-registry-{SR_VERSION}-{CONTAINER_VERSION}` (e.g., `axonops-schema-registry-0.2.0-0.0.1`)
 
 ### 5. Trigger Production Publish Workflow
 
@@ -206,9 +206,9 @@ git push origin axonops-schema-registry-0.2.0-1
 2. Select **AxonOps Schema Registry Publish Signed to GHCR** workflow
 3. Click **Run workflow** button
 4. Fill in inputs:
-   - **main_git_tag**: The tag you created (e.g., `axonops-schema-registry-0.2.0-1`)
+   - **main_git_tag**: The tag you created (e.g., `axonops-schema-registry-0.2.0-0.0.1`)
    - **sr_version**: Schema Registry version (e.g., `0.2.0`)
-   - **build_number**: Build number (e.g., `1`)
+   - **container_version**: Container version (e.g., `0.0.1`)
 5. Click **Run workflow**
 
 #### Option B: Using GitHub CLI
@@ -221,9 +221,9 @@ git pull origin main
 # Trigger the signed workflow
 gh workflow run axonops-schema-registry-publish-signed.yml \
   --ref main \
-  -f main_git_tag=axonops-schema-registry-0.2.0-1 \
+  -f main_git_tag=axonops-schema-registry-0.2.0-0.0.1 \
   -f sr_version=0.2.0 \
-  -f build_number=1
+  -f container_version=0.0.1
 
 # Monitor workflow progress
 gh run watch
@@ -246,7 +246,7 @@ The production workflow performs these steps:
    - Security scanning (Trivy)
 
 3. **Create Release** - Creates GitHub Release
-   - Name: `axonops-schema-registry-{SR_VERSION}-{BUILD}`
+   - Name: `axonops-schema-registry-{SR_VERSION}-{CONTAINER_VERSION}`
    - Tag: `<main_git_tag>`
    - Body: Image details and Cosign verification instructions
 
@@ -260,7 +260,7 @@ The production workflow performs these steps:
    - Signatures pushed to GHCR
 
 6. **Publish** - Pushes images to GHCR
-   - Immutable tag: `0.2.0-1`
+   - Immutable tag: `0.2.0-0.0.1`
    - Floating tag: `0.2.0`
    - Global latest: `latest`
    - Registry: `ghcr.io/axonops/axonops-schema-registry`
@@ -275,11 +275,11 @@ The production workflow performs these steps:
 ```bash
 # Check GHCR for published images
 gh api /orgs/axonops/packages/container/axonops-schema-registry/versions | \
-  jq '.[] | select(.metadata.container.tags[] | contains("0.2.0-1"))'
+  jq '.[] | select(.metadata.container.tags[] | contains("0.2.0-0.0.1"))'
 
 # Pull and test
-docker pull ghcr.io/axonops/axonops-schema-registry:0.2.0-1
-docker run -d --name sr-test -p 8081:8081 ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+docker pull ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
+docker run -d --name sr-test -p 8081:8081 ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 curl -s http://localhost:8081/
 docker stop sr-test && docker rm sr-test
 ```
@@ -290,7 +290,7 @@ docker stop sr-test && docker rm sr-test
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+  ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 ```
 
 ## Inputs Reference
@@ -303,7 +303,7 @@ cosign verify \
 The workflow validates this tag is on main branch, then checks out this exact tag.
 
 **Examples:**
-- `axonops-schema-registry-0.2.0-1` (recommended)
+- `axonops-schema-registry-0.2.0-0.0.1` (recommended)
 
 ### sr_version
 **Required:** Yes
@@ -312,15 +312,15 @@ The workflow validates this tag is on main branch, then checks out this exact ta
 **Description:** Schema Registry application version
 
 This becomes the SR version component in the image tag:
-- `{sr_version}-{build_number}` (e.g., `0.2.0-1`)
+- `{sr_version}-{container_version}` (e.g., `0.2.0-0.0.1`)
 
-### build_number
+### container_version
 **Required:** Yes
 **Type:** String
-**Default:** `1`
-**Description:** Container build number (integer)
+**Default:** `0.0.1`
+**Description:** Container version (semver)
 
-Resets to `1` when `sr_version` changes. Increment for build-only bumps.
+Resets to `0.0.1` when `sr_version` changes. Increment for container-only bumps.
 
 ## Published Artifacts
 
@@ -329,19 +329,19 @@ Each release publishes:
 ### Container Images (GHCR)
 
 **Production registry:**
-- `ghcr.io/axonops/axonops-schema-registry:0.2.0-1` (immutable)
+- `ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1` (immutable)
 - `ghcr.io/axonops/axonops-schema-registry:0.2.0` (floating)
 - `ghcr.io/axonops/axonops-schema-registry:latest` (floating)
 
 **Development registry:**
-- `ghcr.io/axonops/development/axonops-schema-registry:0.2.0-1`
+- `ghcr.io/axonops/development/axonops-schema-registry:0.2.0-0.0.1`
 - `ghcr.io/axonops/development/axonops-schema-registry:0.2.0`
 - `ghcr.io/axonops/development/axonops-schema-registry:latest`
 
 All images are multi-arch: `linux/amd64`, `linux/arm64`
 
 ### GitHub Release
-- Name: `axonops-schema-registry-{SR_VERSION}-{BUILD}`
+- Name: `axonops-schema-registry-{SR_VERSION}-{CONTAINER_VERSION}`
 - Tag: `<main_git_tag>`
 - Body: Lists image tags, Cosign verification instructions
 
@@ -356,21 +356,21 @@ All images are multi-arch: `linux/amd64`, `linux/arm64`
 
 **When:** Upstream releases a new Schema Registry version (e.g., 0.2.0 -> 0.3.0)
 
-**Key rule:** Build number **resets to 1**.
+**Key rule:** Container version **resets to 0.0.1**.
 
 **Steps:**
 
 1. **Create new version directory:**
    ```bash
-   mkdir -p axonops-schema-registry/0.3.0/{scripts,config}
+   mkdir -p axonops-schema-registry/0.3/{scripts,config}
    ```
 
 2. **Copy and update files from previous version:**
    ```bash
-   cp axonops-schema-registry/0.2.0/Dockerfile axonops-schema-registry/0.3.0/
-   cp axonops-schema-registry/0.2.0/.dockerignore axonops-schema-registry/0.3.0/
-   cp -r axonops-schema-registry/0.2.0/scripts/* axonops-schema-registry/0.3.0/scripts/
-   cp -r axonops-schema-registry/0.2.0/config/* axonops-schema-registry/0.3.0/config/
+   cp axonops-schema-registry/0.2/Dockerfile axonops-schema-registry/0.3/
+   cp axonops-schema-registry/0.2/.dockerignore axonops-schema-registry/0.3/
+   cp -r axonops-schema-registry/0.2/scripts/* axonops-schema-registry/0.3/scripts/
+   cp -r axonops-schema-registry/0.2/config/* axonops-schema-registry/0.3/config/
    ```
 
 3. **Update Dockerfile:**
@@ -384,26 +384,26 @@ All images are multi-arch: `linux/amd64`, `linux/arm64`
 
 5. **Merge to main and tag:**
    ```bash
-   git tag axonops-schema-registry-0.3.0-1
-   git push origin axonops-schema-registry-0.3.0-1
+   git tag axonops-schema-registry-0.3.0-0.0.1
+   git push origin axonops-schema-registry-0.3.0-0.0.1
    ```
 
 6. **Publish:**
    ```bash
    gh workflow run axonops-schema-registry-publish-signed.yml \
      --ref main \
-     -f main_git_tag=axonops-schema-registry-0.3.0-1 \
+     -f main_git_tag=axonops-schema-registry-0.3.0-0.0.1 \
      -f sr_version=0.3.0 \
-     -f build_number=1
+     -f container_version=0.0.1
    ```
 
-**Result:** Tags `0.3.0-1`, `0.3.0`, `latest` published.
+**Result:** Tags `0.3.0-0.0.1`, `0.3.0`, `latest` published.
 
-### Scenario 2: Build-Only Bump
+### Scenario 2: Container-Only Bump
 
 **When:** Container improvements without SR version change (base image updates, script fixes, Dockerfile optimization).
 
-**Key rule:** Same SR version, **increment build number**.
+**Key rule:** Same SR version, **increment container version**.
 
 **Steps:**
 
@@ -411,20 +411,20 @@ All images are multi-arch: `linux/amd64`, `linux/arm64`
 
 2. **Merge to main and tag with incremented build:**
    ```bash
-   git tag axonops-schema-registry-0.2.0-2
-   git push origin axonops-schema-registry-0.2.0-2
+   git tag axonops-schema-registry-0.2.0-0.0.2
+   git push origin axonops-schema-registry-0.2.0-0.0.2
    ```
 
 3. **Publish:**
    ```bash
    gh workflow run axonops-schema-registry-publish-signed.yml \
      --ref main \
-     -f main_git_tag=axonops-schema-registry-0.2.0-2 \
+     -f main_git_tag=axonops-schema-registry-0.2.0-0.0.2 \
      -f sr_version=0.2.0 \
-     -f build_number=2
+     -f container_version=0.0.2
    ```
 
-**Result:** Tags `0.2.0-2`, `0.2.0` (now points to build 2), `latest` published. Tag `0.2.0-1` remains unchanged.
+**Result:** Tags `0.2.0-0.0.2`, `0.2.0` (now points to container version 0.0.2), `latest` published. Tag `0.2.0-0.0.1` remains unchanged.
 
 ## Troubleshooting
 
@@ -433,7 +433,7 @@ All images are multi-arch: `linux/amd64`, `linux/arm64`
 **Error:** `Container version already exists in GHCR`
 
 **Solution:**
-- Use a different version (increment build number)
+- Use a different version (increment container version)
 - Or delete the existing release and images from GHCR if this was a mistake
 
 ### Tests Fail During Publish
@@ -476,12 +476,12 @@ All images are multi-arch: `linux/amd64`, `linux/arm64`
 
 **Solution:**
 ```bash
-cosign tree ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+cosign tree ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/axonops-schema-registry:0.2.0-1 \
+  ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1 \
   --verbose
 ```
 
@@ -489,7 +489,7 @@ cosign verify \
 
 If you need to re-publish the same version (e.g., image push failed):
 
-1. Delete the existing GitHub Release: `gh release delete axonops-schema-registry-0.2.0-1`
+1. Delete the existing GitHub Release: `gh release delete axonops-schema-registry-0.2.0-0.0.1`
 2. Delete images from GHCR (via GitHub Packages UI)
 3. Re-run the publish workflow with the same inputs
 
@@ -501,10 +501,10 @@ Before publishing:
 
 - [ ] All tests passing on `main` branch
 - [ ] Documentation updated (README.md, DEVELOPMENT.md)
-- [ ] Git tag created and pushed (format: `axonops-schema-registry-{SR_VERSION}-{BUILD}`)
+- [ ] Git tag created and pushed (format: `axonops-schema-registry-{SR_VERSION}-{CONTAINER_VERSION}`)
 - [ ] Version doesn't exist in GHCR
-- [ ] Correct scenario identified (new SR version vs build-only bump)
-- [ ] Build number is correct (reset to 1 for new SR version, incremented for build bump)
+- [ ] Correct scenario identified (new SR version vs container-only bump)
+- [ ] Container version is correct (reset to 0.0.1 for new SR version, incremented for container bump)
 
 During publishing:
 
@@ -529,11 +529,11 @@ After publishing:
 
 **Recommended Release Schedule:**
 
-- **Build bumps:** As needed for security patches and container improvements
+- **Container bumps:** As needed for security patches and container improvements
 - **New SR versions:** When upstream releases new Schema Registry versions
 
 **Security Updates:**
-- Base image (UBI9) updates: Publish as build bump (e.g., `0.2.0-1` -> `0.2.0-2`)
+- Base image (UBI9) updates: Publish as container bump (e.g., `0.2.0-0.0.1` -> `0.2.0-0.0.2`)
 - Schema Registry security releases: Publish as new SR version
 
 ---

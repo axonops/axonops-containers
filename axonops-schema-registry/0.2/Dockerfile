@@ -17,7 +17,7 @@ ARG SR_VERSION
 ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
 ARG VERSION=unknown
-ARG BUILD_NUMBER=1
+ARG CONTAINER_VERSION=0.0.1
 ARG GIT_TAG=unknown
 ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
@@ -56,7 +56,7 @@ LABEL org.opencontainers.image.base.digest="${UBI9_MINIMAL_DIGEST}"
 
 # AxonOps-specific labels (com.axonops.* namespace)
 LABEL com.axonops.schema-registry.version="${SR_VERSION}"
-LABEL com.axonops.build.number="${BUILD_NUMBER}"
+LABEL com.axonops.container.version="${CONTAINER_VERSION}"
 LABEL com.axonops.build.actor="${GITHUB_ACTOR}"
 
 # Update all packages to latest versions (security patches)
@@ -141,7 +141,7 @@ RUN set -euo pipefail && \
     echo "CONTAINER_BUILT_BY=\"${GITHUB_ACTOR}\"" >> /etc/axonops/build-info.txt && \
     echo "IS_PRODUCTION_RELEASE=\"${IS_PRODUCTION_RELEASE}\"" >> /etc/axonops/build-info.txt && \
     echo "SR_VERSION=\"${SR_VERSION}\"" >> /etc/axonops/build-info.txt && \
-    echo "BUILD_NUMBER=\"${BUILD_NUMBER}\"" >> /etc/axonops/build-info.txt && \
+    echo "CONTAINER_VERSION_TAG=\"${CONTAINER_VERSION}\"" >> /etc/axonops/build-info.txt && \
     echo "UBI9_BASE_DIGEST=\"${UBI9_MINIMAL_DIGEST}\"" >> /etc/axonops/build-info.txt && \
     echo "SR_BINARY_VERSION=\"$(axonops-schema-registry --version 2>&1 || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
     echo "OS_VERSION=\"$(grep PRETTY_NAME /etc/os-release 2>/dev/null | sed 's/.*="\(.*\)"/\1/' || echo 'unknown') (UBI - Universal Base Image, freely redistributable)\"" >> /etc/axonops/build-info.txt && \

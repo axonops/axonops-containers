@@ -59,31 +59,31 @@ Browse all available tags: [GitHub Container Registry](https://github.com/axonop
 Images use a multi-dimensional tagging strategy with two independent axes:
 
 - **SR_VERSION** - Schema Registry application version (e.g., `0.2.0`)
-- **BUILD** - Container build number (integer, e.g., `1`, `2`, `3`)
+- **CONTAINER_VERSION** - Container version (semver, e.g., `0.0.1`, `0.0.2`, `0.1.0`)
 
 | Tag Pattern | Example | Description | Use Case |
 |-------------|---------|-------------|----------|
-| `{SR_VERSION}-{BUILD}` | `0.2.0-1` | Fully immutable (SR version + build number) | **Production**: Pin exact versions for complete auditability |
+| `{SR_VERSION}-{CONTAINER_VERSION}` | `0.2.0-0.0.1` | Fully immutable (SR version + container version) | **Production**: Pin exact versions for complete auditability |
 | `@sha256:<digest>` | `@sha256:abc123...` | Digest-based (cryptographically immutable) | **Highest Security**: Guaranteed image integrity |
-| `{SR_VERSION}` | `0.2.0` | Latest build for this SR version | Track build updates for specific SR version |
+| `{SR_VERSION}` | `0.2.0` | Latest container version for this SR version | Track container updates for specific SR version |
 | `latest` | `latest` | Latest across all versions | Quick trials only (NOT for production) |
 
 **Tagging Examples:**
 
-When `0.2.0-1` is built (and it's the latest):
-- `0.2.0-1` (immutable - never changes)
-- `0.2.0` (floating - retags to newer builds of same SR version)
+When `0.2.0-0.0.1` is built (and it's the latest):
+- `0.2.0-0.0.1` (immutable - never changes)
+- `0.2.0` (floating - retags to newer container versions of same SR version)
 - `latest` (floating - moves to newer SR versions)
 
-When `0.2.0-2` is built (build-only bump, same SR version):
-- `0.2.0-2` (immutable - never changes)
-- `0.2.0` (floating - now points to build 2)
-- `latest` (floating - now points to build 2)
+When `0.2.0-0.0.2` is built (container-only bump, same SR version):
+- `0.2.0-0.0.2` (immutable - never changes)
+- `0.2.0` (floating - now points to container version 0.0.2)
+- `latest` (floating - now points to container version 0.0.2)
 
-When `0.3.0-1` is built (new SR version, build resets to 1):
-- `0.3.0-1` (immutable - never changes)
-- `0.3.0` (floating - latest build of 0.3.0)
-- `latest` (floating - now points to 0.3.0-1)
+When `0.3.0-0.0.1` is built (new SR version, container version resets to 0.0.1):
+- `0.3.0-0.0.1` (immutable - never changes)
+- `0.3.0` (floating - latest container version of 0.3.0)
+- `latest` (floating - now points to 0.3.0-0.0.1)
 
 ## Production Best Practice
 
@@ -105,9 +105,9 @@ When `0.3.0-1` is built (new SR version, build resets to 1):
 
 2. **Immutable Tag** (Production Standard)
    ```bash
-   docker pull ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+   docker pull ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
    ```
-   - Pinned to specific version (SR 0.2.0, build 1)
+   - Pinned to specific version (SR 0.2.0, container 0.0.1)
    - Easy to read and manage
    - Full audit trail maintained
 
@@ -130,10 +130,10 @@ When `0.3.0-1` is built (new SR version, build resets to 1):
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+  ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 
 # Check signature exists
-cosign tree ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+cosign tree ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 ```
 
 ## Building Docker Images
@@ -141,17 +141,17 @@ cosign tree ghcr.io/axonops/axonops-schema-registry:0.2.0-1
 If you prefer to build images yourself instead of using pre-built images:
 
 ```bash
-cd axonops-schema-registry/0.2.0
+cd axonops-schema-registry/0.2
 
 # Minimal build (required args only)
 docker build \
-  -t axonops-schema-registry:0.2.0-1 \
+  -t axonops-schema-registry:0.2.0-0.0.1 \
   .
 
 # Multi-arch build (amd64 + arm64) using buildx
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t axonops-schema-registry:0.2.0-1 \
+  -t axonops-schema-registry:0.2.0-0.0.1 \
   .
 ```
 
@@ -159,8 +159,8 @@ docker buildx build \
 - `SR_VERSION` - Schema Registry version (default: `0.2.0`)
 - `BUILD_DATE` - Build timestamp (ISO 8601 format, e.g., `$(date -u +"%Y-%m-%dT%H:%M:%SZ")`)
 - `VCS_REF` - Git commit SHA (e.g., `$(git rev-parse HEAD)`)
-- `VERSION` - Container version (e.g., `0.2.0-1`)
-- `BUILD_NUMBER` - Build number (e.g., `1`)
+- `VERSION` - Full version string (e.g., `0.2.0-0.0.1`)
+- `CONTAINER_VERSION` - Container version (e.g., `0.0.1`)
 - `GIT_TAG` - Git tag name (for release/tag links in banner)
 - `GITHUB_ACTOR` - Username who triggered build (for audit trail)
 - `IS_PRODUCTION_RELEASE` - Set to `true` for production (default: `false`)
@@ -196,7 +196,7 @@ Mount a custom config file to override the default:
 docker run -d --name schema-registry \
   -v /path/to/config.yaml:/etc/axonops-schema-registry/config.yaml:ro \
   -p 8081:8081 \
-  ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+  ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 ```
 
 ## Container Features
@@ -224,16 +224,16 @@ All containers display comprehensive version information on startup:
 ```
 ================================================================================
 AxonOps Schema Registry 0.2.0
-Image: ghcr.io/axonops/axonops-schema-registry:0.2.0-1
+Image: ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1
 Built: 2025-12-13T10:30:00Z
-Release: https://github.com/axonops/axonops-containers/releases/tag/axonops-schema-registry-0.2.0-1
+Release: https://github.com/axonops/axonops-containers/releases/tag/axonops-schema-registry-0.2.0-0.0.1
 Built by: GitHub Actions
 ================================================================================
 
 Component Versions:
   Schema Registry:    0.2.0
   Binary Version:     v0.2.0
-  Build Number:       1
+  Container Version:  0.0.1
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI)
   Platform:           x86_64
 
@@ -322,7 +322,7 @@ The CI pipeline includes:
 **Functional Tests:**
 - Container build verification (multi-arch)
 - Startup banner verification (production vs development)
-- Version verification (SR version, build number)
+- Version verification (SR version, container version)
 - Healthcheck script tests (startup, liveness, readiness)
 - Schema Registry API tests (GET /)
 
@@ -338,15 +338,15 @@ The CI pipeline includes:
 # Tag on development branch
 git checkout development
 git pull origin development
-git tag vdev-axonops-schema-registry-0.2.0-1
-git push origin vdev-axonops-schema-registry-0.2.0-1
+git tag vdev-axonops-schema-registry-0.2.0-0.0.1
+git push origin vdev-axonops-schema-registry-0.2.0-0.0.1
 
 # Publish to development registry
 gh workflow run axonops-schema-registry-development-publish-signed.yml \
   --ref development \
-  -f dev_git_tag=vdev-axonops-schema-registry-0.2.0-1 \
+  -f dev_git_tag=vdev-axonops-schema-registry-0.2.0-0.0.1 \
   -f sr_version=0.2.0 \
-  -f build_number=1
+  -f container_version=0.0.1
 ```
 
 **Production Release:**
@@ -354,15 +354,15 @@ gh workflow run axonops-schema-registry-development-publish-signed.yml \
 # Tag on main branch
 git checkout main
 git pull origin main
-git tag axonops-schema-registry-0.2.0-1
-git push origin axonops-schema-registry-0.2.0-1
+git tag axonops-schema-registry-0.2.0-0.0.1
+git push origin axonops-schema-registry-0.2.0-0.0.1
 
 # Publish to production registry
 gh workflow run axonops-schema-registry-publish-signed.yml \
   --ref main \
-  -f main_git_tag=axonops-schema-registry-0.2.0-1 \
+  -f main_git_tag=axonops-schema-registry-0.2.0-0.0.1 \
   -f sr_version=0.2.0 \
-  -f build_number=1
+  -f container_version=0.0.1
 ```
 
 See [RELEASE.md](./RELEASE.md) for complete release process documentation.

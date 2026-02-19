@@ -46,7 +46,7 @@ This document covers development practices, workflows, testing, and contribution
 **What it tests:**
 - Container build verification (amd64 platform)
 - Startup banner content (production vs development metadata)
-- Version verification (SR version, build number)
+- Version verification (SR version, container version)
 - Healthcheck script functionality (startup, liveness, readiness)
 - Schema Registry API tests (GET /)
 - Security scanning (Trivy)
@@ -62,9 +62,9 @@ This document covers development practices, workflows, testing, and contribution
 - Manual only (workflow dispatch)
 
 **Required Inputs:**
-- `main_git_tag` - Git tag on main branch (e.g., `axonops-schema-registry-0.2.0-1`)
+- `main_git_tag` - Git tag on main branch (e.g., `axonops-schema-registry-0.2.0-0.0.1`)
 - `sr_version` - Schema Registry version (e.g., `0.2.0`)
-- `build_number` - Build number (e.g., `1`)
+- `container_version` - Container version (e.g., `0.0.1`)
 
 **Process:**
 1. **Validate** - Verify tag is on main branch and version doesn't exist
@@ -76,8 +76,8 @@ This document covers development practices, workflows, testing, and contribution
 7. **Verify** - Pull from GHCR and run smoke tests
 
 **Published Tags:**
-- `0.2.0-1` (immutable)
-- `0.2.0` (floating - latest build for this SR version)
+- `0.2.0-0.0.1` (immutable)
+- `0.2.0` (floating - latest container version for this SR version)
 - `latest` (floating - latest across all versions)
 
 See [RELEASE.md](./RELEASE.md) for complete instructions.
@@ -115,7 +115,7 @@ Located in `.github/actions/axonops-schema-registry-*/`
 **Verification:**
 - `verify-startup-banner` - Verify banner shows correct metadata (production vs dev)
 - `verify-no-startup-errors` - Check logs for ERROR/WARN/FATAL patterns
-- `verify-versions` - Verify SR version and build number
+- `verify-versions` - Verify SR version and container version
 
 **Testing:**
 - `test-healthcheck` - Test startup, liveness, readiness probes
@@ -143,15 +143,15 @@ Located in `.github/actions/axonops-schema-registry-*/`
 
 **Build-time metadata (in build-info.txt):**
 ```bash
-CONTAINER_VERSION="0.2.0-1"
-CONTAINER_IMAGE="ghcr.io/axonops/axonops-schema-registry:0.2.0-1"
+CONTAINER_VERSION="0.2.0-0.0.1"
+CONTAINER_IMAGE="ghcr.io/axonops/axonops-schema-registry:0.2.0-0.0.1"
 CONTAINER_REVISION="abc123def"
-CONTAINER_GIT_TAG="axonops-schema-registry-0.2.0-1"
+CONTAINER_GIT_TAG="axonops-schema-registry-0.2.0-0.0.1"
 CONTAINER_BUILD_DATE="2025-12-13T10:30:00Z"
 CONTAINER_BUILT_BY="GitHub Actions"
 IS_PRODUCTION_RELEASE="true"
 SR_VERSION="0.2.0"
-BUILD_NUMBER="1"
+CONTAINER_VERSION_TAG="0.0.1"
 UBI9_BASE_DIGEST="sha256:6fc28bcb6776e387..."
 SR_BINARY_VERSION="v0.2.0"
 OS_VERSION="Red Hat Enterprise Linux 9.7 (Plow) (UBI)"
@@ -205,7 +205,7 @@ PLATFORM="x86_64"
 ### Docker Build Test
 
 ```bash
-cd axonops-schema-registry/0.2.0
+cd axonops-schema-registry/0.2
 
 # Basic build (local testing)
 docker build \
@@ -221,7 +221,7 @@ docker build \
 ### Podman Build Test
 
 ```bash
-cd axonops-schema-registry/0.2.0
+cd axonops-schema-registry/0.2
 
 # Podman build
 podman build \
@@ -324,7 +324,7 @@ When a new Schema Registry version is released (e.g., 0.3.0):
 
 1. **Create new directory:**
    ```bash
-   mkdir -p axonops-schema-registry/0.3.0/{scripts,config}
+   mkdir -p axonops-schema-registry/0.3/{scripts,config}
    ```
 
 2. **Copy and update Dockerfile:**
@@ -345,7 +345,7 @@ When a new Schema Registry version is released (e.g., 0.3.0):
 
 6. **Test:**
    ```bash
-   cd axonops-schema-registry/0.3.0
+   cd axonops-schema-registry/0.3
    docker build -t test .
    docker run -d --name test -p 8081:8081 test
    curl -s http://localhost:8081/
@@ -358,7 +358,7 @@ When a new Schema Registry version is released (e.g., 0.3.0):
 ### Repository Structure
 ```
 axonops-schema-registry/
-├── 0.2.0/                          # SR 0.2.0 container
+├── 0.2/                            # SR 0.2.x container
 │   ├── Dockerfile                  # Main container build
 │   ├── .dockerignore               # Build context exclusions
 │   ├── config/                     # Configuration files

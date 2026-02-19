@@ -239,7 +239,7 @@ development ──[merge-* tag]──> auto PR to main ──[approve+merge]─�
 | k8ssandra | `<version>` | `1.0.5` |
 | axondb-timeseries | `axondb-timeseries-<version>` | `axondb-timeseries-1.3.0` |
 | axondb-search | `axondb-search-<version>` | `axondb-search-1.3.0` |
-| axonops-schema-registry | `axonops-schema-registry-<SR_VERSION>-<BUILD>` | `axonops-schema-registry-0.2.0-1` |
+| axonops-schema-registry | `axonops-schema-registry-<SR_VERSION>-<CONTAINER_VERSION>` | `axonops-schema-registry-0.2.0-0.0.1` |
 | strimzi | `<env>/<strimzi>-kafka-<kafka>-<build>` | `release/0.49.1-kafka-4.1.0-1` |
 | Development | `dev-<version>` or `vdev-<component>-<version>` | `dev-1.0.0` |
 | Promotion | `merge-<version>` | `merge-1.0.5` |
@@ -305,11 +305,11 @@ AxonDB uses simpler tagging:
 latest                       # Floating
 ```
 
-Schema Registry uses multi-dimensional versioning (SR version + build number):
+Schema Registry uses multi-dimensional versioning (SR version + container version):
 ```
-{SR_VERSION}-{BUILD}        # Immutable (e.g., 0.2.0-1)
-{SR_VERSION}                 # Floating: latest build for this SR version
-latest                       # Floating: latest everything
+{SR_VERSION}-{CONTAINER_VERSION}  # Immutable (e.g., 0.2.0-0.0.1)
+{SR_VERSION}                       # Floating: latest container version for this SR version
+latest                             # Floating: latest everything
 ```
 
 ---
@@ -424,7 +424,7 @@ Follow the checklist from `DEVELOPMENT.md`:
 ### axonops-schema-registry
 - Go binary (axonops-schema-registry) built from scratch on UBI 9 minimal
 - Tarball downloaded from GitHub Releases with SHA256 verification
-- Multi-dimensional versioning: SR_VERSION (e.g., 0.2.0) + BUILD (integer, e.g., 1)
+- Multi-dimensional versioning: SR_VERSION (e.g., 0.2.0) + CONTAINER_VERSION (semver, e.g., 0.0.1)
 - Port 8081, health at `GET /`, Swagger at `GET /docs`
 - Supports multiple storage backends: PostgreSQL, MySQL, Cassandra 5+, memory
 - Lightweight: single stateless binary, ~50MB memory
@@ -459,7 +459,7 @@ Follow the checklist from `DEVELOPMENT.md`:
 - Duplicating logic that should be a composite action
 - Forgetting to update `TAG_CHANGELOG.md` after a release
 - Using `-latest` tags in any production example or documentation
-- Confusing SR_VERSION (application version) with BUILD (container build number) for schema-registry
+- Confusing SR_VERSION (application version) with CONTAINER_VERSION (container version) for schema-registry
 
 ---
 

@@ -47,7 +47,7 @@ print_startup_banner() {
     echo "Component Versions:"
     echo "  Schema Registry:    ${SR_VERSION:-unknown}"
     echo "  Binary Version:     ${SR_BINARY_VERSION:-unknown}"
-    echo "  Build Number:       ${BUILD_NUMBER:-unknown}"
+    echo "  Container Version:  ${CONTAINER_VERSION_TAG:-unknown}"
     echo "  OS:                 ${OS_VERSION:-unknown}"
     echo "  Platform:           ${PLATFORM:-unknown}"
     echo ""
