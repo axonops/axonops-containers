@@ -1,45 +1,44 @@
 apiVersion: k8ssandra.io/v1alpha1
 kind: K8ssandraCluster
 metadata:
-  name: axonops-k8ssandra-5
-  namespace: k8ssandra-operator
+  name: ${K8SSANDRA_CLUSTER_NAME}
+  namespace: ${K8SSANDRA_NAMESPACE}
 spec:
   cassandra:
-    serverVersion: "5.0.6"
+    serverVersion: "${CASSANDRA_VERSION}"
     serverImage: ${IMAGE_NAME}
     softPodAntiAffinity: true
     resources:
       limits:
-        cpu: 1
-        memory: 2Gi
+        cpu: ${CPU_LIMIT}
+        memory: ${MEMORY_LIMIT}
       requests:
-        cpu: 1
-        memory: 1Gi
+        cpu: ${CPU_REQUEST}
+        memory: ${MEMORY_REQUEST}
     datacenters:
       - metadata:
-          name: dc1
-        size: 3
-        # 1. Move 'env' inside a 'containers' block
+          name: ${CASSANDRA_DC_NAME}
+        size: ${CASSANDRA_DC_SIZE}
         containers:
-          - name: cassandra  # 2. Target the specific container
-            env:             # 3. Use list format (name/value), not key:value map
+          - name: cassandra
+            env:
               - name: AXON_AGENT_KEY
-                value: "KEY-GOES-HERE"
+                value: "${AXON_AGENT_KEY}"
               - name: AXON_AGENT_ORG
-                value: "ORG-GOES-HERE"
+                value: "${AXON_AGENT_ORG}"
               - name: AXON_AGENT_SERVER_HOST
-                value: "agents.axonops.cloud"
+                value: "${AXON_AGENT_SERVER_HOST}"
               - name: AXON_AGENT_SERVER_PORT
-                value: "443"
+                value: "${AXON_AGENT_SERVER_PORT}"
         config:
           jvmOptions:
-            heap_initial_size: 1G
-            heap_max_size: 1G
+            heap_initial_size: ${HEAP_SIZE}
+            heap_max_size: ${HEAP_SIZE}
         storageConfig:
           cassandraDataVolumeClaimSpec:
-            storageClassName: local-path
+            storageClassName: ${STORAGE_CLASS}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 2Gi
+                storage: ${STORAGE_SIZE}

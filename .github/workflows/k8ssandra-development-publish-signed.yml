@@ -11,7 +11,15 @@ on:
         description: 'Container version for GHCR (e.g., dev-1.0.0)'
         required: true
         type: string
-
+      axon_agent_version:
+        description: 'AxonOps Agent version to install in the image (e.g., 0.1.110 or "latest")'
+        required: false
+        default: 'latest'
+        type: string
+      axon_agent_java_version:
+        description: 'AxonOps Agent Java version to install (e.g., "latest" or "17.0.11")'
+        required: false
+        default: 'latest'
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/development/k8ssandra/cassandra
@@ -85,6 +93,8 @@ jobs:
             GITHUB_ACTOR=${{ github.actor }}
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            AXON_AGENT_VERSION=${{ inputs.axon_agent_version }}
+            AXON_AGENT_JAVA_VERSION=${{ inputs.axon_agent_java_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

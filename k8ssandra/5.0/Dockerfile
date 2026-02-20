@@ -19,6 +19,8 @@ ARG GIT_TAG
 ARG GITHUB_ACTOR
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME
+ARG AXON_AGENT_VERSION=latest
+ARG AXON_AGENT_JAVA_VERSION=latest
 
 # Legacy labels (for backward compatibility)
 LABEL maintainer="AxonOps"
@@ -80,10 +82,20 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.
     rm -rf /var/cache/yum /var/cache/dnf
 
 # Install AxonOps agents and configure
-RUN groupadd --gid 9988 axonops && \
+RUN if [ "$AXON_AGENT_JAVA_VERSION" == "latest" ]; then \
+      axon_agent_java_pkg="axon-cassandra5.0-agent-jdk17"; \
+    else \
+      axon_agent_java_pkg="axon-cassandra5.0-agent-jdk17-${AXON_AGENT_JAVA_VERSION}"; \
+    fi && \
+if [ "$AXON_AGENT_VERSION" == "latest" ]; then \
+      axon_agent_pkg="axon-agent"; \
+    else \
+      axon_agent_pkg="axon-agent-${AXON_AGENT_VERSION}"; \
+    fi && \
+    groupadd --gid 9988 axonops && \
     useradd --gid 9988 --uid 9988 --shell /bin/bash -c "AxonOps" -G cassandra axonops && \
     usermod -aG axonops cassandra && \
-    microdnf -y install axon-cassandra5.0-agent-jdk17 axon-agent gettext && \
+    microdnf -y install ${axon_agent_pkg} ${axon_agent_java_pkg} gettext && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
     chmod 755 /usr/share/axonops/axon-agent && \
     rm -f /etc/axonops/axon-agent.yml && \
@@ -95,8 +107,6 @@ RUN groupadd --gid 9988 axonops && \
     setcap cap_chown,cap_fowner+eip /usr/share/axonops/axon-agent && \
     rm -rf /var/cache/yum /var/cache/dnf
 
-# Install cqlai (pinned version - must be provided as build arg)
-ARG CQLAI_VERSION
 RUN if [ -z "$CQLAI_VERSION" ]; then \
       echo "ERROR: CQLAI_VERSION build arg is required"; \
       exit 1; \
