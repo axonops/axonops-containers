@@ -1,0 +1,109 @@
+name: Test K8ssandra Cloud Installation
+
+on:
+  push:
+    branches:
+      - development
+      - 'feat/**'
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'k8ssandra/**'
+      - '.github/workflows/k8ssandra-cloud-install-test.yml'
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - 'k8ssandra/**'
+      - '.github/workflows/k8ssandra-cloud-install-test.yml'
+  workflow_dispatch:
+
+env:
+  CASSANDRA_VERSION: "5.0.6"
+  K8SSANDRA_CLUSTER_NAME: axonops-dev-cass
+  K8SSANDRA_NAMESPACE: k8ssandra-operator
+  CASSANDRA_DC_NAME: dc1
+  CASSANDRA_DC_SIZE: 1
+  STORAGE_CLASS: ""
+  STORAGE_SIZE: 2Gi
+  CPU_LIMIT: 1
+  CPU_REQUEST: 1
+  MEMORY_LIMIT: 2Gi
+  MEMORY_REQUEST: 1Gi
+  HEAP_SIZE: 1G
+  KUBERNETES_VERSION: v1.31.0
+  AXON_AGENT_ORG: ${{ secrets.AXON_AGENT_ORG }}
+  AXON_AGENT_KEY: ${{ secrets.AXON_AGENT_KEY }}
+  AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
+  AXON_AGENT_SERVER_PORT: "443"
+
+jobs:
+  test-k8ssandra-installation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Kind Cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind-cluster
+          node_image: kindest/node:${{ env.KUBERNETES_VERSION }}
+
+      - name: Install K8ssandra Operator
+        run: |
+          helm upgrade --install \
+            cert-manager oci://quay.io/jetstack/charts/cert-manager \
+            --version v1.19.1 \
+            --namespace cert-manager \
+            --create-namespace \
+            --wait \
+            --set crds.enabled=true
+
+          helm repo add k8ssandra https://helm.k8ssandra.io/stable
+          helm upgrade --install k8ssandra-operator k8ssandra/k8ssandra-operator -n ${K8SSANDRA_NAMESPACE} \
+            --create-namespace --set image.tag=v1.29.0 \
+            --wait
+
+      - name: Create Cassandra Cluster using cloud example
+        run: |
+          for node in $(kubectl get node -oname); do kubectl label $node topology.kubernetes.io/zone=github; done
+          cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
+          echo "Waiting for Cassandra cluster to start provisioning..."
+          sleep 60 # Wait a bit for the cluster to start provisioning before checking status
+        env:
+          IMAGE_NAME: "ghcr.io/axonops/development/k8ssandra/cassandra:${{ env.CASSANDRA_VERSION }}"
+
+      - name: Wait for Cassandra Cluster to be Ready
+        run: |
+          kubectl wait pods --for=condition=Ready -n ${K8SSANDRA_NAMESPACE} --timeout=900s -l app.kubernetes.io/created-by=cass-operator
+
+      - name: Confirm it registered against AxonOps SaaS
+        run: |
+          TIMEOUT=180
+          INTERVAL=15
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            COUNT=$(curl -s -H "Authorization: Bearer ${AXON_API_TOKEN}" \
+              https://dash.axonopsdev.com/${AXON_AGENT_ORG}/api/v1/nodes/${AXON_AGENT_ORG}/cassandra/${AXON_CLUSTER_NAME} \
+              | jq '.[]' | grep host_id | wc -l)
+            if [ "$COUNT" -gt 0 ]; then
+              echo "Cassandra cluster registered with AxonOps SaaS successfully ($COUNT nodes)"
+              exit 0
+            fi
+            echo "Not registered yet, retrying in ${INTERVAL}s... (${ELAPSED}/${TIMEOUT}s)"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          echo "===> Failed to confirm Cassandra cluster registration with AxonOps SaaS after ${TIMEOUT}s"
+          exit 0
+        env:
+          AXON_API_TOKEN: ${{ secrets.AXON_API_TOKEN }}
+          AXON_CLUSTER_NAME: ${{ env.K8SSANDRA_CLUSTER_NAME }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          kind delete cluster --name kind-cluster

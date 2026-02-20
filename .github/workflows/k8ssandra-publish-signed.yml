@@ -11,6 +11,15 @@ on:
         description: 'Container version for GHCR (e.g., 1.0.0)'
         required: true
         type: string
+      axon_agent_version:
+        description: 'AxonOps Agent version to install in the image (e.g., 0.1.110 or "latest")'
+        required: false
+        default: 'latest'
+        type: string
+      axon_agent_java_version:
+        description: 'AxonOps Agent Java version to install (e.g., "latest" or "17.0.11")'
+        required: false
+        default: 'latest'
 
 env:
   REGISTRY: ghcr.io
@@ -130,6 +139,8 @@ jobs:
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
             IS_PRODUCTION_RELEASE=true
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-test
+            AXON_AGENT_VERSION=${{ inputs.axon_agent_version }}
+            AXON_AGENT_JAVA_VERSION=${{ inputs.axon_agent_java_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
