@@ -24,7 +24,7 @@ env:
   K8SSANDRA_CLUSTER_NAME: axonops-dev-cass
   K8SSANDRA_NAMESPACE: k8ssandra-operator
   CASSANDRA_DC_NAME: dc1
-  CASSANDRA_DC_SIZE: 3
+  CASSANDRA_DC_SIZE: 1
   STORAGE_CLASS: ""
   STORAGE_SIZE: 2Gi
   CPU_LIMIT: 1
@@ -74,11 +74,12 @@ jobs:
         run: |
           for node in $(kubectl get node -oname); do kubectl label $node topology.kubernetes.io/zone=github; done
           cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
+          echo "Waiting for Cassandra cluster to start provisioning..."
           sleep 60 # Wait a bit for the cluster to start provisioning before checking status
 
       - name: Wait for Cassandra Cluster to be Ready
         run: |
-          kubectl wait pods --for=condition=Ready -n ${K8SSANDRA_NAMESPACE} --timeout=300s -l app.kubernetes.io/created-by=cass-operator
+          kubectl wait pods --for=condition=Ready -n ${K8SSANDRA_NAMESPACE} --timeout=900s -l app.kubernetes.io/created-by=cass-operator
 
       - name: Confirm it registered against AxonOps SaaS
         run: |

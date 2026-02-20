@@ -158,5 +158,6 @@ jobs:
           AXON_CLUSTER_NAME: ${{ env.AXON_AGENT_CLUSTER_NAME }}
 
       - name: Cleanup
+        if: always()
         run: |
           kind delete cluster --name kind-cluster
