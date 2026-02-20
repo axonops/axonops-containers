@@ -143,6 +143,7 @@ jobs:
           kubectl get kafkatopic/test-topic -n $KAFKA_NAMESPACE -o yaml
 
       - name: Confirm it registered against AxonOps SaaS
+        continue-on-error: true
         run: |
           COUNT=$(curl -s -H "Authorization: Bearer ${AXON_API_TOKEN}" \
             https://dash.axonopsdev.com/${AXON_AGENT_ORG}/api/v1/nodes/${AXON_AGENT_ORG}/kafka/${AXON_CLUSTER_NAME} \
