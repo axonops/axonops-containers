@@ -42,3 +42,14 @@ spec:
             resources:
               requests:
                 storage: ${STORAGE_SIZE}
+        extraVolumes:
+          pvcs:
+            - name: axonops-data
+              mountPath: /var/lib/axonops
+              pvcSpec:
+                storageClassName: hcloud-volumes
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 512Mi
