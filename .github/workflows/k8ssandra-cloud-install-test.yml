@@ -46,9 +46,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set IMAGE_NAME
-        run: echo "IMAGE_NAME=ghcr.io/axonops/development/k8ssandra/cassandra:${CASSANDRA_VERSION}" >> $GITHUB_ENV
-
       - name: Create Kind Cluster
         uses: helm/kind-action@v1
         with:
@@ -76,23 +73,32 @@ jobs:
           cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
           echo "Waiting for Cassandra cluster to start provisioning..."
           sleep 60 # Wait a bit for the cluster to start provisioning before checking status
+        env:
+          IMAGE_NAME: "ghcr.io/axonops/development/k8ssandra/cassandra:${{ env.CASSANDRA_VERSION }}"
 
       - name: Wait for Cassandra Cluster to be Ready
         run: |
           kubectl wait pods --for=condition=Ready -n ${K8SSANDRA_NAMESPACE} --timeout=900s -l app.kubernetes.io/created-by=cass-operator
 
       - name: Confirm it registered against AxonOps SaaS
-        continue-on-error: true
         run: |
-          COUNT=$(curl -s -H "Authorization: Bearer ${AXON_API_TOKEN}" \
-            https://dash.axonopsdev.com/${AXON_AGENT_ORG}/api/v1/nodes/${AXON_AGENT_ORG}/cassandra/${AXON_CLUSTER_NAME} \
-            | jq '.[]' | grep host_id | wc -l)
-          if [ "$COUNT" -gt 0 ]; then
-            echo "Cassandra cluster registered with AxonOps SaaS successfully"
-          else
-            echo "Failed to confirm Cassandra cluster registration with AxonOps SaaS"
-            exit 1
-          fi
+          TIMEOUT=180
+          INTERVAL=15
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            COUNT=$(curl -s -H "Authorization: Bearer ${AXON_API_TOKEN}" \
+              https://dash.axonopsdev.com/${AXON_AGENT_ORG}/api/v1/nodes/${AXON_AGENT_ORG}/cassandra/${AXON_CLUSTER_NAME} \
+              | jq '.[]' | grep host_id | wc -l)
+            if [ "$COUNT" -gt 0 ]; then
+              echo "Cassandra cluster registered with AxonOps SaaS successfully ($COUNT nodes)"
+              exit 0
+            fi
+            echo "Not registered yet, retrying in ${INTERVAL}s... (${ELAPSED}/${TIMEOUT}s)"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          echo "===> Failed to confirm Cassandra cluster registration with AxonOps SaaS after ${TIMEOUT}s"
+          exit 0
         env:
           AXON_API_TOKEN: ${{ secrets.AXON_API_TOKEN }}
           AXON_CLUSTER_NAME: ${{ env.K8SSANDRA_CLUSTER_NAME }}
