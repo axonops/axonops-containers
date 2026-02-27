@@ -11,7 +11,19 @@ on:
         description: 'Container version for GHCR (e.g., dev-1.0.0)'
         required: true
         type: string
-
+      axon_agent_version:
+        description: 'AxonOps Agent version to install in the image (e.g., 0.1.110 or "latest")'
+        required: false
+        default: 'latest'
+        type: string
+      axon_agent_java_version:
+        description: 'AxonOps Agent Java version to install (e.g., "latest" or "17.0.11")'
+        required: false
+        default: 'latest'
+      cqlai_version:
+        description: 'CQLAI version to install in the image (e.g., "latest" or "1.0.0")'
+        required: false
+        default: 'latest'
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/development/k8ssandra/cassandra
@@ -34,6 +46,25 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Resolve CQLAI version
+        id: cqlai
+        run: |
+          CQLAI_INPUT="${{ inputs.cqlai_version }}"
+          if [ -z "$CQLAI_INPUT" ] || [ "$CQLAI_INPUT" = "latest" ]; then
+            echo "Discovering latest cqlai release from GitHub..."
+            CQLAI_RESOLVED=$(curl -sL -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/axonops/cqlai/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+            if [ -z "$CQLAI_RESOLVED" ] || [ "$CQLAI_RESOLVED" = "null" ]; then
+              echo "ERROR: Failed to discover latest cqlai version from GitHub"
+              exit 1
+            fi
+            echo "✓ Resolved latest cqlai version: $CQLAI_RESOLVED"
+          else
+            CQLAI_RESOLVED="$CQLAI_INPUT"
+            echo "✓ Using provided cqlai version: $CQLAI_RESOLVED"
+          fi
+          echo "version=$CQLAI_RESOLVED" >> $GITHUB_OUTPUT
 
       - name: Extract base version
         id: version
@@ -84,7 +115,9 @@ jobs:
             GIT_TAG=${{ inputs.dev_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
-            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            CQLAI_VERSION=${{ steps.cqlai.outputs.version }}
+            AXON_AGENT_VERSION=${{ inputs.axon_agent_version }}
+            AXON_AGENT_JAVA_VERSION=${{ inputs.axon_agent_java_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -93,7 +126,7 @@ jobs:
         with:
           cassandra_version: ${{ matrix.cassandra_version }}
           base_version: ${{ steps.version.outputs.base_version }}
-          cqlai_version: ${{ vars.K8SSANDRA_CQLAI_VERSION }}
+          cqlai_version: ${{ steps.cqlai.outputs.version }}
           k8ssandra_digests_json: ${{ vars.K8SSANDRA_VERSIONS }}
 
       - name: Start container and wait for services
@@ -195,6 +228,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve CQLAI version
+        id: cqlai
+        run: |
+          CQLAI_INPUT="${{ inputs.cqlai_version }}"
+          if [ -z "$CQLAI_INPUT" ] || [ "$CQLAI_INPUT" = "latest" ]; then
+            echo "Discovering latest cqlai release from GitHub..."
+            CQLAI_RESOLVED=$(curl -sL -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/axonops/cqlai/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+            if [ -z "$CQLAI_RESOLVED" ] || [ "$CQLAI_RESOLVED" = "null" ]; then
+              echo "ERROR: Failed to discover latest cqlai version from GitHub"
+              exit 1
+            fi
+            echo "✓ Resolved latest cqlai version: $CQLAI_RESOLVED"
+          else
+            CQLAI_RESOLVED="$CQLAI_INPUT"
+            echo "✓ Using provided cqlai version: $CQLAI_RESOLVED"
+          fi
+          echo "version=$CQLAI_RESOLVED" >> $GITHUB_OUTPUT
+
       - name: Extract base version
         id: version
         run: |
@@ -251,7 +303,7 @@ jobs:
             GIT_TAG=${{ inputs.dev_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
-            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            CQLAI_VERSION=${{ steps.cqlai.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -283,7 +335,7 @@ jobs:
             GIT_TAG=${{ inputs.dev_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
-            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            CQLAI_VERSION=${{ steps.cqlai.outputs.version }}
           cache-from: type=gha
 
       - name: Image published and signed
