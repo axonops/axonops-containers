@@ -22,6 +22,10 @@ env:
   # Version matrix - maps operator versions to supported Kafka versions and AxonOps agent version
   VERSION_MATRIX: |
     {
+      "0.50.1": {
+        "kafka_versions": ["4.0.0", "4.0.1", "4.1.0", "4.1.1"],
+        "axon_agent_version": "2.0.18"
+      },
       "0.50.0": {
         "kafka_versions": ["4.0.0", "4.0.1", "4.1.0", "4.1.1"],
         "axon_agent_version": "2.0.18"
