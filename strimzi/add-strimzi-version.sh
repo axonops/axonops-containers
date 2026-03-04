@@ -172,7 +172,7 @@ if f'"{operator_version}"' in content.split("STRIMZI_DIGESTS")[0]:
 new_entry = (
     f'      "{operator_version}": {{\n'
     f'        "kafka_versions": {kafka_json_array},\n'
-    f'        "axon_agent_version": "2.0.26"\n'
+    f'        "axon_agent_version": "2.0.18"\n'
     f'      }},\n'
 )
 
