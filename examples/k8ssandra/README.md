@@ -23,10 +23,12 @@ This directory contains example manifests to deploy Apache Cassandra using K8ssa
 helm repo add k8ssandra https://helm.k8ssandra.io/stable
 helm repo update
 
-# Install the operator
+# Install the operator. Set the global scope to true if you would like to use
+# multiple namespaces
 helm install k8ssandra-operator k8ssandra/k8ssandra-operator \
   -n k8ssandra-operator \
-  --create-namespace
+  --create-namespace \
+  --set global.clusterScoped=true
 
 # Verify installation
 kubectl get pods -n k8ssandra-operator
@@ -53,7 +55,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
 | `CASSANDRA_DC_SIZE` | `3` | Number of nodes |
-| `STORAGE_CLASS` | `local-path` | StorageClass name |
+| `STORAGE_CLASS` | `` | StorageClass name |
 | `STORAGE_SIZE` | `2Gi` | Storage per node |
 | `AXON_AGENT_KEY` | - | AxonOps API key |
 | `AXON_AGENT_ORG` | - | AxonOps organization |

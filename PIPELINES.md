@@ -148,7 +148,14 @@ git push origin dev-k8ssandra-1.5.0
 gh workflow run "K8ssandra Development Publish Signed to GHCR" \
   --ref development \
   -f dev_git_tag=dev-k8ssandra-1.5.0 \
-  -f container_version=dev-1.5.0
+  -f container_version=v0.1.114
+
+# Optionally pin a specific cqlai version (defaults to latest GitHub release)
+gh workflow run "K8ssandra Development Publish Signed to GHCR" \
+  --ref development \
+  -f dev_git_tag=dev-k8ssandra-1.5.0 \
+  -f container_version=v0.1.114 \
+  -f cqlai_version=1.2.0
 ```
 
 ### Strimzi (Dev)
