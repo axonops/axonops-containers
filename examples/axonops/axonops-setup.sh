@@ -17,6 +17,7 @@ NS_CERT_MANAGER="${NS_CERT_MANAGER:-cert-manager}"
 NS_AXONOPS="${NS_AXONOPS:-axonops}"
 
 # --- cert-manager installation ---
+CERT_MANAGER_INSTALL="${CERT_MANAGER_INSTALL:-true}"
 CERT_MANAGER_RELEASE_NAME="${CERT_MANAGER_RELEASE_NAME:-cert-manager}"
 CERT_MANAGER_CHART_REPO="${CERT_MANAGER_CHART_REPO:-oci://quay.io/jetstack/charts/cert-manager}"
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.19.1}"
@@ -33,7 +34,7 @@ AXON_TIMESERIES_CHART="${AXON_TIMESERIES_CHART:-oci://ghcr.io/axonops/charts/axo
 AXON_TIMESERIES_VALUES_FILE="${AXON_TIMESERIES_VALUES_FILE:-timeseries-values.yaml}"
 AXON_TIMESERIES_HEAP_SIZE="${AXON_TIMESERIES_HEAP_SIZE:-2048M}"
 AXON_TIMESERIES_TLS_ENABLED="${AXON_TIMESERIES_TLS_ENABLED:-true}"
-AXON_TIMESERIES_CERTMANAGER_ENABLED="${AXON_TIMESERIES_CERTMANAGER_ENABLED:-true}"
+AXON_TIMESERIES_CERTMANAGER_ENABLED="${AXON_TIMESERIES_CERTMANAGER_ENABLED:-$CERT_MANAGER_INSTALL}"
 AXON_TIMESERIES_CERT_ISSUER_NAME="${AXON_TIMESERIES_CERT_ISSUER_NAME:-$CLUSTER_ISSUER_NAME}"
 AXON_TIMESERIES_PERSISTENCE_ENABLED="${AXON_TIMESERIES_PERSISTENCE_ENABLED:-false}"
 AXON_TIMESERIES_USE_HOSTPATH="${AXON_TIMESERIES_USE_HOSTPATH:-false}"
@@ -66,7 +67,7 @@ AXON_SEARCH_HOST_UID="${AXON_SEARCH_HOST_UID:-999}"
 AXON_SEARCH_HOST_GID="${AXON_SEARCH_HOST_GID:-999}"
 AXON_SEARCH_CONTAINER_MOUNT_PATH="${AXON_SEARCH_CONTAINER_MOUNT_PATH:-/var/lib/opensearch}"
 AXON_SEARCH_TLS_ENABLED="${AXON_SEARCH_TLS_ENABLED:-true}"
-AXON_SEARCH_CERTMANAGER_ENABLED="${AXON_SEARCH_CERTMANAGER_ENABLED:-true}"
+AXON_SEARCH_CERTMANAGER_ENABLED="${AXON_SEARCH_CERTMANAGER_ENABLED:-$CERT_MANAGER_INSTALL}"
 AXON_SEARCH_CERT_ISSUER_NAME="${AXON_SEARCH_CERT_ISSUER_NAME:-$CLUSTER_ISSUER_NAME}"
 AXON_SEARCH_HELM_EXTRA_ARGS="${AXON_SEARCH_HELM_EXTRA_ARGS:-}"
 AXON_SEARCH_USER="${AXON_SEARCH_USER:-admin}"
@@ -398,12 +399,16 @@ generate_axon_server_values() {
 
   # API Ingress configuration
   if [[ "$AXON_SERVER_API_INGRESS_ENABLED" == "true" ]]; then
+    local api_ingress_annotations="{}"
+    if [[ "$CERT_MANAGER_INSTALL" == "true" ]]; then
+      api_ingress_annotations="
+    cert-manager.io/cluster-issuer: ${AXON_SERVER_API_INGRESS_CERT_ISSUER_ANNOTATION}"
+    fi
     API_INGRESS_BLOCK=$(cat <<EOS
 apiIngress:
   enabled: true
   className: "${AXON_SERVER_API_INGRESS_CLASS_NAME}"
-  annotations:
-    cert-manager.io/cluster-issuer: ${AXON_SERVER_API_INGRESS_CERT_ISSUER_ANNOTATION}
+  annotations: ${api_ingress_annotations}
   hosts:
     - host: ${AXON_SERVER_API_INGRESS_HOST}
       paths:
@@ -434,11 +439,17 @@ EOS
   # Agent Ingress configuration (gRPC)
   if [[ "$AXON_SERVER_AGENT_INGRESS_ENABLED" == "true" ]]; then
     # Build annotations based on GRPC annotation setting
+    AGENT_ANNOTATIONS=""
     if [[ "$AXON_SERVER_AGENT_INGRESS_GRPC_ANNOTATION" == "true" ]]; then
-      AGENT_ANNOTATIONS="nginx.ingress.kubernetes.io/backend-protocol: \"GRPC\"
+      AGENT_ANNOTATIONS="nginx.ingress.kubernetes.io/backend-protocol: \"GRPC\""
+    fi
+    if [[ "$CERT_MANAGER_INSTALL" == "true" ]]; then
+      if [[ -n "$AGENT_ANNOTATIONS" ]]; then
+        AGENT_ANNOTATIONS="${AGENT_ANNOTATIONS}
     cert-manager.io/cluster-issuer: ${AXON_SERVER_AGENT_INGRESS_CERT_ISSUER_ANNOTATION}"
-    else
-      AGENT_ANNOTATIONS="cert-manager.io/cluster-issuer: ${AXON_SERVER_AGENT_INGRESS_CERT_ISSUER_ANNOTATION}"
+      else
+        AGENT_ANNOTATIONS="cert-manager.io/cluster-issuer: ${AXON_SERVER_AGENT_INGRESS_CERT_ISSUER_ANNOTATION}"
+      fi
     fi
     AGENT_INGRESS_BLOCK=$(cat <<EOS
 agentIngress:
@@ -524,12 +535,16 @@ EOS
 
   # Ingress configuration
   if [[ "$AXON_DASH_INGRESS_ENABLED" == "true" ]]; then
+    local dash_ingress_annotations="{}"
+    if [[ "$CERT_MANAGER_INSTALL" == "true" ]]; then
+      dash_ingress_annotations="
+    cert-manager.io/cluster-issuer: ${AXON_DASH_INGRESS_CERT_ISSUER_ANNOTATION}"
+    fi
     INGRESS_BLOCK=$(cat <<EOS
 ingress:
   enabled: true
   className: "${AXON_DASH_INGRESS_CLASS_NAME}"
-  annotations:
-    cert-manager.io/cluster-issuer: ${AXON_DASH_INGRESS_CERT_ISSUER_ANNOTATION}
+  annotations: ${dash_ingress_annotations}
   hosts:
     - host: ${AXON_DASH_INGRESS_HOST}
       paths:
@@ -630,7 +645,10 @@ main() {
     exit 1
   fi
 
-  install_cert_manager
+  if [[ "$CERT_MANAGER_INSTALL" == "true" ]]; then
+    info "CERT_MANAGER_INSTALL is set to 'true', cert-manager will be installed"
+    install_cert_manager
+  fi
 
   if [[ "$AXON_TIMESERIES_USE_HOSTPATH" == "true" ]] && [[ -n "$AXON_TIMESERIES_HOSTPATH_CREATE" ]]; then
     prepare_timeseries_hostpath
