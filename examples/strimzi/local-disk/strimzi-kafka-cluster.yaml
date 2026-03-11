@@ -50,6 +50,3 @@ spec:
 
         logger.netty.name: "axonops.io.netty"
         logger.netty.level: "ERROR"
-  entityOperator:
-    topicOperator: {}
-    userOperator: {}
