@@ -71,6 +71,10 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command: ["/usr/share/axonops/axon-server", "-o", "stdout"]
         env:
+        {{- if .Values.config.license_key }}
+        - name: LICENSE_KEY
+          value: {{ .Values.config.license_key | quote }}
+        {{- end }}
         {{- range $key, $value := .Values.deployment.env }}
         - name: {{ $key | quote }}
           value: {{ $value | quote }}
