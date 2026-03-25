@@ -31,7 +31,7 @@ export KAFKA_OPTS="${KAFKA_OPTS} \
 # Move /var/lib/axonops to a persistent directory
 logDir=$(grep log.dirs /tmp/strimzi.properties | awk -F = '{print $2}')
 
-if [ $logDir != "" ]; then
+if [ -n "$logDir" ]; then	
   if [ -d "${logDir}" ] && [ ! -f /var/lib/axonops/local.db ]; then
     cp -a /var/lib/axonops-template /var/lib/kafka/data-0/axonops
   fi
