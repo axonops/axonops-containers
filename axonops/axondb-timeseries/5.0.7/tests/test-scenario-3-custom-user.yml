@@ -1,0 +1,33 @@
+version: '3.8'
+
+# Test Scenario 3: Custom User Creation
+# - AXONOPS_DB_USER=axonops, AXONOPS_DB_PASSWORD=securepass123
+# - Expected: user created, cassandra user disabled, healthcheck passes
+
+services:
+  cassandra-test3:
+    image: axondb-timeseries:latest
+    container_name: cassandra-test3
+    hostname: cassandra-test3
+    networks:
+      - test-net
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TestCustomUser
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_HEAP_SIZE=2G
+      - AXONOPS_DB_USER=axonops
+      - AXONOPS_DB_PASSWORD=securepass123
+    volumes:
+      - test3-data:/var/lib/cassandra
+      - test3-logs:/var/log/cassandra
+    ports:
+      - "9042:9042"
+
+networks:
+  test-net:
+    driver: bridge
+
+volumes:
+  test3-data:
+  test3-logs:
