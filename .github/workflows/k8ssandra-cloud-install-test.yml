@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
 
 env:
-  CASSANDRA_VERSION: "5.0.6"
+  CASSANDRA_VERSION: "5.0.7"
   K8SSANDRA_CLUSTER_NAME: axonops-dev-cass
   K8SSANDRA_NAMESPACE: k8ssandra-operator
   CASSANDRA_DC_NAME: dc1

@@ -24,7 +24,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/k8ssandra/cassandra
-  ALL_VERSIONS: "5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6"
+  ALL_VERSIONS: "5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6 5.0.7"
 
 jobs:
   k8ssandra-validate:

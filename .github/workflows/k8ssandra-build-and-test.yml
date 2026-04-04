@@ -42,7 +42,7 @@ jobs:
       fail-fast: false
       matrix:
         # Currently only testing 5.0 (4.0/4.1 support pending AxonOps agent fixes)
-        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.6"]') }}
+        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.7"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
