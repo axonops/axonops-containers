@@ -280,7 +280,7 @@ docker build \
   --build-arg MAJOR_VERSION=5.0 \
   --build-arg K8SSANDRA_BASE_DIGEST=sha256:aa2de19866f3487abe0dff65e6b74f5a68c6c5a7d211b5b7a3e0b961603ba5af \
   --build-arg K8SSANDRA_API_VERSION=0.1.110 \
-  --build-arg CQLAI_VERSION=0.1.2 \
+  --build-arg CQLAI_VERSION=0.1.4 \
   -t your-registry/axonops-cassandra:5.0.6-v0.1.110-1.0.0 \
   .
 

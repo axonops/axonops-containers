@@ -274,7 +274,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Basic build (local testing)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.2 \
+  --build-arg CQLAI_VERSION=0.1.4 \
   --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
   --build-arg VCS_REF=$(git rev-parse --short HEAD) \
   --build-arg VERSION=local-test \
@@ -292,7 +292,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Podman build (same args as Docker)
 podman build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.2 \
+  --build-arg CQLAI_VERSION=0.1.4 \
   -t axondb-timeseries:local \
   .
 ```
@@ -394,7 +394,7 @@ curl -I https://github.com/axonops/cqlai/releases/download/v0.1.2/cqlai-0.1.2-1.
 **Issue: Build args not passed correctly**
 ```bash
 # Verify build args in image
-docker build --build-arg CASSANDRA_VERSION=5.0.6 --build-arg CQLAI_VERSION=0.1.2 -t test .
+docker build --build-arg CASSANDRA_VERSION=5.0.6 --build-arg CQLAI_VERSION=0.1.4 -t test .
 docker run --rm test cat /etc/axonops/build-info.txt
 ```
 
@@ -504,7 +504,7 @@ When Cassandra releases new versions (e.g., 5.0.7 or 5.1.0):
 5. **Test:**
    ```bash
    cd axonops/axondb-timeseries/5.0.7  # or appropriate dir
-   docker build --build-arg CASSANDRA_VERSION=5.0.7 --build-arg CQLAI_VERSION=0.1.2 -t test .
+   docker build --build-arg CASSANDRA_VERSION=5.0.7 --build-arg CQLAI_VERSION=0.1.4 -t test .
    docker run -d --name test -p 9042:9042 test
    docker logs -f test
    docker exec test nodetool version

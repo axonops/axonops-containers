@@ -36,7 +36,7 @@ LABEL org.opencontainers.image.base.digest="${UBI9_MINIMAL_DIGEST}"
 
 LABEL com.axonops.build.actor="${GITHUB_ACTOR}"
 
-ARG YQ_VERSION=v4.50.1
+ARG YQ_VERSION=v4.52.5
 ARG RCLONE_VERSION=1.72.1
 ARG CASSANDRA_HOME=/opt/cassandra
 

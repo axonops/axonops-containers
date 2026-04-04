@@ -145,7 +145,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Minimal build (required args only)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.2 \
+  --build-arg CQLAI_VERSION=0.1.4 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 
@@ -153,7 +153,7 @@ docker build \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.2 \
+  --build-arg CQLAI_VERSION=0.1.4 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 ```

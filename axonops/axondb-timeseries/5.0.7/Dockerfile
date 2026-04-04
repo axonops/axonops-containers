@@ -40,7 +40,7 @@ ARG GIT_TAG=unknown
 ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME=unknown
-ARG YQ_VERSION=v4.50.1
+ARG YQ_VERSION=v4.55.5
 
 ENV CASSANDRA_VERSION=${CASSANDRA_VERSION}
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
@@ -171,7 +171,7 @@ RUN ARCH=$(uname -m) && \
       exit 1; \
     fi && \
     chmod +x /usr/local/bin/yq && \
-    rpm -Uvh https://downloads.rclone.org/v1.72.1/rclone-v1.72.1-linux-${YQ_ARCH}.rpm && \
+    rpm -Uvh https://downloads.rclone.org/v1.73.3/rclone-v1.73.3-linux-${YQ_ARCH}.rpm && \
     rm -f /tmp/checksums.txt
 
 # Install cqlai
