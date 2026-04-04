@@ -98,7 +98,7 @@ jobs:
           expected_arch: x86_64
 
       - name: Run Trivy container security scan (strict)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-schema-registry:test'
           format: 'table'
@@ -109,7 +109,7 @@ jobs:
           trivyignores: 'axonops-schema-registry/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-schema-registry:test'
           format: 'sarif'

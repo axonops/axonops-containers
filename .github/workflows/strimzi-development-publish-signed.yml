@@ -219,7 +219,7 @@ jobs:
 
       - name: Run Trivy container security scan
         continue-on-error: true
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-strimzi:test'
           format: 'table'
@@ -230,7 +230,7 @@ jobs:
           trivyignores: 'strimzi/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-strimzi:test'
           format: 'sarif'
