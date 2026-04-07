@@ -1,7 +1,8 @@
 ARG CASSANDRA_VERSION=5.0
 ARG K8SSANDRA_BASE_DIGEST=required
 ARG K8SSANDRA_API_VERSION=required
-FROM docker.io/k8ssandra/cass-management-api@${K8SSANDRA_BASE_DIGEST}
+
+FROM ghcr.io/k8ssandra/cass-management-api@${K8SSANDRA_BASE_DIGEST}
 
 # Re-declare ARGs after FROM (Docker ARG scope rule - ARGs before FROM only available in FROM line)
 ARG CASSANDRA_VERSION

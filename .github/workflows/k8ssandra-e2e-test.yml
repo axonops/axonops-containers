@@ -6,13 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       container_image:
-        description: 'Container image to test (e.g., ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0)'
+        description: 'Container image to test (e.g., ghcr.io/axonops/k8ssandra/cassandra:5.0.7-v0.1.110-1.0.0)'
         required: true
         type: string
       cassandra_version:
-        description: 'Cassandra version (e.g., 5.0.6)'
+        description: 'Cassandra version (e.g., 5.0.7)'
         required: false
-        default: '5.0.6'
+        default: '5.0.7'
 
 env:
   NAMESPACE: k8ssandra-operator

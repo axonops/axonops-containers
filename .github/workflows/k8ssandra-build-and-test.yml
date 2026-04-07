@@ -42,7 +42,7 @@ jobs:
       fail-fast: false
       matrix:
         # Currently only testing 5.0 (4.0/4.1 support pending AxonOps agent fixes)
-        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.6"]') }}
+        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.7"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -150,7 +150,7 @@ jobs:
 
       - name: Run Trivy container security scan
         continue-on-error: true
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-cassandra:test'
           format: 'table'
@@ -161,7 +161,7 @@ jobs:
           trivyignores: 'k8ssandra/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-cassandra:test'
           format: 'sarif'
@@ -306,7 +306,7 @@ jobs:
 
       - name: Run Trivy container security scan
         continue-on-error: true
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-cassandra:test'
           format: 'table'
@@ -317,7 +317,7 @@ jobs:
           trivyignores: 'k8ssandra/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-cassandra:test'
           format: 'sarif'
