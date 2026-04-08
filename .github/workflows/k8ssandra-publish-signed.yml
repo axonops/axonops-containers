@@ -24,7 +24,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/k8ssandra/cassandra
-  ALL_VERSIONS: "5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6 5.0.7"
+  ALL_VERSIONS: "5.0.3 5.0.4 5.0.5 5.0.6 5.0.7"
 
 jobs:
   k8ssandra-validate:
@@ -56,7 +56,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Checking if version ${{ inputs.container_version }} exists at new path..."
-          VERSIONS="5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6"
+          VERSIONS="${{ env.ALL_VERSIONS }}"
           for VERSION in $VERSIONS; do
             TAG="${VERSION}-${{ inputs.container_version }}"
             echo "Checking for tag: $TAG in k8ssandra/cassandra"
@@ -77,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cassandra_version: [5.0.6]
+        cassandra_version: [5.0.7]
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
