@@ -11,6 +11,11 @@ on:
         description: 'Container version for GHCR (e.g., 1.0.0)'
         required: true
         type: string
+      cassandra_dir:
+        description: 'Cassandra version directory (e.g., 5.0.6, 5.0.7)'
+        required: false
+        type: string
+        default: '5.0.6'
 
 env:
   REGISTRY: ghcr.io
@@ -76,8 +81,8 @@ jobs:
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile.backups
+          context: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}
+          file: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile.backups
           platforms: linux/amd64
           load: true
           tags: axondb-timeseries-backups:test
@@ -193,8 +198,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile.backups
+          context: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}
+          file: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile.backups
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -219,8 +224,8 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile.backups
+          context: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}
+          file: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile.backups
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
