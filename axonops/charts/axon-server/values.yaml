@@ -18,6 +18,15 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# Please note that if you set configurationSecret then the chart will not create a secret with the axon-server
+# configuration and it will expect that the secret already exists in the cluster.
+#
+# The configurationSecret should contain the name of a Kubernetes secret that has a key named "axon-server.yml"
+# with the complete axon-server configuration in YAML format. This can be used to manage the axon-server configuration
+# externally, for example with vals-operator or other secret management tools.
+#
+# If you set up the configurationSecret, the rest of the configuration options in this values.yaml file will be ignored.
+
 configurationSecret: ""
 
 # Authentication Configuration

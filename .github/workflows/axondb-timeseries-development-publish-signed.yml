@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: ''
+      cassandra_dir:
+        description: 'Cassandra version directory (e.g., 5.0.6, 5.0.7)'
+        required: false
+        type: string
+        default: '5.0.6'
 
 env:
   REGISTRY: ghcr.io
@@ -75,15 +80,15 @@ jobs:
       - name: Extract Cassandra version from Dockerfile
         id: version
         run: |
-          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile | cut -d'=' -f2)
           echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
           echo "✓ Cassandra version: ${CASSANDRA_VER}"
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
+          context: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}
+          file: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile
           # Build only for the runner's platform in tests to enable loading
           # Multi-platform builds are done in the publish job
           load: true
@@ -203,7 +208,7 @@ jobs:
       - name: Extract Cassandra version
         id: version
         run: |
-          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile | cut -d'=' -f2)
           echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
           echo "✓ Cassandra version: ${CASSANDRA_VER}"
 
@@ -211,8 +216,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
+          context: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}
+          file: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -240,8 +245,8 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
+          context: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}
+          file: ./axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -278,7 +283,7 @@ jobs:
       - name: Extract Cassandra version
         id: version
         run: |
-          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/${{ inputs.cassandra_dir }}/Dockerfile | cut -d'=' -f2)
           echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
 
       - name: Verify published image

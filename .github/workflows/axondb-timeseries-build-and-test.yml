@@ -39,7 +39,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  CASSANDRA_VERSION: 5.0.6
 
 jobs:
   axondb-timeseries-test:
@@ -50,8 +49,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Currently only Cassandra 5.0.6 (may add 5.0.7, 5.1.x later)
-        cassandra_version: ['5.0.6']
+        cassandra_version: ['5.0.6', '5.0.7']
         # Note: Multi-arch builds (amd64 + arm64) are done in publish workflow
         # Testing only on amd64 for speed and simplicity
     steps:
@@ -68,7 +66,7 @@ jobs:
         id: version
         run: |
           # Extract CASSANDRA_VERSION from Dockerfile ARG
-          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/5.0.6/Dockerfile | cut -d'=' -f2)
+          CASSANDRA_VER=$(grep "^ARG CASSANDRA_VERSION=" axonops/axondb-timeseries/${{ matrix.cassandra_version }}/Dockerfile | cut -d'=' -f2)
           echo "cassandra_version=${CASSANDRA_VER}" >> $GITHUB_OUTPUT
           echo "✓ Cassandra version from Dockerfile: ${CASSANDRA_VER}"
 
@@ -76,8 +74,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
+          context: ./axonops/axondb-timeseries/${{ matrix.cassandra_version }}
+          file: ./axonops/axondb-timeseries/${{ matrix.cassandra_version }}/Dockerfile
           # Build only for the runner's platform in tests to enable loading
           # Multi-platform builds are done in the publish workflows
           load: true
@@ -218,6 +216,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        cassandra_version: ['5.0.6', '5.0.7']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -228,14 +230,14 @@ jobs:
       - name: Build image for env var testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-timeseries/5.0.6
-          file: ./axonops/axondb-timeseries/5.0.6/Dockerfile
+          context: ./axonops/axondb-timeseries/${{ matrix.cassandra_version }}
+          file: ./axonops/axondb-timeseries/${{ matrix.cassandra_version }}/Dockerfile
           # Build only for the runner's platform in tests to enable loading
           # Multi-platform builds are done in the publish workflows
           load: true
           tags: axondb-timeseries:test
           build-args: |
-            CASSANDRA_VERSION=5.0.6
+            CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             CQLAI_VERSION=${{ vars.AXONDB_TIMESERIES_CQLAI_VERSION }}
           cache-from: type=gha
 

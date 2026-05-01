@@ -11,6 +11,7 @@ CVE-2025-59375  # expat (OS package)
 CVE-2022-42003  # jackson-databind (fixed in Cassandra 5.0.3+)
 CVE-2022-42004  # jackson-databind (fixed in Cassandra 5.0.3+)
 CVE-2025-23015  # Cassandra user-defined functions (fixed in 5.0.3+)
+CVE-2026-27314  # cassandra-all privilege escalation (fixed in 5.0.7)
 
 # Java dependencies in Cassandra (upstream fixes pending)
 CVE-2025-24970  # netty-handler

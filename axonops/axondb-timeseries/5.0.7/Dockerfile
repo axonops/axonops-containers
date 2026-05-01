@@ -1,11 +1,11 @@
 # Supply chain security: Use immutable digest instead of mutable tag
 # UBI 9 minimal base image digest (latest as of 2025-12-10)
 # Points to: registry.access.redhat.com/ubi9/ubi-minimal:latest
-ARG UBI9_MINIMAL_DIGEST=sha256:8ecf177384eb4b4d11528b8cf630859d811bfdb5803196942d2c354e1b6cb377
+ARG UBI9_MINIMAL_DIGEST=sha256:6fc28bcb6776e387d7a35a2056d9d2b985dc4e26031e98a2bd35a7137cd6fd71
 
 # Cassandra version and SHA512 checksum (from official Apache Cassandra)
 ARG CASSANDRA_VERSION=5.0.7
-ARG CASSANDRA_SHA512=36c74b0c9e49a7686ca6826f0ec3f30a9e365ff2f561c4596c34dd0d2c63ea1bc7a23d7e744da90d2a62dc5eb4f5cd0d55823d919b7167b324526bf6c1756bd8
+ARG CASSANDRA_SHA512=7a36805a87adacd1c897dabf81e5c7007334936ae200340504474e09eb0800c0a7ff5f8c7778fd19a96a93b1b3f5844aff5644e55cd33928b358fea53159c2c9
 
 FROM --platform=$BUILDPLATFORM alpine:latest AS extractor
 ARG CASSANDRA_VERSION
@@ -40,7 +40,7 @@ ARG GIT_TAG=unknown
 ARG GITHUB_ACTOR=unknown
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME=unknown
-ARG YQ_VERSION=v4.55.5
+ARG YQ_VERSION=v4.52.5
 
 ENV CASSANDRA_VERSION=${CASSANDRA_VERSION}
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
