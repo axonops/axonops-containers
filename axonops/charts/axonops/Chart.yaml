@@ -2,11 +2,7 @@ apiVersion: v2
 name: axonops
 description: AxonOps complete observability stack for Apache Cassandra and Kafka - Umbrella chart for unified deployment
 type: application
-<<<<<<< HEAD
 version: 1.1.15
-=======
-version: 1.1.10
->>>>>>> 5b61a14 (chore: bump helm charts for axon-dash 2.0.30)
 appVersion: "latest"
 home: https://axonops.com
 icon: https://github.com/axonops/axonops-workbench/raw/main/renderer/assets/images/axonops-icon-512x512.png
