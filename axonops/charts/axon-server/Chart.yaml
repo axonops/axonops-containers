@@ -25,6 +25,6 @@ type: application
 version: 2.1.11
 
 # This is the version number of the application being deployed.
-appVersion: "2.0.30"
+appVersion: "2.0.31"
 
 kubeVersion: ">=1.19.0-0"
