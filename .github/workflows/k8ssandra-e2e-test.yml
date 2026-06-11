@@ -10,9 +10,9 @@ on:
         required: true
         type: string
       cassandra_version:
-        description: 'Cassandra version (e.g., 5.0.7)'
+        description: 'Cassandra version (e.g., 5.0.8)'
         required: false
-        default: '5.0.7'
+        default: '5.0.8'
 
 env:
   NAMESPACE: k8ssandra-operator

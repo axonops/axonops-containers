@@ -12,10 +12,10 @@ on:
         required: true
         type: string
       cassandra_dir:
-        description: 'Cassandra version directory (e.g., 5.0.6, 5.0.7)'
+        description: 'Cassandra version directory (e.g., 5.0.7, 5.0.8)'
         required: false
         type: string
-        default: '5.0.6'
+        default: '5.0.8'
 
 env:
   REGISTRY: ghcr.io
