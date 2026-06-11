@@ -90,7 +90,7 @@ When `5.0.6-v0.1.110-1.0.0` is built (and it's the latest of everything):
 ### Supported Cassandra Versions
 
 **Currently Supported:**
-- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
+- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7 (7 versions)
 
 **Future Support:**
 - **4.0.x and 4.1.x:** Available in repository but not yet published due to AxonOps agent compatibility issues. Reach out if you need these versions.

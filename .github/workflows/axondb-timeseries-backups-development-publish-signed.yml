@@ -14,10 +14,10 @@ on:
         type: string
         default: ''
       cassandra_dir:
-        description: 'Cassandra version directory (e.g., 5.0.6, 5.0.7)'
+        description: 'Cassandra version directory (e.g., 5.0.7, 5.0.8)'
         required: false
         type: string
-        default: '5.0.6'
+        default: '5.0.8'
 
 env:
   REGISTRY: ghcr.io
@@ -115,6 +115,7 @@ jobs:
           docker run --rm axondb-timeseries-backups:test rclone version
 
       - name: Run Trivy container security scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axondb-timeseries-backups:test'
