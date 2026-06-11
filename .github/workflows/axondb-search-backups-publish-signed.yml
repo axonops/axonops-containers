@@ -81,8 +81,8 @@ jobs:
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/opensearch/3.3.2
-          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile.backups
+          context: ./axonops/axondb-search/opensearch/3.7.0
+          file: ./axonops/axondb-search/opensearch/3.7.0/Dockerfile.backups
           platforms: linux/amd64
           load: true
           tags: axondb-search-backups:test
@@ -117,7 +117,7 @@ jobs:
           ignore-unfixed: true
           scanners: 'vuln'
           severity: 'CRITICAL,HIGH'
-          trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore'
+          trivyignores: 'axonops/axondb-search/opensearch/3.7.0/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
         uses: aquasecurity/trivy-action@0.35.0
@@ -127,7 +127,7 @@ jobs:
           output: 'trivy-results.sarif'
           ignore-unfixed: true
           scanners: 'vuln'
-          trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore'
+          trivyignores: 'axonops/axondb-search/opensearch/3.7.0/.trivyignore'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -200,8 +200,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/opensearch/3.3.2
-          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile.backups
+          context: ./axonops/axondb-search/opensearch/3.7.0
+          file: ./axonops/axondb-search/opensearch/3.7.0/Dockerfile.backups
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -226,8 +226,8 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/opensearch/3.3.2
-          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile.backups
+          context: ./axonops/axondb-search/opensearch/3.7.0
+          file: ./axonops/axondb-search/opensearch/3.7.0/Dockerfile.backups
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |

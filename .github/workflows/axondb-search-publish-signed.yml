@@ -11,6 +11,11 @@ on:
         description: 'Container version for GHCR (e.g., 1.0.0)'
         required: true
         type: string
+      opensearch_version:
+        description: 'OpenSearch version to build (e.g., 3.7.0)'
+        required: false
+        type: string
+        default: '3.7.0'
 
 env:
   REGISTRY: ghcr.io
@@ -46,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Checking if version ${{ inputs.container_version }} exists..."
-          TAG="3.3.2-${{ inputs.container_version }}"
+          TAG="${{ inputs.opensearch_version }}-${{ inputs.container_version }}"
           echo "Checking for tag: $TAG in axondb-search"
           if gh api --paginate "/orgs/axonops/packages/container/axondb-search/versions" \
             --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .metadata.container.tags[]" 2>/dev/null | grep -q "$TAG"; then
@@ -81,15 +86,15 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
           echo "✓ OpenSearch version: ${OPENSEARCH_VER}"
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/opensearch/3.3.2
-          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          context: ./axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}
+          file: ./axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axondb-search:test
@@ -149,7 +154,7 @@ jobs:
           ignore-unfixed: true
           scanners: 'vuln'
           severity: 'CRITICAL,HIGH'
-          trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore'
+          trivyignores: 'axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/.trivyignore'
 
       - name: Run Trivy scan and upload to GitHub Security
         uses: aquasecurity/trivy-action@0.35.0
@@ -159,7 +164,7 @@ jobs:
           output: 'trivy-results.sarif'
           ignore-unfixed: true
           scanners: 'vuln'
-          trivyignores: 'axonops/axondb-search/opensearch/3.3.2/.trivyignore'
+          trivyignores: 'axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/.trivyignore'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -187,7 +192,7 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -244,7 +249,7 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
           echo "✓ OpenSearch version: ${OPENSEARCH_VER}"
 
@@ -252,8 +257,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/opensearch/3.3.2
-          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          context: ./axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}
+          file: ./axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -280,8 +285,8 @@ jobs:
       - name: Re-push tags after signing
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/opensearch/3.3.2
-          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          context: ./axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}
+          file: ./axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -317,7 +322,7 @@ jobs:
       - name: Extract OpenSearch version
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/${{ inputs.opensearch_version }}/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
 
       - name: Verify published image
