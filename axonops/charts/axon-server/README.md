@@ -311,10 +311,19 @@ Important notes:
 
 ### Installation with External Configuration Secret
 
-Use an external Secret resource for configuration instead of the auto-generated one. This is useful when:
-- You want to manage secrets through external tools (Sealed Secrets, External Secrets Operator, etc.)
+Instead of letting the chart auto-generate a Secret with the axon-server configuration, you can point to a pre-existing Kubernetes Secret using the `configurationSecret` value. When this is set:
+
+- The chart **will not** create its own configuration Secret — it expects the Secret to already exist in the cluster.
+- The Secret must contain a key named **`axon-server.yml`** with the **complete** axon-server configuration in YAML format.
+- **All `config.*` and `searchDb.*` values in Helm are ignored** — the external Secret is the sole source of configuration.
+- Non-configuration values (resources, persistence, ingress, services, probes, etc.) still work as normal.
+
+This approach is useful when:
+
+- You manage secrets through external tools (vals-operator, Sealed Secrets, External Secrets Operator, etc.)
 - You need to share configuration across multiple deployments
 - You want to version control encrypted secrets separately
+- You use a GitOps workflow where secrets are managed outside of Helm values
 
 **Step 1: Create your configuration secret**
 

@@ -206,7 +206,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6]
+        cassandra_version: [5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7]
     permissions:
       contents: read
       packages: write
@@ -290,8 +290,8 @@ jobs:
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}
-            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
-            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '5.0.7' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '5.0.7' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
@@ -322,8 +322,8 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-latest
-            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
-            ${{ matrix.cassandra_version == '5.0.6' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '5.0.7' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == '5.0.7' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}

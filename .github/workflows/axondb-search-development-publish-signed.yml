@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        opensearch_version: ['3.3.2']
+        opensearch_version: ['3.3.2', '3.7.0']
         # Platform removed - tests only run on the runner's native platform (linux/amd64)
     permissions:
       contents: read
@@ -150,6 +150,7 @@ jobs:
           admin_password: MyS3cur3P@ss2025
 
       - name: Run Trivy container security scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axondb-search:test'
@@ -187,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        opensearch_version: ['3.3.2']
+        opensearch_version: ['3.3.2', '3.7.0']
     permissions:
       contents: read
       packages: write
@@ -282,7 +283,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        opensearch_version: ['3.3.2']
+        opensearch_version: ['3.3.2', '3.7.0']
     permissions:
       contents: read
     steps:

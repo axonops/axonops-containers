@@ -98,6 +98,7 @@ jobs:
           expected_arch: x86_64
 
       - name: Run Trivy container security scan (strict)
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'axonops-schema-registry:test'

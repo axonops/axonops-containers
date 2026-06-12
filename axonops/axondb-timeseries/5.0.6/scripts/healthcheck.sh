@@ -49,18 +49,19 @@ case "$MODE" in
       exit 1
     fi
 
-    # CRITICAL: Check if database user init script semaphore exists
-    INIT_USER_SEMAPHORE="/var/lib/cassandra/.axonops/init-db-user.done"
-    if [ ! -f "$INIT_USER_SEMAPHORE" ]; then
-      log "Waiting for database user init script to complete (semaphore not found)"
-      exit 1
-    fi
-
-    # CRITICAL: Check RESULT field in semaphore files - fail if initialization failed
+    # Check keyspace result BEFORE checking user semaphore existence
+    # If keyspace init failed, the script exits early and never writes the user semaphore
     KEYSPACE_RESULT=$(grep "^RESULT=" "$INIT_KEYSPACE_SEMAPHORE" | cut -d'=' -f2)
     if [ "$KEYSPACE_RESULT" = "failed" ]; then
       KEYSPACE_REASON=$(grep "^REASON=" "$INIT_KEYSPACE_SEMAPHORE" | cut -d'=' -f2)
       log "ERROR: System keyspace initialization failed: ${KEYSPACE_REASON}"
+      exit 1
+    fi
+
+    # CRITICAL: Check if database user init script semaphore exists
+    INIT_USER_SEMAPHORE="/var/lib/cassandra/.axonops/init-db-user.done"
+    if [ ! -f "$INIT_USER_SEMAPHORE" ]; then
+      log "Waiting for database user init script to complete (semaphore not found)"
       exit 1
     fi
 

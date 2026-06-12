@@ -27,12 +27,12 @@ on:
         description: 'OpenSearch version to test'
         required: false
         type: string
-        default: '3.3.2'
+        default: '3.7.0'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  OPENSEARCH_VERSION: 3.3.2
+  OPENSEARCH_VERSION: 3.7.0
 
 jobs:
   axondb-search-test:
@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        opensearch_version: ['3.3.2']
+        opensearch_version: ['3.3.2', '3.7.0']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
       - name: Extract OpenSearch version from Dockerfile
         id: version
         run: |
-          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/3.3.2/Dockerfile | cut -d'=' -f2)
+          OPENSEARCH_VER=$(grep "^ARG OPENSEARCH_VERSION=" axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/Dockerfile | cut -d'=' -f2)
           echo "opensearch_version=${OPENSEARCH_VER}" >> $GITHUB_OUTPUT
           echo "✓ OpenSearch version from Dockerfile: ${OPENSEARCH_VER}"
 
@@ -65,8 +65,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./axonops/axondb-search/opensearch/3.3.2
-          file: ./axonops/axondb-search/opensearch/3.3.2/Dockerfile
+          context: ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}
+          file: ./axonops/axondb-search/opensearch/${{ matrix.opensearch_version }}/Dockerfile
           # Build only for the runner's platform in tests to enable loading
           # Multi-platform builds are done in the publish workflows
           load: true
