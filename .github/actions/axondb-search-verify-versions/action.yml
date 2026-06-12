@@ -8,7 +8,7 @@ inputs:
   expected_version:
     description: 'Expected OpenSearch version'
     required: false
-    default: '3.3.2'
+    default: '3.7.0'
   admin_user:
     description: 'Admin username for authentication'
     required: false

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- OpenSearch 3.7.0 support: new `axonops/axondb-search/opensearch/3.7.0/` Dockerfile directory.
+- OpenSearch 3.7.0 added to the `axondb-search-build-and-test` and `axondb-search-development-publish-signed` CI matrix alongside 3.3.2.
+- `opensearch_version` input (default `3.7.0`) added to `axondb-search-publish-signed` workflow to allow version-targeted production releases.
 - Cassandra 5.0.7 added to `k8ssandra-build-and-test` secondary version matrix.
 - Cassandra 5.0.8 support across k8ssandra and AxonDB TimeSeries CI workflows: build-and-test, nightly security scan, publish-signed, development-publish-signed, e2e-test, cloud-install-test, backups-publish-signed.
 - New `axonops/axondb-timeseries/5.0.8/` Dockerfile directory for AxonDB TimeSeries images.
