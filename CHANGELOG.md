@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed stale digest for Cassandra 5.0.6 that caused the `security-scan (5.0.6)` job to fail before Trivy could run.
 - Added new Cassandra versions available in k8ssandra v0.1.120: 4.0.20, 4.1.11, 5.0.8.
 
+
 ### Changed
 - Default Cassandra version bumped to 5.0.8 in all workflow inputs that previously defaulted to 5.0.6 or 5.0.7.
 - `k8ssandra-development-publish-signed.yml` `:latest` and `:5.0-latest` tags now point to 5.0.8 (previously 5.0.6).

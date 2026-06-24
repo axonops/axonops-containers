@@ -64,8 +64,8 @@ jobs:
         with:
           context: ./k8ssandra/${{ steps.version.outputs.base_version }}
           file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          load: false
+          platforms: linux/amd64
+          load: true
           tags: axonops-cassandra:scan-${{ matrix.cassandra_version }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
@@ -105,6 +105,7 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results-${{ matrix.cassandra_version }}.sarif'
@@ -115,22 +116,21 @@ jobs:
     # Only notify if security-scan failed (Trivy found CVEs with exit-code: 1)
     if: failure()
     steps:
-      - name: Send email notification
-        uses: dawidd6/action-send-mail@v3
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v2.1.0
         with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.SMTP_USERNAME }}
-          password: ${{ secrets.SMTP_PASSWORD }}
-          subject: '[AxonOps Containers] Nightly Security Scan Failed - New CVEs Detected'
-          to: ${{ vars.SECURITY_EMAIL }}
-          from: ${{ secrets.SMTP_USERNAME }}
-          body: |
-            Nightly security scan detected new CRITICAL or HIGH severity CVEs in K8ssandra containers.
-
-            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Review the scan results in GitHub Security tab and update k8ssandra/.trivyignore if needed.
-
-            Scanned versions: 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":rotating_light: *AxonOps Containers — Nightly Security Scan Failed*",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":rotating_light: *Nightly Security Scan detected new CRITICAL/HIGH CVEs in K8ssandra containers*\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>\n\nReview results in the GitHub Security tab and update `k8ssandra/.trivyignore` if needed."
+                  }
+                }
+              ]
+            }
