@@ -403,8 +403,8 @@ Key files:
 
 | Component | Version | Notes |
 | --------- | ------- | ----- |
-| Strimzi | 0.50.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
-| Kafka | 4.1.1 (latest) | Version 0.50.0 supports Kafka 4.0.0, 4.0.1, 4.1.0, 4.1.1 |
+| Strimzi | 1.1.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
+| Kafka | 4.3.0 (latest) | Version 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0 |
 | Kubernetes | 1.24+ | Any CNCF-compliant distribution |
 | AxonOps Agent | Latest | Auto-installed from repository |
 
@@ -412,6 +412,9 @@ Key files:
 
 | Strimzi Version | Supported Kafka Versions | Release Date |
 | --------------- | ------------------------ | ------------ |
+| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | Jun 2026 |
+| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Jun 2026 |
+| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | Mar 2026 |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Feb 2025 |
 | 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Dec 2024 |
 | 0.48.0 | 4.0.0, 4.1.0 | Nov 2024 |
