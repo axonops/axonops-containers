@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Strimzi operator 0.51.0, 1.0.1 and 1.1.0 added to the build matrix across all four strimzi CI workflows (`strimzi-build-and-test`, `strimzi-development-build-and-test`, `strimzi-publish-signed`, `strimzi-development-publish-signed`), with pinned base-image digests and `VERSION_MATRIX` entries. Supported Kafka versions: 0.51.0 → 4.1.0/4.1.1/4.2.0; 1.0.1 → 4.1.0/4.1.1/4.1.2/4.2.0; 1.1.0 → 4.2.0/4.2.1/4.3.0.
 - OpenSearch 3.7.0 support: new `axonops/axondb-search/opensearch/3.7.0/` Dockerfile directory.
 - OpenSearch 3.7.0 added to the `axondb-search-build-and-test` and `axondb-search-development-publish-signed` CI matrix alongside 3.3.2.
 - `opensearch_version` input (default `3.7.0`) added to `axondb-search-publish-signed` workflow to allow version-targeted production releases.
