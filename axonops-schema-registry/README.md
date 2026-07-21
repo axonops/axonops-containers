@@ -172,7 +172,7 @@ Our Dockerfile uses digest-pinned base images for supply chain security:
 
 ```dockerfile
 # CORRECT - Digest-pinned (immutable, secure)
-ARG UBI9_MINIMAL_DIGEST=sha256:6fc28bcb6776e387d7a35a2056d9d2b985dc4e26031e98a2bd35a7137cd6fd71
+ARG UBI9_MINIMAL_DIGEST=sha256:1bc3c5c15720506a0cf48adfdf8b623dfe704377e007d7bbae8d14876392ca6a
 FROM registry.access.redhat.com/ubi9/ubi-minimal@${UBI9_MINIMAL_DIGEST}
 
 # WRONG - Tag-based (mutable, vulnerable to supply chain attacks!)

@@ -8,12 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Strimzi operator 0.51.0, 1.0.1 and 1.1.0 added to the build matrix across all four strimzi CI workflows (`strimzi-build-and-test`, `strimzi-development-build-and-test`, `strimzi-publish-signed`, `strimzi-development-publish-signed`), with pinned base-image digests and `VERSION_MATRIX` entries. Supported Kafka versions: 0.51.0 → 4.1.0/4.1.1/4.2.0; 1.0.1 → 4.1.0/4.1.1/4.1.2/4.2.0; 1.1.0 → 4.2.0/4.2.1/4.3.0.
 - OpenSearch 3.7.0 support: new `axonops/axondb-search/opensearch/3.7.0/` Dockerfile directory.
 - OpenSearch 3.7.0 added to the `axondb-search-build-and-test` and `axondb-search-development-publish-signed` CI matrix alongside 3.3.2.
 - `opensearch_version` input (default `3.7.0`) added to `axondb-search-publish-signed` workflow to allow version-targeted production releases.
 - Cassandra 5.0.7 added to `k8ssandra-build-and-test` secondary version matrix.
 - Cassandra 5.0.8 support across k8ssandra and AxonDB TimeSeries CI workflows: build-and-test, nightly security scan, publish-signed, development-publish-signed, e2e-test, cloud-install-test, backups-publish-signed.
 - New `axonops/axondb-timeseries/5.0.8/` Dockerfile directory for AxonDB TimeSeries images.
+
+### Fixed
+- Bumped all k8ssandra base images from `cass-management-api v0.1.113` to `v0.1.120` (newer UBI 9 base), resolving unignored CRITICAL/HIGH CVEs detected by the nightly Trivy scan.
+- Fixed stale digest for Cassandra 5.0.6 that caused the `security-scan (5.0.6)` job to fail before Trivy could run.
+- Added new Cassandra versions available in k8ssandra v0.1.120: 4.0.20, 4.1.11, 5.0.8.
+
 
 ### Changed
 - Default Cassandra version bumped to 5.0.8 in all workflow inputs that previously defaulted to 5.0.6 or 5.0.7.
