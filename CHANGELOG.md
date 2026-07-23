@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Process supervision and automatic restart for the `axon-agent` sidecar process in the k8ssandra (`k8ssandra/{4.0,4.1,5.0}/axonops-entrypoint.sh`) and strimzi (`strimzi/files/axonops-wrapper.sh`) container images. If the agent exits it is now restarted automatically, with crash-loop protection (>5 restarts in 60s triggers a 30s backoff) and death/restart events logged to stdout and `/var/log/axonops/axon-agent.log`. Previously a dead agent was never detected or restarted for the life of the container ([#154](https://github.com/axonops/axonops-containers/issues/154)).
 - Strimzi operator 0.51.0, 1.0.1 and 1.1.0 added to the build matrix across all four strimzi CI workflows (`strimzi-build-and-test`, `strimzi-development-build-and-test`, `strimzi-publish-signed`, `strimzi-development-publish-signed`), with pinned base-image digests and `VERSION_MATRIX` entries. Supported Kafka versions: 0.51.0 → 4.1.0/4.1.1/4.2.0; 1.0.1 → 4.1.0/4.1.1/4.1.2/4.2.0; 1.1.0 → 4.2.0/4.2.1/4.3.0.
 - OpenSearch 3.7.0 support: new `axonops/axondb-search/opensearch/3.7.0/` Dockerfile directory.
 - OpenSearch 3.7.0 added to the `axondb-search-build-and-test` and `axondb-search-development-publish-signed` CI matrix alongside 3.3.2.
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- k8ssandra 4.0/4.1 containers no longer exit when `axon-agent` dies; the agent is now restarted under supervision and the container lifecycle is tied to the Management API only (matching 5.0 behaviour).
 - Default Cassandra version bumped to 5.0.8 in all workflow inputs that previously defaulted to 5.0.6 or 5.0.7.
 - `k8ssandra-development-publish-signed.yml` `:latest` and `:5.0-latest` tags now point to 5.0.8 (previously 5.0.6).
 - Updated `axondb-timeseries/.trivyignore` comment for CVE-2026-27314 to note it is fixed in 5.0.7+ and retained only for older matrix versions.

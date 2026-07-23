@@ -47,5 +47,38 @@ if [ "$KAFKA_NODE_TYPE" = "kraft-controller" ]; then
     ln -s /var/log/kafka/server.log /var/log/kafka/controller.log
 fi
 
-# Start the agent
-/usr/share/axonops/axon-agent -o file $AGENT_ARGS &
+# Supervise axon-agent: restart forever on exit, with crash-loop backoff (issue #154).
+# This wrapper is sourced into the Strimzi run script, which then execs the Kafka
+# JVM (replacing this shell). Backgrounding the supervisor lets it survive that
+# exec: it is reparented to PID 1 (tini), which reaps the agent's exits. Log lines
+# go to stdout (Kafka logs); the file tee degrades gracefully if not writable.
+supervise_axon_agent() {
+  local log="/var/log/axonops/axon-agent.log"
+  local fails=0
+  local window
+  window=$(date +%s)
+  while true; do
+    echo "[axonops-supervise] starting axon-agent" | tee -a "$log" 2>/dev/null
+    /usr/share/axonops/axon-agent -o file $AGENT_ARGS 2>&1 | tee -a "$log" 2>/dev/null
+    local rc=${PIPESTATUS[0]}
+    echo "[axonops-supervise] axon-agent exited rc=${rc}, restarting" | tee -a "$log" 2>/dev/null
+    local now
+    now=$(date +%s)
+    if [ $((now - window)) -gt 60 ]; then
+      fails=0
+      window=$now
+    fi
+    fails=$((fails + 1))
+    if [ "$fails" -gt 5 ]; then
+      echo "[axonops-supervise] >5 restarts in 60s, backing off 30s" | tee -a "$log" 2>/dev/null
+      sleep 30
+      fails=0
+      window=$(date +%s)
+    else
+      sleep 2
+    fi
+  done
+}
+
+# Start the agent under supervision, backgrounded so it survives the Kafka exec
+supervise_axon_agent &
