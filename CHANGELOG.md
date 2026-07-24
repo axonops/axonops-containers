@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cassandra 5.0.7 added to `k8ssandra-build-and-test` secondary version matrix.
 - Cassandra 5.0.8 support across k8ssandra and AxonDB TimeSeries CI workflows: build-and-test, nightly security scan, publish-signed, development-publish-signed, e2e-test, cloud-install-test, backups-publish-signed.
 - New `axonops/axondb-timeseries/5.0.8/` Dockerfile directory for AxonDB TimeSeries images.
+- New helper script `k8ssandra/scripts/set_latest_k8ssandra_version.sh` that reads the `K8SSANDRA_VERSIONS` GitHub Actions repository variable and sets `K8SSANDRA_VERSION` to the highest Cassandra semver found. Supports `--repo OWNER/REPO` and `--dry-run`; requires the `gh` CLI and `jq`.
 
 ### Fixed
 - Bumped all k8ssandra base images from `cass-management-api v0.1.113` to `v0.1.120` (newer UBI 9 base), resolving unignored CRITICAL/HIGH CVEs detected by the nightly Trivy scan.
