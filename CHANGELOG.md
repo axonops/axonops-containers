@@ -28,3 +28,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default Cassandra version bumped to 5.0.8 in all workflow inputs that previously defaulted to 5.0.6 or 5.0.7.
 - `k8ssandra-development-publish-signed.yml` `:latest` and `:5.0-latest` tags now point to 5.0.8 (previously 5.0.6).
 - Updated `axondb-timeseries/.trivyignore` comment for CVE-2026-27314 to note it is fixed in 5.0.7+ and retained only for older matrix versions.
+- Bumped the Strimzi example manifests (`examples/strimzi/{cloud,local-disk,on-premises}/*.yaml`) from `apiVersion: kafka.strimzi.io/v1beta2` to `kafka.strimzi.io/v1` for the `Kafka`, `KafkaConnect` and `KafkaNodePool` resources. The `v1` API is served by Strimzi operator ≥0.49.0 and is the only version served from 1.0.1 onwards (where `v1beta2` is dropped), so this keeps the examples working against the newly added 1.0.1/1.1.0 operators. Requires Strimzi operator ≥0.49.0.
