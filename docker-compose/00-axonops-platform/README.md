@@ -1,41 +1,93 @@
 # Example 00 — The AxonOps platform on its own
 
-Deploy the complete AxonOps observability stack using Docker Compose. This provides a simple way to run AxonOps locally or in standalone environments without Kubernetes.
+<p align="center">
+  <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
+</p>
 
-Nothing is monitored here: this is the platform, ready for agents on other hosts to connect to `:1888`. To also get a monitored Apache Cassandra cluster, use [example 01](../01-cassandra-cluster/); for a cluster reporting to AxonOps SaaS with no platform of your own, [example 02](../02-saas-cassandra-cluster/).
+A complete self-hosted AxonOps installation — and nothing else. Point agents on
+your own hosts at it, or use it as the base for the other examples.
 
-> This directory was `docker/` until it moved here, so that every Compose stack lives in one place and follows the same conventions.
+- Want a monitored Cassandra cluster in the same project? [Example 01](../01-cassandra-cluster/).
+- Want a cluster reporting to AxonOps SaaS, with no platform to run? [Example 02](../02-saas-cassandra-cluster/).
 
-## Quick Start
+> This directory was `docker/` until it moved here, so that every Compose stack
+> lives in one place and follows the same conventions.
 
-1. **Copy the example environment file:**
-   ```bash
-   cp env.example .env
-   ```
+## Quick start
 
-2. **Edit `.env` with your organization name:**
-   ```bash
-   AXONOPS_ORG_NAME=my-company
-   ```
+```bash
+cp env.example .env          # set AXONOPS_ORG_NAME
+docker compose up -d
+docker compose ps            # wait for all four services to report healthy
+```
 
-3. **Start the stack:**
-   ```bash
-   docker compose up -d
-   ```
+Then open <http://localhost:3000>.
 
-4. **Access the dashboard:**
-   Open http://localhost:3000 in your browser.
+A cold start takes 2–3 minutes: the two data stores initialise first, then
+`axon-server` and the dashboard come up behind them.
 
-## Services
+## What it runs
 
-| Service | Description | Port |
-|---------|-------------|------|
-| axondb-timeseries | Cassandra 5.0.8 for metrics storage | - |
-| axondb-search | OpenSearch 3.7.0 for logs and search | - |
-| axon-server | AxonOps API backend | 1888 (agents) |
-| axon-dash | Web dashboard | 3000 |
+| Service | Image | Purpose | Published port |
+|---------|-------|---------|----------------|
+| `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
+| `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.0` | Log and event store (OpenSearch) | — |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend and agent endpoint | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
 
-Current image versions for every service are listed in [VERSIONS.md](../../VERSIONS.md).
+Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
+
+## Configuration
+
+Everything is set in `.env`. Full list with defaults: [`env.example`](env.example).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AXONOPS_ORG_NAME` | `example` | Organisation name, shown in the dashboard. Agents must use the same value. |
+| `AXONOPS_LICENSE_KEY` | (empty) | License key; empty runs in trial mode |
+| `AXONOPS_DB_PASSWORD` | `axonops` | `axondb-timeseries` password |
+| `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | `axondb-search` admin password |
+| `AXONOPS_CASSANDRA_HEAP_SIZE` | `4G` | `axondb-timeseries` heap |
+| `AXONOPS_OPENSEARCH_HEAP_SIZE` | `4g` | `axondb-search` heap |
+| `AXONOPS_OPENSEARCH_SSL` | `true` | TLS from `axon-server` to `axondb-search` |
+| `AXONOPS_CASSANDRA_SSL` | `false` | TLS from `axon-server` to `axondb-timeseries` — see below |
+
+`axon-server` is configured entirely through environment variables; there is no
+config file to mount or render. Each one overrides the corresponding field of
+the `axon-server.yml` shipped inside the image — `AXONSERVER_ORGNAME`,
+`LICENSE_KEY`, `TLS_MODE`, the `CQL_*` set for the metrics store and the
+`SEARCH_DB_*` set for the log store. The full mapping is in
+[example 01](../01-cassandra-cluster/README.md#configuration).
+
+### TLS between the services
+
+**To `axondb-search`: on.** The image generates its own self-signed
+certificates, `axon-server` connects over HTTPS and skips verification.
+
+**To `axondb-timeseries`: off.** The image only enables Cassandra's
+`client_encryption_options` when a keystore is mounted at
+`CASSANDRA_KEYSTORE_PATH` — no environment variable turns it on by itself — so
+the native transport is plaintext and `axon-server` must match. Turning
+`AXONOPS_CASSANDRA_SSL` on without mounting a keystore breaks the connection;
+see [Troubleshooting](#troubleshooting).
+
+All of this traffic stays inside the compose network.
+
+## Connecting agents
+
+The agent endpoint (`1888`) is published, so agents on other hosts can connect:
+
+```yaml
+# axon-agent.yml on the monitored host
+axon-server:
+  hosts: "your-docker-host:1888"
+axon-agent:
+  org: "my-company"        # must match AXONOPS_ORG_NAME
+```
+
+Agents in containers take the same settings as environment variables —
+`AXON_AGENT_SERVER_HOST`, `AXON_AGENT_SERVER_PORT`, `AXON_AGENT_ORG`. Example 01
+wires exactly that up for a Cassandra cluster in the same project.
 
 ## Image Pinning: Tags vs Checksums
 
@@ -72,7 +124,7 @@ are running. Keep the version tag next to it in a comment, as
 ### Finding the Digest for a Version
 
 Copy-paste ready references for the current release of every image are in
-[VERSIONS.md](../../VERSIONS.md), regenerated by `../scripts/update-versions.sh`.
+[VERSIONS.md](../../VERSIONS.md), regenerated by `../../scripts/update-versions.sh`.
 
 To resolve one yourself, without pulling the image:
 
@@ -90,155 +142,75 @@ docker inspect ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0 \
 
 All images published to GHCR are signed with Sigstore Cosign. Verify the
 signature against the digest before deploying — see
-[Gold Standard Security Deployment](../README.md#gold-standard-security-deployment)
+[Gold Standard Security Deployment](../../README.md#gold-standard-security-deployment)
 for the full procedure and rationale.
-
-## Configuration
-
-### Required Settings
-
-| Variable | Description |
-|----------|-------------|
-| `AXONOPS_ORG_NAME` | Your organization name (displayed in dashboard) |
-
-### Optional Settings
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AXONOPS_LICENSE_KEY` | (empty) | License key (optional for trial) |
-| `AXONOPS_DB_PASSWORD` | `axonops` | Cassandra password |
-| `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | OpenSearch admin password |
-| `AXONOPS_CASSANDRA_HEAP_SIZE` | `4G` | Cassandra JVM heap |
-| `AXONOPS_OPENSEARCH_HEAP_SIZE` | `4g` | OpenSearch JVM heap |
-
-### SSL/TLS
-
-SSL is enabled by default for both databases:
-- **Cassandra**: Client-to-node encryption with auto-generated certificates
-- **OpenSearch**: HTTPS with auto-generated self-signed certificates
-
-To disable SSL (not recommended for production):
-```bash
-AXONOPS_CASSANDRA_SSL=false
-AXONOPS_OPENSEARCH_SSL=false
-```
-
-## Connecting Agents
-
-The agent port (1888) is exposed by default. Configure your Cassandra or Kafka agents to connect to:
-
-```
-Agent endpoint: <docker-host>:1888
-```
-
-For example, in your `axon-agent.yml`:
-```yaml
-axon-server:
-  hosts: "your-docker-host:1888"
-```
-
-## System Requirements
-
-- **Docker Engine**: 20.10+
-- **Docker Compose**: 2.0+ (V2)
-- **Memory**: Minimum 10GB RAM (16GB recommended)
-  - Cassandra: 4GB heap
-  - OpenSearch: 4GB heap
-  - axon-server + axon-dash: ~1GB
-- **Disk**: 20GB minimum (more for long-term data retention)
-
-### Reducing Memory (Development Only)
-
-For development/testing with limited resources:
-```bash
-AXONOPS_CASSANDRA_HEAP_SIZE=2G
-AXONOPS_OPENSEARCH_HEAP_SIZE=2g
-```
 
 ## Operations
 
-### View Logs
-
 ```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f axon-server
+docker compose ps                       # health of every service
+docker compose logs -f                  # follow everything
+docker compose logs -f axon-server      # follow one service
+docker compose down                     # stop, keep data
+docker compose down -v                  # stop and delete all volumes
 ```
 
-### Check Service Health
+Data lives in named volumes: `axondb-timeseries-data`, `axondb-timeseries-logs`,
+`axondb-search-data`, `axondb-search-logs`, `axon-server-data`.
+
+## Requirements
+
+- Docker Engine 20.10+ and Compose V2
+- 10 GB RAM free at the defaults above, 16 GB recommended; 20 GB disk
+- Ports 3000 and 1888 free on the host
+
+For a development machine with less memory, lower both heaps:
 
 ```bash
-docker compose ps
-```
-
-### Stop the Stack
-
-```bash
-docker compose down
-```
-
-### Reset All Data
-
-```bash
-docker compose down -v
+AXONOPS_CASSANDRA_HEAP_SIZE=2G
+AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 ```
 
 ## Troubleshooting
 
-### Services not starting
+**A service never becomes healthy.** First start takes 2–3 minutes. Watch it
+with `docker compose ps`, then read that service's log:
+`docker compose logs -f axondb-timeseries`.
 
-Services may take 2-3 minutes to become healthy on first start. Monitor status with:
+**`axon-server` restarts.** It needs both data stores healthy —
+`depends_on: condition: service_healthy` enforces the order, so check
+`docker compose logs axondb-timeseries axondb-search` first. Then confirm
+`AXONOPS_DB_PASSWORD` and `AXONOPS_SEARCH_PASSWORD` match between the stores and
+`axon-server`.
+
+**Out of memory.** Lower `AXONOPS_CASSANDRA_HEAP_SIZE` and
+`AXONOPS_OPENSEARCH_HEAP_SIZE` as above.
+
+**The dashboard does not load.** Check the dash can reach the backend:
+
 ```bash
-docker compose ps
-watch docker compose ps
+docker exec axon-dash curl -s http://axon-server:8080/api/v1/healthz
 ```
 
-### Health check failures
+**Cassandra logs `Invalid or unsupported protocol version (22)`, `axon-server`
+logs `tls: first record does not look like a TLS handshake`.** One side is using
+TLS and the other is not — 22 is `0x16`, the first byte of a TLS ClientHello read
+as a CQL protocol version. Set `AXONOPS_CASSANDRA_SSL=false` unless you have
+mounted a keystore, as explained under
+[TLS between the services](#tls-between-the-services).
 
-Check individual service logs:
-```bash
-docker compose logs axondb-timeseries
-docker compose logs axondb-search
-docker compose logs axon-server
-```
+**Other settings that look right but are ignored.** Three of these images take
+configuration under names that differ from the ones their own READMEs suggest,
+and each fails without naming the variable at fault. Example 01 documents all
+three: [configuration variables that look right but are not](../01-cassandra-cluster/README.md#configuration-variables-that-look-right-but-are-not).
 
-### Connection refused to databases
+## Licensing
 
-Ensure the databases are fully healthy before axon-server starts. The compose file enforces this via `depends_on` with `condition: service_healthy`.
+AxonOps requires a license for production use — <https://axonops.com>. The stack
+runs without a license key in trial mode, which is enough for evaluation and for
+the other examples here.
 
-### Out of memory
+## Support
 
-Reduce heap sizes in `.env`:
-```bash
-AXONOPS_CASSANDRA_HEAP_SIZE=2G
-AXONOPS_OPENSEARCH_HEAP_SIZE=2g
-```
-
-### Dashboard not loading
-
-1. Check axon-dash can reach axon-server:
-   ```bash
-   docker exec axon-dash curl -s http://axon-server:8080/api/v1/healthz
-   ```
-
-2. Check browser console for errors
-
-## Data Persistence
-
-Data is stored in Docker volumes:
-
-| Volume | Contents |
-|--------|----------|
-| `axonops-timeseries-data` | Cassandra metrics data |
-| `axonops-timeseries-logs` | Cassandra logs |
-| `axonops-search-data` | OpenSearch logs/indices |
-| `axonops-search-logs` | OpenSearch logs |
-| `axonops-server-data` | axon-server state |
-
-## License
-
-AxonOps requires a license for production use. Get your license at https://axonops.com
-
-For evaluation, the stack works without a license key (trial mode).
+Maintained by [AxonOps](https://axonops.com). For support, contact us at
+[axonops.com/contact](https://axonops.com/contact).

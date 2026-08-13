@@ -135,7 +135,7 @@ docker compose down -v                  # stop and delete all volumes
 Lower `CASSANDRA_HEAP_SIZE`, `AXONOPS_CASSANDRA_HEAP_SIZE` and
 `AXONOPS_OPENSEARCH_HEAP_SIZE` if you have less memory. This is a development
 and evaluation stack; production sizing is in the
-[docker/](../00-axonops-platform/README.md#system-requirements) stack documentation.
+[example 00](../00-axonops-platform/README.md#requirements) stack documentation.
 
 ## Troubleshooting
 

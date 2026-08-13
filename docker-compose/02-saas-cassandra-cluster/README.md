@@ -77,7 +77,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 The agent key is a credential. `.env` is gitignored — do not commit it, and do
 not bake it into an image.
 
-## Network requirements
+### Network requirements
 
 The agents make **outbound** TLS connections to `agents.axonops.cloud:443`.
 Nothing inbound is needed. Behind an egress proxy or firewall, allow that host
