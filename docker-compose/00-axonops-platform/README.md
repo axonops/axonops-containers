@@ -12,9 +12,6 @@ your own hosts at it, or use it as the base for the other examples.
 - Have an AxonOps Cloud account? [Example 02](../02-saas-cassandra-cluster/) —
   a cluster reporting to SaaS, no platform to run.
 
-> This directory was `docker/` until it moved here, so that every Compose stack
-> lives in one place and follows the same conventions.
-
 ## Quick start
 
 ```bash
