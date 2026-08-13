@@ -37,7 +37,7 @@ For example `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.0.0` is Apache C
 
 The agent component of a tag is always a concrete version. Passing `latest` as the agent version to the pipeline resolves it to the version actually installed before any tag is written.
 
-Development builds go to `ghcr.io/axonops/cassandra/cassandra-dev` and are not for production use.
+Development builds go to `ghcr.io/axonops/development/cassandra`, alongside the other components' development images, and are not for production use.
 
 Pin by digest in anything you care about:
 
@@ -151,7 +151,7 @@ Trigger commands are in [PIPELINES.md](../PIPELINES.md).
 |----------|---------|
 | `cassandra-build-and-test.yml` | Builds and tests on pull requests; publishes nothing |
 | `cassandra-publish-signed.yml` | Production build, publish and cosign signing from a tag on `main` |
-| `cassandra-development-publish-signed.yml` | Development build published to the `-dev` image path |
+| `cassandra-development-publish-signed.yml` | Development build published to `ghcr.io/axonops/development/cassandra` |
 
 Every published image is signed with keyless Sigstore cosign:
 

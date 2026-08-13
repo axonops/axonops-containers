@@ -181,7 +181,7 @@ gh workflow run "K8ssandra Development Publish Signed to GHCR" \
 
 ### Cassandra (Dev)
 
-Publishes to `ghcr.io/axonops/cassandra/cassandra-dev`.
+Publishes to `ghcr.io/axonops/development/cassandra`.
 
 ```bash
 gh workflow run "Cassandra Development Publish Signed to GHCR" \
