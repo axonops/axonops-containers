@@ -64,6 +64,11 @@ docker exec cassandra nodetool status
 docker exec cassandra cqlai -e "SELECT release_version FROM system.local;"
 ```
 
+Runnable multi-node examples using this image are in
+[`docker-compose/`](../docker-compose/README.md): [01](../docker-compose/01-cassandra-cluster/)
+monitors the cluster with a self-hosted AxonOps stack,
+[02](../docker-compose/02-saas-cassandra-cluster/) reports to AxonOps SaaS.
+
 ## Configuration
 
 ### AxonOps agent

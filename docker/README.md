@@ -2,6 +2,8 @@
 
 Deploy the complete AxonOps observability stack using Docker Compose. This provides a simple way to run AxonOps locally or in standalone environments without Kubernetes.
 
+For worked examples that also deploy a monitored Apache Cassandra cluster — self-hosted or reporting to AxonOps SaaS — see [`../docker-compose/`](../docker-compose/README.md).
+
 ## Quick Start
 
 1. **Copy the example environment file:**

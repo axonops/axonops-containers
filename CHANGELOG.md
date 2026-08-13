@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `k8ssandra-test-cqlai` verified query output by piping `cqlai` straight into `grep -q`. `grep -q` exits on the first match, SIGPIPEs `cqlai`, and under `pipefail` the step fails with exit 141 whenever the write loses the race — it took out a Cassandra 5.0.3 publish job. The output is now captured before matching.
 - `fail-fast` disabled on the `cassandra-publish-signed` and `k8ssandra-publish-signed` build matrices. One version failing was cancelling every other version mid-publish, which can leave a release half-pushed with inconsistent floating tags.
 
+### Changed
+- Docs updated now that `ghcr.io/axonops/cassandra/cassandra` is published: example 01 and its `env.example` default to the production image instead of `cassandra-dev`, and the "not yet published" notes are gone from the example, `versions.yaml` and `scripts/update-versions.sh`.
+- `versions.yaml` records the first `cassandra` release — `5.0.8-2.0.31-1.0.0`, digest `sha256:f96804cc…` — and `VERSIONS.md` was regenerated from it.
+- `k8ssandra/README.md` referenced `examples/axon-cluster.yml` in eight places; no such file exists. Pointed at the real `examples/k8ssandra/cluster-axonops-ubi.yaml`.
+- Root `README.md` lists the Docker Compose directories, `docker/README.md` links to the worked examples, and `cassandra/README.md` links to both.
+
 ### Added
 - `docker-compose/02-saas-cassandra-cluster/`: a 3-node Apache Cassandra cluster whose agents report to AxonOps SaaS over outbound TLS, with no AxonOps platform running locally. Requires an organisation name and an agent key, both enforced by Compose at start-up, and runs in roughly half the RAM of example 01.
 - `docker-compose/` directory of runnable Docker Compose examples built from this repository's images, with an index README documenting the shared conventions (version-tag pinning with digests in comments, all configuration through `.env`, development sizing by default). First example, `docker-compose/01-cassandra-cluster/`, deploys the self-hosted AxonOps stack (`axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash`) alongside a 3-node Apache Cassandra cluster, one rack per node, reporting to `axon-server` over the compose network. The monitored nodes default to `ghcr.io/axonops/cassandra/cassandra-dev` because the production repository `ghcr.io/axonops/cassandra/cassandra` has no published tags yet; the image is selectable with `CASSANDRA_IMAGE` in `.env`.

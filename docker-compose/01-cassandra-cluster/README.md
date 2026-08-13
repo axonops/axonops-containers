@@ -1,7 +1,7 @@
 # Example 01 — Self-hosted AxonOps monitoring a 3-node Cassandra cluster
 
 <p align="center">
-  <a href="https://axonops.com"><img src="https://axonops.com/img/axonops-logo.svg" alt="AxonOps" height="60"></a>
+  <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
 </p>
 
 A complete AxonOps installation and the Apache Cassandra cluster it monitors, in
@@ -30,24 +30,13 @@ the Cassandra nodes bootstrap one at a time.
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.0` | Log and event store (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | AxonOps backend and agent endpoint | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest` | Monitored cluster, seed node | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest` | Monitored cluster, rack1 | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest` | Monitored cluster, rack2 | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Monitored cluster, seed node | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Monitored cluster, rack1 | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Monitored cluster, rack2 | — |
 
 `cassandra-0` through `cassandra-2` are one datacentre, `dc1`, with one rack
 each. Only `cassandra-0` publishes CQL to the host; the other two are reachable
 inside the compose network and with `docker exec`.
-
-> **Why the development image.** The production repository
-> `ghcr.io/axonops/cassandra/cassandra` is tagged in this repository
-> (`cassandra-1.0.0`) but has not been published to GHCR yet — see the `cassandra`
-> entry in [`versions.yaml`](../../versions.yaml) — so pulling from it fails with
-> `denied`. `cassandra-dev` is the same build: the k8ssandra Dockerfile with
-> `INCLUDE_MGMT_API=false`. Once the production repository is published, set
-> `CASSANDRA_IMAGE` in `.env` to a pinned tag there.
->
-> Note that Compose aborts the whole pull when any one image fails, so a single
-> unavailable image reports `denied` against every service.
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 
@@ -59,7 +48,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 |----------|---------|-------------|
 | `AXONOPS_ORG_NAME` | `my-organization` | Organisation name. Shared by `axon-server` and the agents — they must match. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Name of the monitored cluster in AxonOps |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest` | Image for the monitored nodes |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Image for the monitored nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per monitored node |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Young generation per monitored node |
 | `AXONOPS_LICENSE_KEY` | (empty) | License key; empty runs in trial mode |
@@ -134,9 +123,6 @@ memory is the usual cause — lower `CASSANDRA_HEAP_SIZE`.
 **The cluster does not appear in the dashboard.** The agent and `axon-server`
 must share an organisation. `AXONOPS_ORG_NAME` in `.env` sets both; check with
 `docker compose exec cassandra-0 env | grep AXON_AGENT_ORG`.
-
-**`manifest unknown` when pulling Cassandra.** The image is not published yet —
-see the note under [What it runs](#what-it-runs).
 
 **`axon-server` restarts.** It needs both data stores healthy. Check
 `docker compose logs axondb-timeseries axondb-search`, and confirm

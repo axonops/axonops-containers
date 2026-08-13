@@ -28,7 +28,7 @@ for the full rationale and the verification steps.
 | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | `2.0.37` | `sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362` | `—` |
 | `ghcr.io/axonops/axonops-schema-registry` | `0.2.1` | `sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164` | `axonops-schema-registry-0.2.0-0.0.1` |
 | `ghcr.io/axonops/k8ssandra/cassandra` | `5.0.8-v0.1.120-1.5.6` | `sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c` | `k8ssandra-1.5.6` |
-| `ghcr.io/axonops/cassandra/cassandra` | `—` | `—` | `cassandra-1.0.0` |
+| `ghcr.io/axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.0.0` | `sha256:f96804cc2fe74694988d6c28f9ae7b5b674e8959bd6f2d6b65eff3b4fa4340b5` | `cassandra-1.0.0` |
 | `ghcr.io/axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` | `sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124eb38672e5e964f51d5d87` | `strimzi-0.1.26` |
 
 ## Helm charts
@@ -53,6 +53,7 @@ registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d
 registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
 ghcr.io/axonops/axonops-schema-registry@sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164
 ghcr.io/axonops/k8ssandra/cassandra@sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c
+ghcr.io/axonops/cassandra/cassandra@sha256:f96804cc2fe74694988d6c28f9ae7b5b674e8959bd6f2d6b65eff3b4fa4340b5
 ghcr.io/axonops/strimzi/kafka@sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124eb38672e5e964f51d5d87
 ```
 
@@ -65,7 +66,7 @@ ghcr.io/axonops/strimzi/kafka@sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124
 - **axon-dash** — Built and published outside this repository; consumed by the compose stack and the Helm charts.
 - **axonops-schema-registry** — Pre-release. The published tags do not yet follow the documented `{SR_VERSION}-{CONTAINER_VERSION}` pattern, and the newest tags in the registry are feature builds (`0.4.0-mcp-phase7`), not releases.
 - **k8ssandra-cassandra** — Each release publishes one tag per Cassandra version. Build 1.5.6 covers 5.0.1, 5.0.2, 5.0.3, 5.0.5, 5.0.6, 5.0.7 and 5.0.8 — 5.0.4 was last built at 1.5.5 and 5.0.9 has never been published here. `current.digest` is the digest of the 5.0.8 variant only; every other Cassandra version has its own digest.
-- **cassandra** — Tagged (cassandra-1.0.0) but not yet published — the repository has no tags in the registry. Build matrix is Cassandra 5.0.1 through 5.0.8.
+- **cassandra** — First release. Build 1.0.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is not built here — upstream k8ssandra publishes no 5.0.9 base image.
 - **strimzi-kafka** — Build 0.1.26 publishes one tag per supported operator/Kafka combination (operators 0.46.1 through 1.1.0, AxonOps agent 2.0.20). `current.tag` is the newest combination; see the VERSION_MATRIX in .github/workflows/strimzi-publish-signed.yml for the full set.
 - **chart-axonops** — Chart version comes from axonops/charts/axonops/Chart.yaml.
 

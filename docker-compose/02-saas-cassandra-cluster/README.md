@@ -1,7 +1,7 @@
 # Example 02 — AxonOps SaaS monitoring a 3-node Cassandra cluster
 
 <p align="center">
-  <a href="https://axonops.com"><img src="https://axonops.com/img/axonops-logo.svg" alt="AxonOps" height="60"></a>
+  <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
 </p>
 
 A 3-node Apache Cassandra cluster whose agents report to AxonOps SaaS. No
