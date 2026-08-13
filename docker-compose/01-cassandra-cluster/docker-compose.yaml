@@ -140,9 +140,11 @@ services:
   # ===========================================================================
 
   cassandra-0:
-    # Preferred (immutable): resolve with
-    #   docker buildx imagetools inspect ghcr.io/axonops/cassandra/cassandra:5.0.8 --format '{{ .Manifest.Digest }}'
-    image: ghcr.io/axonops/cassandra/cassandra:${CASSANDRA_IMAGE_TAG:-5.0.8}
+    # Development image: the production repository ghcr.io/axonops/cassandra/cassandra
+    # is tagged but not yet published. Switch CASSANDRA_IMAGE in .env once it is.
+    # Resolve a digest with:
+    #   docker buildx imagetools inspect <image> --format '{{ .Manifest.Digest }}'
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest}
     container_name: cassandra-0
     hostname: cassandra-0
     networks: [axonops]
@@ -175,7 +177,7 @@ services:
     restart: unless-stopped
 
   cassandra-1:
-    image: ghcr.io/axonops/cassandra/cassandra:${CASSANDRA_IMAGE_TAG:-5.0.8}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest}
     container_name: cassandra-1
     hostname: cassandra-1
     networks: [axonops]
@@ -206,7 +208,7 @@ services:
     restart: unless-stopped
 
   cassandra-2:
-    image: ghcr.io/axonops/cassandra/cassandra:${CASSANDRA_IMAGE_TAG:-5.0.8}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest}
     container_name: cassandra-2
     hostname: cassandra-2
     networks: [axonops]
