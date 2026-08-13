@@ -8,7 +8,7 @@
 # Quick start:
 #   cp env.example .env      # set AXONOPS_ORG_NAME and AXONOPS_AGENT_KEY
 #   docker compose up -d
-#   open https://dash.axonops.cloud
+#   open https://console.axonops.cloud
 #
 # Image pinning: the image is pinned to an immutable version tag with the
 # equivalent SHA256 digest commented above it. Deploy the digest form in

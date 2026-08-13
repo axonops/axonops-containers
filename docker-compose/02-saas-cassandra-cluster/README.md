@@ -23,10 +23,12 @@ Then open <https://console.axonops.cloud> and pick the `saas-demo-cluster`
 cluster. Nodes appear as they start; a cold start takes 3–5 minutes because they
 bootstrap one at a time.
 
-Your organisation name and agent key both come from the AxonOps console:
-**Settings → Agents**. The agents will not start without them — Compose fails
-immediately with `set AXONOPS_AGENT_KEY in .env` rather than starting a cluster
-that reports nowhere.
+Your organisation name and agent key both come from your AxonOps Cloud account —
+sign up at <https://axonops.cloud>, and see
+[agent setup](https://axonops.com/docs/get_started/agent_setup/) for where the key
+is shown. The agents will not start without them: Compose fails immediately with
+`set AXONOPS_AGENT_KEY in .env` rather than starting a cluster that reports
+nowhere.
 
 ## What it runs
 
@@ -50,7 +52,7 @@ Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 | RAM at defaults | ~10 GB | ~5 GB |
 | Dashboard | `http://localhost:3000` | <https://console.axonops.cloud> |
 | Agent endpoint | `axon-server:1888` on the compose network | `agents.axonops.cloud:443` outbound |
-| Agent transport | plaintext (`AXON_AGENT_TLS_MODE=disabled`) | TLS, the image default |
+| Agent transport | plaintext (`AXON_AGENT_TLS_MODE=disabled`) | TLS — the agent defaults to `AXON_AGENT_TLS_MODE=TLS` with certificate verification on |
 | Credentials | organisation name only | organisation name **and** agent key |
 | Metrics stored | in your `axondb-timeseries` | in AxonOps SaaS |
 
@@ -147,6 +149,13 @@ logs an NTP warning in that case.
 **A node never becomes healthy.** Nodes bootstrap one at a time and
 `start_period` is 90s. Watch `docker compose logs -f cassandra-1`. Out of memory
 is the usual cause — lower `CASSANDRA_HEAP_SIZE`.
+
+**A variable seems to be ignored.** The agent reads `AXON_AGENT_*` names bound in
+its own config package — `AXON_AGENT_ORG`, `AXON_AGENT_KEY`,
+`AXON_AGENT_SERVER_HOST`, `AXON_AGENT_SERVER_PORT`, `AXON_AGENT_CLUSTER_NAME`,
+`AXON_AGENT_TLS_MODE`, `AXON_AGENT_NTP_HOST`. Names close to these but not exact
+are ignored silently. Example 01 documents
+[the same trap in the other services](../01-cassandra-cluster/README.md#configuration-variables-that-look-right-but-are-not).
 
 **Nodes are healthy but show as one rack.** `CASSANDRA_RACK` is fixed per
 service in `docker-compose.yaml`; if you change `CASSANDRA_DC` after first
