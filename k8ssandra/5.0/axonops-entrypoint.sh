@@ -1,4 +1,22 @@
 #!/bin/bash
+#
+# This entrypoint serves two images built from the same Dockerfile:
+#
+#   INCLUDE_MGMT_API=true  - the K8ssandra image. Cassandra is started by the
+#     upstream Management API entrypoint, which also applies the CASSANDRA_*
+#     environment variables to the configuration.
+#   INCLUDE_MGMT_API=false - the standalone ghcr.io/axonops/cassandra/cassandra
+#     image. The Management API is not in the image, so this script applies the
+#     same CASSANDRA_* environment variables itself and starts Cassandra
+#     directly.
+#
+# The branch is taken on whether the Management API server jar exists, not on a
+# build argument, so a stripped image can never try to start an API it does not
+# have.
+
+MGMT_API_JAR="${MAAC_PATH:-/opt/management-api}/datastax-mgmtapi-server.jar"
+CASSANDRA_HOME="${CASSANDRA_HOME:-/opt/cassandra}"
+CASSANDRA_CONF="${CASSANDRA_CONF:-${CASSANDRA_HOME}/conf}"
 
 touch /var/log/axonops/axon-agent.log
 
@@ -44,7 +62,11 @@ print_startup_banner() {
     # Component versions (from build-info.txt)
     echo "Component Versions:"
     echo "  Cassandra:          ${CASSANDRA_VERSION:-unknown}"
-    echo "  k8ssandra API:      ${K8SSANDRA_API_VERSION:-unknown}"
+    if [ -f "${MGMT_API_JAR}" ]; then
+      echo "  k8ssandra API:      ${K8SSANDRA_API_VERSION:-unknown}"
+    else
+      echo "  k8ssandra API:      not installed"
+    fi
     echo "  Java:               ${JAVA_VERSION:-unknown}"
     echo "  AxonOps Agent:      ${AXON_AGENT_VERSION:-unknown}"
     echo "  AxonOps Java Agent: ${AXON_JAVA_AGENT_VERSION:-unknown}"
@@ -82,7 +104,11 @@ print_startup_banner() {
     echo ""
 
     echo "================================================================================"
-    echo "Starting Cassandra with Management API and AxonOps Agent..."
+    if [ -f "${MGMT_API_JAR}" ]; then
+      echo "Starting Cassandra with Management API and AxonOps Agent..."
+    else
+      echo "Starting Cassandra with AxonOps Agent..."
+    fi
     echo "================================================================================"
     echo ""
   } || {
@@ -134,25 +160,115 @@ else
     echo "⚠ jemalloc not found, continuing without it"
 fi
 
+# Apply the CASSANDRA_* environment variables to the configuration.
+#
+# Only used when the Management API is absent. With the API present the upstream
+# entrypoint does this itself, and doing it twice would fight with it. The
+# behaviour deliberately mirrors the upstream entrypoint and the official
+# Cassandra image, so the environment variable interface is the same in both.
+_ip_address() {
+  ip address | awk '
+    $1 == "inet" && $NF != "lo" {
+      gsub(/\/.+$/, "", $2)
+      print $2
+      exit
+    }
+  '
+}
+
+# sed -i without mv, so it works on bind-mounted files
+_sed_in_place() {
+  local filename="$1"; shift
+  local temp_file
+  temp_file="$(mktemp)"
+  sed "$@" "$filename" > "$temp_file"
+  cat "$temp_file" > "$filename"
+  rm -f "$temp_file"
+}
+
+configure_cassandra_from_env() {
+  # Mounted configuration wins over anything set here
+  if [ -d /config ] && ! [ /config -ef "${CASSANDRA_CONF}" ]; then
+    cp -R /config/* "${CASSANDRA_CONF}"
+  fi
+
+  : "${CASSANDRA_RPC_ADDRESS:=0.0.0.0}"
+  : "${CASSANDRA_LISTEN_ADDRESS:=auto}"
+  if [ "$CASSANDRA_LISTEN_ADDRESS" = 'auto' ]; then
+    CASSANDRA_LISTEN_ADDRESS="$(_ip_address)"
+  fi
+
+  : "${CASSANDRA_BROADCAST_ADDRESS:=$CASSANDRA_LISTEN_ADDRESS}"
+  if [ "$CASSANDRA_BROADCAST_ADDRESS" = 'auto' ]; then
+    CASSANDRA_BROADCAST_ADDRESS="$(_ip_address)"
+  fi
+  : "${CASSANDRA_BROADCAST_RPC_ADDRESS:=$CASSANDRA_BROADCAST_ADDRESS}"
+  : "${CASSANDRA_SEEDS:=$CASSANDRA_BROADCAST_ADDRESS}"
+
+  _sed_in_place "${CASSANDRA_CONF}/cassandra.yaml" \
+    -r 's/(- seeds:).*/\1 "'"$CASSANDRA_SEEDS"'"/'
+
+  for yaml in \
+    broadcast_address \
+    broadcast_rpc_address \
+    cluster_name \
+    endpoint_snitch \
+    listen_address \
+    num_tokens \
+    rpc_address \
+  ; do
+    var="CASSANDRA_${yaml^^}"
+    val="${!var}"
+    if [ "$val" ]; then
+      _sed_in_place "${CASSANDRA_CONF}/cassandra.yaml" \
+        -r 's/^(# )?('"$yaml"':).*/\2 '"$val"'/'
+    fi
+  done
+
+  for rackdc in dc rack; do
+    var="CASSANDRA_${rackdc^^}"
+    val="${!var}"
+    if [ "$val" ]; then
+      _sed_in_place "${CASSANDRA_CONF}/cassandra-rackdc.properties" \
+        -r 's/^('"$rackdc"'=).*/\1 '"$val"'/'
+    fi
+  done
+
+  echo "Cassandra configured: seeds=${CASSANDRA_SEEDS} listen=${CASSANDRA_LISTEN_ADDRESS} rpc=${CASSANDRA_RPC_ADDRESS} dc=${CASSANDRA_DC:-default} rack=${CASSANDRA_RACK:-default}"
+}
+
 # Print startup banner (after config ready, before starting Cassandra)
 print_startup_banner
 
-# Start Management API + Cassandra in background
-echo "Starting Cassandra management API"
-/docker-entrypoint.sh mgmtapi &
-MGMTAPI_PID=$!
+# Start Cassandra in the background. With the Management API present it is
+# started by the upstream entrypoint, which stays in the foreground as the
+# process the container tracks; without it, Cassandra itself is that process.
+if [ -f "${MGMT_API_JAR}" ]; then
+  echo "Starting Cassandra management API"
+  /docker-entrypoint.sh mgmtapi &
+  MAIN_PID=$!
+  MAIN_PROCESS="Management API"
+else
+  configure_cassandra_from_env
+  echo "Starting Cassandra"
+  "${CASSANDRA_HOME}/bin/cassandra" -f -R &
+  MAIN_PID=$!
+  MAIN_PROCESS="Cassandra"
+fi
 
 # Wait for the axonops socket file to appear (created by Java agent)
 SOCKET_FILE="/var/lib/axonops/6868681090314641335.socket"
-CQL_PORT=$(sed -E '/^native_transport_port:[[:space:]]+[[:digit:]]+[[:space:]]*$/!d; s/^native_transport_port:[[:space:]]+([[:digit:]]+)[[:space:]]*$/\1/' /opt/cassandra/conf/cassandra.yaml)
+CQL_PORT=$(sed -E '/^native_transport_port:[[:space:]]+[[:digit:]]+[[:space:]]*$/!d; s/^native_transport_port:[[:space:]]+([[:digit:]]+)[[:space:]]*$/\1/' "${CASSANDRA_CONF}/cassandra.yaml")
+CQL_PORT="${CQL_PORT:-9042}"
 echo "Waiting for Cassandra to start up. Detected CQL port $CQL_PORT"
 while true; do
     echo "Waiting for Cassandra to be ready before starting axon-agent..."
     sleep 5
-    # Check if Management API is still running
-    if ! kill -0 $MGMTAPI_PID 2>/dev/null; then
-        echo "Management API died while waiting for Cassandra to be ready"
-        exit 1
+    # Check the process the container tracks is still running
+    if ! kill -0 $MAIN_PID 2>/dev/null; then
+        echo "${MAIN_PROCESS} died while waiting for Cassandra to be ready"
+        wait $MAIN_PID
+        exit $?
     fi
     if [ -S "$SOCKET_FILE" ] && (ss -ln | grep -qE "^tcp .*:$CQL_PORT .*$"); then
       break
@@ -195,5 +311,9 @@ supervise_axon_agent() {
 # Start axon-agent under supervision in the background
 supervise_axon_agent &
 
-# Wait on Management API process to keep container running
-wait $MGMTAPI_PID
+# Wait on the tracked process to keep the container running: the Management API
+# when it is installed, Cassandra itself when it is not.
+wait $MAIN_PID
+MAIN_RC=$?
+echo "${MAIN_PROCESS} exited with status ${MAIN_RC}"
+exit $MAIN_RC

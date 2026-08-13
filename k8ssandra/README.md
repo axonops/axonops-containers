@@ -305,6 +305,24 @@ docker push your-registry/axonops-cassandra:5.0.6-v0.1.110-1.0.0
 
 **Note:** Optional args enhance the startup banner and labels but aren't required for functionality.
 
+### Building without the Management API
+
+The same Dockerfile builds the standalone Cassandra image published as `ghcr.io/axonops/cassandra/cassandra`. Pass `INCLUDE_MGMT_API=false` and the build removes `/opt/management-api` and `/opt/cdc_agent`, strips the Management API java agent from `cassandra-env.sh`, and leaves the entrypoint to start Cassandra directly.
+
+```bash
+docker build \
+  --build-arg CASSANDRA_VERSION=5.0.8 \
+  --build-arg MAJOR_VERSION=5.0 \
+  --build-arg K8SSANDRA_BASE_DIGEST=sha256:... \
+  --build-arg K8SSANDRA_API_VERSION=0.1.120 \
+  --build-arg INCLUDE_MGMT_API=false \
+  --build-arg CQLAI_VERSION=0.1.7 \
+  -t your-registry/axonops-cassandra:5.0.8-standalone \
+  .
+```
+
+`INCLUDE_MGMT_API` defaults to `true`, so K8ssandra builds are unaffected. See [cassandra/README.md](../cassandra/README.md) for the standalone image, its tagging scheme and its `CASSANDRA_*` environment variables.
+
 ### Adding Support for New Cassandra Versions
 
 When a new Cassandra version is released (e.g., 5.0.7), follow these steps:
