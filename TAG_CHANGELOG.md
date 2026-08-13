@@ -229,10 +229,12 @@ git tag strimzi-X.Y.Z origin/main
 git push origin strimzi-X.Y.Z
 
 # 2. Trigger the workflow
+#    Container version is derived from the tag; there is no container_version input.
+#    Optional: -f operator_version=0.51.0 (build one operator; omit to build all)
+#    Optional: -f axon_agent_version=2.0.20 (override matrix default)
 gh workflow run "Strimzi Publish Signed to GHCR" \
   --repo axonops/axonops-containers \
-  -f main_git_tag=strimzi-X.Y.Z \
-  -f container_version=X.Y.Z
+  -f main_git_tag=strimzi-X.Y.Z
 ```
 
 ## Notes
