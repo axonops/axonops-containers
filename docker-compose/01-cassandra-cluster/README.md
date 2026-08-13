@@ -59,9 +59,32 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_CASSANDRA_SSL` | `true` | TLS from `axon-server` to `axondb-timeseries` |
 | `AXONOPS_OPENSEARCH_SSL` | `true` | TLS from `axon-server` to `axondb-search` |
 
-`axon-server` is configured from [`config/axon-server.yml.template`](config/axon-server.yml.template),
-rendered at start-up by [`config/init-config.sh`](config/init-config.sh). Edit the
-template to change anything the environment variables do not cover.
+`axon-server` is configured entirely through environment variables — there is no
+config file to mount or render. Each variable overrides the corresponding field
+of the `axon-server.yml` shipped inside the image:
+
+| axon-server.yml | Environment variable |
+|-----------------|----------------------|
+| `org_name` | `AXONSERVER_ORGNAME` |
+| `license_key` | `LICENSE_KEY` |
+| `tls.mode` | `TLS_MODE` |
+| `log_file` | `AXON_LOG_FILE` |
+| `axon_dash_url` | `AXONDASH_HOST`, `AXONDASH_PORT`, `AXONDASH_HTTPS` |
+| `cql_hosts` | `CQL_HOSTS` (comma-separated) |
+| `cql_username` / `cql_password` | `CQL_USERNAME` / `CQL_PASSWORD` |
+| `cql_local_dc` | `CQL_LOCAL_DC` |
+| `cql_ssl` / `cql_skip_verify` | `CQL_SSL` / `CQL_SSL_SKIP_VERIFY` |
+| `cql_keyspace_replication` | `CQL_KS_REPLICATION` |
+| `search_db.hosts` | `SEARCH_DB_HOSTS` (comma-separated) |
+| `search_db.username` / `password` | `SEARCH_DB_USERNAME` / `SEARCH_DB_PASSWORD` |
+| `search_db.skip_verify` | `SEARCH_DB_SKIP_VERIFY` |
+
+axon-server binds 72 variables in total, covering retry and reconnection policy,
+consistency levels, compaction windows, LDAP auth and SMTP. Anything not set
+keeps the value from the image's own `axon-server.yml`.
+
+The older `ELASTIC_*` variables are the previous generation of the `SEARCH_DB_*`
+ones — do not mix the two forms.
 
 The agents connect to `axon-server:1888` in plaintext (`AXON_AGENT_TLS_MODE=disabled`)
 because the traffic never leaves the compose network. Use TLS for agents on any

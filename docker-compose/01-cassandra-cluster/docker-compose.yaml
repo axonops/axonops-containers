@@ -82,18 +82,34 @@ services:
     hostname: axon-server
     networks: [axonops]
     environment:
-      # Consumed by config/init-config.sh when it renders axon-server.yml
-      - AXONOPS_ORG_NAME=${AXONOPS_ORG_NAME:-example}
-      - AXONOPS_LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
-      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
-      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
-      - AXONOPS_CQL_SSL=${AXONOPS_CASSANDRA_SSL:-true}
+      # axon-server is configured entirely through environment variables; the
+      # names are the ones bound in its config package, and each one overrides
+      # the corresponding field of the axon-server.yml shipped in the image.
+      - AXONSERVER_ORGNAME=${AXONOPS_ORG_NAME:-example}
+      - LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
+      - AXON_LOG_FILE=/dev/stdout
+      - TLS_MODE=disabled
+      # Dashboard URL used in notification and email links
+      - AXONDASH_HOST=axon-dash
+      - AXONDASH_PORT=3000
+      - AXONDASH_HTTPS=false
+      # Metrics store (axondb-timeseries)
+      - CQL_HOSTS=axondb-timeseries
+      - CQL_USERNAME=axonops
+      - CQL_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      - CQL_LOCAL_DC=axonopsdb_dc1
+      - CQL_PROTO_VERSION=4
+      - CQL_AUTO_CREATE_TABLES=true
+      - CQL_SSL=${AXONOPS_CASSANDRA_SSL:-true}
+      - CQL_SSL_SKIP_VERIFY=true
+      - "CQL_KS_REPLICATION={ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
+      # Log and event store (axondb-search)
+      - SEARCH_DB_HOSTS=https://axondb-search:9200
+      - SEARCH_DB_USERNAME=admin
+      - SEARCH_DB_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - SEARCH_DB_SKIP_VERIFY=true
     volumes:
       - axon-server-data:/var/lib/axonops
-      - ./config/axon-server.yml.template:/config/axon-server.yml.template:ro
-      - ./config/init-config.sh:/config/init-config.sh:ro
-    entrypoint: ["/config/init-config.sh"]
-    command: ["axon-server"]
     ports:
       # Agent endpoint, published so agents outside this compose project can connect
       - "1888:1888"

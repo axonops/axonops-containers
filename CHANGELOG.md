@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fail-fast` disabled on the `cassandra-publish-signed` and `k8ssandra-publish-signed` build matrices. One version failing was cancelling every other version mid-publish, which can leave a release half-pushed with inconsistent floating tags.
 
 ### Changed
+- `docker-compose/01-cassandra-cluster/` no longer mounts a rendered `axon-server.yml`. `axon-server` binds 72 environment variables in its config package — including `AXONSERVER_ORGNAME`, `LICENSE_KEY`, `TLS_MODE`, the full `CQL_*` set and the `SEARCH_DB_*` set — each overriding the corresponding field of the `axon-server.yml` shipped in the image, so the config template, the `init-config.sh` that rendered it, the two bind mounts and the entrypoint override are all gone.
 - Docs updated now that `ghcr.io/axonops/cassandra/cassandra` is published: example 01 and its `env.example` default to the production image instead of `cassandra-dev`, and the "not yet published" notes are gone from the example, `versions.yaml` and `scripts/update-versions.sh`.
 - `versions.yaml` records the first `cassandra` release — `5.0.8-2.0.31-1.0.0`, digest `sha256:f96804cc…` — and `VERSIONS.md` was regenerated from it.
 - `k8ssandra/README.md` referenced `examples/axon-cluster.yml` in eight places; no such file exists. Pointed at the real `examples/k8ssandra/cluster-axonops-ubi.yaml`.
