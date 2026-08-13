@@ -129,13 +129,13 @@ Apache Cassandra 5.0.1 through 5.0.8. The matrix is bounded by the `K8SSANDRA_VE
 
 ```bash
 DIGEST=$(gh api /repos/axonops/axonops-containers/actions/variables/K8SSANDRA_VERSIONS \
-  --jq '.value | fromjson | ."5.0.8+0.1.120"')
+  --jq '.value | fromjson | ."5.0.8+0.1.124"')
 
 docker build -t axonops-cassandra:local \
   --build-arg CASSANDRA_VERSION=5.0.8 \
   --build-arg MAJOR_VERSION=5.0 \
   --build-arg K8SSANDRA_BASE_DIGEST="$DIGEST" \
-  --build-arg K8SSANDRA_API_VERSION=0.1.120 \
+  --build-arg K8SSANDRA_API_VERSION=0.1.124 \
   --build-arg INCLUDE_MGMT_API=false \
   --build-arg CQLAI_VERSION=0.1.7 \
   k8ssandra/5.0

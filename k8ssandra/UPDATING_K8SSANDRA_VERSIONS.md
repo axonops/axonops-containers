@@ -202,6 +202,7 @@ curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/t
 | Date | API Version | Container Version | Notes |
 |------|-------------|-------------------|-------|
 | 2026-06 | 0.1.120 | — | Security fix: bump all versions to newer UBI 9 base; resolves unignored CVEs in nightly scan. Added Cassandra 4.0.20, 4.1.11, 5.0.8 |
+| 2026-08 | 0.1.124 | — | Routine bump to the latest upstream Management API release; all 39 Cassandra versions re-pinned to their v0.1.124 digests. No new Cassandra versions: upstream still tops out at 5.0.8 |
 | 2025-01 | 0.1.113 | — | Bump to 0.1.113 |
 | 2025-01 | 0.1.111 | 1.1.0 | Initial documented update |
 | 2024-12 | 0.1.110 | 1.0.0 | Initial release |
