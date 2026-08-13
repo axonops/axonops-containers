@@ -1,0 +1,251 @@
+# Example 01 — Self-hosted AxonOps monitoring a 3-node Apache Cassandra cluster
+#
+# Everything in this file is built and published from this repository, or from
+# the AxonOps public registry.
+#
+#   axondb-timeseries  Apache Cassandra, metrics store for AxonOps
+#   axondb-search      OpenSearch, log and event store for AxonOps
+#   axon-server        AxonOps backend, agent endpoint on 1888
+#   axon-dash          AxonOps web dashboard on 3000
+#   cassandra-0..2     The monitored cluster, Cassandra + the AxonOps agent
+#
+# Quick start:
+#   cp env.example .env      # set AXONOPS_ORG_NAME
+#   docker compose up -d
+#   open http://localhost:3000
+#
+# Image pinning: every service is pinned to an immutable version tag, with the
+# equivalent SHA256 digest commented above it. Deploy the digest form in
+# production — see ../../docker/README.md "Image Pinning: Tags vs Checksums"
+# and ../../VERSIONS.md for the current digest of every image.
+
+services:
+  # ===========================================================================
+  # AxonOps platform
+  # ===========================================================================
+
+  axondb-timeseries:
+    # Preferred (immutable): ghcr.io/axonops/axondb-timeseries@sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c
+    image: ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0
+    container_name: axondb-timeseries
+    hostname: axondb-timeseries
+    networks: [axonops]
+    environment:
+      - CASSANDRA_CLUSTER_NAME=axonopsdb-timeseries
+      - CASSANDRA_DC=axonopsdb_dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_NUM_TOKENS=16
+      - CASSANDRA_HEAP_SIZE=${AXONOPS_CASSANDRA_HEAP_SIZE:-2G}
+      - AXONOPS_DB_USER=axonops
+      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      - CASSANDRA_CLIENT_ENCRYPTION_ENABLED=${AXONOPS_CASSANDRA_SSL:-true}
+      - CASSANDRA_CLIENT_ENCRYPTION_REQUIRE_CLIENT_AUTH=false
+    volumes:
+      - axondb-timeseries-data:/var/lib/cassandra
+      - axondb-timeseries-logs:/var/log/cassandra
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  axondb-search:
+    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:4291a1b3c099639e2cf7178eb27c576906e6404c3baaefa0634068d1ab53f41d
+    image: ghcr.io/axonops/axondb-search:3.7.0-1.6.0
+    container_name: axondb-search
+    hostname: axondb-search
+    networks: [axonops]
+    environment:
+      - OPENSEARCH_CLUSTER_NAME=axonopsdb-search
+      - OPENSEARCH_DISCOVERY_TYPE=single-node
+      - OPENSEARCH_HEAP_SIZE=${AXONOPS_OPENSEARCH_HEAP_SIZE:-2g}
+      - AXONOPS_SEARCH_USER=admin
+      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - AXONOPS_SEARCH_TLS_ENABLED=${AXONOPS_OPENSEARCH_SSL:-true}
+    volumes:
+      - axondb-search-data:/var/lib/opensearch
+      - axondb-search-logs:/var/log/opensearch
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  axon-server:
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    container_name: axon-server
+    hostname: axon-server
+    networks: [axonops]
+    environment:
+      # Consumed by config/init-config.sh when it renders axon-server.yml
+      - AXONOPS_ORG_NAME=${AXONOPS_ORG_NAME:-example}
+      - AXONOPS_LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
+      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - AXONOPS_CQL_SSL=${AXONOPS_CASSANDRA_SSL:-true}
+    volumes:
+      - axon-server-data:/var/lib/axonops
+      - ./config/axon-server.yml.template:/config/axon-server.yml.template:ro
+      - ./config/init-config.sh:/config/init-config.sh:ro
+    entrypoint: ["/config/init-config.sh"]
+    command: ["axon-server"]
+    ports:
+      # Agent endpoint, published so agents outside this compose project can connect
+      - "1888:1888"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      axondb-timeseries:
+        condition: service_healthy
+      axondb-search:
+        condition: service_healthy
+    restart: unless-stopped
+
+  axon-dash:
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37
+    container_name: axon-dash
+    hostname: axon-dash
+    networks: [axonops]
+    environment:
+      - AXON_SERVER_URL=http://axon-server:8080
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Monitored Cassandra cluster
+  #
+  # One seed (cassandra-0) and two more nodes, each in its own rack. Nodes are
+  # started one at a time — Cassandra bootstraps a single node at a time — so a
+  # cold start takes a few minutes.
+  # ===========================================================================
+
+  cassandra-0:
+    # Preferred (immutable): resolve with
+    #   docker buildx imagetools inspect ghcr.io/axonops/cassandra/cassandra:5.0.8 --format '{{ .Manifest.Digest }}'
+    image: ghcr.io/axonops/cassandra/cassandra:${CASSANDRA_IMAGE_TAG:-5.0.8}
+    container_name: cassandra-0
+    hostname: cassandra-0
+    networks: [axonops]
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-demo-cluster}
+      - CASSANDRA_SEEDS=cassandra-0
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack0
+      - CASSANDRA_NUM_TOKENS=16
+      - MAX_HEAP_SIZE=${CASSANDRA_HEAP_SIZE:-1G}
+      - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
+      - AXON_AGENT_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXON_AGENT_SERVER_HOST=axon-server
+      - AXON_AGENT_SERVER_PORT=1888
+      - AXON_AGENT_TLS_MODE=disabled
+    volumes:
+      - cassandra-0-data:/var/lib/cassandra
+    ports:
+      - "9042:9042"
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cassandra-1:
+    image: ghcr.io/axonops/cassandra/cassandra:${CASSANDRA_IMAGE_TAG:-5.0.8}
+    container_name: cassandra-1
+    hostname: cassandra-1
+    networks: [axonops]
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-demo-cluster}
+      - CASSANDRA_SEEDS=cassandra-0
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_NUM_TOKENS=16
+      - MAX_HEAP_SIZE=${CASSANDRA_HEAP_SIZE:-1G}
+      - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
+      - AXON_AGENT_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXON_AGENT_SERVER_HOST=axon-server
+      - AXON_AGENT_SERVER_PORT=1888
+      - AXON_AGENT_TLS_MODE=disabled
+    volumes:
+      - cassandra-1-data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    depends_on:
+      cassandra-0:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cassandra-2:
+    image: ghcr.io/axonops/cassandra/cassandra:${CASSANDRA_IMAGE_TAG:-5.0.8}
+    container_name: cassandra-2
+    hostname: cassandra-2
+    networks: [axonops]
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-demo-cluster}
+      - CASSANDRA_SEEDS=cassandra-0
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack2
+      - CASSANDRA_NUM_TOKENS=16
+      - MAX_HEAP_SIZE=${CASSANDRA_HEAP_SIZE:-1G}
+      - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
+      - AXON_AGENT_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXON_AGENT_SERVER_HOST=axon-server
+      - AXON_AGENT_SERVER_PORT=1888
+      - AXON_AGENT_TLS_MODE=disabled
+    volumes:
+      - cassandra-2-data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    depends_on:
+      cassandra-1:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  axonops:
+    driver: bridge
+
+volumes:
+  axondb-timeseries-data:
+  axondb-timeseries-logs:
+  axondb-search-data:
+  axondb-search-logs:
+  axon-server-data:
+  cassandra-0-data:
+  cassandra-1-data:
+  cassandra-2-data:

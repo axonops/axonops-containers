@@ -1,0 +1,59 @@
+# AxonOps Server Configuration
+# This template is processed by init-config.sh to substitute environment variables
+
+host: 0.0.0.0
+api_port: 8080
+agents_port: 1888
+
+# OpenSearch connection
+search_db:
+  hosts:
+    - https://axondb-search:9200
+  username: admin
+  password: "${AXONOPS_SEARCH_PASSWORD}"
+  skip_verify: true
+
+# Organization settings
+org_name: "${AXONOPS_ORG_NAME}"
+license_key: "${AXONOPS_LICENSE_KEY}"
+
+# Dashboard URL (for links in notifications/emails)
+axon_dash_url: "http://axon-dash:3000"
+
+# Logging
+log_file: /dev/stdout
+
+# TLS configuration for axon-server API/agent endpoints
+tls:
+  mode: disabled
+
+# Cassandra (axondb-timeseries) connection
+cql_hosts:
+  - axondb-timeseries
+cql_username: axonops
+cql_password: "${AXONOPS_DB_PASSWORD}"
+cql_local_dc: axonopsdb_dc1
+cql_proto_version: 4
+cql_autocreate_tables: true
+cql_ssl: ${AXONOPS_CQL_SSL}
+cql_skip_verify: true
+
+# CQL performance tuning
+cql_batch_size: 100
+cql_page_size: 100
+cql_max_searchqueriesparallelism: 100
+cql_metrics_cache_max_size: 128
+cql_metrics_cache_max_items: 500000
+
+# CQL retry policy
+cql_retrypolicy_numretries: 3
+cql_retrypolicy_min: 2s
+cql_retrypolicy_max: 10s
+
+# CQL reconnection policy
+cql_reconnectionpolicy_maxretries: 10
+cql_reconnectionpolicy_initialinterval: 1s
+cql_reconnectionpolicy_maxinterval: 10s
+
+# Keyspace replication
+cql_keyspace_replication: "{ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
