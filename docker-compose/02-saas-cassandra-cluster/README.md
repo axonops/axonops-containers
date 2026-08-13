@@ -8,8 +8,10 @@ A 3-node Apache Cassandra cluster whose agents report to AxonOps SaaS. No
 AxonOps platform runs locally — the only containers are the Cassandra nodes,
 and the dashboard is the hosted one.
 
-Use [example 01](../01-cassandra-cluster/) instead if you want the whole
-platform running on your own machine.
+- Want the whole platform on your own machine instead?
+  [Example 01](../01-cassandra-cluster/) — same cluster, self-hosted AxonOps.
+- Already run Cassandra or Kafka elsewhere?
+  [Example 00](../00-axonops-platform/) — the platform on its own.
 
 ## Quick start
 
@@ -44,17 +46,19 @@ to the host; the others are reachable inside the compose network and through
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 
-## How this differs from example 01
+## What SaaS changes
 
-| | 01 self-hosted | 02 SaaS (this one) |
-|---|---|---|
-| Containers | 7 | 3 |
-| RAM at defaults | ~10 GB | ~5 GB |
-| Dashboard | `http://localhost:3000` | <https://console.axonops.cloud> |
-| Agent endpoint | `axon-server:1888` on the compose network | `agents.axonops.cloud:443` outbound |
-| Agent transport | plaintext (`AXON_AGENT_TLS_MODE=disabled`) | TLS — the agent defaults to `AXON_AGENT_TLS_MODE=TLS` with certificate verification on |
-| Credentials | organisation name only | organisation name **and** agent key |
-| Metrics stored | in your `axondb-timeseries` | in AxonOps SaaS |
+Three differences matter when running this rather than
+[example 01](../01-cassandra-cluster/); the full side-by-side is in the
+[index](../README.md#which-one-do-i-want).
+
+- **Credentials.** SaaS needs an agent key as well as an organisation name.
+  Both are required — Compose refuses to start without them.
+- **TLS is on.** The agents default to `AXON_AGENT_TLS_MODE=TLS` with
+  certificate verification; example 01 disables TLS because that traffic never
+  leaves the compose network, which is not true here.
+- **Your metrics leave the host.** They are stored in AxonOps SaaS rather than
+  in a local `axondb-timeseries`, and the dashboard is the hosted one.
 
 ## Configuration
 

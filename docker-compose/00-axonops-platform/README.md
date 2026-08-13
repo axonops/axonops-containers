@@ -7,8 +7,10 @@
 A complete self-hosted AxonOps installation — and nothing else. Point agents on
 your own hosts at it, or use it as the base for the other examples.
 
-- Want a monitored Cassandra cluster in the same project? [Example 01](../01-cassandra-cluster/).
-- Want a cluster reporting to AxonOps SaaS, with no platform to run? [Example 02](../02-saas-cassandra-cluster/).
+- Want a monitored Cassandra cluster in the same project?
+  [Example 01](../01-cassandra-cluster/) — the platform plus three nodes.
+- Have an AxonOps Cloud account? [Example 02](../02-saas-cassandra-cluster/) —
+  a cluster reporting to SaaS, no platform to run.
 
 > This directory was `docker/` until it moved here, so that every Compose stack
 > lives in one place and follows the same conventions.

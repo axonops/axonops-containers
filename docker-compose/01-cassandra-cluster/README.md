@@ -6,7 +6,12 @@
 
 A complete AxonOps installation and the Apache Cassandra cluster it monitors, in
 one Docker Compose project. Every image comes from this repository or the AxonOps
-public registry.
+public registry. Start here if you are evaluating AxonOps.
+
+- Already run Cassandra or Kafka and just need somewhere for the agents to
+  report? [Example 00](../00-axonops-platform/) — the platform on its own.
+- Have an AxonOps Cloud account? [Example 02](../02-saas-cassandra-cluster/) —
+  the same cluster, no platform to run.
 
 ## Quick start
 
