@@ -20,7 +20,7 @@ services:
   # =============================================================================
   axondb-timeseries:
     # Preferred (immutable): ghcr.io/axonops/axondb-timeseries@sha256:1ff1df7b51d70e42a827a29ca70d2845206b00edf774b484f26aa9c16a9c89fb
-    image: ghcr.io/axonops/axondb-timeseries:5.0.6-1.2.0
+    image: ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0
     container_name: axondb-timeseries
     hostname: axondb-timeseries
     networks:
@@ -36,8 +36,9 @@ services:
       - AXONOPS_DB_USER=axonops
       - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
       # SSL/TLS (client-to-node encryption)
-      - CASSANDRA_CLIENT_ENCRYPTION_ENABLED=${AXONOPS_CASSANDRA_SSL:-true}
-      - CASSANDRA_CLIENT_ENCRYPTION_REQUIRE_CLIENT_AUTH=false
+      # No CQL TLS: the image only enables client_encryption_options when a
+      # keystore is mounted at CASSANDRA_KEYSTORE_PATH, and there is no variable
+      # that turns it on by itself. axon-server must match (CQL_SSL below).
     volumes:
       - axondb-timeseries-data:/var/lib/cassandra
       - axondb-timeseries-logs:/var/log/cassandra
@@ -54,7 +55,7 @@ services:
   # =============================================================================
   axondb-search:
     # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:033007e7043c175b6703e5ca0a5509a043ba3a074d7eb1ec35c3c565d0c312e9
-    image: ghcr.io/axonops/axondb-search:3.3.2-1.5.0
+    image: ghcr.io/axonops/axondb-search:3.7.0-1.6.0
     container_name: axondb-search
     hostname: axondb-search
     networks:
@@ -62,6 +63,12 @@ services:
     environment:
       # Cluster configuration
       - OPENSEARCH_CLUSTER_NAME=axonopsdb-search
+      # discovery.type is OpenSearch's own setting name, passed straight through.
+      # The image documents OPENSEARCH_DISCOVERY_TYPE but never writes it to
+      # opensearch.yml, so OpenSearch runs its production bootstrap checks and
+      # exits: "the default discovery settings are unsuitable for production
+      # use". Fixed in the entrypoint; keep this until a new build ships.
+      - discovery.type=single-node
       - OPENSEARCH_DISCOVERY_TYPE=single-node
       - OPENSEARCH_HEAP_SIZE=${AXONOPS_OPENSEARCH_HEAP_SIZE:-4g}
       # Authentication
@@ -94,18 +101,32 @@ services:
     networks:
       - axonops-network
     environment:
-      # These are used by init-config.sh to generate the config file
-      - AXONOPS_ORG_NAME=${AXONOPS_ORG_NAME:-example}
-      - AXONOPS_LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
-      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
-      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
-      - AXONOPS_CQL_SSL=${AXONOPS_CASSANDRA_SSL:-true}
+      # axon-server is configured entirely through environment variables; each
+      # overrides the corresponding field of the axon-server.yml in the image.
+      - AXONSERVER_ORGNAME=${AXONOPS_ORG_NAME:-example}
+      - LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
+      - AXON_LOG_FILE=/dev/stdout
+      - TLS_MODE=disabled
+      - AXONDASH_HOST=axon-dash
+      - AXONDASH_PORT=3000
+      - AXONDASH_HTTPS=false
+      # Metrics store (axondb-timeseries). CQL_SSL must match the note above.
+      - CQL_HOSTS=axondb-timeseries
+      - CQL_USERNAME=axonops
+      - CQL_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      - CQL_LOCAL_DC=axonopsdb_dc1
+      - CQL_PROTO_VERSION=4
+      - CQL_AUTO_CREATE_TABLES=true
+      - CQL_SSL=${AXONOPS_CASSANDRA_SSL:-false}
+      - CQL_SSL_SKIP_VERIFY=true
+      - "CQL_KS_REPLICATION={ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
+      # Log and event store (axondb-search)
+      - SEARCH_DB_HOSTS=https://axondb-search:9200
+      - SEARCH_DB_USERNAME=admin
+      - SEARCH_DB_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - SEARCH_DB_SKIP_VERIFY=true
     volumes:
       - axon-server-data:/var/lib/axonops
-      - ./config/axon-server.yml.template:/config/axon-server.yml.template:ro
-      - ./config/init-config.sh:/config/init-config.sh:ro
-    entrypoint: ["/config/init-config.sh"]
-    command: ["axon-server"]
     ports:
       # Agent port - exposed for external Cassandra/Kafka agents to connect
       - "1888:1888"
@@ -133,7 +154,11 @@ services:
     networks:
       - axonops-network
     environment:
-      - AXON_SERVER_URL=http://axon-server:8080
+      # axon-dash maps axon-dash.yml onto env vars by section and key:
+      # axon-server.private_endpoints -> AXONSERVER_PRIVATE_ENDPOINTS. Left at
+      # its file default of http://127.0.0.1:8080 the dash calls itself and
+      # crash-loops with "findHost | no reachable endpoints".
+      - AXONSERVER_PRIVATE_ENDPOINTS=http://axon-server:8080
     ports:
       # Dashboard web interface
       - "3000:3000"

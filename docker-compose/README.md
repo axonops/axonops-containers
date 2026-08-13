@@ -9,12 +9,13 @@ this repository. Each directory is self-contained: copy it, edit `.env`, run
 `docker compose up -d`.
 
 For the plain AxonOps platform stack with no monitored workload, use
-[`../docker/`](../docker/README.md) instead.
+[00-axonops-platform](00-axonops-platform/).
 
 ## Examples
 
 | Example | What it deploys |
 |---------|-----------------|
+| [00-axonops-platform](00-axonops-platform/) | The AxonOps platform on its own: `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash`, ready for agents on other hosts |
 | [01-cassandra-cluster](01-cassandra-cluster/) | Self-hosted AxonOps (`axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash`) monitoring a 3-node Apache Cassandra cluster |
 | [02-saas-cassandra-cluster](02-saas-cassandra-cluster/) | A 3-node Apache Cassandra cluster reporting to AxonOps SaaS — no local AxonOps platform |
 
@@ -33,7 +34,7 @@ Every example follows the same shape:
 - **Images** come from `ghcr.io/axonops/*` or
   `registry.axonops.com/axonops-public/*`, pinned to a version tag with the
   SHA256 digest in a comment above it. Deploy the digest in production — see
-  [Image Pinning: Tags vs Checksums](../docker/README.md#image-pinning-tags-vs-checksums)
+  [Image Pinning: Tags vs Checksums](00-axonops-platform/README.md#image-pinning-tags-vs-checksums)
   and [VERSIONS.md](../VERSIONS.md).
 - **Configuration** is environment variables in `.env` only. No example requires
   editing `docker-compose.yaml` to run.

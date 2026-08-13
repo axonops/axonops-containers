@@ -12,7 +12,7 @@
 #
 # Image pinning: the image is pinned to an immutable version tag with the
 # equivalent SHA256 digest commented above it. Deploy the digest form in
-# production — see ../../docker/README.md "Image Pinning: Tags vs Checksums"
+# production — see ../00-axonops-platform/README.md "Image Pinning: Tags vs Checksums"
 # and ../../VERSIONS.md for the current digest of every image.
 
 services:
