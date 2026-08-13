@@ -36,7 +36,16 @@ runs:
         docker exec ${{ inputs.container_name }} cqlai -e "SELECT * FROM cqlai_test.users;"
 
         echo "Verifying data..."
-        docker exec ${{ inputs.container_name }} cqlai -e "SELECT * FROM cqlai_test.users;" | grep -q "example.com"
+        # Capture first, then grep. Piping cqlai straight into `grep -q` makes
+        # grep exit on the first match, which SIGPIPEs cqlai; under pipefail the
+        # step then fails with exit 141, depending on how the write races the
+        # match.
+        ROWS=$(docker exec ${{ inputs.container_name }} cqlai -e "SELECT * FROM cqlai_test.users;")
+        if ! echo "$ROWS" | grep -q "example.com"; then
+          echo "ERROR: expected rows not found in the query output"
+          echo "$ROWS"
+          exit 1
+        fi
         echo "Data verified"
 
         echo "Testing UPDATE..."
