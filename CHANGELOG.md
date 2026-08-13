@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Cassandra 5.0.9 added to every AxonDB TimeSeries matrix: `axondb-timeseries-build-and-test` (both matrices) and the version input defaults of `axondb-timeseries-publish-signed`, `axondb-timeseries-development-publish-signed`, `axondb-timeseries-backups-publish-signed` and `axondb-timeseries-backups-development-publish-signed`, which now default to 5.0.9 rather than 5.0.8.
+
 ### Fixed
+- `axonops/axondb-timeseries/5.0.9/Dockerfile` pinned `CASSANDRA_SHA512` to the checksum of the Cassandra 5.0.9 **source** tarball while the build downloads the **binary** tarball, so the build failed its own `sha512sum -c` check. Corrected to the binary tarball checksum published by Apache.
 - Development builds of the standalone Cassandra image now publish to `ghcr.io/axonops/development/cassandra`, matching the `axonops/development/<component>` path every other development pipeline uses, instead of `ghcr.io/axonops/cassandra/cassandra-dev`.
 
 ### Added
