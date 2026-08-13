@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  cassandra-node1:
+    image: axondb-timeseries:latest
+    container_name: cassandra-node1
+    hostname: cassandra-node1
+    networks:
+      cassandra-net:
+        ipv4_address: 172.20.0.2
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TestMultiNodeCluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_SEEDS=172.20.0.2,172.20.0.3
+      - CASSANDRA_LISTEN_ADDRESS=172.20.0.2
+      - CASSANDRA_BROADCAST_ADDRESS=172.20.0.2
+      - CASSANDRA_NUM_TOKENS=8
+      - CASSANDRA_HEAP_SIZE=4G
+    volumes:
+      - cassandra-node1-data:/var/lib/cassandra
+      - cassandra-node1-logs:/var/log/cassandra
+    ports:
+      - "9042:9042"
+      - "7000:7000"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  cassandra-node2:
+    image: axondb-timeseries:latest
+    container_name: cassandra-node2
+    hostname: cassandra-node2
+    networks:
+      cassandra-net:
+        ipv4_address: 172.20.0.3
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TestMultiNodeCluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_SEEDS=172.20.0.2,172.20.0.3
+      - CASSANDRA_LISTEN_ADDRESS=172.20.0.3
+      - CASSANDRA_BROADCAST_ADDRESS=172.20.0.3
+      - CASSANDRA_NUM_TOKENS=8
+      - CASSANDRA_HEAP_SIZE=4G
+    volumes:
+      - cassandra-node2-data:/var/lib/cassandra
+      - cassandra-node2-logs:/var/log/cassandra
+    depends_on:
+      - cassandra-node1
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  cassandra-node3:
+    image: axondb-timeseries:latest
+    container_name: cassandra-node3
+    hostname: cassandra-node3
+    networks:
+      cassandra-net:
+        ipv4_address: 172.20.0.4
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TestMultiNodeCluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_SEEDS=172.20.0.2,172.20.0.3
+      - CASSANDRA_LISTEN_ADDRESS=172.20.0.4
+      - CASSANDRA_BROADCAST_ADDRESS=172.20.0.4
+      - CASSANDRA_NUM_TOKENS=8
+      - CASSANDRA_HEAP_SIZE=4G
+    volumes:
+      - cassandra-node3-data:/var/lib/cassandra
+      - cassandra-node3-logs:/var/log/cassandra
+    depends_on:
+      - cassandra-node1
+      - cassandra-node2
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+networks:
+  cassandra-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  cassandra-node1-data:
+  cassandra-node1-logs:
+  cassandra-node2-data:
+  cassandra-node2-logs:
+  cassandra-node3-data:
+  cassandra-node3-logs:

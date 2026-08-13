@@ -33,7 +33,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: axonops/cassandra/cassandra-dev
+  IMAGE_NAME: axonops/development/cassandra
 
 jobs:
   cassandra-dev-build-push-sign:
