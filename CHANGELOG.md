@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- `cassandra-publish-signed` and `k8ssandra-publish-signed` pushed tagged images *before* running their verification steps, so any post-push failure left published tags that were never verified and never signed. This happened on the Cassandra 1.0.0 run: 5.0.3 was pushed, failed its cqlai test, skipped signing, and sat in the registry unsigned. Both pipelines now push by digest only, run the test suite, sign the digest, and apply tags last with `docker buildx imagetools create` — asserting that every tag resolves to the digest that was signed. A failure at any stage now leaves nothing pullable by tag.
+- `k8ssandra-publish-signed` re-ran the entire multi-arch build after signing purely to re-apply tags. That second build is gone; tagging copies the existing index instead.
+
+### Fixed
 - `k8ssandra-test-cqlai` verified query output by piping `cqlai` straight into `grep -q`. `grep -q` exits on the first match, SIGPIPEs `cqlai`, and under `pipefail` the step fails with exit 141 whenever the write loses the race — it took out a Cassandra 5.0.3 publish job. The output is now captured before matching.
 - `fail-fast` disabled on the `cassandra-publish-signed` and `k8ssandra-publish-signed` build matrices. One version failing was cancelling every other version mid-publish, which can leave a release half-pushed with inconsistent floating tags.
 
