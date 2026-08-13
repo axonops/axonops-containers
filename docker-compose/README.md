@@ -1,7 +1,7 @@
 # Docker Compose Examples
 
 <p align="center">
-  <a href="https://axonops.com"><img src="https://axonops.com/img/axonops-logo.svg" alt="AxonOps" height="60"></a>
+  <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
 </p>
 
 Runnable Docker Compose examples built from the container images published by
@@ -16,6 +16,7 @@ For the plain AxonOps platform stack with no monitored workload, use
 | Example | What it deploys |
 |---------|-----------------|
 | [01-cassandra-cluster](01-cassandra-cluster/) | Self-hosted AxonOps (`axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash`) monitoring a 3-node Apache Cassandra cluster |
+| [02-saas-cassandra-cluster](02-saas-cassandra-cluster/) | A 3-node Apache Cassandra cluster reporting to AxonOps SaaS — no local AxonOps platform |
 
 ## Conventions
 
