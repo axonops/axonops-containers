@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Removed the Cassandra 5.0.9 placeholder from `k8ssandra-publish-signed.yml` (`ALL_VERSIONS` and the build matrix). Upstream publishes no 5.0.9 `cass-management-api` image at any Management API version, so `K8SSANDRA_VERSIONS` has no digest to pin and the 5.0.9 matrix job failed the pipeline at its own version-lookup guard.
 - Bumped all k8ssandra base images from `cass-management-api v0.1.120` to `v0.1.124`, the latest upstream Management API release. The `K8SSANDRA_VERSIONS` repository variable now pins the v0.1.124 digest for all 39 Cassandra versions (4.0.x, 4.1.x, 5.0.x); the digest table in `k8ssandra/README.md` and the build examples in both READMEs were regenerated to match. No new Cassandra versions come with it — upstream still tops out at 5.0.8.
 
 ### Added
