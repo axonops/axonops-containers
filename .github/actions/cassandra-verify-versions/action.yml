@@ -13,7 +13,7 @@ inputs:
     required: false
     default: 'latest'
   expect_k8ssandra_api:
-    description: 'Set to "true" when the image was built with INSTALL_K8SSANDRA_API=true'
+    description: 'Set to "true" when the image was built with INCLUDE_MGMT_API=true'
     required: false
     default: 'false'
 
@@ -110,14 +110,22 @@ runs:
       run: |
         echo "=== Verifying K8ssandra Management API expectations ==="
         if [ "${{ inputs.expect_k8ssandra_api }}" = "true" ]; then
-          if ! docker exec ${{ inputs.container_name }} bash -c 'ls /opt/management-api/datastax-mgmtapi-server*.jar' >/dev/null 2>&1; then
-            echo "ERROR: Management API jars missing from an image built with INSTALL_K8SSANDRA_API=true"
+          if ! docker exec ${{ inputs.container_name }} bash -c 'ls /opt/management-api/datastax-mgmtapi-server.jar' >/dev/null 2>&1; then
+            echo "ERROR: Management API jars missing from an image built with INCLUDE_MGMT_API=true"
             exit 1
           fi
           echo "Management API is present, as expected"
         else
           if docker exec ${{ inputs.container_name }} bash -c 'ls /opt/management-api' >/dev/null 2>&1; then
-            echo "ERROR: Management API found in an image built with INSTALL_K8SSANDRA_API=false"
+            echo "ERROR: Management API found in an image built with INCLUDE_MGMT_API=false"
+            exit 1
+          fi
+          if docker exec ${{ inputs.container_name }} bash -c 'ls /opt/cdc_agent' >/dev/null 2>&1; then
+            echo "ERROR: CDC agent found in an image built with INCLUDE_MGMT_API=false"
+            exit 1
+          fi
+          if docker exec ${{ inputs.container_name }} pgrep -f datastax-mgmtapi-server > /dev/null 2>&1; then
+            echo "ERROR: a Management API process is running"
             exit 1
           fi
           echo "No Management API components present, as expected"

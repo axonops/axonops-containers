@@ -194,7 +194,7 @@ gh workflow run "Cassandra Development Publish Signed to GHCR" \
   --ref development \
   -f dev_git_tag=development \
   -f container_version=dev-1.0.0 \
-  -f cassandra_version=5.0.8
+  -f cassandra_version=5.0.7
 ```
 
 ### Strimzi (Dev)

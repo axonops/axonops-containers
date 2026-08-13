@@ -2,9 +2,22 @@
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/cassandra%2Fcassandra)
 
-Apache Cassandra with the AxonOps monitoring and management agent, built on Red Hat UBI 9 minimal. No K8ssandra components, no Kubernetes assumptions — just Cassandra and the agent.
+Apache Cassandra with the AxonOps monitoring and management agent, without the K8ssandra Management API. For running Cassandra outside Kubernetes, or inside it without the K8ssandra Operator.
 
 If you are deploying with the K8ssandra Operator, use [`ghcr.io/axonops/k8ssandra/cassandra`](../k8ssandra/README.md) instead.
+
+## How it is built
+
+There is no separate Dockerfile. This image is [`k8ssandra/5.0/Dockerfile`](../k8ssandra/5.0/Dockerfile) built with `INCLUDE_MGMT_API=false`, which:
+
+- removes `/opt/management-api` and `/opt/cdc_agent`
+- removes the Management API java agent from `cassandra-env.sh`, which the base image bakes in
+- starts Cassandra directly instead of through the Management API entrypoint
+- healthchecks on the native transport instead of the Management API liveness endpoint
+
+Everything else — base image, AxonOps agent, cqlai, jemalloc — is identical to the K8ssandra image, and one Dockerfile serves both.
+
+**Size caveat:** the Management API files are removed in a derived layer, so they are gone from the running container but the base image layers still carry them. The image download is around 93 MB larger than its contents warrant.
 
 ## Image
 
@@ -12,24 +25,24 @@ If you are deploying with the K8ssandra Operator, use [`ghcr.io/axonops/k8ssandr
 ghcr.io/axonops/cassandra/cassandra:{CASSANDRA}-{AGENT}-{BUILD}
 ```
 
-For example `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.31-1.0.0` is Apache Cassandra 5.0.9 with AxonOps agent 2.0.31, from build 1.0.0.
+For example `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.0.0` is Apache Cassandra 5.0.8 with AxonOps agent 2.0.31, from build 1.0.0.
 
 | Tag form | Mutable? | Meaning |
 |----------|----------|---------|
-| `5.0.9-2.0.31-1.0.0` | No | Exact Cassandra version, exact agent version, exact build |
-| `5.0.9-2.0.31` | Yes | Latest build for that Cassandra + agent pair |
-| `5.0.9` | Yes | Latest agent and build for that Cassandra version |
+| `5.0.8-2.0.31-1.0.0` | No | Exact Cassandra version, exact agent version, exact build |
+| `5.0.8-2.0.31` | Yes | Latest build for that Cassandra + agent pair |
+| `5.0.8` | Yes | Latest agent and build for that Cassandra version |
 | `5.0-latest` | Yes | Latest 5.0.x patch release |
 | `latest` | Yes | Latest version overall |
 
 The agent component of a tag is always a concrete version. Passing `latest` as the agent version to the pipeline resolves it to the version actually installed before any tag is written.
 
-Development builds are published separately to `ghcr.io/axonops/cassandra/cassandra-dev` and are not for production use.
+Development builds go to `ghcr.io/axonops/cassandra/cassandra-dev` and are not for production use.
 
 Pin by digest in anything you care about:
 
 ```bash
-docker buildx imagetools inspect ghcr.io/axonops/cassandra/cassandra:5.0.9
+docker buildx imagetools inspect ghcr.io/axonops/cassandra/cassandra:5.0.8
 ```
 
 ## Quick start
@@ -40,7 +53,7 @@ docker run -d --name cassandra \
   -e AXON_AGENT_KEY=your-agent-key \
   -e AXON_AGENT_CLUSTER_NAME=my-cluster \
   -p 9042:9042 \
-  ghcr.io/axonops/cassandra/cassandra:5.0.9
+  ghcr.io/axonops/cassandra/cassandra:5.0.8
 ```
 
 `AXON_AGENT_ORG` is required; the container refuses to start without it. Check progress with:
@@ -53,7 +66,7 @@ docker exec cassandra cqlai -e "SELECT release_version FROM system.local;"
 
 ## Configuration
 
-All AxonOps agent configuration is supplied through environment variables:
+### AxonOps agent
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -66,68 +79,73 @@ All AxonOps agent configuration is supplied through environment variables:
 | `AXON_AGENT_NTP_HOST` | auto-detected | NTP host used for clock-skew checks. |
 | `AXON_AGENT_ARGS` | — | Extra arguments passed to `axon-agent`. |
 
-Cassandra itself is configured the conventional way: mount your own files over `/etc/cassandra`, which is symlinked to `/opt/cassandra/conf`.
+### Cassandra
+
+The same `CASSANDRA_*` variables the K8ssandra image and the official Cassandra image accept. They are applied to `cassandra.yaml` and `cassandra-rackdc.properties` at startup.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CASSANDRA_SEEDS` | own broadcast address | Comma-separated seed list |
+| `CASSANDRA_CLUSTER_NAME` | `Test Cluster` | Cluster name |
+| `CASSANDRA_LISTEN_ADDRESS` | `auto` | `auto` resolves to the container IP |
+| `CASSANDRA_BROADCAST_ADDRESS` | listen address | Address other nodes use |
+| `CASSANDRA_RPC_ADDRESS` | `0.0.0.0` | CQL bind address |
+| `CASSANDRA_BROADCAST_RPC_ADDRESS` | broadcast address | Address clients are told to use |
+| `CASSANDRA_NUM_TOKENS` | Cassandra default | vnode count |
+| `CASSANDRA_ENDPOINT_SNITCH` | Cassandra default | Snitch |
+| `CASSANDRA_DC` | Cassandra default | Datacentre in `cassandra-rackdc.properties` |
+| `CASSANDRA_RACK` | Cassandra default | Rack in `cassandra-rackdc.properties` |
+
+A directory mounted at `/config` is copied over `$CASSANDRA_CONF` before those variables are applied, so a mounted `cassandra.yaml` is the way to set anything not listed above.
+
+Multi-node example:
+
+```bash
+docker run -d --name cassandra-1 \
+  -e AXON_AGENT_ORG=your-org -e AXON_AGENT_KEY=your-agent-key \
+  -e CASSANDRA_CLUSTER_NAME=prod -e CASSANDRA_SEEDS=10.0.0.1,10.0.0.2 \
+  -e CASSANDRA_DC=dc1 -e CASSANDRA_RACK=rack1 \
+  -v /data/cassandra:/var/lib/cassandra \
+  --network host \
+  ghcr.io/axonops/cassandra/cassandra:5.0.8
+```
 
 | Path | Purpose |
 |------|---------|
-| `/etc/cassandra` | Cassandra configuration |
-| `/var/lib/cassandra` | Data directory (volume) |
-| `/var/log/cassandra` | Cassandra logs (volume) |
+| `/opt/cassandra/conf` | Cassandra configuration |
+| `/config` | Optional config overlay, copied over the above at startup |
+| `/var/lib/cassandra` | Data directory |
+| `/var/log/cassandra` | Cassandra logs |
 | `/var/log/axonops/axon-agent.log` | Agent log |
 | `/etc/axonops/build-info.txt` | Versions captured at build time, printed in the startup banner |
 
-Exposed ports: 7000 (intra-node), 7001 (TLS intra-node), 7199 (JMX), 9042 (CQL).
+Cassandra runs as the `cassandra` user, never as root. The agent runs under a supervisor that restarts it on exit with crash-loop backoff ([#154](https://github.com/axonops/axonops-containers/issues/154)); the container lives and dies with the Cassandra process.
 
-## What is in the image
+## Supported versions
 
-- Apache Cassandra, downloaded from the Apache mirrors and verified against the SHA512 recorded in [`versions.json`](versions.json)
-- The AxonOps agent and the Cassandra 5.0 Java agent, from the AxonOps yum repository
-- [cqlai](https://github.com/axonops/cqlai), verified against its published SHA256SUMS
-- jemalloc, tini, Java 17
-- Red Hat UBI 9 minimal as the base, pinned by digest
-
-Cassandra runs as the `cassandra` user (UID/GID 999), never as root. The agent runs under a supervisor that restarts it on exit with crash-loop backoff; the container lives and dies with the Cassandra process.
+Apache Cassandra 5.0.1 through 5.0.8. The matrix is bounded by the `K8SSANDRA_VERSIONS` repository variable, which pins a base image digest per Cassandra version — a version can only be built here once it has an entry there.
 
 ## Building locally
 
 ```bash
+DIGEST=$(gh api /repos/axonops/axonops-containers/actions/variables/K8SSANDRA_VERSIONS \
+  --jq '.value | fromjson | ."5.0.8+0.1.120"')
+
 docker build -t axonops-cassandra:local \
-  --build-arg CASSANDRA_VERSION=5.0.9 \
-  --build-arg CASSANDRA_SHA512=$(jq -r '.versions["5.0.9"]' cassandra/versions.json) \
-  --build-arg CQLAI_VERSION=0.1.7 \
-  cassandra/5.0
-```
-
-`CASSANDRA_SHA512` and `CQLAI_VERSION` are required; the build fails without them.
-
-### K8ssandra Management API variant
-
-The Dockerfile can also produce a variant that carries the K8ssandra Management API, copied from the pinned k8ssandra base image:
-
-```bash
-docker build -t axonops-cassandra:local-mgmtapi \
-  --build-arg CASSANDRA_VERSION=5.0.9 \
-  --build-arg CASSANDRA_SHA512=$(jq -r '.versions["5.0.9"]' cassandra/versions.json) \
-  --build-arg CQLAI_VERSION=0.1.7 \
-  --build-arg INSTALL_K8SSANDRA_API=true \
+  --build-arg CASSANDRA_VERSION=5.0.8 \
+  --build-arg MAJOR_VERSION=5.0 \
+  --build-arg K8SSANDRA_BASE_DIGEST="$DIGEST" \
   --build-arg K8SSANDRA_API_VERSION=0.1.120 \
-  --build-arg K8SSANDRA_BASE_DIGEST=sha256:... \
-  cassandra/5.0
+  --build-arg INCLUDE_MGMT_API=false \
+  --build-arg CQLAI_VERSION=0.1.7 \
+  k8ssandra/5.0
 ```
 
-With the switch off — the default — no Management API components are present and the k8ssandra base image is never pulled. This variant is not published by the pipeline yet; for K8ssandra Operator deployments use the [k8ssandra image](../k8ssandra/README.md).
-
-## Supported versions
-
-Apache Cassandra 5.0.1 through 5.0.9. Versions and their checksums live in [`versions.json`](versions.json), which is the single source of truth for the build matrix. To add a version, fetch its checksum from Apache and add an entry:
-
-```bash
-curl -s https://archive.apache.org/dist/cassandra/5.0.10/apache-cassandra-5.0.10-bin.tar.gz.sha512
-```
+Drop `INCLUDE_MGMT_API=false` to build the K8ssandra image instead — it defaults to `true`.
 
 ## Pipelines
 
-Trigger commands for the production and development pipelines are in [PIPELINES.md](../PIPELINES.md).
+Trigger commands are in [PIPELINES.md](../PIPELINES.md).
 
 | Workflow | Purpose |
 |----------|---------|
@@ -141,7 +159,7 @@ Every published image is signed with keyless Sigstore cosign:
 cosign verify \
   --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.31-1.0.0
+  ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.0.0
 ```
 
 ## Support

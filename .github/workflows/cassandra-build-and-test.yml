@@ -1,15 +1,19 @@
 name: Cassandra Build and Test
 
+# Builds the standalone Cassandra image - the k8ssandra Dockerfile with
+# INCLUDE_MGMT_API=false - and tests it. Publishes nothing.
+
 on:
   pull_request:
     paths:
+      - 'k8ssandra/5.0/**'
       - 'cassandra/**'
       - '.github/workflows/cassandra-build-and-test.yml'
       - '.github/actions/cassandra-*/**'
   workflow_dispatch:
     inputs:
       cassandra_version:
-        description: 'Single Cassandra version to build (defaults to the whole matrix)'
+        description: 'Cassandra version to build'
         required: false
         type: string
 
@@ -24,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cassandra_version: [5.0.9]
+        cassandra_version: [5.0.8]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,33 +36,40 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Resolve Cassandra version and checksum
-        id: cassandra
+      - name: Parse k8ssandra base digest
+        id: k8ssandra
+        env:
+          CASSANDRA_VERSION: ${{ inputs.cassandra_version || matrix.cassandra_version }}
         run: |
-          VERSION="${{ inputs.cassandra_version || matrix.cassandra_version }}"
-          SHA512=$(jq -r --arg v "$VERSION" '.versions[$v] // empty' cassandra/versions.json)
-          if [ -z "$SHA512" ]; then
-            echo "ERROR: no SHA512 recorded for Cassandra $VERSION in cassandra/versions.json"
-            jq -r '.versions | keys[]' cassandra/versions.json
+          COMPOSITE_KEY=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r --arg v "$CASSANDRA_VERSION" 'keys[] | select(startswith($v + "+"))')
+          if [ -z "$COMPOSITE_KEY" ]; then
+            echo "ERROR: No k8ssandra base image found for Cassandra $CASSANDRA_VERSION"
+            echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r 'keys[]'
             exit 1
           fi
-          BASE_VERSION=$(echo "$VERSION" | cut -d. -f1,2)
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "sha512=${SHA512}" >> "$GITHUB_OUTPUT"
-          echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+          K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
+          DIGEST=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+          {
+            echo "cassandra_version=${CASSANDRA_VERSION}"
+            echo "base_version=$(echo "$CASSANDRA_VERSION" | cut -d. -f1,2)"
+            echo "k8ssandra_api_version=${K8S_API_VERSION}"
+            echo "digest=${DIGEST}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./cassandra/${{ steps.cassandra.outputs.base_version }}
-          file: ./cassandra/${{ steps.cassandra.outputs.base_version }}/Dockerfile
+          context: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axonops-cassandra:test
           build-args: |
-            CASSANDRA_VERSION=${{ steps.cassandra.outputs.version }}
-            CASSANDRA_SHA512=${{ steps.cassandra.outputs.sha512 }}
-            INSTALL_K8SSANDRA_API=false
+            CASSANDRA_VERSION=${{ steps.k8ssandra.outputs.cassandra_version }}
+            MAJOR_VERSION=${{ steps.k8ssandra.outputs.base_version }}
+            K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            INCLUDE_MGMT_API=false
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=pr-${{ github.event.number || github.run_number }}
@@ -66,7 +77,7 @@ jobs:
             GITHUB_ACTOR=${{ github.actor }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
             IS_PRODUCTION_RELEASE=false
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.cassandra.outputs.version }}-test
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.k8ssandra.outputs.cassandra_version }}-test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -78,7 +89,7 @@ jobs:
       - name: Verify versions
         uses: ./.github/actions/cassandra-verify-versions
         with:
-          cassandra_version: ${{ steps.cassandra.outputs.version }}
+          cassandra_version: ${{ steps.k8ssandra.outputs.cassandra_version }}
           container_name: cassandra-test
 
       - name: Verify AxonOps
@@ -101,14 +112,14 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          trivyignores: 'cassandra/.trivyignore'
+          trivyignores: 'k8ssandra/.trivyignore'
 
       - name: Collect logs
         if: always()
         uses: ./.github/actions/k8ssandra-collect-logs
         with:
           container_name: cassandra-test
-          cassandra_version: ${{ steps.cassandra.outputs.version }}
+          cassandra_version: ${{ steps.k8ssandra.outputs.cassandra_version }}
 
       - name: Cleanup
         if: always()

@@ -1,5 +1,9 @@
 name: Cassandra Publish Signed to GHCR
 
+# Publishes ghcr.io/axonops/cassandra/cassandra - the k8ssandra Dockerfile built
+# with INCLUDE_MGMT_API=false, so the image carries Apache Cassandra and the
+# AxonOps agent without the K8ssandra Management API.
+
 on:
   workflow_dispatch:
     inputs:
@@ -25,8 +29,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/cassandra/cassandra
-  ALL_VERSIONS: "5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6 5.0.7 5.0.8 5.0.9"
-  TEST_VERSION: "5.0.9"
+  ALL_VERSIONS: "5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6 5.0.7 5.0.8"
+  TEST_VERSION: "5.0.8"
 
 jobs:
   cassandra-validate:
@@ -50,16 +54,16 @@ jobs:
             exit 1
           fi
 
-      - name: Verify every matrix version has a recorded checksum
+      - name: Verify every matrix version has a k8ssandra base digest
         run: |
           for VERSION in ${{ env.ALL_VERSIONS }}; do
-            SHA512=$(jq -r --arg v "$VERSION" '.versions[$v] // empty' cassandra/versions.json)
-            if [ -z "$SHA512" ]; then
-              echo "ERROR: no SHA512 recorded for Cassandra $VERSION in cassandra/versions.json"
+            COMPOSITE_KEY=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r --arg v "$VERSION" 'keys[] | select(startswith($v + "+"))')
+            if [ -z "$COMPOSITE_KEY" ]; then
+              echo "ERROR: No k8ssandra base image found for Cassandra $VERSION"
               exit 1
             fi
           done
-          echo "All matrix versions have a recorded checksum"
+          echo "All matrix versions have a base image digest"
 
   cassandra-test:
     needs: cassandra-validate
@@ -77,30 +81,39 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Resolve Cassandra checksum
-        id: cassandra
+      - name: Parse k8ssandra base digest
+        id: k8ssandra
+        env:
+          CASSANDRA_VERSION: ${{ env.TEST_VERSION }}
         run: |
-          SHA512=$(jq -r --arg v "${{ env.TEST_VERSION }}" '.versions[$v]' cassandra/versions.json)
-          echo "sha512=${SHA512}" >> "$GITHUB_OUTPUT"
+          COMPOSITE_KEY=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r --arg v "$CASSANDRA_VERSION" 'keys[] | select(startswith($v + "+"))')
+          K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
+          DIGEST=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+          {
+            echo "k8ssandra_api_version=${K8S_API_VERSION}"
+            echo "digest=${DIGEST}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./cassandra/5.0
-          file: ./cassandra/5.0/Dockerfile
+          context: ./k8ssandra/5.0
+          file: ./k8ssandra/5.0/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axonops-cassandra:test
           build-args: |
             CASSANDRA_VERSION=${{ env.TEST_VERSION }}
-            CASSANDRA_SHA512=${{ steps.cassandra.outputs.sha512 }}
-            INSTALL_K8SSANDRA_API=false
+            MAJOR_VERSION=5.0
+            K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            INCLUDE_MGMT_API=false
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
-            CQLAI_VERSION=${{ vars.CASSANDRA_CQLAI_VERSION || vars.K8SSANDRA_CQLAI_VERSION }}
+            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
             IS_PRODUCTION_RELEASE=true
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ env.TEST_VERSION }}-test
             AXON_AGENT_VERSION=${{ inputs.axon_agent_version }}
@@ -141,7 +154,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          trivyignores: 'cassandra/.trivyignore'
+          trivyignores: 'k8ssandra/.trivyignore'
 
       - name: Cleanup
         if: always()
@@ -204,9 +217,10 @@ jobs:
               `**Cassandra versions:** ${versions.join(', ')}`,
               `**Signing:** keyless signing with Sigstore Cosign`,
               ``,
-              `This image carries Apache Cassandra and the AxonOps agent only. The`,
-              `K8ssandra Management API is not installed; use`,
-              `ghcr.io/axonops/k8ssandra/cassandra for K8ssandra Operator deployments.`,
+              `Built from the same Dockerfile as the K8ssandra image, with`,
+              `INCLUDE_MGMT_API=false: the K8ssandra Management API and CDC agent are`,
+              `removed, and Cassandra is started directly. For K8ssandra Operator`,
+              `deployments use ghcr.io/axonops/k8ssandra/cassandra instead.`,
               ``,
               `**Tagging strategy:**`,
               `- Immutable: \`{CASSANDRA}-{AGENT}-{BUILD}\` (e.g. \`${example}\`)`,
@@ -242,7 +256,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8, 5.0.9]
+        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8]
     permissions:
       contents: read
       packages: write
@@ -265,11 +279,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve Cassandra checksum
-        id: cassandra
+      - name: Parse k8ssandra base digest
+        id: k8ssandra
+        env:
+          CASSANDRA_VERSION: ${{ matrix.cassandra_version }}
         run: |
-          SHA512=$(jq -r --arg v "${{ matrix.cassandra_version }}" '.versions[$v]' cassandra/versions.json)
-          echo "sha512=${SHA512}" >> "$GITHUB_OUTPUT"
+          COMPOSITE_KEY=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r --arg v "$CASSANDRA_VERSION" 'keys[] | select(startswith($v + "+"))')
+          K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
+          DIGEST=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+          {
+            echo "k8ssandra_api_version=${K8S_API_VERSION}"
+            echo "digest=${DIGEST}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Determine latest tags
         id: version
@@ -282,8 +303,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./cassandra/${{ steps.version.outputs.base_version }}
-          file: ./cassandra/${{ steps.version.outputs.base_version }}/Dockerfile
+          context: ./k8ssandra/${{ steps.version.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.version.outputs.base_version }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -303,21 +324,25 @@ jobs:
             index:org.opencontainers.image.vendor=AxonOps
             index:org.opencontainers.image.licenses=Apache-2.0
             index:org.opencontainers.image.title=AxonOps Apache Cassandra ${{ matrix.cassandra_version }}
-            index:org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with the AxonOps agent ${{ env.AGENT_VERSION }} and cqlai. Multi-arch (amd64/arm64), signed with cosign.
+            index:org.opencontainers.image.description=Apache Cassandra ${{ matrix.cassandra_version }} with the AxonOps agent ${{ env.AGENT_VERSION }} and cqlai, without the K8ssandra Management API. Multi-arch (amd64/arm64), signed with cosign.
             index:org.opencontainers.image.ref.name=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ env.AGENT_VERSION }}-${{ inputs.container_version }}
+            index:org.opencontainers.image.base.digest=${{ steps.k8ssandra.outputs.digest }}
             index:com.axonops.cassandra.version=${{ matrix.cassandra_version }}
             index:com.axonops.axon-agent.version=${{ env.AGENT_VERSION }}
+            index:com.axonops.k8ssandra-api.included=false
             index:com.axonops.build.actor=${{ github.actor }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
-            CASSANDRA_SHA512=${{ steps.cassandra.outputs.sha512 }}
-            INSTALL_K8SSANDRA_API=false
+            MAJOR_VERSION=${{ steps.version.outputs.base_version }}
+            K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            INCLUDE_MGMT_API=false
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ inputs.container_version }}
             GIT_TAG=${{ inputs.main_git_tag }}
             GITHUB_ACTOR=${{ github.actor }}
-            CQLAI_VERSION=${{ vars.CASSANDRA_CQLAI_VERSION || vars.K8SSANDRA_CQLAI_VERSION }}
+            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
             IS_PRODUCTION_RELEASE=true
             IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ env.AGENT_VERSION }}-${{ inputs.container_version }}
             AXON_AGENT_VERSION=${{ env.AGENT_VERSION }}
