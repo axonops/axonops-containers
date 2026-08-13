@@ -144,7 +144,7 @@ services:
     # is tagged but not yet published. Switch CASSANDRA_IMAGE in .env once it is.
     # Resolve a digest with:
     #   docker buildx imagetools inspect <image> --format '{{ .Manifest.Digest }}'
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
     container_name: cassandra-0
     hostname: cassandra-0
     networks: [axonops]
@@ -177,7 +177,7 @@ services:
     restart: unless-stopped
 
   cassandra-1:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
     container_name: cassandra-1
     hostname: cassandra-1
     networks: [axonops]
@@ -208,7 +208,7 @@ services:
     restart: unless-stopped
 
   cassandra-2:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra-dev:5.0.8-latest}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
     container_name: cassandra-2
     hostname: cassandra-2
     networks: [axonops]
