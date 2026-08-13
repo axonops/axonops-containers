@@ -1,0 +1,132 @@
+name: 'Cassandra Verify Runtime Versions'
+description: 'Verifies Cassandra, Java, jemalloc and the AxonOps agent inside a running container, and reports the resolved agent version'
+inputs:
+  cassandra_version:
+    description: 'Expected Cassandra version (e.g., 5.0.9)'
+    required: true
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'cassandra-test'
+  expected_agent_version:
+    description: 'Expected AxonOps agent version, or "latest" to accept whatever the repository resolved to'
+    required: false
+    default: 'latest'
+  expect_k8ssandra_api:
+    description: 'Set to "true" when the image was built with INCLUDE_MGMT_API=true'
+    required: false
+    default: 'false'
+
+outputs:
+  axon_agent_version:
+    description: 'Concrete AxonOps agent version installed in the image'
+    value: ${{ steps.agent.outputs.axon_agent_version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify Cassandra version
+      shell: bash
+      run: |
+        echo "=== Verifying Cassandra version ==="
+        echo "Expected: ${{ inputs.cassandra_version }}"
+        docker exec ${{ inputs.container_name }} cat /var/log/cassandra/system.log > /tmp/cassandra-system.log 2>/dev/null || true
+        if ! grep -iq ".*INFO.*Cassandra version: ${{ inputs.cassandra_version }}" /tmp/cassandra-system.log; then
+          echo "ERROR: Cassandra version ${{ inputs.cassandra_version }} not found in system.log"
+          grep -i "Cassandra version:" /tmp/cassandra-system.log || echo "(not found)"
+          exit 1
+        fi
+        echo "Cassandra version ${{ inputs.cassandra_version }} verified"
+
+    - name: Verify Java version
+      shell: bash
+      run: |
+        echo "=== Verifying Java version ==="
+        docker exec ${{ inputs.container_name }} java -version > /tmp/java-ver.txt 2>&1 || true
+        JAVA_VERSION=$(head -n 1 /tmp/java-ver.txt)
+        echo "Java version: ${JAVA_VERSION}"
+        if ! echo "$JAVA_VERSION" | grep -q 'version "17'; then
+          echo "ERROR: expected Java 17 for Cassandra 5.0, found: ${JAVA_VERSION}"
+          exit 1
+        fi
+        echo "Java 17 verified"
+
+    - name: Verify jemalloc is loaded
+      shell: bash
+      run: |
+        echo "=== Verifying jemalloc configuration ==="
+        if docker exec ${{ inputs.container_name }} grep -iq ".*WARN.*jemalloc shared library could not be preloaded.*" /var/log/cassandra/system.log 2>/dev/null; then
+          echo "ERROR: jemalloc warning found in logs"
+          docker exec ${{ inputs.container_name }} grep -i jemalloc /var/log/cassandra/system.log || true
+          exit 1
+        fi
+        for i in 1 2 3; do
+          if docker exec ${{ inputs.container_name }} grep -iq ".*INFO.*jemalloc seems to be preloaded.*" /var/log/cassandra/system.log 2>/dev/null; then
+            echo "jemalloc is properly configured and loaded"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "ERROR: jemalloc success message not found"
+        docker exec ${{ inputs.container_name }} grep -i jemalloc /var/log/cassandra/system.log || echo "(no jemalloc messages found)"
+        exit 1
+
+    - name: Verify the AxonOps Java agent is attached
+      shell: bash
+      run: |
+        echo "=== Verifying the AxonOps Java agent ==="
+        CASSANDRA_PID=$(docker exec ${{ inputs.container_name }} pgrep -f org.apache.cassandra.service.CassandraDaemon | head -1)
+        if [ -z "$CASSANDRA_PID" ]; then
+          echo "ERROR: Cassandra process not found"
+          exit 1
+        fi
+        CMDLINE=$(docker exec ${{ inputs.container_name }} bash -c "tr '\0' '\n' < /proc/${CASSANDRA_PID}/cmdline")
+        if ! echo "$CMDLINE" | grep -q "javaagent:/usr/share/axonops/axon-cassandra5.0-agent.jar"; then
+          echo "ERROR: AxonOps Java agent is not attached to the Cassandra JVM"
+          echo "$CMDLINE" | grep -i javaagent || echo "(no javaagent flags)"
+          exit 1
+        fi
+        echo "AxonOps Java agent is attached"
+
+    - name: Report the resolved AxonOps agent version
+      id: agent
+      shell: bash
+      run: |
+        echo "=== Resolving the installed AxonOps agent version ==="
+        AGENT_VERSION=$(docker exec ${{ inputs.container_name }} rpm -q --qf '%{VERSION}' axon-agent)
+        if [ -z "$AGENT_VERSION" ] || [ "$AGENT_VERSION" = "latest" ]; then
+          echo "ERROR: could not resolve a concrete axon-agent version, got: '${AGENT_VERSION}'"
+          exit 1
+        fi
+        echo "Installed AxonOps agent: ${AGENT_VERSION}"
+        if [ "${{ inputs.expected_agent_version }}" != "latest" ] && [ "${{ inputs.expected_agent_version }}" != "$AGENT_VERSION" ]; then
+          echo "ERROR: expected agent ${{ inputs.expected_agent_version }}, found ${AGENT_VERSION}"
+          exit 1
+        fi
+        echo "axon_agent_version=${AGENT_VERSION}" >> "$GITHUB_OUTPUT"
+
+    - name: Verify the K8ssandra Management API variant
+      shell: bash
+      run: |
+        echo "=== Verifying K8ssandra Management API expectations ==="
+        if [ "${{ inputs.expect_k8ssandra_api }}" = "true" ]; then
+          if ! docker exec ${{ inputs.container_name }} bash -c 'ls /opt/management-api/datastax-mgmtapi-server.jar' >/dev/null 2>&1; then
+            echo "ERROR: Management API jars missing from an image built with INCLUDE_MGMT_API=true"
+            exit 1
+          fi
+          echo "Management API is present, as expected"
+        else
+          if docker exec ${{ inputs.container_name }} bash -c 'ls /opt/management-api' >/dev/null 2>&1; then
+            echo "ERROR: Management API found in an image built with INCLUDE_MGMT_API=false"
+            exit 1
+          fi
+          if docker exec ${{ inputs.container_name }} bash -c 'ls /opt/cdc_agent' >/dev/null 2>&1; then
+            echo "ERROR: CDC agent found in an image built with INCLUDE_MGMT_API=false"
+            exit 1
+          fi
+          if docker exec ${{ inputs.container_name }} pgrep -f datastax-mgmtapi-server > /dev/null 2>&1; then
+            echo "ERROR: a Management API process is running"
+            exit 1
+          fi
+          echo "No Management API components present, as expected"
+        fi

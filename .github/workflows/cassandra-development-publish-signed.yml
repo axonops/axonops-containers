@@ -1,0 +1,198 @@
+name: Cassandra Development Publish Signed to GHCR
+
+# Development builds of the standalone Cassandra image - the k8ssandra
+# Dockerfile with INCLUDE_MGMT_API=false - published to the -dev image path.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dev_git_tag:
+        description: 'Git tag or ref to checkout and build'
+        required: true
+        default: 'development'
+        type: string
+      container_version:
+        description: 'Build tag for GHCR - the third component of the image tag (e.g., dev-1.0.0)'
+        required: true
+        type: string
+      cassandra_version:
+        description: 'Cassandra version to build'
+        required: false
+        default: '5.0.8'
+        type: string
+      axon_agent_version:
+        description: 'AxonOps Agent version to install in the image (e.g., 2.0.31 or "latest")'
+        required: false
+        default: 'latest'
+        type: string
+      axon_agent_java_version:
+        description: 'AxonOps Agent Java version to install (e.g., "latest" or "1.0.14")'
+        required: false
+        default: 'latest'
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: axonops/cassandra/cassandra-dev
+
+jobs:
+  cassandra-dev-build-push-sign:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout code at ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dev_git_tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse k8ssandra base digest
+        id: k8ssandra
+        env:
+          CASSANDRA_VERSION: ${{ inputs.cassandra_version }}
+        run: |
+          COMPOSITE_KEY=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r --arg v "$CASSANDRA_VERSION" 'keys[] | select(startswith($v + "+"))')
+          if [ -z "$COMPOSITE_KEY" ]; then
+            echo "ERROR: No k8ssandra base image found for Cassandra $CASSANDRA_VERSION"
+            echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r 'keys[]'
+            exit 1
+          fi
+          K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
+          DIGEST=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r '.["'"$COMPOSITE_KEY"'"]')
+          {
+            echo "cassandra_version=${CASSANDRA_VERSION}"
+            echo "base_version=$(echo "$CASSANDRA_VERSION" | cut -d. -f1,2)"
+            echo "k8ssandra_api_version=${K8S_API_VERSION}"
+            echo "digest=${DIGEST}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-cassandra:test
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.k8ssandra.outputs.cassandra_version }}
+            MAJOR_VERSION=${{ steps.k8ssandra.outputs.base_version }}
+            K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            INCLUDE_MGMT_API=false
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.dev_git_tag }}
+            GITHUB_ACTOR=${{ github.actor }}
+            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.k8ssandra.outputs.cassandra_version }}-test
+            AXON_AGENT_VERSION=${{ inputs.axon_agent_version }}
+            AXON_AGENT_JAVA_VERSION=${{ inputs.axon_agent_java_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container and wait for services
+        uses: ./.github/actions/cassandra-start-and-wait
+        with:
+          container_name: cassandra-test
+
+      - name: Verify versions and resolve the agent version
+        id: verify
+        uses: ./.github/actions/cassandra-verify-versions
+        with:
+          cassandra_version: ${{ steps.k8ssandra.outputs.cassandra_version }}
+          container_name: cassandra-test
+          expected_agent_version: ${{ inputs.axon_agent_version }}
+
+      - name: Verify AxonOps
+        uses: ./.github/actions/k8ssandra-verify-axonops
+        with:
+          container_name: cassandra-test
+
+      - name: Test cqlai
+        uses: ./.github/actions/k8ssandra-test-cqlai
+        with:
+          container_name: cassandra-test
+
+      - name: Collect logs
+        if: always()
+        uses: ./.github/actions/k8ssandra-collect-logs
+        with:
+          container_name: cassandra-test
+          cassandra_version: ${{ steps.k8ssandra.outputs.cassandra_version }}
+
+      - name: Cleanup test container
+        if: always()
+        run: |
+          docker stop cassandra-test || true
+          docker rm cassandra-test || true
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.k8ssandra.outputs.cassandra_version }}-${{ steps.verify.outputs.axon_agent_version }}-${{ inputs.container_version }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.k8ssandra.outputs.cassandra_version }}-latest
+          annotations: |
+            index:org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            index:org.opencontainers.image.authors=AxonOps
+            index:org.opencontainers.image.url=https://axonops.com
+            index:org.opencontainers.image.documentation=https://github.com/axonops/axonops-containers/blob/development/cassandra/README.md
+            index:org.opencontainers.image.source=https://github.com/axonops/axonops-containers
+            index:org.opencontainers.image.version=${{ inputs.container_version }}
+            index:org.opencontainers.image.revision=${{ github.sha }}
+            index:org.opencontainers.image.vendor=AxonOps
+            index:org.opencontainers.image.licenses=Apache-2.0
+            index:org.opencontainers.image.title=AxonOps Apache Cassandra ${{ steps.k8ssandra.outputs.cassandra_version }} (development)
+            index:org.opencontainers.image.description=Development build of Apache Cassandra ${{ steps.k8ssandra.outputs.cassandra_version }} with the AxonOps agent ${{ steps.verify.outputs.axon_agent_version }}, without the K8ssandra Management API. Not for production use.
+            index:org.opencontainers.image.base.digest=${{ steps.k8ssandra.outputs.digest }}
+            index:com.axonops.cassandra.version=${{ steps.k8ssandra.outputs.cassandra_version }}
+            index:com.axonops.axon-agent.version=${{ steps.verify.outputs.axon_agent_version }}
+            index:com.axonops.k8ssandra-api.included=false
+            index:com.axonops.build.actor=${{ github.actor }}
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.k8ssandra.outputs.cassandra_version }}
+            MAJOR_VERSION=${{ steps.k8ssandra.outputs.base_version }}
+            K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
+            K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
+            INCLUDE_MGMT_API=false
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ inputs.container_version }}
+            GIT_TAG=${{ inputs.dev_git_tag }}
+            GITHUB_ACTOR=${{ github.actor }}
+            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.k8ssandra.outputs.cassandra_version }}-${{ steps.verify.outputs.axon_agent_version }}-${{ inputs.container_version }}
+            AXON_AGENT_VERSION=${{ steps.verify.outputs.axon_agent_version }}
+            AXON_AGENT_JAVA_VERSION=${{ inputs.axon_agent_java_version }}
+          cache-from: type=gha
+
+      - name: Sign container image
+        uses: ./.github/actions/k8ssandra-sign-container
+        with:
+          image: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Image published and signed
+        run: |
+          echo "Published and signed:"
+          echo "  ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.k8ssandra.outputs.cassandra_version }}-${{ steps.verify.outputs.axon_agent_version }}-${{ inputs.container_version }}"
