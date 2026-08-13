@@ -38,8 +38,11 @@ services:
       - CASSANDRA_HEAP_SIZE=${AXONOPS_CASSANDRA_HEAP_SIZE:-2G}
       - AXONOPS_DB_USER=axonops
       - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
-      - CASSANDRA_CLIENT_ENCRYPTION_ENABLED=${AXONOPS_CASSANDRA_SSL:-true}
-      - CASSANDRA_CLIENT_ENCRYPTION_REQUIRE_CLIENT_AUTH=false
+      # No CQL TLS here. The image only enables client_encryption_options when a
+      # keystore is mounted at CASSANDRA_KEYSTORE_PATH; there is no environment
+      # variable that turns it on by itself, so the native transport is
+      # plaintext and axon-server must connect the same way (CQL_SSL below).
+      # Traffic stays inside the compose network.
     volumes:
       - axondb-timeseries-data:/var/lib/cassandra
       - axondb-timeseries-logs:/var/log/cassandra
@@ -107,7 +110,11 @@ services:
       - CQL_LOCAL_DC=axonopsdb_dc1
       - CQL_PROTO_VERSION=4
       - CQL_AUTO_CREATE_TABLES=true
-      - CQL_SSL=${AXONOPS_CASSANDRA_SSL:-true}
+      # Must match axondb-timeseries: with client encryption off, connecting
+      # with TLS makes Cassandra read the ClientHello as a CQL protocol byte and
+      # log "Invalid or unsupported protocol version (22)". Set both sides
+      # together if you mount a keystore.
+      - CQL_SSL=${AXONOPS_CASSANDRA_SSL:-false}
       - CQL_SSL_SKIP_VERIFY=true
       - "CQL_KS_REPLICATION={ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
       # Log and event store (axondb-search)
@@ -140,7 +147,13 @@ services:
     hostname: axon-dash
     networks: [axonops]
     environment:
-      - AXON_SERVER_URL=http://axon-server:8080
+      # axon-dash maps its axon-dash.yml onto environment variables by section
+      # and key: axon-server.private_endpoints becomes AXONSERVER_PRIVATE_ENDPOINTS,
+      # axon-dash.port becomes AXONDASH_PORT (see server/config.server.js).
+      # Without this the dash keeps the file default of http://127.0.0.1:8080,
+      # which inside the container is itself, and crashes with
+      # "findHost | no reachable endpoints".
+      - AXONSERVER_PRIVATE_ENDPOINTS=http://axon-server:8080
     ports:
       - "3000:3000"
     healthcheck:

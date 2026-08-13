@@ -152,6 +152,50 @@ must share an organisation. `AXONOPS_ORG_NAME` in `.env` sets both; check with
 `AXONOPS_DB_PASSWORD` and `AXONOPS_SEARCH_PASSWORD` match between them and
 `axon-server`.
 
+### Configuration variables that look right but are not
+
+Three of the services take configuration under names that differ from the ones
+their READMEs suggest. Each of these was hit bringing this example up, and each
+fails in a way that does not name the variable at fault.
+
+**`axondb-search` exits with a bootstrap check failure.**
+
+```
+ERROR: [1] bootstrap checks failed
+[1]: the default discovery settings are unsuitable for production use;
+     at least one of [discovery.seed_hosts, discovery.seed_providers,
+     cluster.initial_cluster_manager_nodes] must be configured
+```
+
+`OPENSEARCH_DISCOVERY_TYPE` is documented and printed in the container's startup
+banner, but no published build writes it to `opensearch.yml`. This example
+passes OpenSearch's own `discovery.type=single-node` instead, which the process
+reads directly. The image entrypoint has since been fixed, so both work once a
+build carrying that fix ships.
+
+**Cassandra logs `Invalid or unsupported protocol version (22)`,
+`axon-server` logs `tls: first record does not look like a TLS handshake`.**
+
+22 is `0x16`, the first byte of a TLS ClientHello being read as a CQL protocol
+version — one side is using TLS and the other is not. `axondb-timeseries` only
+enables `client_encryption_options` when a keystore is mounted at
+`CASSANDRA_KEYSTORE_PATH`; there is no variable that turns it on by itself, and
+`CASSANDRA_CLIENT_ENCRYPTION_ENABLED` does nothing. So the native transport is
+plaintext and `CQL_SSL` must be `false` to match. To use TLS, mount a keystore
+and set both sides together.
+
+**`axon-dash` crash-loops with `findHost | no reachable endpoints` and
+`ECONNREFUSED 127.0.0.1:8080`.**
+
+`axon-dash` maps its `axon-dash.yml` onto environment variables by section and
+key — `axon-server.private_endpoints` becomes `AXONSERVER_PRIVATE_ENDPOINTS`,
+`axon-dash.port` becomes `AXONDASH_PORT`. It also accepts anything prefixed
+`AXON_SERVER_`, lower-cases it and merges it into the `axon-server` section,
+which means a wrong name such as `AXON_SERVER_URL` is accepted silently and
+appears in the config the dash prints at startup without having any effect. The
+address the dash actually dials is `private_endpoints`; check it in that printed
+config block.
+
 ## Support
 
 Maintained by [AxonOps](https://axonops.com). For support, contact us at
