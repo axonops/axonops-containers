@@ -59,6 +59,13 @@ services:
     networks: [axonops]
     environment:
       - OPENSEARCH_CLUSTER_NAME=axonopsdb-search
+      # discovery.type is OpenSearch's own setting name, passed straight through.
+      # The image documents OPENSEARCH_DISCOVERY_TYPE, but 3.7.0-1.6.0 prints it
+      # in the startup banner without ever writing it to opensearch.yml, so
+      # OpenSearch runs its production bootstrap checks and refuses to start:
+      #   the default discovery settings are unsuitable for production use
+      # Fixed in the entrypoint for the next build; keep this until that ships.
+      - discovery.type=single-node
       - OPENSEARCH_DISCOVERY_TYPE=single-node
       - OPENSEARCH_HEAP_SIZE=${AXONOPS_OPENSEARCH_HEAP_SIZE:-2g}
       - AXONOPS_SEARCH_USER=admin
