@@ -1,0 +1,64 @@
+name: 'Cassandra Start and Wait'
+description: 'Starts the AxonOps Cassandra container and waits for CQL to accept connections'
+inputs:
+  container_name:
+    description: 'Name for the container'
+    required: true
+    default: 'cassandra-test'
+  image:
+    description: 'Image to run'
+    required: false
+    default: 'axonops-cassandra:test'
+  cql_port:
+    description: 'Host port to publish the CQL port on'
+    required: false
+    default: '9042'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start container
+      shell: bash
+      run: |
+        docker run -d --name ${{ inputs.container_name }} \
+          -e AXON_AGENT_KEY=test-key \
+          -e AXON_AGENT_ORG=test-org \
+          -e AXON_AGENT_SERVER_HOST=localhost \
+          -e AXON_AGENT_SERVER_PORT=1888 \
+          -e AXON_AGENT_TLS_MODE=disabled \
+          -e AXON_AGENT_NTP_HOST=time.google.com \
+          -e HEAP_NEWSIZE=1G \
+          -e MAX_HEAP_SIZE=1G \
+          -p ${{ inputs.cql_port }}:9042 \
+          ${{ inputs.image }}
+        echo "Container started, waiting for Cassandra..."
+
+    - name: Wait for Cassandra to accept CQL connections
+      shell: bash
+      run: |
+        for i in {1..60}; do
+          if docker exec ${{ inputs.container_name }} /usr/local/bin/healthcheck.sh 2>/dev/null; then
+            echo "Cassandra is accepting CQL connections"
+            exit 0
+          fi
+          echo "Attempt $i/60 - waiting 10s..."
+          sleep 10
+        done
+        echo "ERROR: Cassandra did not become ready"
+        docker logs ${{ inputs.container_name }}
+        exit 1
+
+    - name: Wait for the AxonOps agent process
+      shell: bash
+      run: |
+        for i in {1..30}; do
+          if docker exec ${{ inputs.container_name }} pgrep -f axon-agent > /dev/null; then
+            echo "AxonOps agent is running"
+            exit 0
+          fi
+          echo "Attempt $i/30 - waiting 5s..."
+          sleep 5
+        done
+        echo "ERROR: AxonOps agent did not start"
+        docker logs ${{ inputs.container_name }}
+        exit 1

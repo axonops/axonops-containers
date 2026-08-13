@@ -66,6 +66,27 @@ gh workflow run "K8ssandra Publish Signed to GHCR" \
   -f container_version=1.5.0
 ```
 
+### Cassandra
+
+Publishes `ghcr.io/axonops/cassandra/cassandra` — Apache Cassandra with the AxonOps agent and no K8ssandra components. The `container_version` input is the build tag, the third component of the image tag `{CASSANDRA}-{AGENT}-{BUILD}`.
+
+```bash
+git tag cassandra-1.0.0 origin/main
+git push origin cassandra-1.0.0
+
+gh workflow run "Cassandra Publish Signed to GHCR" \
+  --ref main \
+  -f main_git_tag=cassandra-1.0.0 \
+  -f container_version=1.0.0
+
+# Or pin the agent version instead of taking the latest from the yum repository
+gh workflow run "Cassandra Publish Signed to GHCR" \
+  --ref main \
+  -f main_git_tag=cassandra-1.0.0 \
+  -f container_version=1.0.0 \
+  -f axon_agent_version=2.0.31
+```
+
 ### Strimzi
 
 ```bash
@@ -156,6 +177,24 @@ gh workflow run "K8ssandra Development Publish Signed to GHCR" \
   -f dev_git_tag=dev-k8ssandra-1.5.0 \
   -f container_version=v0.1.114 \
   -f cqlai_version=1.2.0
+```
+
+### Cassandra (Dev)
+
+Publishes to `ghcr.io/axonops/cassandra/cassandra-dev`.
+
+```bash
+gh workflow run "Cassandra Development Publish Signed to GHCR" \
+  --ref development \
+  -f dev_git_tag=development \
+  -f container_version=dev-1.0.0
+
+# Or build a specific Cassandra version from the matrix
+gh workflow run "Cassandra Development Publish Signed to GHCR" \
+  --ref development \
+  -f dev_git_tag=development \
+  -f container_version=dev-1.0.0 \
+  -f cassandra_version=5.0.8
 ```
 
 ### Strimzi (Dev)

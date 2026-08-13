@@ -30,6 +30,9 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 ## Components
 
+### Databases
+- **[cassandra/](./cassandra/)** - Apache Cassandra with the AxonOps agent, no K8ssandra components (`ghcr.io/axonops/cassandra/cassandra`)
+
 ### Kubernetes Distributions
 - **[k8ssandra/](./k8ssandra/)** - Apache Cassandra with AxonOps integration for K8ssandra Operator
 

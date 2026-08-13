@@ -1,0 +1,117 @@
+name: Cassandra Build and Test
+
+on:
+  pull_request:
+    paths:
+      - 'cassandra/**'
+      - '.github/workflows/cassandra-build-and-test.yml'
+      - '.github/actions/cassandra-*/**'
+  workflow_dispatch:
+    inputs:
+      cassandra_version:
+        description: 'Single Cassandra version to build (defaults to the whole matrix)'
+        required: false
+        type: string
+
+env:
+  IMAGE_NAME: axonops/cassandra/cassandra
+
+jobs:
+  cassandra-build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        cassandra_version: [5.0.9]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve Cassandra version and checksum
+        id: cassandra
+        run: |
+          VERSION="${{ inputs.cassandra_version || matrix.cassandra_version }}"
+          SHA512=$(jq -r --arg v "$VERSION" '.versions[$v] // empty' cassandra/versions.json)
+          if [ -z "$SHA512" ]; then
+            echo "ERROR: no SHA512 recorded for Cassandra $VERSION in cassandra/versions.json"
+            jq -r '.versions | keys[]' cassandra/versions.json
+            exit 1
+          fi
+          BASE_VERSION=$(echo "$VERSION" | cut -d. -f1,2)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sha512=${SHA512}" >> "$GITHUB_OUTPUT"
+          echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./cassandra/${{ steps.cassandra.outputs.base_version }}
+          file: ./cassandra/${{ steps.cassandra.outputs.base_version }}/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: axonops-cassandra:test
+          build-args: |
+            CASSANDRA_VERSION=${{ steps.cassandra.outputs.version }}
+            CASSANDRA_SHA512=${{ steps.cassandra.outputs.sha512 }}
+            INSTALL_K8SSANDRA_API=false
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            VERSION=pr-${{ github.event.number || github.run_number }}
+            GIT_TAG=${{ github.ref_name }}
+            GITHUB_ACTOR=${{ github.actor }}
+            CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
+            IS_PRODUCTION_RELEASE=false
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.cassandra.outputs.version }}-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container and wait for services
+        uses: ./.github/actions/cassandra-start-and-wait
+        with:
+          container_name: cassandra-test
+
+      - name: Verify versions
+        uses: ./.github/actions/cassandra-verify-versions
+        with:
+          cassandra_version: ${{ steps.cassandra.outputs.version }}
+          container_name: cassandra-test
+
+      - name: Verify AxonOps
+        uses: ./.github/actions/k8ssandra-verify-axonops
+        with:
+          container_name: cassandra-test
+
+      - name: Test cqlai
+        uses: ./.github/actions/k8ssandra-test-cqlai
+        with:
+          container_name: cassandra-test
+
+      - name: Run Trivy container security scan
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: 'axonops-cassandra:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: 'cassandra/.trivyignore'
+
+      - name: Collect logs
+        if: always()
+        uses: ./.github/actions/k8ssandra-collect-logs
+        with:
+          container_name: cassandra-test
+          cassandra_version: ${{ steps.cassandra.outputs.version }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop cassandra-test || true
+          docker rm cassandra-test || true
