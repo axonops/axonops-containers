@@ -101,8 +101,8 @@ s'exécute et par ce qui l'exploite.
 |---|---|---|
 | **Où** | un seul hôte | un cluster |
 | **Pour** | évaluation, démonstrations, développement, petits déploiements mono-hôte | production, haute disponibilité, tout ce qui doit survivre à la perte d'un hôte |
-| **Plateforme AxonOps** | les stacks [`docker-compose/`](./docker-compose/) | charts Helm `oci://ghcr.io/axonops/charts/*` — voir [VERSIONS.md](VERSIONS.md#helm-charts) et [examples/AXONOPS_DEPLOYMENT.md](./examples/AXONOPS_DEPLOYMENT.md) |
-| **Cassandra** | image [`cassandra/`](./cassandra/), exécutée directement | image [`k8ssandra/`](./k8ssandra/) via l'opérateur K8ssandra — voir [examples/K8SSANDRA_DEPLOYMENT.md](./examples/K8SSANDRA_DEPLOYMENT.md) |
+| **Plateforme AxonOps** | les stacks [`docker-compose/`](./docker-compose/) | charts Helm `oci://ghcr.io/axonops/charts/*` — voir [VERSIONS.md](VERSIONS.md#helm-charts) et [examples/AXONOPS_DEPLOYMENT.fr.md](./examples/AXONOPS_DEPLOYMENT.fr.md) |
+| **Cassandra** | image [`cassandra/`](./cassandra/), exécutée directement | image [`k8ssandra/`](./k8ssandra/) via l'opérateur K8ssandra — voir [examples/K8SSANDRA_DEPLOYMENT.fr.md](./examples/K8SSANDRA_DEPLOYMENT.fr.md) |
 | **Scaling et bascule** | manuels | opérateur et ordonnanceur |
 
 Les agents reportent à `axon-server` de la même manière dans les deux cas : un

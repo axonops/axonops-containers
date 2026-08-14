@@ -1,35 +1,35 @@
 # AxonOps Server
 
-**English** | [Français](README.fr.md)
+[English](README.md) | **Français**
 
 ![Version: 2.1.3](https://img.shields.io/badge/Version-2.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
-A Helm chart for deploying the AxonOps Server - the unified observability platform for Apache Cassandra. The AxonOps Server is the central component that collects metrics and logs from Cassandra clusters, stores them in the timeseries and search databases, and provides APIs for the AxonOps Dashboard.
+Un chart Helm pour déployer AxonOps Server — la plateforme d'observabilité unifiée d'Apache Cassandra. AxonOps Server est le composant central : il collecte les métriques et les logs des clusters Cassandra, les stocke dans les bases time-series et de recherche, et expose les API du dashboard AxonOps.
 
-**Homepage:** <https://axonops.com>
+**Site web :** <https://axonops.com>
 
-## Table of Contents
+## Table des matières
 
-- [Architecture Overview](#architecture-overview)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Installation Examples](#installation-examples)
-  - [Basic Installation](#basic-installation)
-  - [Installation with External Databases](#installation-with-external-databases)
-  - [Installation with Database Credentials from Secrets](#installation-with-database-credentials-from-secrets)
-  - [Installation with External Configuration Secret](#installation-with-external-configuration-secret)
-  - [Installation with Ingress](#installation-with-ingress)
-  - [Installation with TLS/mTLS](#installation-with-tlsmtls)
-  - [Installation with LDAP Authentication](#installation-with-ldap-authentication)
-  - [Production-Ready Installation](#production-ready-installation)
+- [Vue d'ensemble de l'architecture](#vue-densemble-de-larchitecture)
+- [Prérequis](#prérequis)
+- [Démarrage rapide](#démarrage-rapide)
+- [Exemples d'installation](#exemples-dinstallation)
+  - [Installation de base](#installation-de-base)
+  - [Installation avec des bases externes](#installation-avec-des-bases-externes)
+  - [Installation avec les identifiants de base dans des secrets](#installation-avec-les-identifiants-de-base-dans-des-secrets)
+  - [Installation avec un secret de configuration externe](#installation-avec-un-secret-de-configuration-externe)
+  - [Installation avec Ingress](#installation-avec-ingress)
+  - [Installation avec TLS/mTLS](#installation-avec-tlsmtls)
+  - [Installation avec authentification LDAP](#installation-avec-authentification-ldap)
+  - [Installation prête pour la production](#installation-prête-pour-la-production)
 - [Configuration](#configuration)
-- [Upgrading](#upgrading)
-- [Uninstalling](#uninstalling)
-- [Troubleshooting](#troubleshooting)
+- [Mise à jour](#mise-à-jour)
+- [Désinstallation](#désinstallation)
+- [Dépannage](#dépannage)
 
-## Architecture Overview
+## Vue d'ensemble de l'architecture
 
-The AxonOps Server is the central component of the AxonOps platform:
+AxonOps Server est le composant central de la plateforme AxonOps :
 
 ```
 ┌─────────────────┐         ┌──────────────────┐
@@ -49,28 +49,28 @@ The AxonOps Server is the central component of the AxonOps platform:
          └──────────────────┘                  └─────────────────┘
 ```
 
-## Prerequisites
+## Prérequis
 
-Before you begin, ensure you have the following:
+Avant de commencer, assurez-vous de disposer de ce qui suit :
 
-### Required Components
+### Composants obligatoires
 
-- **Kubernetes cluster**: Version 1.19 or higher
-- **kubectl**: Configured to communicate with your cluster
-- **Helm**: Version 3.0 or higher installed ([Installation guide](https://helm.sh/docs/intro/install/))
-- **AxonDB Timeseries**: Already deployed ([Installation guide](../axondb-timeseries/))
-- **AxonDB Search**: Already deployed ([Installation guide](../axondb-search/))
-- **AxonOps License Key**: Contact AxonOps for a license key
+- **Un cluster Kubernetes** : version 1.19 ou ultérieure
+- **kubectl** : configuré pour dialoguer avec votre cluster
+- **Helm** : version 3.0 ou ultérieure ([guide d'installation](https://helm.sh/docs/intro/install/))
+- **AxonDB Timeseries** : déjà déployé ([guide d'installation](../axondb-timeseries/))
+- **AxonDB Search** : déjà déployé ([guide d'installation](../axondb-search/))
+- **Une clé de licence AxonOps** : contactez AxonOps pour l'obtenir
 
-### Optional Components
+### Composants optionnels
 
-- **Ingress Controller**: Required if you want external access to the API or agents
-- **cert-manager**: For automatic TLS certificate management
-- **LDAP Server**: If using LDAP authentication
+- **Un contrôleur Ingress** : nécessaire pour un accès externe à l'API ou aux agents
+- **cert-manager** : pour la gestion automatique des certificats TLS
+- **Un serveur LDAP** : si vous utilisez l'authentification LDAP
 
-### Verifying Your Setup
+### Vérifier votre installation
 
-Check if the databases are running:
+Vérifiez que les bases de données tournent :
 ```bash
 # Check timeseries database
 kubectl get pods -l app.kubernetes.io/name=axondb-timeseries
@@ -79,14 +79,14 @@ kubectl get pods -l app.kubernetes.io/name=axondb-timeseries
 kubectl get pods -l app.kubernetes.io/name=axondb-search
 ```
 
-Check if Helm is installed:
+Vérifiez que Helm est installé :
 ```bash
 helm version
 ```
 
-## Quick Start
+## Démarrage rapide
 
-The fastest way to get started with the AxonOps Server:
+Le moyen le plus rapide de démarrer avec AxonOps Server :
 
 ```bash
 # Install with default settings (connects to local databases)
@@ -98,17 +98,17 @@ helm install axon-server ./axon-server \
 kubectl get pods -l app.kubernetes.io/name=axon-server
 ```
 
-This will deploy the AxonOps Server with:
-- Connection to local AxonDB instances
-- No external access (ClusterIP services)
-- Default authentication (disabled)
-- 1Gi persistent storage
+Cela déploie AxonOps Server avec :
+- une connexion aux instances AxonDB locales
+- aucun accès externe (services ClusterIP)
+- l'authentification par défaut (désactivée)
+- 1 Gi de stockage persistant
 
-## Installation Examples
+## Exemples d'installation
 
-### Basic Installation
+### Installation de base
 
-Install with minimal configuration suitable for development/testing:
+Installation minimale, adaptée au développement et aux tests :
 
 ```yaml
 # values-basic.yaml
@@ -157,15 +157,15 @@ resources:
     memory: 2Gi
 ```
 
-Install:
+Installation :
 
 ```bash
 helm install axon-server ./axon-server -f values-basic.yaml
 ```
 
-### Installation with External Databases
+### Installation avec des bases externes
 
-Configure connections to external database instances:
+Configurez les connexions vers des instances de bases de données externes :
 
 ```yaml
 # values-external-dbs.yaml
@@ -220,7 +220,7 @@ searchDb:
 dashboardUrl: "https://axonops.example.com"
 ```
 
-**If using TLS certificates for Cassandra connection:**
+**Si vous utilisez des certificats TLS pour la connexion Cassandra :**
 
 ```bash
 # Create secret with certificates
@@ -244,17 +244,17 @@ config:
     cql_key_file: /ssl/tls.key
 ```
 
-Install:
+Installation :
 
 ```bash
 helm install axon-server ./axon-server -f values-external-dbs.yaml
 ```
 
-### Installation with Database Credentials from Secrets
+### Installation avec les identifiants de base dans des secrets
 
-Instead of storing database credentials directly in Helm values, you can reference external Kubernetes Secrets for both Cassandra (timeseries) and OpenSearch credentials. This approach is recommended for production environments.
+Plutôt que de placer les identifiants de base de données directement dans les values Helm, vous pouvez référencer des Secrets Kubernetes externes, pour Cassandra (time-series) comme pour OpenSearch. C'est l'approche recommandée en production.
 
-Create the credentials secrets:
+Créez les secrets d'identifiants :
 
 ```bash
 # Cassandra/timeseries credentials (keys: AXONOPS_DB_USER, AXONOPS_DB_PASSWORD)
@@ -268,7 +268,7 @@ kubectl create secret generic opensearch-credentials \
   --from-literal=AXONOPS_SEARCH_PASSWORD=your-opensearch-password
 ```
 
-Configure the Helm values to reference the secrets:
+Configurez les values Helm pour référencer ces secrets :
 
 ```yaml
 # values-db-secrets.yaml
@@ -298,36 +298,36 @@ searchDb:
 dashboardUrl: "https://axonops.example.com"
 ```
 
-Install the chart:
+Installez le chart :
 
 ```bash
 helm install axon-server ./axon-server -f values-db-secrets.yaml
 ```
 
-Important notes:
+Points importants :
 
-- When `config.db_secret` is set, Cassandra credentials are injected as environment variables (`CQL_USERNAME`, `CQL_PASSWORD`)
-- When `searchDb.search_secret` is set, OpenSearch credentials are injected as environment variables (`SEARCH_DB_USERNAME`, `SEARCH_DB_PASSWORD`)
-- The inline `cql_username`/`cql_password` and `searchDb.username`/`searchDb.password` values are ignored when using secrets
-- The OpenSearch secret key names (`AXONOPS_SEARCH_USER`, `AXONOPS_SEARCH_PASSWORD`) are compatible with the axondb-search chart, allowing you to share the same secret between both charts
+- lorsque `config.db_secret` est défini, les identifiants Cassandra sont injectés comme variables d'environnement (`CQL_USERNAME`, `CQL_PASSWORD`)
+- lorsque `searchDb.search_secret` est défini, les identifiants OpenSearch sont injectés comme variables d'environnement (`SEARCH_DB_USERNAME`, `SEARCH_DB_PASSWORD`)
+- les valeurs en ligne `cql_username`/`cql_password` et `searchDb.username`/`searchDb.password` sont ignorées lorsque des secrets sont utilisés
+- les noms de clés du secret OpenSearch (`AXONOPS_SEARCH_USER`, `AXONOPS_SEARCH_PASSWORD`) sont compatibles avec le chart axondb-search, ce qui permet de partager le même secret entre les deux charts
 
-### Installation with External Configuration Secret
+### Installation avec un secret de configuration externe
 
-Instead of letting the chart auto-generate a Secret with the axon-server configuration, you can point to a pre-existing Kubernetes Secret using the `configurationSecret` value. When this is set:
+Plutôt que de laisser le chart générer automatiquement un Secret contenant la configuration d'axon-server, vous pouvez désigner un Secret Kubernetes préexistant via la value `configurationSecret`. Dans ce cas :
 
-- The chart **will not** create its own configuration Secret — it expects the Secret to already exist in the cluster.
-- The Secret must contain a key named **`axon-server.yml`** with the **complete** axon-server configuration in YAML format.
-- **All `config.*` and `searchDb.*` values in Helm are ignored** — the external Secret is the sole source of configuration.
-- Non-configuration values (resources, persistence, ingress, services, probes, etc.) still work as normal.
+- le chart **ne crée pas** son propre Secret de configuration — il s'attend à ce que le Secret existe déjà dans le cluster ;
+- le Secret doit contenir une clé nommée **`axon-server.yml`**, avec la configuration axon-server **complète** au format YAML ;
+- **toutes les values `config.*` et `searchDb.*` de Helm sont ignorées** — le Secret externe est l'unique source de configuration ;
+- les values hors configuration (ressources, persistance, ingress, services, sondes, etc.) continuent de fonctionner normalement.
 
-This approach is useful when:
+Cette approche est utile lorsque :
 
-- You manage secrets through external tools (vals-operator, Sealed Secrets, External Secrets Operator, etc.)
-- You need to share configuration across multiple deployments
-- You want to version control encrypted secrets separately
-- You use a GitOps workflow where secrets are managed outside of Helm values
+- vous gérez les secrets avec des outils externes (vals-operator, Sealed Secrets, External Secrets Operator, etc.)
+- vous devez partager une configuration entre plusieurs déploiements
+- vous voulez versionner séparément des secrets chiffrés
+- vous suivez un workflow GitOps où les secrets sont gérés en dehors des values Helm
 
-**Step 1: Create your configuration secret**
+**Étape 1 : créer votre secret de configuration**
 
 ```yaml
 # axon-server-config-secret.yaml
@@ -394,13 +394,13 @@ stringData:
       notification_interval: 3h
 ```
 
-Apply the secret:
+Appliquez le secret :
 
 ```bash
 kubectl apply -f axon-server-config-secret.yaml
 ```
 
-**Step 2: Create values file referencing the external secret**
+**Étape 2 : créer le fichier de values qui référence le secret externe**
 
 ```yaml
 # values-external-secret.yaml
@@ -438,20 +438,20 @@ agentIngress:
   enabled: false
 ```
 
-**Step 3: Install using the external secret**
+**Étape 3 : installer avec le secret externe**
 
 ```bash
 helm install axon-server ./axon-server -f values-external-secret.yaml
 ```
 
-**Important notes:**
-- When `configurationSecret` is set, the chart will NOT create its own Secret resource
-- The external secret must contain a key named `axon-server.yml` with the complete configuration
-- All configuration that would normally go in `config.*` values must be in the external secret
-- The `searchDb.*` values in the helm values are ignored when using an external secret
-- You can still configure other Helm values like resources, persistence, ingress, etc.
+**Points importants :**
+- lorsque `configurationSecret` est défini, le chart ne crée PAS sa propre ressource Secret
+- le secret externe doit contenir une clé `axon-server.yml` avec la configuration complète
+- toute la configuration qui irait normalement dans les values `config.*` doit se trouver dans le secret externe
+- les values `searchDb.*` de Helm sont ignorées lorsqu'un secret externe est utilisé
+- vous pouvez toujours configurer les autres values Helm : ressources, persistance, ingress, etc.
 
-**Verify the deployment:**
+**Vérifier le déploiement :**
 
 ```bash
 # Check that the pod is using the external secret
@@ -466,9 +466,9 @@ kubectl get statefulset axon-server -o yaml | grep -A 2 "secretName"
 kubectl logs axon-server-0 | head -20
 ```
 
-### Installation with Ingress
+### Installation avec Ingress
 
-Expose the AxonOps Server APIs externally using Ingress:
+Exposer les API d'AxonOps Server vers l'extérieur via un Ingress :
 
 ```yaml
 # values-ingress.yaml
@@ -526,17 +526,17 @@ agentIngress:
         - agents.axonops.example.com
 ```
 
-Install:
+Installation :
 
 ```bash
 helm install axon-server ./axon-server -f values-ingress.yaml
 ```
 
-### Installation with TLS/mTLS
+### Installation avec TLS/mTLS
 
-Configure TLS or mutual TLS for agent connections:
+Configurer TLS ou le TLS mutuel pour les connexions des agents :
 
-**Step 1: Create TLS secret**
+**Étape 1 : créer le secret TLS**
 
 ```bash
 kubectl create secret generic axon-server-tls \
@@ -545,9 +545,9 @@ kubectl create secret generic axon-server-tls \
   --from-file=ca.crt=path/to/ca.crt
 ```
 
-**Step 2: Create values file**
+**Étape 2 : créer le fichier de values**
 
-**For TLS:**
+**Pour TLS :**
 
 ```yaml
 # values-tls.yaml
@@ -577,7 +577,7 @@ searchDb:
 dashboardUrl: "https://axonops.example.com"
 ```
 
-**For mTLS (mutual TLS):**
+**Pour mTLS (TLS mutuel) :**
 
 ```yaml
 # values-mtls.yaml
@@ -606,7 +606,7 @@ searchDb:
 dashboardUrl: "https://axonops.example.com"
 ```
 
-Install:
+Installation :
 
 ```bash
 # For TLS
@@ -616,9 +616,9 @@ helm install axon-server ./axon-server -f values-tls.yaml
 helm install axon-server ./axon-server -f values-mtls.yaml
 ```
 
-### Installation with LDAP Authentication
+### Installation avec authentification LDAP
 
-Configure LDAP/Active Directory authentication:
+Configurer l'authentification LDAP / Active Directory :
 
 ```yaml
 # values-ldap.yaml
@@ -682,15 +682,15 @@ searchDb:
 dashboardUrl: "https://axonops.example.com"
 ```
 
-Install:
+Installation :
 
 ```bash
 helm install axon-server ./axon-server -f values-ldap.yaml
 ```
 
-### Production-Ready Installation
+### Installation prête pour la production
 
-A complete production configuration with all recommended settings:
+Une configuration de production complète, avec tous les réglages recommandés :
 
 ```yaml
 # values-production.yaml
@@ -908,7 +908,7 @@ podAnnotations:
   prometheus.io/path: "/metrics"
 ```
 
-**Before installing:**
+**Avant l'installation :**
 
 ```bash
 # Create TLS secret for server
@@ -919,7 +919,7 @@ kubectl create secret generic axon-server-tls \
   -n production
 ```
 
-**Install the production deployment:**
+**Installer le déploiement de production :**
 
 ```bash
 helm install axon-server ./axon-server \
@@ -928,7 +928,7 @@ helm install axon-server ./axon-server \
   --create-namespace
 ```
 
-**Verify the deployment:**
+**Vérifier le déploiement :**
 
 ```bash
 # Check pod status
@@ -947,138 +947,138 @@ curl http://localhost:8080/api/v1/healthz
 
 ## Configuration
 
-### Key Configuration Options
+### Principales options de configuration
 
-| Parameter | Description | Default |
+| Paramètre | Description | Défaut |
 |-----------|-------------|---------|
-| `configurationSecret` | Name of external Secret containing axon-server.yml configuration | `""` |
-| `config.org_name` | Organization name | `"example"` |
-| `config.license_key` | AxonOps license key (required) | `""` |
-| `config.listener.api_port` | API port for dashboard connections | `8080` |
-| `config.listener.agents_port` | Port for agent connections | `1888` |
-| `config.tls.mode` | TLS mode: disabled, TLS, mTLS | `"disabled"` |
-| `config.auth.enabled` | Enable authentication | `false` |
-| `config.extraConfig.cql_hosts` | Cassandra hosts for timeseries DB | `[]` |
-| `config.extraConfig.cql_username` | Cassandra username | `""` |
-| `config.db_secret` | Kubernetes secret name containing Cassandra credentials | `""` |
-| `searchDb.hosts` | Search database hosts | `[]` |
-| `searchDb.username` | Search database username | `""` |
-| `searchDb.search_secret` | Kubernetes secret name containing OpenSearch credentials | `""` |
-| `dashboardUrl` | Public URL for AxonOps Dashboard | `""` |
-| `apiIngress.enabled` | Enable API ingress | `false` |
-| `agentIngress.enabled` | Enable agent ingress | `false` |
-| `persistence.enabled` | Enable persistent storage | `true` |
-| `persistence.size` | Size of persistent volume | `1Gi` |
+| `configurationSecret` | Nom du Secret externe contenant la configuration axon-server.yml | `""` |
+| `config.org_name` | Nom de l'organisation | `"example"` |
+| `config.license_key` | Clé de licence AxonOps (obligatoire) | `""` |
+| `config.listener.api_port` | Port de l'API, pour les connexions du dashboard | `8080` |
+| `config.listener.agents_port` | Port des connexions des agents | `1888` |
+| `config.tls.mode` | Mode TLS : disabled, TLS, mTLS | `"disabled"` |
+| `config.auth.enabled` | Activer l'authentification | `false` |
+| `config.extraConfig.cql_hosts` | Hôtes Cassandra de la base time-series | `[]` |
+| `config.extraConfig.cql_username` | Nom d'utilisateur Cassandra | `""` |
+| `config.db_secret` | Nom du secret Kubernetes portant les identifiants Cassandra | `""` |
+| `searchDb.hosts` | Hôtes de la base de recherche | `[]` |
+| `searchDb.username` | Nom d'utilisateur de la base de recherche | `""` |
+| `searchDb.search_secret` | Nom du secret Kubernetes portant les identifiants OpenSearch | `""` |
+| `dashboardUrl` | URL publique du dashboard AxonOps | `""` |
+| `apiIngress.enabled` | Activer l'ingress de l'API | `false` |
+| `agentIngress.enabled` | Activer l'ingress des agents | `false` |
+| `persistence.enabled` | Activer le stockage persistant | `true` |
+| `persistence.size` | Taille du volume persistant | `1Gi` |
 
-### Important Notes
+### Points importants
 
-**License Key:**
-- A valid AxonOps license key is required for production use
-- Contact AxonOps at <info@axonops.com> to obtain a license
+**Clé de licence :**
+- une clé de licence AxonOps valide est obligatoire en production
+- contactez AxonOps à <info@axonops.com> pour l'obtenir
 
-**External Configuration Secret:**
-- Use `configurationSecret` to reference an external Secret instead of auto-generating one
-- Useful for GitOps workflows and secret management tools (Sealed Secrets, External Secrets, etc.)
-- When set, all `config.*` and `searchDb.*` values from Helm are ignored
+**Secret de configuration externe :**
+- utilisez `configurationSecret` pour référencer un Secret externe plutôt que d'en générer un automatiquement
+- pratique pour les workflows GitOps et les outils de gestion de secrets (Sealed Secrets, External Secrets, etc.)
+- lorsqu'il est défini, toutes les values `config.*` et `searchDb.*` de Helm sont ignorées
 
-**Database Connections:**
-- The server requires connections to both timeseries and search databases
-- Ensure databases are running and accessible before deploying the server
-- Use service names for in-cluster databases or FQDNs for external databases
+**Connexions aux bases de données :**
+- le serveur a besoin d'une connexion à la base time-series comme à la base de recherche
+- assurez-vous que les bases tournent et sont joignables avant de déployer le serveur
+- utilisez les noms de services pour les bases internes au cluster, ou des FQDN pour les bases externes
 
-**Replica Count:**
-- Currently, only 1 replica is supported
-- High availability is achieved through StatefulSet and persistent storage
+**Nombre de réplicas :**
+- un seul réplica est pris en charge pour l'instant
+- la disponibilité repose sur le StatefulSet et le stockage persistant
 
-**TLS Modes:**
-- `disabled`: No TLS (development only)
-- `TLS`: Server-side TLS encryption
-- `mTLS`: Mutual TLS (requires client certificates on agents)
+**Modes TLS :**
+- `disabled` : pas de TLS (développement uniquement)
+- `TLS` : chiffrement TLS côté serveur
+- `mTLS` : TLS mutuel (exige des certificats client sur les agents)
 
-### Complete Values Reference
+### Référence complète des values
 
 <details>
-<summary>Click to expand full values table</summary>
+<summary>Cliquez pour dérouler le tableau complet des values</summary>
 
-| Key | Type | Default | Description |
+| Clé | Type | Défaut | Description |
 |-----|------|---------|-------------|
-| affinity | object | `{}` | Pod affinity rules |
-| agentIngress.annotations | object | `{}` | Annotations for agent ingress |
-| agentIngress.className | string | `"nginx"` | Ingress class for agents |
-| agentIngress.enabled | bool | `false` | Enable agent ingress |
-| agentIngress.hosts | list | `[{"host":"agents.example.com","paths":[{"path":"/","pathType":"ImplementationSpecific"}]}]` | Agent ingress hosts |
-| agentIngress.tls | list | `[]` | TLS configuration for agent ingress |
-| agentService.annotations | object | `{}` | Annotations for agent service |
-| agentService.listenPort | int | `1888` | Agent service port |
-| agentService.type | string | `"ClusterIP"` | Agent service type |
-| apiIngress.annotations | object | `{}` | Annotations for API ingress |
-| apiIngress.className | string | `"traefik"` | Ingress class for API |
-| apiIngress.enabled | bool | `false` | Enable API ingress |
-| apiIngress.hosts | list | `[{"host":"api.example.com","paths":[{"path":"/","pathType":"ImplementationSpecific"}]}]` | API ingress hosts |
-| apiIngress.tls | list | `[]` | TLS configuration for API ingress |
-| apiService.annotations | object | `{}` | Annotations for API service |
-| apiService.listenPort | int | `8080` | API service port |
-| apiService.type | string | `"ClusterIP"` | API service type |
-| configurationSecret | string | `""` | External Secret name containing axon-server.yml configuration |
-| config.alerting.notification_interval | string | `"3h"` | Alert notification interval |
-| config.auth.enabled | bool | `false` | Enable authentication |
-| config.db_secret | string | `""` | Kubernetes secret name containing Cassandra credentials (keys: AXONOPS_DB_USER, AXONOPS_DB_PASSWORD) |
-| config.extraConfig | object | `{}` | Additional configuration options |
-| config.license_key | string | `""` | AxonOps license key |
-| config.listener.agents_port | int | `1888` | Agent listener port |
-| config.listener.api_port | int | `8080` | API listener port |
-| config.listener.host | string | `"0.0.0.0"` | Listener host |
-| config.org_name | string | `"example"` | Organization name |
-| config.sslSecretName | string | `""` | Secret name containing SSL certificates |
-| config.tls.mode | string | `"disabled"` | TLS mode (disabled, TLS, mTLS) |
-| dashboardUrl | string | `""` | Public dashboard URL |
-| deployment.annotations | object | `{}` | Deployment annotations |
-| deployment.env | object | `{}` | Additional environment variables |
-| deployment.secretEnv | string | `""` | Secret containing environment variables |
-| extraVolumeMounts | list | `[]` | Additional volume mounts |
-| extraVolumes | list | `[]` | Additional volumes |
-| fullnameOverride | string | `""` | Override full resource name |
-| image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
-| image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-server"` | Image repository |
-| image.tag | string | `""` | Image tag (defaults to appVersion) |
-| imagePullSecrets | list | `[]` | Image pull secrets |
-| livenessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":30,"periodSeconds":10,"timeoutSeconds":5}` | Liveness probe configuration |
-| nameOverride | string | `""` | Override chart name |
-| nodeSelector | object | `{}` | Node labels for pod assignment |
-| persistence.accessMode | string | `"ReadWriteOnce"` | Access mode for PVC |
-| persistence.annotations | object | `{}` | Annotations for PVC |
-| persistence.enableInitChown | bool | `true` | Enable init container to set ownership |
-| persistence.enabled | bool | `true` | Enable persistent storage |
-| persistence.size | string | `"1Gi"` | Size of persistent volume |
-| persistence.storageClass | string | `""` | Storage class name |
-| podAnnotations | object | `{}` | Pod annotations |
-| podLabels | object | `{}` | Pod labels |
-| podSecurityContext.enabled | bool | `false` | Enable pod security context |
-| podSecurityContext.fsGroup | int | `9988` | FSGroup for pod |
-| podSecurityContext.runAsNonRoot | bool | `true` | Run as non-root |
-| podSecurityContext.runAsUser | int | `9988` | User ID to run pod |
-| readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Readiness probe configuration |
-| resources | object | `{}` | Resource limits and requests |
-| searchDb.hosts | list | `[]` | Search database hosts |
-| searchDb.password | string | `""` | Search database password |
-| searchDb.search_secret | string | `""` | Kubernetes secret name containing OpenSearch credentials (keys: AXONOPS_SEARCH_USER, AXONOPS_SEARCH_PASSWORD) |
-| searchDb.skip_verify | bool | `true` | Skip TLS verification for search DB |
-| searchDb.username | string | `""` | Search database username |
-| securityContext | object | `{"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false,"runAsNonRoot":true,"runAsUser":9988}` | Container security context |
-| serviceAccount.annotations | object | `{}` | Service account annotations |
-| serviceAccount.automount | bool | `true` | Automount service account token |
-| serviceAccount.create | bool | `true` | Create service account |
-| serviceAccount.createClusterRole | bool | `false` | Create cluster role |
-| serviceAccount.name | string | `""` | Service account name |
-| startupProbe | object | `{"failureThreshold":60,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":0,"periodSeconds":2,"timeoutSeconds":3}` | Startup probe configuration |
-| tolerations | list | `[]` | Tolerations for pod assignment |
-| updateStrategy.type | string | `"RollingUpdate"` | Update strategy type |
+| affinity | object | `{}` | Règles d'affinité de pods |
+| agentIngress.annotations | object | `{}` | Annotations de l'ingress des agents |
+| agentIngress.className | string | `"nginx"` | Classe d'ingress des agents |
+| agentIngress.enabled | bool | `false` | Activer l'ingress des agents |
+| agentIngress.hosts | list | `[{"host":"agents.example.com","paths":[{"path":"/","pathType":"ImplementationSpecific"}]}]` | Hôtes de l'ingress des agents |
+| agentIngress.tls | list | `[]` | Configuration TLS de l'ingress des agents |
+| agentService.annotations | object | `{}` | Annotations du service des agents |
+| agentService.listenPort | int | `1888` | Port du service des agents |
+| agentService.type | string | `"ClusterIP"` | Type du service des agents |
+| apiIngress.annotations | object | `{}` | Annotations de l'ingress de l'API |
+| apiIngress.className | string | `"traefik"` | Classe d'ingress de l'API |
+| apiIngress.enabled | bool | `false` | Activer l'ingress de l'API |
+| apiIngress.hosts | list | `[{"host":"api.example.com","paths":[{"path":"/","pathType":"ImplementationSpecific"}]}]` | Hôtes de l'ingress de l'API |
+| apiIngress.tls | list | `[]` | Configuration TLS de l'ingress de l'API |
+| apiService.annotations | object | `{}` | Annotations du service de l'API |
+| apiService.listenPort | int | `8080` | Port du service de l'API |
+| apiService.type | string | `"ClusterIP"` | Type du service de l'API |
+| configurationSecret | string | `""` | Nom du Secret externe contenant la configuration axon-server.yml |
+| config.alerting.notification_interval | string | `"3h"` | Intervalle de notification des alertes |
+| config.auth.enabled | bool | `false` | Activer l'authentification |
+| config.db_secret | string | `""` | Nom du secret Kubernetes portant les identifiants Cassandra (clés : AXONOPS_DB_USER, AXONOPS_DB_PASSWORD) |
+| config.extraConfig | object | `{}` | Options de configuration supplémentaires |
+| config.license_key | string | `""` | Clé de licence AxonOps |
+| config.listener.agents_port | int | `1888` | Port d'écoute des agents |
+| config.listener.api_port | int | `8080` | Port d'écoute de l'API |
+| config.listener.host | string | `"0.0.0.0"` | Hôte d'écoute |
+| config.org_name | string | `"example"` | Nom de l'organisation |
+| config.sslSecretName | string | `""` | Nom du secret contenant les certificats SSL |
+| config.tls.mode | string | `"disabled"` | Mode TLS (disabled, TLS, mTLS) |
+| dashboardUrl | string | `""` | URL publique du dashboard |
+| deployment.annotations | object | `{}` | Annotations du déploiement |
+| deployment.env | object | `{}` | Variables d'environnement supplémentaires |
+| deployment.secretEnv | string | `""` | Secret contenant des variables d'environnement |
+| extraVolumeMounts | list | `[]` | Montages de volumes supplémentaires |
+| extraVolumes | list | `[]` | Volumes supplémentaires |
+| fullnameOverride | string | `""` | Remplacer le nom complet des ressources |
+| image.pullPolicy | string | `"IfNotPresent"` | Politique de pull de l'image |
+| image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-server"` | Dépôt de l'image |
+| image.tag | string | `""` | Tag de l'image (par défaut, appVersion) |
+| imagePullSecrets | list | `[]` | Secrets de pull d'image |
+| livenessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":30,"periodSeconds":10,"timeoutSeconds":5}` | Configuration de la sonde de liveness |
+| nameOverride | string | `""` | Remplacer le nom du chart |
+| nodeSelector | object | `{}` | Labels de nœud pour l'affectation des pods |
+| persistence.accessMode | string | `"ReadWriteOnce"` | Mode d'accès du PVC |
+| persistence.annotations | object | `{}` | Annotations du PVC |
+| persistence.enableInitChown | bool | `true` | Activer l'init container qui ajuste les droits |
+| persistence.enabled | bool | `true` | Activer le stockage persistant |
+| persistence.size | string | `"1Gi"` | Taille du volume persistant |
+| persistence.storageClass | string | `""` | Nom de la storage class |
+| podAnnotations | object | `{}` | Annotations des pods |
+| podLabels | object | `{}` | Labels des pods |
+| podSecurityContext.enabled | bool | `false` | Activer le contexte de sécurité du pod |
+| podSecurityContext.fsGroup | int | `9988` | FSGroup du pod |
+| podSecurityContext.runAsNonRoot | bool | `true` | Exécuter sous un utilisateur non root |
+| podSecurityContext.runAsUser | int | `9988` | UID d'exécution du pod |
+| readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Configuration de la sonde de readiness |
+| resources | object | `{}` | Limites et requêtes de ressources |
+| searchDb.hosts | list | `[]` | Hôtes de la base de recherche |
+| searchDb.password | string | `""` | Mot de passe de la base de recherche |
+| searchDb.search_secret | string | `""` | Nom du secret Kubernetes portant les identifiants OpenSearch (clés : AXONOPS_SEARCH_USER, AXONOPS_SEARCH_PASSWORD) |
+| searchDb.skip_verify | bool | `true` | Ignorer la vérification TLS de la base de recherche |
+| searchDb.username | string | `""` | Nom d'utilisateur de la base de recherche |
+| securityContext | object | `{"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false,"runAsNonRoot":true,"runAsUser":9988}` | Contexte de sécurité du conteneur |
+| serviceAccount.annotations | object | `{}` | Annotations du service account |
+| serviceAccount.automount | bool | `true` | Monter automatiquement le token du service account |
+| serviceAccount.create | bool | `true` | Créer le service account |
+| serviceAccount.createClusterRole | bool | `false` | Créer le cluster role |
+| serviceAccount.name | string | `""` | Nom du service account |
+| startupProbe | object | `{"failureThreshold":60,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":0,"periodSeconds":2,"timeoutSeconds":3}` | Configuration de la sonde de démarrage |
+| tolerations | list | `[]` | Tolerations pour l'affectation des pods |
+| updateStrategy.type | string | `"RollingUpdate"` | Type de stratégie de mise à jour |
 
 </details>
 
-## Upgrading
+## Mise à jour
 
-To upgrade an existing installation:
+Pour mettre à jour une installation existante :
 
 ```bash
 # Update the chart
@@ -1088,15 +1088,15 @@ helm upgrade axon-server ./axon-server -f values-production.yaml
 kubectl rollout status statefulset/axon-server
 ```
 
-**Important Notes:**
-- Always review the changelog before upgrading
-- Test upgrades in a non-production environment first
-- Backup the persistent volume before upgrading
-- The server may be briefly unavailable during the upgrade
+**Points importants :**
+- relisez toujours le changelog avant une mise à jour
+- testez d'abord les mises à jour hors production
+- sauvegardez le volume persistant avant de mettre à jour
+- le serveur peut être brièvement indisponible pendant l'opération
 
-## Uninstalling
+## Désinstallation
 
-To remove the AxonOps Server:
+Pour supprimer AxonOps Server :
 
 ```bash
 # Uninstall the release
@@ -1106,18 +1106,18 @@ helm uninstall axon-server
 kubectl delete pvc -l app.kubernetes.io/name=axon-server
 ```
 
-**Warning:** Deleting the PVC will remove:
-- Server configuration
-- User data (if not using LDAP)
-- Alert history and notification state
+**Avertissement :** supprimer le PVC efface :
+- la configuration du serveur
+- les données utilisateurs (si vous n'utilisez pas LDAP)
+- l'historique des alertes et l'état des notifications
 
-## Troubleshooting
+## Dépannage
 
-### Common Issues
+### Problèmes courants
 
-**1. Server not connecting to databases**
+**1. Le serveur ne se connecte pas aux bases de données**
 
-Check database connectivity:
+Vérifiez la connectivité aux bases :
 ```bash
 # Get server pod logs
 kubectl logs axon-server-0
@@ -1126,27 +1126,27 @@ kubectl logs axon-server-0
 kubectl logs axon-server-0 | grep -i "error\|connection\|failed"
 ```
 
-Common causes:
-- Incorrect database hostnames or service names
-- Wrong credentials (check username/password)
-- Database not ready (ensure databases are running first)
-- Network policies blocking connections
+Causes fréquentes :
+- noms d'hôtes ou de services de base incorrects
+- mauvais identifiants (vérifiez le couple utilisateur / mot de passe)
+- base non prête (assurez-vous que les bases tournent d'abord)
+- des network policies bloquent les connexions
 
-**2. License key errors**
+**2. Erreurs de clé de licence**
 
-If you see license errors:
+En cas d'erreur de licence :
 ```bash
 # Check if license key is set
 kubectl get statefulset axon-server -o yaml | grep -A 5 license_key
 ```
 
-- Ensure `config.license_key` is set in values
-- Contact AxonOps for a valid license key
-- Check for typos or extra spaces in the license key
+- vérifiez que `config.license_key` est renseigné dans les values
+- contactez AxonOps pour obtenir une clé de licence valide
+- vérifiez qu'il n'y a ni faute de frappe ni espace superflu dans la clé
 
-**3. Agents not connecting**
+**3. Les agents ne se connectent pas**
 
-Check agent connectivity:
+Vérifiez la connectivité des agents :
 ```bash
 # Check agent service
 kubectl get svc axon-server-agents
@@ -1158,15 +1158,15 @@ kubectl port-forward svc/axon-server-agents 1888:1888
 telnet localhost 1888
 ```
 
-Common causes:
-- Agents using wrong hostname or port
-- TLS mode mismatch (server in TLS, agents not configured)
-- Network policies or firewalls blocking port 1888
-- Ingress not configured correctly for external agents
+Causes fréquentes :
+- les agents utilisent un mauvais nom d'hôte ou un mauvais port
+- désaccord de mode TLS (serveur en TLS, agents non configurés)
+- des network policies ou pare-feux bloquent le port 1888
+- l'ingress est mal configuré pour les agents externes
 
-**4. Dashboard cannot connect to API**
+**4. Le dashboard ne joint pas l'API**
 
-Verify API service:
+Vérifiez le service de l'API :
 ```bash
 # Check API service
 kubectl get svc axon-server-api
@@ -1176,7 +1176,7 @@ kubectl port-forward svc/axon-server-api 8080:8080
 curl http://localhost:8080/api/v1/healthz
 ```
 
-If using ingress:
+Avec un ingress :
 ```bash
 # Check ingress configuration
 kubectl get ingress
@@ -1185,9 +1185,9 @@ kubectl get ingress
 curl https://api.axonops.example.com/api/v1/healthz
 ```
 
-**5. LDAP authentication failing**
+**5. L'authentification LDAP échoue**
 
-Check LDAP configuration:
+Vérifiez la configuration LDAP :
 ```bash
 # View server logs for LDAP errors
 kubectl logs axon-server-0 | grep -i ldap
@@ -1200,7 +1200,7 @@ kubectl logs axon-server-0 | grep -i ldap
 # - Role attribute not found
 ```
 
-Test LDAP connectivity:
+Testez la connectivité LDAP :
 ```bash
 # From within the pod
 kubectl exec -it axon-server-0 -- sh
@@ -1208,14 +1208,14 @@ kubectl exec -it axon-server-0 -- sh
 nc -zv ldap.example.com 636
 ```
 
-**6. High memory usage**
+**6. Consommation mémoire élevée**
 
-Check resource usage:
+Vérifiez l'usage des ressources :
 ```bash
 kubectl top pod axon-server-0
 ```
 
-Increase resources if needed:
+Augmentez les ressources si nécessaire :
 ```yaml
 resources:
   limits:
@@ -1224,22 +1224,22 @@ resources:
     memory: 2Gi
 ```
 
-**7. Persistent volume issues**
+**7. Problèmes de volume persistant**
 
-Check PVC status:
+Vérifiez l'état du PVC :
 ```bash
 kubectl get pvc
 kubectl describe pvc data-axon-server-0
 ```
 
-If PVC is pending:
-- Verify StorageClass exists and is default
-- Check if there's sufficient storage quota
-- Ensure dynamic provisioning is enabled
+Si le PVC reste Pending :
+- vérifiez que la StorageClass existe et qu'elle est par défaut
+- vérifiez que le quota de stockage est suffisant
+- assurez-vous que le provisionnement dynamique est activé
 
-**8. TLS certificate issues**
+**8. Problèmes de certificats TLS**
 
-For TLS/mTLS problems:
+Pour les problèmes TLS/mTLS :
 ```bash
 # Check if secret exists
 kubectl get secret axon-server-tls
@@ -1251,38 +1251,38 @@ kubectl describe secret axon-server-tls
 kubectl logs axon-server-0 | grep -i tls
 ```
 
-Ensure certificates:
-- Are in PEM format
-- Have correct permissions
-- Are not expired
-- Match the server hostname
+Assurez-vous que les certificats :
+- sont au format PEM
+- ont les bonnes permissions
+- ne sont pas expirés
+- correspondent au nom d'hôte du serveur
 
-### Getting Help
+### Obtenir de l'aide
 
-For additional support:
+Pour un support complémentaire :
 
-- **Check logs:** `kubectl logs -f axon-server-0`
-- **View events:** `kubectl get events --sort-by='.lastTimestamp'`
-- **Describe pod:** `kubectl describe pod axon-server-0`
-- **Test health endpoint:**
+- **Consultez les logs :** `kubectl logs -f axon-server-0`
+- **Consultez les événements :** `kubectl get events --sort-by='.lastTimestamp'`
+- **Décrivez le pod :** `kubectl describe pod axon-server-0`
+- **Testez l'endpoint de santé :**
   ```bash
   kubectl port-forward svc/axon-server-api 8080:8080
   curl http://localhost:8080/api/v1/healthz
   ```
-- **Documentation:** <https://docs.axonops.com>
-- **Support:** <info@axonops.com>
-- **Community:** <https://community.axonops.com>
+- **Documentation :** <https://docs.axonops.com>
+- **Support :** <info@axonops.com>
+- **Communauté :** <https://community.axonops.com>
 
-## Maintainers
+## Mainteneurs
 
-| Name | Email | Url |
+| Nom | E-mail | URL |
 | ---- | ------ | --- |
 | AxonOps Team | <info@axonops.com> | <https://axonops.com> |
 
-## Source Code
+## Code source
 
 * <https://github.com/axonops/axonops-containers>
 
 ---
 
-*Generated with AxonOps Helm Charts*
+*Généré avec les charts Helm AxonOps*

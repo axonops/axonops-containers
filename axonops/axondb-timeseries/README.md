@@ -1,5 +1,7 @@
 # AxonDB Time-Series Database
 
+**English** | [Français](README.fr.md)
+
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-timeseries)
 
 Production-ready Apache Cassandra 5.0.6 container optimized for time-series workloads in AxonOps self-hosted deployments.

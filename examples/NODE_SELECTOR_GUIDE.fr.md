@@ -1,26 +1,26 @@
-# Strimzi Node Selector Configuration Guide
+# Guide de configuration des node selectors Strimzi
 
-**English** | [Français](NODE_SELECTOR_GUIDE.fr.md)
+[English](NODE_SELECTOR_GUIDE.md) | **Français**
 
-## Overview
+## Vue d'ensemble
 
-This guide explains how to use the Strimzi deployment script to pin Kafka brokers and controllers to specific Kubernetes nodes. This is essential when you need to:
+Ce guide explique comment utiliser le script de déploiement Strimzi pour épingler les brokers et les controllers Kafka sur des nœuds Kubernetes précis. C'est indispensable lorsque vous devez :
 
-- Ensure data locality for performance
-- Pin components to nodes with specific hardware (NVMe, high memory, etc.)
-- Distribute brokers across availability zones
-- Control storage placement for persistent volumes
+- garantir la localité des données pour la performance
+- épingler des composants sur des nœuds au matériel particulier (NVMe, forte mémoire, etc.)
+- répartir les brokers entre zones de disponibilité
+- maîtriser le placement du stockage des volumes persistants
 
-**Key Features:**
-- Automatic node affinity configuration for hostPath storage
-- Support for both single-node and multi-node deployments
-- Flexible replica-to-node mapping
-- Pre-deployment validation of node availability
-- Post-deployment verification of pod placement
+**Points clés :**
+- configuration automatique de l'affinité de nœud pour le stockage hostPath
+- prise en charge des déploiements mono-nœud comme multi-nœuds
+- association souple entre réplicas et nœuds
+- validation de la disponibilité des nœuds avant déploiement
+- vérification du placement des pods après déploiement
 
-## Quick Start
+## Démarrage rapide
 
-### Single Node Deployment
+### Déploiement mono-nœud
 
 ```bash
 # Default behavior - all components on one node
@@ -28,7 +28,7 @@ export STRIMZI_NODE_HOSTNAME='your-node-name'
 ./strimzi-setup.sh
 ```
 
-### Multi-Node Deployment
+### Déploiement multi-nœuds
 
 ```bash
 # Distribute brokers across nodes
@@ -41,37 +41,38 @@ export KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,ctrl-1:control-1,ctrl-2
 ./strimzi-setup.sh
 ```
 
-That's it! The script will:
-- Validate all specified nodes exist and are ready
-- Create PersistentVolumes with node affinity (for hostPath mode)
-- Inject node affinity into KafkaNodePools automatically
-- Verify pod placement after deployment
+C'est tout : le script va
 
-## Configuration Options
+- vérifier que tous les nœuds indiqués existent et sont prêts
+- créer les PersistentVolumes avec l'affinité de nœud (en mode hostPath)
+- injecter automatiquement l'affinité de nœud dans les KafkaNodePools
+- vérifier le placement des pods après déploiement
 
-### Environment Variables
+## Options de configuration
 
-| Variable | Description | Example |
+### Variables d'environnement
+
+| Variable | Description | Exemple |
 |----------|-------------|---------|
-| `KAFKA_BROKER_NODE_SELECTORS` | Comma-separated broker:node pairs | `"broker-0:node1,broker-1:node2"` |
-| `KAFKA_CONTROLLER_NODE_SELECTORS` | Comma-separated controller:node pairs | `"controller-0:node1,controller-1:node2"` |
-| `KAFKA_BROKER_REPLICAS` | Number of broker replicas | `3` |
-| `KAFKA_CONTROLLER_REPLICAS` | Number of controller replicas | `3` |
-| `STRIMZI_NODE_HOSTNAME` | Default node when selectors not specified | `"worker-1"` |
-| `STORAGE_MODE` | Storage mode: `hostPath` or `pvc` | `"hostPath"` |
+| `KAFKA_BROKER_NODE_SELECTORS` | Paires broker:nœud séparées par des virgules | `"broker-0:node1,broker-1:node2"` |
+| `KAFKA_CONTROLLER_NODE_SELECTORS` | Paires controller:nœud séparées par des virgules | `"controller-0:node1,controller-1:node2"` |
+| `KAFKA_BROKER_REPLICAS` | Nombre de réplicas broker | `3` |
+| `KAFKA_CONTROLLER_REPLICAS` | Nombre de réplicas controller | `3` |
+| `STRIMZI_NODE_HOSTNAME` | Nœud par défaut lorsqu'aucun selector n'est indiqué | `"worker-1"` |
+| `STORAGE_MODE` | Mode de stockage : `hostPath` ou `pvc` | `"hostPath"` |
 
-### Selector Format
+### Format des selectors
 
-Node selectors use the format: `replica-id:node-name`
+Les node selectors s'écrivent sous la forme `replica-id:node-name`
 
-- **Replica ID**: Can be in multiple formats:
-  - Full broker name: `broker-0`, `broker-1`, etc.
-  - Full controller name: `controller-0`, `controller-1`, etc.
-  - Short controller name: `ctrl-0`, `ctrl-1`, etc.
-  - Number only: `0`, `1`, `2`, etc.
-- **Node Name**: Must be exact Kubernetes node name
+- **Identifiant de réplica** : plusieurs formes sont acceptées :
+  - nom complet du broker : `broker-0`, `broker-1`, etc.
+  - nom complet du controller : `controller-0`, `controller-1`, etc.
+  - nom court du controller : `ctrl-0`, `ctrl-1`, etc.
+  - numéro seul : `0`, `1`, `2`, etc.
+- **Nom du nœud** : doit être exactement le nom du nœud Kubernetes
 
-Examples:
+Exemples :
 ```bash
 # Broker formats (all equivalent for broker 0)
 KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1"
@@ -87,9 +88,9 @@ KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1,1:worker-2,broker-2:worker-3"
 KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,controller-1:control-1,2:control-1"
 ```
 
-## Deployment Scenarios
+## Scénarios de déploiement
 
-### Scenario 1: All Components on Single Node
+### Scénario 1 : tous les composants sur un seul nœud
 
 ```bash
 # Explicitly set all to same node
@@ -104,7 +105,7 @@ unset KAFKA_CONTROLLER_NODE_SELECTORS
 ./strimzi-setup.sh
 ```
 
-### Scenario 2: Distributed Brokers, Co-located Controllers
+### Scénario 2 : brokers répartis, controllers regroupés
 
 ```bash
 # Brokers across different nodes for better throughput
@@ -116,7 +117,7 @@ export KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,ctrl-1:control-1,ctrl-2
 ./strimzi-setup.sh
 ```
 
-### Scenario 3: High Availability Across Zones
+### Scénario 3 : haute disponibilité entre zones
 
 ```bash
 # Distribute across availability zones
@@ -126,7 +127,7 @@ export KAFKA_CONTROLLER_NODE_SELECTORS="0:az1-node2,1:az2-node2,2:az3-node2"
 ./strimzi-setup.sh
 ```
 
-### Scenario 4: Storage-Optimized Placement
+### Scénario 4 : placement optimisé pour le stockage
 
 ```bash
 # Pin to nodes with NVMe storage for better performance
@@ -138,7 +139,7 @@ export KAFKA_CONTROLLER_NODE_SELECTORS="0:standard-node-1,1:standard-node-1,2:st
 ./strimzi-setup.sh
 ```
 
-### Scenario 5: Partial Node Selectors
+### Scénario 5 : node selectors partiels
 
 ```bash
 # Only specify some replicas, others use default
@@ -148,13 +149,13 @@ export STRIMZI_NODE_HOSTNAME="default-node"  # broker-1 and broker-2 use this
 ./strimzi-setup.sh
 ```
 
-## Storage Considerations
+## Considérations de stockage
 
-### hostPath Mode
+### Mode hostPath
 
-When using `hostPath` storage mode with node selectors:
+Avec le mode de stockage `hostPath` et des node selectors :
 
-1. **Create directories on target nodes** before deployment:
+1. **Créez les répertoires sur les nœuds cibles** avant le déploiement :
    ```bash
    # On each target node
    sudo mkdir -p /data/strimzi/my-cluster/broker-pool-0
@@ -163,7 +164,7 @@ When using `hostPath` storage mode with node selectors:
    sudo chmod -R 755 /data/strimzi
    ```
 
-2. **PersistentVolumes are automatically created** with node affinity matching pod placement:
+2. **Les PersistentVolumes sont créés automatiquement**, avec une affinité de nœud correspondant au placement des pods :
    ```yaml
    # Example: Broker 0 on worker-1
    nodeAffinity:
@@ -176,7 +177,7 @@ When using `hostPath` storage mode with node selectors:
            - worker-1  # Matches KAFKA_BROKER_NODE_SELECTORS for broker-0
    ```
 
-3. **KafkaNodePools automatically get node affinity** to ensure pods start on nodes with their storage:
+3. **Les KafkaNodePools reçoivent automatiquement une affinité de nœud**, pour que les pods démarrent sur les nœuds qui portent leur stockage :
    ```yaml
    # Automatically injected by the script
    template:
@@ -194,14 +195,14 @@ When using `hostPath` storage mode with node selectors:
                  - worker-3
    ```
 
-   This ensures that:
-   - Pods can only be scheduled on nodes where storage exists
-   - Storage and compute are co-located for optimal performance
-   - Failed pods won't be scheduled on nodes without their data
+   Cela garantit que :
+   - les pods ne peuvent être planifiés que sur les nœuds où le stockage existe
+   - stockage et calcul restent colocalisés, pour des performances optimales
+   - un pod en échec ne sera pas replanifié sur un nœud dépourvu de ses données
 
-### PVC Mode
+### Mode PVC
 
-When using PVC mode with dynamic provisioning:
+Avec le mode PVC et le provisionnement dynamique :
 
 ```bash
 export STORAGE_MODE="pvc"
@@ -214,25 +215,25 @@ export KAFKA_BROKER_NODE_SELECTORS="0:node1,1:node2,2:node3"
 ./strimzi-setup.sh
 ```
 
-**Note:** In PVC mode, node affinity is NOT automatically injected into KafkaNodePools since the storage provisioner handles volume placement. Pods can be scheduled more flexibly based on resource availability.
+**Note :** en mode PVC, l'affinité de nœud n'est PAS injectée automatiquement dans les KafkaNodePools, puisque le provisionneur de stockage gère lui-même le placement des volumes. Les pods peuvent alors être planifiés plus librement, selon les ressources disponibles.
 
-## Pre-Deployment Validation
+## Validation avant déploiement
 
-The script performs several validation checks:
+Le script effectue plusieurs contrôles :
 
-### 1. Node Existence Check
+### 1. Contrôle d'existence des nœuds
 ```bash
 # Script validates all specified nodes exist
 # If a node doesn't exist, deployment is aborted
 ```
 
-### 2. Node Readiness Check
+### 2. Contrôle de disponibilité des nœuds
 ```bash
 # Warns if nodes are not in Ready state
 # Deployment continues with warning
 ```
 
-### 3. Storage Label Check (Optional)
+### 3. Contrôle du label de stockage (optionnel)
 ```bash
 # Checks for kafka-storage=true label
 # Informational only, not required
@@ -241,9 +242,9 @@ The script performs several validation checks:
 kubectl label node worker-1 kafka-storage=true
 ```
 
-## Testing
+## Tests
 
-### Run Test Suite
+### Lancer la suite de tests
 
 ```bash
 # Interactive test menu
@@ -259,7 +260,7 @@ kubectl label node worker-1 kafka-storage=true
 ./test-node-selectors.sh cleanup
 ```
 
-### Manual Verification
+### Vérification manuelle
 
 ```bash
 # Check pod placement
@@ -275,18 +276,18 @@ kubectl get pv -l strimzi.io/cluster=my-cluster -o yaml | grep -A5 nodeAffinity
 kubectl describe pod broker-pool-0 -n kafka | grep -A10 Events
 ```
 
-## Troubleshooting
+## Dépannage
 
-### Issue: Pods Stuck in Pending
+### Problème : pods bloqués en Pending
 
-**Symptom**: Pods remain in Pending state
+**Symptôme** : les pods restent à l'état Pending
 
-**Possible Causes**:
-1. Node doesn't have enough resources
-2. PV node affinity doesn't match pod placement
-3. Storage not available on target node
+**Causes possibles** :
+1. le nœud n'a pas assez de ressources
+2. l'affinité de nœud du PV ne correspond pas au placement du pod
+3. le stockage n'est pas disponible sur le nœud cible
 
-**Solution**:
+**Solution** :
 ```bash
 # Check pod events
 kubectl describe pod broker-pool-0 -n kafka
@@ -298,11 +299,11 @@ kubectl describe node worker-1
 kubectl get pv pv-my-cluster-broker-pool-0 -o yaml
 ```
 
-### Issue: Node Not Found Error
+### Problème : erreur « nœud introuvable »
 
-**Symptom**: Script fails with "Node not found in cluster"
+**Symptôme** : le script échoue avec « Node not found in cluster »
 
-**Solution**:
+**Solution** :
 ```bash
 # List available nodes
 kubectl get nodes
@@ -311,16 +312,16 @@ kubectl get nodes
 export KAFKA_BROKER_NODE_SELECTORS="0:actual-node-name"
 ```
 
-### Issue: Storage Not Binding
+### Problème : le stockage ne se lie pas
 
-**Symptom**: PVCs remain in Pending state
+**Symptôme** : les PVC restent à l'état Pending
 
-**Possible Causes**:
-1. PV node affinity doesn't match pod's node
-2. Storage directories don't exist on node
-3. Permissions issues
+**Causes possibles** :
+1. l'affinité de nœud du PV ne correspond pas au nœud du pod
+2. les répertoires de stockage n'existent pas sur le nœud
+3. des problèmes de permissions
 
-**Solution**:
+**Solution** :
 ```bash
 # Check PVC status
 kubectl get pvc -n kafka
@@ -332,11 +333,11 @@ kubectl get pv -o yaml | grep -B5 -A5 nodeAffinity
 ssh node-1 "ls -la /data/strimzi/my-cluster"
 ```
 
-### Issue: Uneven Distribution
+### Problème : répartition déséquilibrée
 
-**Symptom**: Multiple brokers on same node despite different selectors
+**Symptôme** : plusieurs brokers sur le même nœud malgré des selectors différents
 
-**Check**:
+**À vérifier** :
 ```bash
 # Verify environment variables
 echo $KAFKA_BROKER_NODE_SELECTORS
@@ -348,9 +349,9 @@ kubectl get pods -n kafka -o custom-columns=POD:.metadata.name,NODE:.spec.nodeNa
 kubectl get kafkanodepool broker-pool -n kafka -o yaml | grep -A10 affinity
 ```
 
-## Best Practices
+## Bonnes pratiques
 
-### 1. Label Your Nodes
+### 1. Labellisez vos nœuds
 
 ```bash
 # Label nodes by role
@@ -362,13 +363,13 @@ kubectl label node nvme-node-1 storage-type=nvme
 kubectl label node worker-1 storage-type=standard
 ```
 
-### 2. Plan Storage Layout
+### 2. Planifiez l'agencement du stockage
 
-- **Co-locate storage and compute**: Ensure PVs are on the same nodes as pods
-- **Use local storage for performance**: hostPath or local PV for best performance
-- **Consider failure domains**: Distribute across zones/racks
+- **Colocalisez stockage et calcul** : placez les PV sur les mêmes nœuds que les pods
+- **Utilisez du stockage local pour la performance** : hostPath ou PV local donnent les meilleurs résultats
+- **Pensez aux domaines de panne** : répartissez entre zones et racks
 
-### 3. Monitor Resource Usage
+### 3. Surveillez l'usage des ressources
 
 ```bash
 # Check node resources before deployment
@@ -378,16 +379,16 @@ kubectl top nodes
 kubectl top pods -n kafka
 ```
 
-### 4. Use Dedicated Nodes
+### 4. Utilisez des nœuds dédiés
 
-For production:
-- Consider dedicating nodes to Kafka
-- Use taints and tolerations for exclusive scheduling
-- Separate controller and broker nodes for large clusters
+En production :
+- envisagez de dédier des nœuds à Kafka
+- utilisez taints et tolerations pour un ordonnancement exclusif
+- séparez les nœuds controller et broker sur les grands clusters
 
-### 5. Document Your Configuration
+### 5. Documentez votre configuration
 
-Create a configuration file:
+Créez un fichier de configuration :
 ```bash
 # kafka-placement.env
 export KAFKA_BROKER_NODE_SELECTORS="0:prod-kafka-1,1:prod-kafka-2,2:prod-kafka-3"
@@ -400,9 +401,9 @@ source kafka-placement.env
 ./strimzi-setup-with-node-selectors.sh
 ```
 
-## Migration from Existing Deployment
+## Migration depuis un déploiement existant
 
-### Step 1: Backup Current Configuration
+### Étape 1 : sauvegarder la configuration actuelle
 
 ```bash
 # Export current Kafka configuration
@@ -410,7 +411,7 @@ kubectl get kafka my-cluster -n kafka -o yaml > kafka-backup.yaml
 kubectl get kafkanodepool -n kafka -o yaml > nodepool-backup.yaml
 ```
 
-### Step 2: Plan Node Mapping
+### Étape 2 : planifier l'association aux nœuds
 
 ```bash
 # Check current pod placement
@@ -419,7 +420,7 @@ kubectl get pods -n kafka -o wide
 # Plan new placement based on requirements
 ```
 
-### Step 3: Prepare Target Nodes
+### Étape 3 : préparer les nœuds cibles
 
 ```bash
 # On each target node
@@ -427,7 +428,7 @@ sudo mkdir -p /data/strimzi/my-cluster
 sudo chown -R 1001:1001 /data/strimzi
 ```
 
-### Step 4: Deploy with Node Selectors
+### Étape 4 : déployer avec les node selectors
 
 ```bash
 # Set your node mappings
@@ -437,11 +438,11 @@ export KAFKA_BROKER_NODE_SELECTORS="0:new-node-1,1:new-node-2,2:new-node-3"
 ./strimzi-setup.sh
 ```
 
-## Advanced Configuration
+## Configuration avancée
 
-### Custom Affinity Rules
+### Règles d'affinité personnalisées
 
-For more complex affinity requirements, modify the generated NodePool:
+Pour des besoins d'affinité plus complexes, modifiez le NodePool généré :
 
 ```yaml
 template:
@@ -463,22 +464,22 @@ template:
               values: ["nvme"]
 ```
 
-### Using with Kubernetes Operators
+### Usage avec les opérateurs Kubernetes
 
-The node selector configuration works with:
-- **Cluster Autoscaler**: Pre-provision or label node groups
-- **Karpenter**: Use provisioner requirements
-- **Node Feature Discovery**: Leverage hardware labels
+La configuration des node selectors fonctionne avec :
+- **Cluster Autoscaler** : préprovisionnez ou labellisez les groupes de nœuds
+- **Karpenter** : utilisez les requirements du provisioner
+- **Node Feature Discovery** : appuyez-vous sur les labels matériels
 
-## Support and Feedback
+## Support et retours
 
-For issues or questions:
-1. Check the troubleshooting section
-2. Review test output: `./test-node-selectors.sh all`
-3. Examine pod events: `kubectl describe pod <pod-name> -n kafka`
-4. Check operator logs: `kubectl logs -n strimzi -l name=strimzi-cluster-operator`
+En cas de problème ou de question :
+1. consultez la section dépannage
+2. relisez la sortie des tests : `./test-node-selectors.sh all`
+3. examinez les événements des pods : `kubectl describe pod <pod-name> -n kafka`
+4. consultez les logs de l'opérateur : `kubectl logs -n strimzi -l name=strimzi-cluster-operator`
 
-## Appendix: Complete Example
+## Annexe : exemple complet
 
 ```bash
 #!/bin/bash

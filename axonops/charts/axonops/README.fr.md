@@ -1,37 +1,37 @@
-# AxonOps Meta-Chart
+# Meta-chart AxonOps
 
-**English** | [Français](README.fr.md)
+[English](README.md) | **Français**
 
-## Overview
+## Vue d'ensemble
 
-This Helm chart deploys the complete AxonOps observability stack for Apache Cassandra and Kafka monitoring. It acts as an umbrella chart that orchestrates the deployment of all AxonOps components with sensible defaults.
+Ce chart Helm déploie la stack d'observabilité AxonOps complète pour la supervision d'Apache Cassandra et de Kafka. Il joue le rôle de chart parapluie qui orchestre le déploiement de tous les composants AxonOps avec des valeurs par défaut raisonnables.
 
-### Components
+### Composants
 
-The meta-chart deploys the following components in order:
+Le meta-chart déploie les composants suivants, dans cet ordre :
 
-1. **axondb-timeseries** - Time-series database (Cassandra 5.0.6) for metrics storage
-2. **axondb-search** - Search backend (OpenSearch 3.3.2) for logs and search functionality
-3. **axon-server** - Core AxonOps observability platform
-4. **axon-dash** - Web-based dashboard UI
+1. **axondb-timeseries** — la base time-series (Cassandra 5.0.6) de stockage des métriques
+2. **axondb-search** — le backend de recherche (OpenSearch 3.3.2) pour les logs et la recherche
+3. **axon-server** — la plateforme d'observabilité AxonOps
+4. **axon-dash** — l'interface web du dashboard
 
-All sub-charts are hosted on the AxonOps OCI registry at `ghcr.io/axonops/charts`.
+Tous les sous-charts sont hébergés sur le registre OCI AxonOps, à l'adresse `ghcr.io/axonops/charts`.
 
-## Prerequisites
+## Prérequis
 
 - Kubernetes 1.19+
 - Helm 3.8+
-- PV provisioner support in the cluster (for persistent storage)
-- Minimum cluster resources (with default 8G heap settings):
-  - 8 CPU cores
-  - 40GB RAM (for 8G heap on both databases + overhead)
-  - 200GB storage (100GB per database)
+- la prise en charge d'un provisionneur de PV dans le cluster (pour le stockage persistant)
+- des ressources minimales dans le cluster (avec les 8 Go de heap par défaut) :
+  - 8 cœurs CPU
+  - 40 Go de RAM (pour 8 Go de heap sur chacune des deux bases, plus l'overhead)
+  - 200 Go de stockage (100 Go par base)
 
 ## Installation
 
-### Quick Start
+### Démarrage rapide
 
-Deploy the complete AxonOps stack with default settings:
+Déployer la stack AxonOps complète avec les réglages par défaut :
 
 ```bash
 # Navigate to the chart directory
@@ -44,11 +44,11 @@ helm dependency update
 helm install axonops . --namespace axonops --create-namespace
 ```
 
-**Note:** The default configuration uses 8GB heap for both databases. For development environments with limited resources, see the [Resource Configuration](#resource-configuration) section below.
+**Note :** la configuration par défaut utilise 8 Go de heap pour les deux bases. Pour un environnement de développement aux ressources limitées, voir la section [Configuration des ressources](#configuration-des-ressources) ci-dessous.
 
-### Custom Installation
+### Installation personnalisée
 
-Install with custom values file:
+Installer avec un fichier de values personnalisé :
 
 ```bash
 # Create a custom values file
@@ -72,14 +72,14 @@ EOF
 helm install axonops . -f custom-values.yaml --namespace axonops --create-namespace
 ```
 
-### Production Installation
+### Installation de production
 
-For production deployments, you MUST:
+Pour un déploiement de production, vous DEVEZ :
 
-1. **Change all default passwords**
-2. **Set your organization name and license key**
-3. **Configure appropriate resource limits**
-4. **Enable persistent storage with appropriate sizes**
+1. **changer tous les mots de passe par défaut**
+2. **renseigner le nom de votre organisation et votre clé de licence**
+3. **configurer des limites de ressources adaptées**
+4. **activer le stockage persistant avec des tailles adaptées**
 
 ```bash
 # Generate secure passwords
@@ -105,23 +105,23 @@ helm install axonops . \
 
 ## Configuration
 
-### Key Configuration Parameters
+### Principaux paramètres de configuration
 
-| Parameter | Description | Default |
+| Paramètre | Description | Défaut |
 |-----------|-------------|---------|
-| `axondb-timeseries.enabled` | Enable Cassandra timeseries database | `true` |
-| `axondb-search.enabled` | Enable OpenSearch backend | `true` |
-| `axon-server.enabled` | Enable AxonOps server | `true` |
-| `axon-dash.enabled` | Enable dashboard UI | `true` |
-| `axondb-timeseries.heapSize` | JVM heap size for Cassandra | `8192M` |
-| `axondb-search.opensearchHeapSize` | JVM heap size for OpenSearch | `8g` |
-| `axon-server.config.org_name` | Your organization name | `example` |
-| `axon-server.config.license_key` | AxonOps license key | `""` |
-| `axon-server.dashboardUrl` | Public URL for dashboard | `https://axonops.example.com` |
+| `axondb-timeseries.enabled` | Activer la base time-series Cassandra | `true` |
+| `axondb-search.enabled` | Activer le backend OpenSearch | `true` |
+| `axon-server.enabled` | Activer le serveur AxonOps | `true` |
+| `axon-dash.enabled` | Activer l'interface du dashboard | `true` |
+| `axondb-timeseries.heapSize` | Taille du heap JVM de Cassandra | `8192M` |
+| `axondb-search.opensearchHeapSize` | Taille du heap JVM d'OpenSearch | `8g` |
+| `axon-server.config.org_name` | Le nom de votre organisation | `example` |
+| `axon-server.config.license_key` | Clé de licence AxonOps | `""` |
+| `axon-server.dashboardUrl` | URL publique du dashboard | `https://axonops.example.com` |
 
-### Resource Configuration
+### Configuration des ressources
 
-Default resource allocations with 8G heap for production:
+Allocations de ressources par défaut, avec 8 Go de heap pour la production :
 
 ```yaml
 axondb-timeseries:
@@ -154,7 +154,7 @@ axon-server:
       cpu: 500m
 ```
 
-For development/testing environments, you can reduce the heap sizes:
+Pour un environnement de développement ou de test, vous pouvez réduire les tailles de heap :
 
 ```yaml
 axondb-timeseries:
@@ -164,9 +164,9 @@ axondb-search:
   opensearchHeapSize: "2g"  # 2G heap for dev/test
 ```
 
-### Storage Configuration
+### Configuration du stockage
 
-Default storage configuration (100Gi per database):
+Configuration de stockage par défaut (100 Gi par base) :
 
 ```yaml
 axondb-timeseries:
@@ -182,19 +182,19 @@ axondb-search:
     # storageClass: "fast-ssd"  # Optional: specify storage class
 ```
 
-## Security
+## Sécurité
 
-### WARNING: Default Credentials
+### AVERTISSEMENT : identifiants par défaut
 
-This chart includes default passwords for development/testing purposes. **NEVER use these defaults in production!**
+Ce chart contient des mots de passe par défaut, destinés au développement et aux tests. **Ne les utilisez JAMAIS en production !**
 
-Default credentials:
-- OpenSearch admin: `admin` / `MyS3cur3P@ss2025`
-- Cassandra: `cassandra` / `cassandra`
+Identifiants par défaut :
+- administrateur OpenSearch : `admin` / `MyS3cur3P@ss2025`
+- Cassandra : `cassandra` / `cassandra`
 
-### Changing Passwords
+### Changer les mots de passe
 
-Always set custom passwords for production:
+Définissez toujours vos propres mots de passe en production :
 
 ```bash
 helm install axonops . \
@@ -204,11 +204,11 @@ helm install axonops . \
   --set axon-server.config.extraConfig.cql_password="YOUR_SECURE_PASSWORD"
 ```
 
-### Using Kubernetes Secrets for Database Credentials (Recommended)
+### Utiliser des Secrets Kubernetes pour les identifiants de base de données (recommandé)
 
-For production environments, it is recommended to store database credentials in Kubernetes secrets rather than in Helm values. This approach provides better security and allows for easier credential rotation.
+En production, il est recommandé de conserver les identifiants de base de données dans des secrets Kubernetes plutôt que dans les values Helm. Cette approche renforce la sécurité et facilite la rotation des identifiants.
 
-#### Step 1: Create the secrets
+#### Étape 1 : créer les secrets
 
 ```bash
 # Create secret for Cassandra/timeseries database credentials
@@ -222,7 +222,7 @@ kubectl create secret generic opensearch-credentials -n axonops \
   --from-literal=AXONOPS_SEARCH_PASSWORD=$(openssl rand -base64 32)
 ```
 
-#### Step 2: Configure axon-server to use the secrets
+#### Étape 2 : configurer axon-server pour utiliser les secrets
 
 ```yaml
 axon-server:
@@ -243,15 +243,15 @@ axon-server:
     # Note: username and password are ignored when search_secret is set
 ```
 
-Important notes:
+Points importants :
 
-- The Cassandra secret must contain keys: `AXONOPS_DB_USER` and `AXONOPS_DB_PASSWORD`
-- The OpenSearch secret must contain keys: `AXONOPS_SEARCH_USER` and `AXONOPS_SEARCH_PASSWORD`
-- These key names are compatible with the axondb-timeseries and axondb-search charts, allowing you to share secrets between charts
+- le secret Cassandra doit contenir les clés `AXONOPS_DB_USER` et `AXONOPS_DB_PASSWORD`
+- le secret OpenSearch doit contenir les clés `AXONOPS_SEARCH_USER` et `AXONOPS_SEARCH_PASSWORD`
+- ces noms de clés sont compatibles avec les charts axondb-timeseries et axondb-search, ce qui permet de partager les secrets entre charts
 
-### TLS Configuration
+### Configuration TLS
 
-Enable TLS for axon-server:
+Activer TLS pour axon-server :
 
 ```yaml
 axon-server:
@@ -268,11 +268,11 @@ axon-server:
         -----END PRIVATE KEY-----
 ```
 
-## Selective Deployment
+## Déploiement sélectif
 
-You can deploy only specific components by disabling others:
+Vous pouvez ne déployer que certains composants, en désactivant les autres :
 
-### Deploy only databases
+### Déployer uniquement les bases de données
 
 ```bash
 helm install axonops-db . \
@@ -280,21 +280,21 @@ helm install axonops-db . \
   --set axon-dash.enabled=false
 ```
 
-### Deploy without dashboard
+### Déployer sans le dashboard
 
 ```bash
 helm install axonops . \
   --set axon-dash.enabled=false
 ```
 
-### Deploy without search backend
+### Déployer sans le backend de recherche
 
 ```bash
 helm install axonops . \
   --set axondb-search.enabled=false
 ```
 
-### Development deployment with reduced resources
+### Déploiement de développement, à ressources réduites
 
 ```bash
 # Deploy with 2G heap for development/testing
@@ -311,20 +311,20 @@ helm install axonops-dev . \
   --set axondb-search.persistence.size=20Gi
 ```
 
-## Accessing Services
+## Accéder aux services
 
-### Dashboard Access
+### Accès au dashboard
 
-After installation, access the dashboard:
+Après installation, accédez au dashboard :
 
-1. **Port-forward** (for testing):
+1. **Port-forward** (pour les tests) :
 ```bash
 kubectl port-forward -n axonops svc/axonops-axon-dash 3000:3000
 # Access at http://localhost:3000
 ```
 
-2. **Ingress** (for production):
-Configure ingress in values:
+2. **Ingress** (pour la production) :
+Configurez l'ingress dans les values :
 ```yaml
 axon-dash:
   ingress:
@@ -341,25 +341,25 @@ axon-dash:
           - axonops.yourdomain.com
 ```
 
-### API Access
+### Accès à l'API
 
-The AxonOps API is available at:
+L'API AxonOps est disponible ainsi :
 ```bash
 kubectl port-forward -n axonops svc/axonops-axon-server-api 8080:8080
 # API at http://localhost:8080
 ```
 
-### Agent Connection
+### Connexion des agents
 
-Cassandra agents connect to:
+Les agents Cassandra se connectent à :
 
-- Service: `axonops-axon-server-agent`
-- Port: `1888`
-- Endpoint from outside cluster: Configure ingress or LoadBalancer
+- service : `axonops-axon-server-agent`
+- port : `1888`
+- endpoint depuis l'extérieur du cluster : configurez un ingress ou un LoadBalancer
 
-## Monitoring
+## Supervision
 
-### Check Pod Status
+### Vérifier l'état des pods
 
 ```bash
 # Watch pod startup
@@ -371,14 +371,14 @@ kubectl logs -n axonops statefulset/axondb-timeseries
 kubectl logs -n axonops statefulset/axondb-search-cluster-master
 ```
 
-### Expected Startup Order
+### Ordre de démarrage attendu
 
-1. `axondb-timeseries-0` - Should be Running first
-2. `axondb-search-cluster-master-0` - Should be Running second
-3. `axonops-axon-server-*` - Starts after databases are ready
-4. `axonops-axon-dash-*` - Starts last
+1. `axondb-timeseries-0` — doit passer Running en premier
+2. `axondb-search-cluster-master-0` — doit passer Running en deuxième
+3. `axonops-axon-server-*` — démarre une fois les bases prêtes
+4. `axonops-axon-dash-*` — démarre en dernier
 
-### Verify Services
+### Vérifier les services
 
 ```bash
 # List all services
@@ -394,7 +394,7 @@ kubectl get svc -n axonops
 # - axonops-axon-dash
 ```
 
-### Test Connectivity
+### Tester la connectivité
 
 ```bash
 # Test OpenSearch
@@ -406,60 +406,60 @@ kubectl exec -n axonops deploy/axonops-axon-server -- \
   nc -zv axondb-timeseries-headless 9042
 ```
 
-## Troubleshooting
+## Dépannage
 
-### Pods Not Starting
+### Les pods ne démarrent pas
 
-1. **Check events**:
+1. **Consultez les événements** :
 ```bash
 kubectl describe pod -n axonops <pod-name>
 ```
 
-2. **Check logs**:
+2. **Consultez les logs** :
 ```bash
 kubectl logs -n axonops <pod-name> --previous
 ```
 
-3. **Common issues**:
-- Insufficient resources: Increase memory/CPU limits
-- Storage issues: Check PVC status
-- Image pull errors: Check registry access
+3. **Problèmes courants** :
+- ressources insuffisantes : augmentez les limites mémoire / CPU
+- problèmes de stockage : vérifiez l'état des PVC
+- erreurs de pull d'image : vérifiez l'accès au registre
 
-### Service Connection Issues
+### Problèmes de connexion aux services
 
-1. **Verify DNS resolution**:
+1. **Vérifiez la résolution DNS** :
 ```bash
 kubectl exec -n axonops deploy/axonops-axon-server -- nslookup axondb-timeseries-headless
 ```
 
-2. **Check service endpoints**:
+2. **Vérifiez les endpoints des services** :
 ```bash
 kubectl get endpoints -n axonops
 ```
 
-3. **Test port connectivity**:
+3. **Testez la connectivité des ports** :
 ```bash
 kubectl exec -n axonops deploy/axonops-axon-server -- nc -zv axondb-search-cluster-master 9200
 ```
 
-### Database Issues
+### Problèmes de base de données
 
-**Cassandra not ready**:
+**Cassandra n'est pas prêt** :
 ```bash
 # Check Cassandra status
 kubectl exec -n axonops axondb-timeseries-0 -- nodetool status
 ```
 
-**OpenSearch not ready**:
+**OpenSearch n'est pas prêt** :
 ```bash
 # Check cluster health
 kubectl exec -n axonops axondb-search-cluster-master-0 -- \
   curl -k -u admin:MyS3cur3P@ss2025 https://localhost:9200/_cluster/health?pretty
 ```
 
-### Reinstalling
+### Réinstaller
 
-If you need to reinstall:
+S'il vous faut réinstaller :
 
 ```bash
 # Uninstall
@@ -472,40 +472,40 @@ kubectl delete pvc -n axonops --all
 helm install axonops . --namespace axonops --create-namespace
 ```
 
-## Testing
+## Tests
 
-### Dependency Version Validation
+### Validation des versions de dépendances
 
-The meta-chart includes automated validation that ensures the dependency versions in `Chart.yaml` match the actual versions of the individual sub-charts. This validation runs automatically in GitHub Actions on every push and pull request.
+Le meta-chart embarque une validation automatisée qui vérifie que les versions de dépendances déclarées dans `Chart.yaml` correspondent aux versions réelles des sous-charts. Cette validation s'exécute automatiquement dans GitHub Actions à chaque push et à chaque pull request.
 
-**What it validates:**
+**Ce qu'elle valide :**
 
-- All dependency versions in the meta-chart match the actual sub-chart versions
-- No version mismatches exist before building dependencies
-- The chart is ready for release
+- toutes les versions de dépendances du meta-chart correspondent aux versions réelles des sous-charts
+- aucun écart de version ne subsiste avant la construction des dépendances
+- le chart est prêt pour une release
 
-**CI/CD Integration:**
+**Intégration CI/CD :**
 
-The validation runs as part of the `helm-charts-test.yml` workflow in the `validate-dependency-versions` job:
+La validation s'exécute dans le workflow `helm-charts-test.yml`, dans le job `validate-dependency-versions` :
 
-- ✅ Automatically runs on pushes to development and feature branches
-- ✅ Runs on pull requests to main and development branches
-- ✅ Can be triggered manually via workflow_dispatch
-- ✅ Fast execution (~30 seconds)
-- ✅ Fails the build if versions don't match
+- ✅ s'exécute automatiquement sur les push vers development et les branches de fonctionnalité
+- ✅ s'exécute sur les pull requests vers main et development
+- ✅ peut être déclenchée manuellement via workflow_dispatch
+- ✅ exécution rapide (environ 30 secondes)
+- ✅ fait échouer le build si les versions ne correspondent pas
 
-**What happens on failure:**
+**Que se passe-t-il en cas d'échec :**
 
-If a version mismatch is detected, the workflow will fail with a clear message showing:
+Si un écart de version est détecté, le workflow échoue avec un message explicite qui indique :
 
-- Which chart has a mismatch
-- The expected version (from the sub-chart)
-- The version specified in the meta-chart dependencies
-- Instructions on how to fix it
+- quel chart présente l'écart
+- la version attendue (celle du sous-chart)
+- la version indiquée dans les dépendances du meta-chart
+- la marche à suivre pour corriger
 
-## Upgrade
+## Mise à jour
 
-To upgrade the deployment:
+Pour mettre le déploiement à jour :
 
 ```bash
 # Update dependencies
@@ -515,9 +515,9 @@ helm dependency update
 helm upgrade axonops . -n axonops
 ```
 
-## Uninstall
+## Désinstallation
 
-To remove the deployment:
+Pour supprimer le déploiement :
 
 ```bash
 # Uninstall the chart
@@ -530,17 +530,17 @@ kubectl delete namespace axonops
 kubectl delete pvc -n axonops --all
 ```
 
-## Values Reference
+## Référence des values
 
-See [values.yaml](values.yaml) for the complete list of configuration options with detailed comments.
+Voir [values.yaml](values.yaml) pour la liste complète des options de configuration, avec des commentaires détaillés.
 
 ## Support
 
-For issues, questions, or contributions:
-- GitHub: https://github.com/axonops/axonops-containers
-- Email: info@axonops.com
-- Documentation: https://axonops.com/docs
+Pour les problèmes, questions ou contributions :
+- GitHub : https://github.com/axonops/axonops-containers
+- E-mail : info@axonops.com
+- Documentation : https://axonops.com/docs
 
-## License
+## Licence
 
-Copyright AxonOps. All rights reserved.
+Copyright AxonOps. Tous droits réservés.

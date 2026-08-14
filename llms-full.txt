@@ -851,8 +851,10 @@ source without seeing that a translation exists.
   `examples/K8SSANDRA_DEPLOYMENT.md`, `examples/STRIMZI_DEPLOYMENT.md`,
   `examples/NODE_SELECTOR_GUIDE.md`
 
-Files are added to the list in `.github/workflows/docs-translations.yml` as
-their translations land — a file is only enforced once it has been translated.
+Every file on that list is translated, and all of them are enforced by
+`.github/workflows/docs-translations.yml`. A new in-scope document is added to
+that workflow's list once its translation lands — a file is only enforced when
+it has actually been translated.
 
 **Deliberately English-only:**
 - `DEVELOPMENT.md`, `RELEASE.md`, `PIPELINES.md` — contributor-facing, and they
@@ -1589,6 +1591,8 @@ See component-specific RELEASE.md files for detailed instructions.
 # Source: axonops/axondb-timeseries/README.md
 
 # AxonDB Time-Series Database
+
+**English** | [Français](README.fr.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-timeseries)
 
@@ -3851,6 +3855,8 @@ For general usage and features, see [README.md](./README.md).
 # Source: axonops/axondb-search/README.md
 
 # AxonDB Search Database
+
+**English** | [Français](README.fr.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-search)
 
@@ -6788,6 +6794,8 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonOps Schema Registry
 
+**English** | [Français](README.fr.md)
+
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axonops-schema-registry)
 
 Production-ready Confluent-compatible Kafka Schema Registry with multi-backend storage support, built on Red Hat UBI 9.
@@ -8291,6 +8299,8 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonOps Apache Cassandra Container
 
+**English** | [Français](README.fr.md)
+
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/cassandra%2Fcassandra)
 
 Apache Cassandra with the AxonOps monitoring and management agent, without the K8ssandra Management API. For running Cassandra outside Kubernetes, or inside it without the K8ssandra Operator.
@@ -8495,6 +8505,8 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at [axonop
 # Source: k8ssandra/README.md
 
 # AxonOps K8ssandra Containers
+
+**English** | [Français](README.fr.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/k8ssandra%2Fcassandra)
 
@@ -10864,6 +10876,8 @@ After publishing:
 
 # AxonOps Strimzi Kafka
 
+**English** | [Français](README.fr.md)
+
 This repository provides custom Strimzi Kafka container images with integrated AxonOps monitoring and observability components.
 
 ## Overview
@@ -11519,6 +11533,8 @@ For the latest compatibility information, check individual chart documentation.
 
 # AxonOps Meta-Chart
 
+**English** | [Français](README.fr.md)
+
 ## Overview
 
 This Helm chart deploys the complete AxonOps observability stack for Apache Cassandra and Kafka monitoring. It acts as an umbrella chart that orchestrates the deployment of all AxonOps components with sensible defaults.
@@ -12067,6 +12083,8 @@ Copyright AxonOps. All rights reserved.
 # Source: axonops/charts/axon-server/README.md
 
 # AxonOps Server
+
+**English** | [Français](README.fr.md)
 
 ![Version: 2.1.3](https://img.shields.io/badge/Version-2.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
@@ -13359,6 +13377,8 @@ For additional support:
 
 # AxonOps Dashboard
 
+**English** | [Français](README.fr.md)
+
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Dashboard - the web-based user interface for the AxonOps observability platform. The dashboard provides a rich UI for monitoring Apache Cassandra clusters, viewing metrics, configuring alerts, and managing backups.
@@ -14290,6 +14310,8 @@ For additional support:
 # Source: axonops/charts/axondb-timeseries/README.md
 
 # AxonOps Timeseries Database
+
+**English** | [Français](README.fr.md)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 5.0.5-1.0.0](https://img.shields.io/badge/AppVersion-5.0.5--1.0.0-informational?style=flat-square)
 
@@ -15423,6 +15445,8 @@ Remember that hostPath is best suited for single-node deployments and testing sc
 # Source: axonops/charts/axondb-search/README.md
 
 # AxonOps Search DB
+
+**English** | [Français](README.fr.md)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.3.2-1.1.0](https://img.shields.io/badge/AppVersion-3.3.2--1.1.0-informational?style=flat-square)
 
@@ -18252,6 +18276,8 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # On-Premises Deployment Guide
 
+**English** | [Français](DEPLOYMENT_GUIDE.fr.md)
+
 Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
 
 ## Overview
@@ -18524,6 +18550,8 @@ kubectl get pods -n k8ssandra-operator
 # Source: examples/AXONOPS_DEPLOYMENT.md
 
 # AxonOps Deployment Guide
+
+**English** | [Français](AXONOPS_DEPLOYMENT.fr.md)
 
 This guide covers deploying AxonOps monitoring and management services on Kubernetes.
 
@@ -19006,6 +19034,8 @@ Ready-to-use configurations are available in the [axonops/](axonops/) directory:
 
 # K8ssandra Deployment Guide
 
+**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md)
+
 This guide covers deploying Apache Cassandra using the K8ssandra operator on Kubernetes, with optional AxonOps monitoring integration.
 
 ## Quick Start
@@ -19391,6 +19421,8 @@ kubectl delete namespace k8ssandra-operator
 
 # Strimzi Kafka Deployment Guide
 
+**English** | [Français](STRIMZI_DEPLOYMENT.fr.md)
+
 This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
 
 ## Quick Start
@@ -19475,6 +19507,8 @@ Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before 
 # Source: examples/NODE_SELECTOR_GUIDE.md
 
 # Strimzi Node Selector Configuration Guide
+
+**English** | [Français](NODE_SELECTOR_GUIDE.fr.md)
 
 ## Overview
 

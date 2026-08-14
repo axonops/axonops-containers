@@ -90,6 +90,22 @@ French translations sit next to their English source as `<name>.fr.md`. The Engl
 - [docker-compose/01-cassandra-cluster/README.fr.md](docker-compose/01-cassandra-cluster/README.fr.md)
 - [docker-compose/02-saas-cassandra-cluster/README.fr.md](docker-compose/02-saas-cassandra-cluster/README.fr.md)
 - [docker-compose/03-secure-3-rack-cluster/README.fr.md](docker-compose/03-secure-3-rack-cluster/README.fr.md)
+- [cassandra/README.fr.md](cassandra/README.fr.md)
+- [strimzi/README.fr.md](strimzi/README.fr.md)
+- [axonops-schema-registry/README.fr.md](axonops-schema-registry/README.fr.md)
+- [examples/DEPLOYMENT_GUIDE.fr.md](examples/DEPLOYMENT_GUIDE.fr.md)
+- [examples/AXONOPS_DEPLOYMENT.fr.md](examples/AXONOPS_DEPLOYMENT.fr.md)
+- [examples/K8SSANDRA_DEPLOYMENT.fr.md](examples/K8SSANDRA_DEPLOYMENT.fr.md)
+- [examples/STRIMZI_DEPLOYMENT.fr.md](examples/STRIMZI_DEPLOYMENT.fr.md)
+- [examples/NODE_SELECTOR_GUIDE.fr.md](examples/NODE_SELECTOR_GUIDE.fr.md)
+- [axonops/charts/axonops/README.fr.md](axonops/charts/axonops/README.fr.md)
+- [axonops/charts/axon-dash/README.fr.md](axonops/charts/axon-dash/README.fr.md)
+- [axonops/charts/axon-server/README.fr.md](axonops/charts/axon-server/README.fr.md)
+- [axonops/charts/axondb-search/README.fr.md](axonops/charts/axondb-search/README.fr.md)
+- [axonops/charts/axondb-timeseries/README.fr.md](axonops/charts/axondb-timeseries/README.fr.md)
+- [k8ssandra/README.fr.md](k8ssandra/README.fr.md)
+- [axonops/axondb-timeseries/README.fr.md](axonops/axondb-timeseries/README.fr.md)
+- [axonops/axondb-search/README.fr.md](axonops/axondb-search/README.fr.md)
 
 ## Optional
 

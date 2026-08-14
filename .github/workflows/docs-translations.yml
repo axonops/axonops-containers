@@ -35,6 +35,22 @@ jobs:
             "docker-compose/01-cassandra-cluster/README.md"
             "docker-compose/02-saas-cassandra-cluster/README.md"
             "docker-compose/03-secure-3-rack-cluster/README.md"
+            "cassandra/README.md"
+            "strimzi/README.md"
+            "axonops-schema-registry/README.md"
+            "examples/DEPLOYMENT_GUIDE.md"
+            "examples/AXONOPS_DEPLOYMENT.md"
+            "examples/K8SSANDRA_DEPLOYMENT.md"
+            "examples/STRIMZI_DEPLOYMENT.md"
+            "examples/NODE_SELECTOR_GUIDE.md"
+            "axonops/charts/axonops/README.md"
+            "axonops/charts/axon-dash/README.md"
+            "axonops/charts/axon-server/README.md"
+            "axonops/charts/axondb-search/README.md"
+            "axonops/charts/axondb-timeseries/README.md"
+            "k8ssandra/README.md"
+            "axonops/axondb-timeseries/README.md"
+            "axonops/axondb-search/README.md"
           )
           LANGS=(fr)
 
