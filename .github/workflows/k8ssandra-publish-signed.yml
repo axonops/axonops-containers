@@ -24,10 +24,58 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/k8ssandra/cassandra
-  ALL_VERSIONS: "5.0.3 5.0.4 5.0.5 5.0.6 5.0.7 5.0.8"
 
 jobs:
+  # Every version list in this workflow comes from versions.yaml. Nothing below
+  # hardcodes a Cassandra version: a list repeated in a workflow file drifts
+  # silently from the one next to it, which is how 5.0.1 and 5.0.2 came to be
+  # built here but left out of ALL_VERSIONS.
+  k8ssandra-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.result }}
+      all_versions: ${{ steps.all.outputs.result }}
+      newest: ${{ steps.newest.outputs.result }}
+      newest_line: ${{ steps.api.outputs.newest_line }}
+      api_version: ${{ steps.api.outputs.api_version }}
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Validate build matrix against available k8ssandra base images
+        run: ./scripts/build-matrix.sh check --k8ssandra-versions '${{ vars.K8SSANDRA_VERSIONS }}'
+
+      - name: Build matrix
+        id: matrix
+        run: ./scripts/build-matrix.sh versions
+
+      - name: All versions
+        id: all
+        run: ./scripts/build-matrix.sh space-separated
+
+      - name: Newest version
+        id: newest
+        run: ./scripts/build-matrix.sh newest
+
+      # The release notes quote the Cassandra line and the Management API
+      # version. Both are read from the same values the build uses, so the notes
+      # cannot claim a version the images were not built against.
+      - name: k8ssandra Management API version and newest line
+        id: api
+        env:
+          K8SSANDRA_VERSIONS: ${{ vars.K8SSANDRA_VERSIONS }}
+          NEWEST: ${{ steps.newest.outputs.result }}
+        run: |
+          set -euo pipefail
+          KEY=$(jq -r --arg v "$NEWEST" 'keys[] | select(startswith($v + "+"))' <<<"$K8SSANDRA_VERSIONS")
+          [ -n "$KEY" ] || { echo "ERROR: no K8SSANDRA_VERSIONS key for $NEWEST"; exit 1; }
+          echo "api_version=${KEY#*+}" >> "$GITHUB_OUTPUT"
+          echo "newest_line=$(echo "$NEWEST" | cut -d. -f1,2)" >> "$GITHUB_OUTPUT"
+
   k8ssandra-validate:
+    needs: k8ssandra-versions
     runs-on: ubuntu-latest
     permissions:
       packages: read
@@ -56,7 +104,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Checking if version ${{ inputs.container_version }} exists at new path..."
-          VERSIONS="${{ env.ALL_VERSIONS }}"
+          VERSIONS="${{ needs.k8ssandra-versions.outputs.all_versions }}"
           for VERSION in $VERSIONS; do
             TAG="${VERSION}-${{ inputs.container_version }}"
             echo "Checking for tag: $TAG in k8ssandra/cassandra"
@@ -69,7 +117,7 @@ jobs:
           echo "✓ Container version ${{ inputs.container_version }} is available"
 
   k8ssandra-test:
-    needs: k8ssandra-validate
+    needs: [k8ssandra-versions, k8ssandra-validate]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -77,7 +125,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cassandra_version: [5.0.8]
+        cassandra_version: ["${{ needs.k8ssandra-versions.outputs.newest }}"]
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
@@ -210,7 +258,7 @@ jobs:
           docker rm cassandra-test || true
 
   k8ssandra-create-release:
-    needs: k8ssandra-test
+    needs: [k8ssandra-versions, k8ssandra-test]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -225,14 +273,79 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         uses: actions/github-script@v7
+        env:
+          CONTAINER_VERSION: ${{ inputs.container_version }}
+          GIT_TAG: ${{ inputs.main_git_tag }}
+          CASSANDRA_VERSIONS: ${{ needs.k8ssandra-versions.outputs.matrix }}
+          NEWEST: ${{ needs.k8ssandra-versions.outputs.newest }}
+          NEWEST_LINE: ${{ needs.k8ssandra-versions.outputs.newest_line }}
+          API_VERSION: ${{ needs.k8ssandra-versions.outputs.api_version }}
         with:
           script: |
+            // Everything version-shaped in these notes is derived from
+            // versions.yaml and K8SSANDRA_VERSIONS. Writing the list out by
+            // hand here is how the notes came to advertise a version set that
+            // no longer matched what the matrix built.
+            const image = 'ghcr.io/axonops/k8ssandra/cassandra';
+            const containerVersion = process.env.CONTAINER_VERSION;
+            const versions = JSON.parse(process.env.CASSANDRA_VERSIONS);
+            const newest = process.env.NEWEST;
+            const line = process.env.NEWEST_LINE;
+            const api = process.env.API_VERSION;
+            // Three tags per version, plus `{line}-latest` and `latest`.
+            const tagCount = versions.length * 3 + 2;
+            const immutable = `${newest}-v${api}-${containerVersion}`;
+
+            const flags = [
+              '  --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \\',
+              '  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\',
+              `  ${image}:${immutable}`,
+            ].join('\n');
+            const verify = [
+              ['# Using cosign binary', 'cosign verify \\'],
+              ['# Using cosign container (no installation required)', 'docker run --rm gcr.io/projectsigstore/cosign:latest verify \\'],
+              ['# Or with podman', 'podman run --rm gcr.io/projectsigstore/cosign:latest verify \\'],
+            ].map(([comment, cmd]) => `${comment}\n${cmd}\n${flags}`).join('\n\n');
+
+            const body = [
+              `K8ssandra signed container images release ${containerVersion}`,
+              '',
+              `Built from git tag: ${process.env.GIT_TAG}`,
+              '',
+              `**Image path:** ${image}`,
+              '**Signing:** Keyless signing with Sigstore Cosign',
+              `**k8ssandra API:** v${api} (all versions)`,
+              '',
+              `**Published:** ${tagCount} total tags across ${versions.length} Cassandra ${line} versions`,
+              `**Cassandra versions:** ${versions.join(', ')}`,
+              '',
+              '**Tagging strategy (3D versioning):**',
+              `- Fully immutable: \`{CASS}-v{K8S_API}-{AXON}\` (e.g., \`${immutable}\`)`,
+              `- k8ssandra-floating: \`{CASS}-v{K8S_API}\` (e.g., \`${newest}-v${api}\`)`,
+              `- Cassandra-floating: \`{CASS}\` (e.g., \`${newest}\`)`,
+              `- Minor-latest: \`${line}-latest\` (points to ${newest})`,
+              `- Global-latest: \`latest\` (points to ${newest})`,
+              '',
+              `**Example tags for ${newest}:**`,
+              `- \`${immutable}\` (immutable)`,
+              `- \`${newest}-v${api}\` (latest AxonOps for this Cassandra + k8ssandra combo)`,
+              `- \`${newest}\` (latest k8ssandra API + AxonOps for Cassandra ${newest})`,
+              `- \`${line}-latest\` (latest ${line}.x minor)`,
+              '- `latest` (global latest)',
+              '',
+              '**Verify signatures:**',
+              '',
+              '```bash',
+              verify,
+              '```',
+            ].join('\n');
+
             const release = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: '${{ inputs.main_git_tag }}',
-              name: `k8ssandra-${{ inputs.container_version }}`,
-              body: `K8ssandra signed container images release ${{ inputs.container_version }}\n\nBuilt from git tag: ${{ inputs.main_git_tag }}\n\n**Image path:** ghcr.io/axonops/k8ssandra/cassandra\n**Signing:** Keyless signing with Sigstore Cosign\n**k8ssandra API:** v0.1.120 (all versions)\n\n**Published:** 24 total tags across 8 Cassandra 5.0 versions\n**Cassandra versions:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8\n\n**Tagging strategy (3D versioning):**\n- Fully immutable: \`{CASS}-v{K8S_API}-{AXON}\` (e.g., \`5.0.8-v0.1.120-${{ inputs.container_version }}\`)\n- k8ssandra-floating: \`{CASS}-v{K8S_API}\` (e.g., \`5.0.8-v0.1.120\`)\n- Cassandra-floating: \`{CASS}\` (e.g., \`5.0.8\`)\n- Minor-latest: \`5.0-latest\` (points to 5.0.8)\n- Global-latest: \`latest\` (points to 5.0.8)\n\n**Example tags for 5.0.8:**\n- \`5.0.8-v0.1.120-${{ inputs.container_version }}\` (immutable)\n- \`5.0.8-v0.1.120\` (latest AxonOps for this Cassandra + k8ssandra combo)\n- \`5.0.8\` (latest k8ssandra API + AxonOps for Cassandra 5.0.8)\n- \`5.0-latest\` (latest 5.0.x minor)\n- \`latest\` (global latest)\n\n**Verify signatures:**\n\n\`\`\`bash\n# Using cosign binary\ncosign verify \\\n  --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \\\n  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\\n  ghcr.io/axonops/k8ssandra/cassandra:5.0.8-v0.1.120-${{ inputs.container_version }}\n\n# Using cosign container (no installation required)\ndocker run --rm gcr.io/projectsigstore/cosign:latest verify \\\n  --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \\\n  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\\n  ghcr.io/axonops/k8ssandra/cassandra:5.0.8-v0.1.120-${{ inputs.container_version }}\n\n# Or with podman\npodman run --rm gcr.io/projectsigstore/cosign:latest verify \\\n  --certificate-identity-regexp="https://github.com/axonops/axonops-containers" \\\n  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\\n  ghcr.io/axonops/k8ssandra/cassandra:5.0.8-v0.1.120-${{ inputs.container_version }}\n\`\`\``,
+              tag_name: process.env.GIT_TAG,
+              name: `k8ssandra-${containerVersion}`,
+              body,
               draft: false,
               prerelease: false
             });
@@ -240,7 +353,7 @@ jobs:
             return release.data.id;
 
   k8ssandra-build-push-sign:
-    needs: [k8ssandra-test, k8ssandra-create-release]
+    needs: [k8ssandra-versions, k8ssandra-test, k8ssandra-create-release]
     runs-on: ubuntu-latest
     strategy:
       # One version failing must not cancel the others: a cancelled publish job
@@ -248,7 +361,7 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8]
+        cassandra_version: ${{ fromJSON(needs.k8ssandra-versions.outputs.matrix) }}
     permissions:
       contents: read
       packages: write
@@ -300,7 +413,7 @@ jobs:
         uses: ./.github/actions/k8ssandra-determine-latest
         with:
           current_version: ${{ matrix.cassandra_version }}
-          all_versions: ${{ env.ALL_VERSIONS }}
+          all_versions: ${{ needs.k8ssandra-versions.outputs.all_versions }}
 
       # Pushed by digest only: no tag exists until the image has passed its
       # tests and been signed, so a failure here leaves nothing pullable.

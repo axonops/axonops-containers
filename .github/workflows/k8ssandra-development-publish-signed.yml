@@ -29,7 +29,42 @@ env:
   IMAGE_NAME: axonops/development/k8ssandra/cassandra
 
 jobs:
+  # Version lists come from versions.yaml only - see the k8ssandra-versions job
+  # in k8ssandra-publish-signed.yml. Development and production must build the
+  # same set, or the floating tags resolve to different versions in each.
+  k8ssandra-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.result }}
+      newest: ${{ steps.newest.outputs.result }}
+      newest_line: ${{ steps.line.outputs.newest_line }}
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dev_git_tag }}
+
+      - name: Validate build matrix against available k8ssandra base images
+        run: ./scripts/build-matrix.sh check --k8ssandra-versions '${{ vars.K8SSANDRA_VERSIONS }}'
+
+      - name: Build matrix
+        id: matrix
+        run: ./scripts/build-matrix.sh versions
+
+      - name: Newest version
+        id: newest
+        run: ./scripts/build-matrix.sh newest
+
+      # The line the floating `{line}-latest` tag belongs to, taken from the
+      # newest version rather than written out, so it follows a move to 5.1.
+      - name: Newest published line
+        id: line
+        env:
+          NEWEST: ${{ steps.newest.outputs.result }}
+        run: echo "newest_line=$(echo "$NEWEST" | cut -d. -f1,2)" >> "$GITHUB_OUTPUT"
+
   k8ssandra-test:
+    needs: k8ssandra-versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cassandra_version: [5.0.8]
+        cassandra_version: ["${{ needs.k8ssandra-versions.outputs.newest }}"]
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
@@ -201,12 +236,12 @@ jobs:
           docker rm cassandra-test || true
 
   k8ssandra-build-push-sign:
-    needs: k8ssandra-test
+    needs: [k8ssandra-versions, k8ssandra-test]
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 3
       matrix:
-        cassandra_version: [5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8]
+        cassandra_version: ${{ fromJSON(needs.k8ssandra-versions.outputs.matrix) }}
     permissions:
       contents: read
       packages: write
@@ -290,8 +325,8 @@ jobs:
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-v${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}
-            ${{ matrix.cassandra_version == '5.0.8' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
-            ${{ matrix.cassandra_version == '5.0.8' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == needs.k8ssandra-versions.outputs.newest && format('ghcr.io/{0}:{1}-latest', env.IMAGE_NAME, needs.k8ssandra-versions.outputs.newest_line) || '' }}
+            ${{ matrix.cassandra_version == needs.k8ssandra-versions.outputs.newest && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}
@@ -322,8 +357,8 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.cassandra_version }}-latest
-            ${{ matrix.cassandra_version == '5.0.8' && format('ghcr.io/{0}:5.0-latest', env.IMAGE_NAME) || '' }}
-            ${{ matrix.cassandra_version == '5.0.8' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
+            ${{ matrix.cassandra_version == needs.k8ssandra-versions.outputs.newest && format('ghcr.io/{0}:{1}-latest', env.IMAGE_NAME, needs.k8ssandra-versions.outputs.newest_line) || '' }}
+            ${{ matrix.cassandra_version == needs.k8ssandra-versions.outputs.newest && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             CASSANDRA_VERSION=${{ matrix.cassandra_version }}
             MAJOR_VERSION=${{ steps.version.outputs.base_version }}

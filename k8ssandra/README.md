@@ -16,6 +16,7 @@ Docker containers for Apache Cassandra with integrated AxonOps monitoring and ma
 - [Quick Start with Docker/Podman](#quick-start-with-dockerpodman)
   - [Using with Kubernetes](#using-with-kubernetes-k8ssandra)
 - [Prerequisites](#prerequisites)
+- [Cassandra Lines](#cassandra-lines)
 - [Getting Started](#getting-started)
 - [Building Docker Images](#building-docker-images)
   - [Adding Support for New Cassandra Versions](#adding-support-for-new-cassandra-versions)
@@ -92,25 +93,44 @@ When `5.0.6-v0.1.110-1.0.0` is built (and it's the latest of everything):
 
 ### Supported Cassandra Versions
 
-**Currently Supported:**
-- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8 (8 versions)
+The version list lives in one place: the `build_matrix` section of
+[`versions.yaml`](../versions.yaml) at the repository root. Every workflow matrix,
+floating tag and default version is derived from it, so this README cannot fall out of
+step with what is actually built. Read the current list with:
 
-The newest supported line is 5.0.8.
+```bash
+./scripts/build-matrix.sh versions      # every published version
+./scripts/build-matrix.sh newest        # what `latest` resolves to
+```
 
-**Not supported:**
-- **5.0.9:** Apache Cassandra 5.0.9 is released upstream, but k8ssandra publishes no
-  `cass-management-api` image for it. These images are built `FROM` that base, so 5.0.9
-  cannot be built here until k8ssandra ships it. Check with:
+**Currently published:**
+- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8 (8 versions).
+  The newest is 5.0.8, so `latest` and `5.0-latest` resolve to it.
+
+**Support policy.** A Cassandra patch release is added to the matrix when two things
+are true: Apache has released it, and k8ssandra has published a matching
+`cass-management-api` base image. These images are built `FROM` that base, so the
+second condition is hard — a version added early fails every build job for it with
+"No k8ssandra version found". Nothing is removed from the matrix when a newer patch
+appears; older patches keep being built and scanned so an existing deployment can stay
+on its pinned version and still receive rebuilds. A line is dropped only when it is
+end-of-life upstream, and that is recorded in `versions.yaml` with a reason.
+
+**Not built:**
+- **5.0.9:** released by Apache, but k8ssandra publishes no 5.0.9
+  `cass-management-api` image. Check whether one has appeared with:
 
   ```bash
   curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/tags?page_size=100&name=5.0.9-ubi" | \
     jq -r '.results[].name'
   ```
 
-  When a 5.0.9 base appears, follow [Adding Support for New Cassandra Versions](#adding-support-for-new-cassandra-versions).
-
-**Future Support:**
-- **4.0.x and 4.1.x:** Available in repository but not yet published due to AxonOps agent compatibility issues. Reach out if you need these versions.
+  When it does, follow [Adding Support for New Cassandra Versions](#adding-support-for-new-cassandra-versions).
+- **4.0.x and 4.1.x:** Dockerfiles are maintained in `k8ssandra/4.0/` and
+  `k8ssandra/4.1/`, but no image is published — the AxonOps agent is not yet compatible
+  with the JDK 11 based 4.x base images. Both lines are declared `published: false` in
+  `versions.yaml` with that reason, and every workflow skips them. Reach out if you need
+  them.
 
 Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-containers/pkgs/container/k8ssandra%2Fcassandra)
 
@@ -208,26 +228,23 @@ See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instruction
   - Linux: Usually pre-installed, or `apt install gettext` / `yum install gettext`
 - AxonOps account with valid API key and organization ID (see [AxonOps Cloud Setup Guide](https://docs.axonops.com/get_started/cloud/))
 
-## Supported Cassandra Versions
+## Cassandra Lines
 
-### Cassandra 5.0 (Currently Supported)
-- Base Image: `k8ssandra/cass-management-api:5.0-ubi`
-- Supported versions: 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6 (6 versions)
-- JDK: JDK17
-- Includes: AxonOps Agent, cqlai, jemalloc
-- Location: `k8ssandra/5.0/` directory
+Which versions are built, and the policy behind that, is in
+[Supported Cassandra Versions](#supported-cassandra-versions) above — the list is not
+repeated here, because the copy that used to sit in this section said 5.0.1 to 5.0.6
+long after 5.0.7 and 5.0.8 were being published. What follows is what differs between
+the lines.
 
-### Cassandra 4.1 (Available but not published)
-- Base Image: `k8ssandra/cass-management-api:4.1-ubi`
-- Status: Code ready in `k8ssandra/4.1/` but not published due to AxonOps agent compatibility issues
-- JDK: JDK11
-- Contact us if you need 4.1 support
+| Line | Base image | JDK | Build directory | Published |
+|------|------------|-----|-----------------|-----------|
+| 5.0 | `k8ssandra/cass-management-api:5.0-ubi` | 17 | `k8ssandra/5.0/` | Yes |
+| 4.1 | `k8ssandra/cass-management-api:4.1-ubi` | 11 | `k8ssandra/4.1/` | No — AxonOps agent compatibility |
+| 4.0 | `k8ssandra/cass-management-api:4.0-ubi` | 11 | `k8ssandra/4.0/` | No — AxonOps agent compatibility |
 
-### Cassandra 4.0 (Available but not published)
-- Base Image: `k8ssandra/cass-management-api:4.0-ubi`
-- Status: Code ready in `k8ssandra/4.0/` but not published due to AxonOps agent compatibility issues
-- JDK: JDK11
-- Contact us if you need 4.0 support
+Every line includes the AxonOps Agent, cqlai and jemalloc. Base images are pinned by
+digest, never by the tag shown above — see
+[Supply Chain Security](#adding-support-for-new-cassandra-versions).
 
 ## Getting Started
 
@@ -375,21 +392,37 @@ gh variable set K8SSANDRA_VERSIONS --body '{
 }'
 ```
 
-**3. Update workflow matrix:**
+**3. Add the version to `versions.yaml`:**
 
-In `.github/workflows/k8ssandra-*-signed.yml`, add `5.0.7` to the matrix:
-
-```yaml
-matrix:
-  cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7]
-```
-
-**4. Update `ALL_VERSIONS` env var:**
+The build matrix lives in one place. Append the new version to the end of its line's
+`versions` list in the `build_matrix` section of [`versions.yaml`](../versions.yaml) —
+the list is oldest first and the last entry is what the floating `latest` and
+`{line}-latest` tags resolve to, so ordering matters and nothing sorts it for you:
 
 ```yaml
-env:
-  ALL_VERSIONS: "5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6 5.0.7"
+build_matrix:
+  lines:
+    - line: "5.0"
+      published: true
+      versions:
+        - "5.0.1"
+        # ...
+        - "5.0.7"      # <- appended
 ```
+
+No workflow file changes. Every matrix, the `ALL_VERSIONS` equivalent and the floating
+tag conditions are derived from this list by `scripts/build-matrix.sh`.
+
+**4. Check it before pushing:**
+
+```bash
+./scripts/build-matrix.sh check \
+  --k8ssandra-versions "$(gh variable get K8SSANDRA_VERSIONS --repo axonops/axonops-containers)"
+```
+
+This fails if the new version has no `cass-management-api` base image — the check that
+would otherwise cost you a 15-minute build to discover. The publish and build-and-test
+workflows run the same command before building anything.
 
 **5. Test and publish:**
 
@@ -491,52 +524,19 @@ FROM docker.io/k8ssandra/cass-management-api:5.0.6-ubi
 
 Our containers extend from `k8ssandra/cass-management-api` base images. For supply chain security, we pin base images by digest (immutable) rather than tags. The `K8SSANDRA_BASE_DIGEST` maps Cassandra versions to verified image digests, preventing supply chain attacks where upstream images could be replaced maliciously.
 
-Digest mapping for all supported versions (k8ssandra API v0.1.120):
+The mapping itself is not reproduced here. It lives in the `K8SSANDRA_VERSIONS`
+repository variable, keyed `{CASSANDRA_VERSION}+{K8SSANDRA_API_VERSION}`, and that is
+what the builds read. The copy that used to sit in this section was pinned to k8ssandra
+API v0.1.120 and had already been overtaken by v0.1.124 — every digest in it was wrong,
+and nothing in CI could tell. Read the live mapping with:
 
-**4.0.x:**
-- 4.0.0: `sha256:29b1b0a68f7b0af948728fd22554796c13ec1964f91634de2636431a56c21a80`
-- 4.0.1: `sha256:fb3107aa8b7f3e7f012238e0656c973dd38e3f18035cc44270cef4a497e6683b`
-- 4.0.3: `sha256:4cc75d3ec0d1e5f81dfde52cf464c221bc5fd84212a53b5b27e149a53cf8d863`
-- 4.0.4: `sha256:633539ec90c5b34baffcee07a67a17c2c3e74eaf4eb22ce398ff5991b45e68cd`
-- 4.0.5: `sha256:d55488c9030a7f11643914057128c0c49f3afa54bb3c452546f51f85f48bc342`
-- 4.0.6: `sha256:8502917123d46a3c8b0f1b0615bdc6d6db5409020620c29656d37b36040eb788`
-- 4.0.7: `sha256:d4aa36d06a4c0a3898e696d451733102ca0fa162d260672438b400298c44069a`
-- 4.0.8: `sha256:95f45d4c1b5bc3036d635077304883eb2264410aec3f41503dac98160d77b50d`
-- 4.0.9: `sha256:1f6c664402eb8fa6d2d753d58a5b00d23e03183ebd044860c0fd71c54aed4553`
-- 4.0.10: `sha256:f915de61281c994750e0accd6c616f632cc306c0c089009b80c4c76dfe70b386`
-- 4.0.11: `sha256:50f5467f02e7203b73cb7a31d59edadaaab19dabd98b62129708f8c6f8c9b764`
-- 4.0.12: `sha256:2fcfa3c18c520732fff48e7aedc38ca6d130823780cefece49a8adcfaff3439e`
-- 4.0.13: `sha256:359520a2e9f499ad3342b68d7d5c9558b75a52d97fa032df2821c9f8ed9a20a0`
-- 4.0.14: `sha256:d9595917de4a2978f88b004563be158331b749b359d03bb0727cd81cf4c6d764`
-- 4.0.15: `sha256:09e61b1520116a656b2e0062b6e74a0d5d50a45be7b758d1f61a500bb84101df`
-- 4.0.17: `sha256:57a3a1ce8e5ada64cccb5d89e3e96c9d647fa0a15cbe72017824a7d4e321652e`
-- 4.0.18: `sha256:730b58137d02dd6f298e4d65a9956eece3a15c937c93610afc6d01a62a0dba31`
-- 4.0.19: `sha256:01000d166a448c92a594d50279ce78a109ab997c29a135846be101d9c186040a`
-- 4.0.20: `sha256:c2fa90f7b42b297dbdcaf2e51cfd3eee2eb5525e0f297e17346c6ee50e9e9551`
+```bash
+gh variable get K8SSANDRA_VERSIONS --repo axonops/axonops-containers | jq .
+```
 
-**4.1.x:**
-- 4.1.0: `sha256:be2219542bb946bba6252fc6cb7e2db8067db7a07d327440cadd64d7674a88b5`
-- 4.1.1: `sha256:3860011dd65e6652091b68a76f2d18b0f753100d39b44afc1cb952b570944c01`
-- 4.1.2: `sha256:dd43b0784cfdec4cb47667ce0f38d44615ef9505968b1bfb5c499f8fa31ca5dd`
-- 4.1.3: `sha256:3d24c66f06868fbd9fa56d68c34892149b187608d5665a1b19ba794acd85dcd4`
-- 4.1.4: `sha256:6d74909a1a82bad3543a9ab681af586a3315ab71b122e270c49bd0d23ea196f5`
-- 4.1.5: `sha256:3844820e9952f047abc2f5a6940f90c477a4709f94eb0ea6663f0396cea3ff43`
-- 4.1.6: `sha256:267ddde674b2ddbc86c577a805aa9a4c0bfb13f783f04eeb9e31d0cafb777209`
-- 4.1.7: `sha256:73ba112785fe72324b7f1ce61dd14ec4a02848343fad8c830f3838b497d7f9ea`
-- 4.1.8: `sha256:f88434b9c123c4a4f8382597f4d83f34964c14740350f187aba856a69d61a6cb`
-- 4.1.9: `sha256:98fa1f88cd82049c3a524a7bcd80d330ca845eb357d0becab90fd0b29243d46d`
-- 4.1.10: `sha256:e1995a41a1ff5c5779552c0e8b32fbcf0ecaeac355d1cdc25e148e5cfd52574c`
-- 4.1.11: `sha256:51168d72931df1ffa436b28419957a5628c0043eeebd5127485c0a47cec949f7`
-
-**5.0.x:**
-- 5.0.1: `sha256:2c143ff1043f08b19fd3ea46028427f25168661bbcc42b8cf9255f122294e3f1`
-- 5.0.2: `sha256:01140e704ffab7d7396c35146d5f260a5523fede36ed93e10a21f5bd8f0822d7`
-- 5.0.3: `sha256:6a48ddd1455ce55bec8e104fd9573fb13786928972b8039db97de2c2259e60e3`
-- 5.0.4: `sha256:d74cb4574799ca7a04d42b967e9a6034c26546b2786f708302d52350c3c3ec2f`
-- 5.0.5: `sha256:8383c5a2ff61b7c7df29c06d0121ab8acedaa4bac3df6c52108b11e09a8c6565`
-- 5.0.6: `sha256:cf8f80d27284f2bb3bf44b91e70d249483b21413d00ef03059b66e4442c56773`
-- 5.0.7: `sha256:e78aae426ba7f33b5aa34297796871abfcbbc05f8e8c15d918ddef900784b73e`
-- 5.0.8: `sha256:7cb1463058018a558f8dc6632aec6d25de30ee70fe1f5143ea5a4d32f915f101`
+`scripts/build-matrix.sh check --k8ssandra-versions "$(gh variable get K8SSANDRA_VERSIONS --repo axonops/axonops-containers)"`
+verifies every version in the build matrix has an entry there; the publish and
+build-and-test workflows run it before building anything.
 
 **How to get digests for new k8ssandra versions:**
 

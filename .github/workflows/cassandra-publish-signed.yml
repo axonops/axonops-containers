@@ -29,11 +29,40 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: axonops/cassandra/cassandra
-  ALL_VERSIONS: "5.0.1 5.0.2 5.0.3 5.0.4 5.0.5 5.0.6 5.0.7 5.0.8"
-  TEST_VERSION: "5.0.8"
 
 jobs:
+  # Version lists come from versions.yaml only. This image is built from the
+  # same k8ssandra Dockerfiles and base digests as ghcr.io/axonops/k8ssandra/
+  # cassandra, so both share one list and cannot drift apart.
+  cassandra-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.result }}
+      all_versions: ${{ steps.all.outputs.result }}
+      newest: ${{ steps.newest.outputs.result }}
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.main_git_tag }}
+
+      - name: Validate build matrix against available k8ssandra base images
+        run: ./scripts/build-matrix.sh check --k8ssandra-versions '${{ vars.K8SSANDRA_VERSIONS }}'
+
+      - name: Build matrix
+        id: matrix
+        run: ./scripts/build-matrix.sh versions
+
+      - name: All versions
+        id: all
+        run: ./scripts/build-matrix.sh space-separated
+
+      - name: Newest version
+        id: newest
+        run: ./scripts/build-matrix.sh newest
+
   cassandra-validate:
+    needs: cassandra-versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,7 +85,7 @@ jobs:
 
       - name: Verify every matrix version has a k8ssandra base digest
         run: |
-          for VERSION in ${{ env.ALL_VERSIONS }}; do
+          for VERSION in ${{ needs.cassandra-versions.outputs.all_versions }}; do
             COMPOSITE_KEY=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r --arg v "$VERSION" 'keys[] | select(startswith($v + "+"))')
             if [ -z "$COMPOSITE_KEY" ]; then
               echo "ERROR: No k8ssandra base image found for Cassandra $VERSION"
@@ -66,7 +95,7 @@ jobs:
           echo "All matrix versions have a base image digest"
 
   cassandra-test:
-    needs: cassandra-validate
+    needs: [cassandra-versions, cassandra-validate]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -84,7 +113,7 @@ jobs:
       - name: Parse k8ssandra base digest
         id: k8ssandra
         env:
-          CASSANDRA_VERSION: ${{ env.TEST_VERSION }}
+          CASSANDRA_VERSION: ${{ needs.cassandra-versions.outputs.newest }}
         run: |
           COMPOSITE_KEY=$(echo '${{ vars.K8SSANDRA_VERSIONS }}' | jq -r --arg v "$CASSANDRA_VERSION" 'keys[] | select(startswith($v + "+"))')
           K8S_API_VERSION=$(echo "$COMPOSITE_KEY" | cut -d+ -f2)
@@ -92,19 +121,20 @@ jobs:
           {
             echo "k8ssandra_api_version=${K8S_API_VERSION}"
             echo "digest=${DIGEST}"
+            echo "base_version=$(echo "$CASSANDRA_VERSION" | cut -d. -f1,2)"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build image for testing
         uses: docker/build-push-action@v5
         with:
-          context: ./k8ssandra/5.0
-          file: ./k8ssandra/5.0/Dockerfile
+          context: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}
+          file: ./k8ssandra/${{ steps.k8ssandra.outputs.base_version }}/Dockerfile
           platforms: linux/amd64
           load: true
           tags: axonops-cassandra:test
           build-args: |
-            CASSANDRA_VERSION=${{ env.TEST_VERSION }}
-            MAJOR_VERSION=5.0
+            CASSANDRA_VERSION=${{ needs.cassandra-versions.outputs.newest }}
+            MAJOR_VERSION=${{ steps.k8ssandra.outputs.base_version }}
             K8SSANDRA_BASE_DIGEST=${{ steps.k8ssandra.outputs.digest }}
             K8SSANDRA_API_VERSION=${{ steps.k8ssandra.outputs.k8ssandra_api_version }}
             INCLUDE_MGMT_API=false
@@ -115,7 +145,7 @@ jobs:
             GITHUB_ACTOR=${{ github.actor }}
             CQLAI_VERSION=${{ vars.K8SSANDRA_CQLAI_VERSION }}
             IS_PRODUCTION_RELEASE=true
-            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ env.TEST_VERSION }}-test
+            IMAGE_FULL_NAME=ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.cassandra-versions.outputs.newest }}-test
             AXON_AGENT_VERSION=${{ inputs.axon_agent_version }}
             AXON_AGENT_JAVA_VERSION=${{ inputs.axon_agent_java_version }}
           cache-from: type=gha
@@ -130,7 +160,7 @@ jobs:
         id: verify
         uses: ./.github/actions/cassandra-verify-versions
         with:
-          cassandra_version: ${{ env.TEST_VERSION }}
+          cassandra_version: ${{ needs.cassandra-versions.outputs.newest }}
           container_name: cassandra-test
           expected_agent_version: ${{ inputs.axon_agent_version }}
 
@@ -164,7 +194,7 @@ jobs:
           docker rm cassandra-test || true
 
   cassandra-check-tags:
-    needs: cassandra-test
+    needs: [cassandra-versions, cassandra-test]
     runs-on: ubuntu-latest
     permissions:
       packages: read
@@ -175,7 +205,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           AGENT_VERSION: ${{ needs.cassandra-test.outputs.axon_agent_version }}
         run: |
-          for VERSION in ${{ env.ALL_VERSIONS }}; do
+          for VERSION in ${{ needs.cassandra-versions.outputs.all_versions }}; do
             TAG="${VERSION}-${AGENT_VERSION}-${{ inputs.container_version }}"
             if gh api --paginate "/orgs/axonops/packages/container/cassandra%2Fcassandra/versions" \
               --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .metadata.container.tags[]" 2>/dev/null | grep -q "$TAG"; then
@@ -186,7 +216,7 @@ jobs:
           echo "All tags for build ${{ inputs.container_version }} are available"
 
   cassandra-create-release:
-    needs: [cassandra-test, cassandra-check-tags]
+    needs: [cassandra-versions, cassandra-test, cassandra-check-tags]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -204,7 +234,7 @@ jobs:
           script: |
             const agent = process.env.AGENT_VERSION;
             const build = '${{ inputs.container_version }}';
-            const versions = '${{ env.ALL_VERSIONS }}'.split(' ');
+            const versions = '${{ needs.cassandra-versions.outputs.all_versions }}'.split(' ');
             const latest = versions[versions.length - 1];
             const example = `${latest}-${agent}-${build}`;
             const body = [
@@ -251,7 +281,7 @@ jobs:
             console.log(`Release created: ${release.data.html_url}`);
 
   cassandra-build-push-sign:
-    needs: [cassandra-test, cassandra-check-tags, cassandra-create-release]
+    needs: [cassandra-versions, cassandra-test, cassandra-check-tags, cassandra-create-release]
     runs-on: ubuntu-latest
     strategy:
       # One version failing must not cancel the others: a cancelled publish job
@@ -259,7 +289,7 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8]
+        cassandra_version: ${{ fromJSON(needs.cassandra-versions.outputs.matrix) }}
     permissions:
       contents: read
       packages: write
@@ -300,7 +330,7 @@ jobs:
         uses: ./.github/actions/k8ssandra-determine-latest
         with:
           current_version: ${{ matrix.cassandra_version }}
-          all_versions: ${{ env.ALL_VERSIONS }}
+          all_versions: ${{ needs.cassandra-versions.outputs.all_versions }}
 
       # Pushed by digest only: no tag exists until the image has passed its
       # tests and been signed, so a failure here leaves nothing pullable.

@@ -20,7 +20,6 @@ on:
   workflow_dispatch:
 
 env:
-  CASSANDRA_VERSION: "5.0.8"
   K8SSANDRA_CLUSTER_NAME: axonops-dev-cass
   K8SSANDRA_NAMESPACE: k8ssandra-operator
   CASSANDRA_DC_NAME: dc1
@@ -45,6 +44,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Taken from versions.yaml rather than pinned here: this test pinned
+      # 5.0.7 while the publish workflows had moved to 5.0.8, so it exercised a
+      # version the release no longer treated as newest.
+      - name: Resolve Cassandra version to test
+        run: |
+          set -euo pipefail
+          echo "CASSANDRA_VERSION=$(./scripts/build-matrix.sh newest | tail -1)" >> "$GITHUB_ENV"
+
+      # The development image for a version is published by a separate,
+      # manually dispatched workflow. Without this check a missing image shows
+      # up 15 minutes later as an unexplained `kubectl wait` timeout.
+      - name: Check the development image exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh api --paginate "/orgs/axonops/packages/container/development%2Fk8ssandra%2Fcassandra/versions" \
+            --jq '.[].metadata.container.tags[]' | grep -qx "${CASSANDRA_VERSION}"; then
+            echo "✓ ghcr.io/axonops/development/k8ssandra/cassandra:${CASSANDRA_VERSION} exists"
+          else
+            echo "ERROR: no development image tagged ${CASSANDRA_VERSION}"
+            echo "Publish it first: gh workflow run k8ssandra-development-publish-signed.yml --ref development \\"
+            echo "  -f dev_git_tag=development -f container_version=<version>"
+            exit 1
+          fi
 
       - name: Create Kind Cluster
         uses: helm/kind-action@v1
@@ -79,6 +104,17 @@ jobs:
       - name: Wait for Cassandra Cluster to be Ready
         run: |
           kubectl wait pods --for=condition=Ready -n ${K8SSANDRA_NAMESPACE} --timeout=900s -l app.kubernetes.io/created-by=cass-operator
+
+      # Without this the only evidence of a failure is "timed out waiting for
+      # the condition", which says nothing about why the pod never started.
+      - name: Collect diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -n ${K8SSANDRA_NAMESPACE} -o wide || true
+          kubectl describe pods -n ${K8SSANDRA_NAMESPACE} -l app.kubernetes.io/created-by=cass-operator || true
+          kubectl get events -n ${K8SSANDRA_NAMESPACE} --sort-by=.lastTimestamp | tail -50 || true
+          kubectl logs -n ${K8SSANDRA_NAMESPACE} -l app.kubernetes.io/name=cass-operator --tail=100 || true
+          kubectl get k8ssandracluster -n ${K8SSANDRA_NAMESPACE} -o yaml || true
 
       - name: Confirm it registered against AxonOps SaaS
         run: |
