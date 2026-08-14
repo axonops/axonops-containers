@@ -1,0 +1,7 @@
+# Cassandra data and configuration, bind-mounted into the three cluster nodes.
+#
+# Created and seeded by ./setup.sh. Not committed: the data directories are
+# large, and Cassandra rewrites parts of the configuration on every start, so
+# tracking them produces constant churn. To keep a customer's configuration in
+# version control, add the specific files deliberately with `git add -f`.
+docker/

@@ -139,11 +139,14 @@ RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
 
 ENV JVM_EXTRA_OPTS="-javaagent:/usr/share/axonops/axon-cassandra${MAJOR_VERSION}-agent.jar=/etc/axonops/axon-agent.yml"
 COPY axonops-entrypoint.sh /axonops-entrypoint.sh
-RUN chmod 755 /axonops-entrypoint.sh
+COPY healthcheck.sh /usr/local/bin/axonops-healthcheck.sh
+RUN chmod 755 /axonops-entrypoint.sh /usr/local/bin/axonops-healthcheck.sh
 
-# Health check using Management API liveness endpoint
+# Health check: Management API liveness endpoint, plus the AxonOps agent. A dead
+# agent is reported but does not fail the check unless HEALTHCHECK_REQUIRE_AGENT
+# is set to true.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:8080/api/v0/probes/liveness || exit 1
+    CMD /usr/local/bin/axonops-healthcheck.sh || exit 1
 
 # Switch back to cassandra user (base image default)
 USER cassandra

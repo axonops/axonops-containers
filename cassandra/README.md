@@ -13,7 +13,7 @@ There is no separate Dockerfile. This image is [`k8ssandra/5.0/Dockerfile`](../k
 - removes `/opt/management-api` and `/opt/cdc_agent`
 - removes the Management API java agent from `cassandra-env.sh`, which the base image bakes in
 - starts Cassandra directly instead of through the Management API entrypoint
-- healthchecks on the native transport instead of the Management API liveness endpoint
+- healthchecks Cassandra on the native transport instead of the Management API liveness endpoint (the agent check is the same in both)
 
 Everything else — base image, AxonOps agent, cqlai, jemalloc — is identical to the K8ssandra image, and one Dockerfile serves both.
 
@@ -98,6 +98,10 @@ The same `CASSANDRA_*` variables the K8ssandra image and the official Cassandra 
 | `CASSANDRA_BROADCAST_RPC_ADDRESS` | broadcast address | Address clients are told to use |
 | `CASSANDRA_NUM_TOKENS` | Cassandra default | vnode count |
 | `CASSANDRA_ENDPOINT_SNITCH` | Cassandra default | Snitch |
+| `CASSANDRA_NATIVE_TRANSPORT_PORT` | `9042` | CQL port |
+| `CASSANDRA_AUTHENTICATOR` | `AllowAllAuthenticator` | Set to `PasswordAuthenticator` to require credentials |
+| `CASSANDRA_AUTHORIZER` | `AllowAllAuthorizer` | Set to `CassandraAuthorizer` to enforce permissions |
+| `CASSANDRA_ROLE_MANAGER` | `CassandraRoleManager` | Role manager implementation |
 | `CASSANDRA_DC` | Cassandra default | Datacentre in `cassandra-rackdc.properties` |
 | `CASSANDRA_RACK` | Cassandra default | Rack in `cassandra-rackdc.properties` |
 
@@ -125,6 +129,30 @@ docker run -d --name cassandra-1 \
 | `/etc/axonops/build-info.txt` | Versions captured at build time, printed in the startup banner |
 
 Cassandra runs as the `cassandra` user, never as root. The agent runs under a supervisor that restarts it on exit with crash-loop backoff ([#154](https://github.com/axonops/axonops-containers/issues/154)); the container lives and dies with the Cassandra process.
+
+### Healthcheck
+
+The container healthcheck (`/usr/local/bin/axonops-healthcheck.sh`, run every 30s) checks two things:
+
+1. **Cassandra** — `nodetool statusbinary` reports the native transport running, and the CQL port is accepting connections. In the K8ssandra image, where the Management API is present, its liveness endpoint is used instead.
+2. **AxonOps agent** — the `axon-agent` process is running, so the node is actually being monitored.
+
+By default a dead agent is reported in the healthcheck output but does not make the container unhealthy: Cassandra is still serving CQL, and failing the check can make an orchestrator restart or drain a node that is doing useful work. Set `HEALTHCHECK_REQUIRE_AGENT=true` to treat a dead agent as a failure.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HEALTHCHECK_REQUIRE_AGENT` | `false` | `true` makes the container unhealthy when `axon-agent` is not running |
+
+```bash
+# Current status and the last check's output
+docker inspect --format '{{.State.Health.Status}}' cassandra-1
+docker inspect --format '{{(index .State.Health.Log 0).Output}}' cassandra-1
+
+# Run it by hand
+docker exec cassandra-1 /usr/local/bin/axonops-healthcheck.sh
+```
+
+The agent is started only once Cassandra is up, so it is normally absent for the first part of the 120s start period. That is what the start period is for — with `HEALTHCHECK_REQUIRE_AGENT=true` on a slow-starting node, raise it rather than lowering the retries.
 
 ## Supported versions
 

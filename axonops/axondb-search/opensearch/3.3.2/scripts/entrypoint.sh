@@ -223,6 +223,9 @@ else
         # Local filesystem backups
         if [ -d "$AXONOPS_SEARCH_BACKUP_PATH" ]; then  # Fixed: check actual path
             echo "  Backup Path: ${AXONOPS_SEARCH_BACKUP_PATH}"
+            # Replace, not append: opensearch.yml is often a mounted volume,
+            # and OpenSearch refuses to start on a duplicated setting key.
+            _sed-in-place "/etc/opensearch/opensearch.yml" -r '/^(# )?path\.repo:/d'
             echo "path.repo: [\"${AXONOPS_SEARCH_BACKUP_PATH}\"]" >> "/etc/opensearch/opensearch.yml"
             echo "  ✓ Local backup repository path configured"
         else
@@ -282,6 +285,8 @@ if [ "$DISABLE_SECURITY_PLUGIN" = "true" ]; then
     echo "⚠ WARNING: Security plugin disabled (DISABLE_SECURITY_PLUGIN=true)"
     echo "  This is NOT recommended for production!"
 
+    # Replace, not append: see path.repo above.
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r '/^(# )?plugins\.security\.disabled:/d'
     echo "plugins.security.disabled: true" >> /etc/opensearch/opensearch.yml
 elif [ -n "$AXONOPS_SEARCH_USER" ]; then
     echo "✓ Security enabled with custom admin user: $AXONOPS_SEARCH_USER"
@@ -300,7 +305,9 @@ if [ "$AXONOPS_SEARCH_TLS_ENABLED" = "false" ]; then
     echo "  Transport SSL: disabled"
     echo "  ⚠ WARNING: Not recommended for production!"
 
-    sed -i '/plugins.security.ssl.http/d' /etc/opensearch/opensearch.yml
+    # _sed-in-place, not sed -i: sed -i replaces the file by rename, which
+    # fails on a bind-mounted file.
+    _sed-in-place "/etc/opensearch/opensearch.yml" '/plugins.security.ssl.http/d'
 
     echo "plugins.security.ssl.http.enabled: false" >> /etc/opensearch/opensearch.yml
 fi

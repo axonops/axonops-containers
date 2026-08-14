@@ -1,0 +1,84 @@
+name: 'K8ssandra Test Healthcheck'
+description: 'Verifies the container healthcheck reports Cassandra and the AxonOps agent, and honours HEALTHCHECK_REQUIRE_AGENT'
+inputs:
+  container_name:
+    description: 'Name of the running container'
+    required: true
+    default: 'cassandra-test'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Healthcheck passes with Cassandra and the agent up
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Running the container healthcheck..."
+        OUTPUT=$(docker exec ${{ inputs.container_name }} /usr/local/bin/axonops-healthcheck.sh)
+        echo "$OUTPUT"
+
+        echo "$OUTPUT" | grep -q "healthy: axon-agent is running" || {
+          echo "ERROR: healthcheck did not report the AxonOps agent as running"
+          exit 1
+        }
+        echo "✓ healthcheck reports Cassandra and the agent healthy"
+
+    - name: Docker reports the container healthy
+      shell: bash
+      run: |
+        set -euo pipefail
+        STATUS=$(docker inspect --format '{{.State.Health.Status}}' ${{ inputs.container_name }})
+        echo "Container health status: $STATUS"
+        if [ "$STATUS" != "healthy" ] && [ "$STATUS" != "starting" ]; then
+          docker inspect --format '{{json .State.Health}}' ${{ inputs.container_name }}
+          echo "ERROR: container is $STATUS"
+          exit 1
+        fi
+
+    # A missing agent is simulated by pointing the check at a binary path that no
+    # process is running, rather than killing the real agent — the entrypoint
+    # supervisor restarts it within seconds, which would make this a race.
+    - name: A missing agent is a warning by default
+      shell: bash
+      run: |
+        set -euo pipefail
+        set +e
+        OUTPUT=$(docker exec -e AXON_AGENT_BIN=/nonexistent/axon-agent \
+          ${{ inputs.container_name }} /usr/local/bin/axonops-healthcheck.sh)
+        RC=$?
+        set -e
+        echo "$OUTPUT"
+        echo "exit code: $RC"
+
+        if [ "$RC" -ne 0 ]; then
+          echo "ERROR: a missing agent must not fail the healthcheck by default"
+          exit 1
+        fi
+        echo "$OUTPUT" | grep -q "warning: axon-agent is not running" || {
+          echo "ERROR: healthcheck did not warn about the missing agent"
+          exit 1
+        }
+        echo "✓ missing agent warns but does not fail"
+
+    - name: HEALTHCHECK_REQUIRE_AGENT=true fails on a missing agent
+      shell: bash
+      run: |
+        set -euo pipefail
+        set +e
+        OUTPUT=$(docker exec -e AXON_AGENT_BIN=/nonexistent/axon-agent \
+          -e HEALTHCHECK_REQUIRE_AGENT=true \
+          ${{ inputs.container_name }} /usr/local/bin/axonops-healthcheck.sh)
+        RC=$?
+        set -e
+        echo "$OUTPUT"
+        echo "exit code: $RC"
+
+        if [ "$RC" -eq 0 ]; then
+          echo "ERROR: HEALTHCHECK_REQUIRE_AGENT=true must fail when the agent is missing"
+          exit 1
+        fi
+        echo "$OUTPUT" | grep -q "unhealthy: axon-agent is not running" || {
+          echo "ERROR: healthcheck did not report the missing agent as unhealthy"
+          exit 1
+        }
+        echo "✓ HEALTHCHECK_REQUIRE_AGENT=true fails on a missing agent"
