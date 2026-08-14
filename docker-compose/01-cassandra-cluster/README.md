@@ -32,7 +32,7 @@ the Cassandra nodes bootstrap one at a time.
 | Service | Image | Purpose | Published port |
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
-| `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.0` | Log and event store (OpenSearch) | — |
+| `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | AxonOps backend and agent endpoint | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
 | `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, seed node | `9042` |
@@ -197,11 +197,12 @@ ERROR: [1] bootstrap checks failed
      cluster.initial_cluster_manager_nodes] must be configured
 ```
 
-`OPENSEARCH_DISCOVERY_TYPE` is documented and printed in the container's startup
-banner, but no published build writes it to `opensearch.yml`. This example
-passes OpenSearch's own `discovery.type=single-node` instead, which the process
-reads directly. The image entrypoint has since been fixed, so both work once a
-build carrying that fix ships.
+`OPENSEARCH_DISCOVERY_TYPE` was documented and printed in the container's
+startup banner, but builds before `3.7.0-1.6.1` never wrote it to
+`opensearch.yml`. It works from `3.7.0-1.6.1` onwards. This example still also
+passes OpenSearch's own `discovery.type=single-node`, which the process reads
+directly, so the file keeps working against an older image; drop that line once
+you are on `3.7.0-1.6.1` or later everywhere.
 
 **Cassandra logs `Invalid or unsupported protocol version (22)`,
 `axon-server` logs `tls: first record does not look like a TLS handshake`.**

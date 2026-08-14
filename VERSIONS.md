@@ -22,7 +22,7 @@ for the full rationale and the verification steps.
 | Component | Current tag | Digest | Git tag |
 |-----------|-------------|--------|---------|
 | `ghcr.io/axonops/axondb-timeseries` | `5.0.8-1.4.0` | `sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c` | `axondb-timeseries-1.4.0` |
-| `ghcr.io/axonops/axondb-search` | `3.7.0-1.6.0` | `sha256:4291a1b3c099639e2cf7178eb27c576906e6404c3baaefa0634068d1ab53f41d` | `axondb-search-1.6.0` |
+| `ghcr.io/axonops/axondb-search` | `3.7.0-1.6.1` | `sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565` | `axondb-search-1.6.1` |
 | `ghcr.io/axonops/axondb-search-backups` | `1.2.0` | `sha256:8f6cb72748ad243a1083d9323e5170cd2b881e5bff8d12280a855faded5b439a` | `—` |
 | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | `2.0.35` | `sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7` | `—` |
 | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | `2.0.37` | `sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362` | `—` |
@@ -47,7 +47,7 @@ Copy these straight into a compose file, manifest or Helm values file.
 
 ```
 ghcr.io/axonops/axondb-timeseries@sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c
-ghcr.io/axonops/axondb-search@sha256:4291a1b3c099639e2cf7178eb27c576906e6404c3baaefa0634068d1ab53f41d
+ghcr.io/axonops/axondb-search@sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565
 ghcr.io/axonops/axondb-search-backups@sha256:8f6cb72748ad243a1083d9323e5170cd2b881e5bff8d12280a855faded5b439a
 registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
 registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
@@ -60,7 +60,7 @@ ghcr.io/axonops/strimzi/kafka@sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124
 ## Notes
 
 - **axondb-timeseries** — The publish workflow builds one Cassandra version per run (`cassandra_dir` input). Dockerfiles exist for 5.0.6 through 5.0.9, but only the tags listed here are published.
-- **axondb-search** — Dockerfiles exist for OpenSearch 3.3.2 and 3.7.0.
+- **axondb-search** — Dockerfiles exist for OpenSearch 3.3.2 and 3.7.0; 1.6.1 was built for 3.7.0 only. 1.6.1 fixes three entrypoint bugs in how opensearch.yml is written: OPENSEARCH_DISCOVERY_TYPE is now applied, path.repo and plugins.security.disabled replace their key instead of appending to it, and the plugins.security.ssl.http delete no longer uses sed -i.
 - **axondb-search-backups** — The published tag does not correspond to any `axondb-search-backups-*` git tag in this repository (the newest of those is 0.0.26) and TAG_CHANGELOG.md still lists the old `3.3.2-0.0.x` image tags. Reconcile the tagging scheme before pinning anything to this image.
 - **axon-server** — Built and published outside this repository; consumed by the compose stack and the Helm charts.
 - **axon-dash** — Built and published outside this repository; consumed by the compose stack and the Helm charts.
@@ -76,7 +76,7 @@ Newest-first, per component. Full git-tag-to-image history lives in
 [TAG_CHANGELOG.md](TAG_CHANGELOG.md).
 
 - **axondb-timeseries**: `5.0.6-1.2.0`, `5.0.6-1.1.0`, `5.0.6-1.0.0`
-- **axondb-search**: `3.3.2-1.5.0`, `3.3.2-1.4.0`, `3.3.2-1.3.0`, `3.3.2-1.2.0`
+- **axondb-search**: `3.7.0-1.6.0`, `3.3.2-1.5.0`, `3.3.2-1.4.0`, `3.3.2-1.3.0`, `3.3.2-1.2.0`
 - **axon-server**: `2.0.34`
 - **axon-dash**: `2.0.36`
 - **axonops-schema-registry**: `0.2.0`, `0.1.0`, `0.0.1`
