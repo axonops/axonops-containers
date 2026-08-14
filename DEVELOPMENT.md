@@ -159,7 +159,8 @@ source without seeing that a translation exists.
 - `cassandra/README.md`, `k8ssandra/README.md`
 - `axonops/axondb-search/README.md`, `axonops/axondb-timeseries/README.md`
 - `axonops-schema-registry/README.md`, `strimzi/README.md`
-- `docker-compose/README.md`
+- `docker-compose/README.md` and the `README.md` of every example under
+  `docker-compose/*/`
 - Helm chart `README.md` files under `axonops/charts/*/`
 - `examples/DEPLOYMENT_GUIDE.md`, `examples/AXONOPS_DEPLOYMENT.md`,
   `examples/K8SSANDRA_DEPLOYMENT.md`, `examples/STRIMZI_DEPLOYMENT.md`,
