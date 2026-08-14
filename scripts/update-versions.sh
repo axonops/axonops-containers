@@ -14,8 +14,8 @@
 # Dependencies: bash 4+, yq (mikefarah), jq, curl.
 #
 # Only public, anonymously pullable repositories are resolved. A private or
-# unpublished repository yields an empty digest and a warning, not a failure —
-# see the `cassandra` component, which is tagged but not yet published.
+# unpublished repository yields an empty digest and a warning, not a failure, so
+# a component can be listed here before its first release.
 
 set -euo pipefail
 

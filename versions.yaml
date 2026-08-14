@@ -146,11 +146,11 @@ components:
     repository: axonops/cassandra/cassandra
     tag_pattern: "{cassandra_version}-{agent_version}-{container_version}"
     current:
-      tag: null
-      digest: null
+      tag: "5.0.8-2.0.31-1.0.0"
+      digest: "sha256:f96804cc2fe74694988d6c28f9ae7b5b674e8959bd6f2d6b65eff3b4fa4340b5"
     previous: []
     notes: >-
-      Tagged (cassandra-1.0.0) but not yet published — the repository has no tags in the registry. Build matrix is Cassandra 5.0.1 through 5.0.8.
+      First release. Build 1.0.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is not built here — upstream k8ssandra publishes no 5.0.9 base image.
   - name: strimzi-kafka
     kind: image
     description: Strimzi Kafka with the AxonOps agent

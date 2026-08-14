@@ -30,7 +30,7 @@ Docker containers for Apache Cassandra with integrated AxonOps monitoring and ma
   - [scripts/install_k8ssandra.sh](#scriptsinstall_k8ssandrash)
   - [scripts/rebuild.sh](#scriptsrebuildsh)
 - [Examples](#examples)
-  - [examples/axon-cluster.yml](#examplesaxon-clusteryml)
+  - [examples/k8ssandra/cluster-axonops-ubi.yaml](#examplesk8ssandracluster-axonops-ubiyaml)
   - [Customizing the Example](#customizing-the-example)
 - [CI/CD Pipeline](#cicd-pipeline)
   - [Automated Builds and Testing](#automated-builds-and-testing)
@@ -175,7 +175,7 @@ export AXON_AGENT_KEY="your-key"
 export AXON_AGENT_ORG="your-org"
 export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 
-cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
+cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
 ```
 
 See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instructions.
@@ -555,7 +555,7 @@ Once you have the digest, update the `K8SSANDRA_VERSIONS` repository variable wi
 
 ### Using the Example Configuration
 
-The `examples/axon-cluster.yml` provides a template for deploying a 3-node Cassandra 5.0 cluster:
+The `examples/k8ssandra/cluster-axonops-ubi.yaml` provides a template for deploying a 3-node Cassandra 5.0 cluster:
 
 ```bash
 # Set your environment variables
@@ -565,7 +565,7 @@ export AXON_AGENT_ORG="your-org"
 export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
 
 # Apply the configuration
-cat examples/axon-cluster.yml | envsubst | kubectl apply -f -
+cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
 ```
 
 ### Verifying the Deployment
@@ -710,7 +710,7 @@ cd 5.0
 4. Builds new Docker image
 5. Pushes image to registry
 6. Pulls image using crictl
-7. Substitutes environment variables in `cluster-axonops.yaml` (copy from [examples/axon-cluster.yml](examples/axon-cluster.yml))
+7. Substitutes environment variables in `cluster-axonops.yaml` (copy from [examples/k8ssandra/cluster-axonops-ubi.yaml](../examples/k8ssandra/cluster-axonops-ubi.yaml))
 8. Deploys the updated cluster configuration
 
 **Environment Variables:**
@@ -721,7 +721,7 @@ cd 5.0
 
 ## Examples
 
-### examples/axon-cluster.yml
+### examples/k8ssandra/cluster-axonops-ubi.yaml
 
 A complete K8ssandraCluster resource definition showcasing:
 
@@ -783,7 +783,7 @@ To use this example:
 
 1. Copy the example file:
    ```bash
-   cp examples/axon-cluster.yml my-cluster.yml
+   cp examples/k8ssandra/cluster-axonops-ubi.yaml my-cluster.yml
    ```
 
 2. Update the values in `my-cluster.yml`:
