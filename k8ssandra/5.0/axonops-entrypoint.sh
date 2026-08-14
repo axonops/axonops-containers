@@ -145,12 +145,25 @@ if [ ! -f /etc/axonops/axon-agent.yml ]; then
   echo "# intentionally left empty" >> /etc/axonops/axon-agent.yml
 fi
 
-# Add AxonOps JVM options to cassandra-env.sh
-echo ". /usr/share/axonops/axonops-jvm.options" >> /opt/cassandra/conf/cassandra-env.sh
+# Add AxonOps JVM options to cassandra-env.sh.
+#
+# Appended only once. Normally the file is part of the image layer and starts
+# clean on every container, but cassandra-env.sh is often bind-mounted from the
+# host or from a volume, in which case the append survives the container and a
+# plain >> would add another identical line on every restart.
+_add_axonops_jvm_options() {
+  local env_file="$1"
+  local source_line=". /usr/share/axonops/axonops-jvm.options"
+  [ -f "$env_file" ] || return 0
+  if grep -qF "$source_line" "$env_file"; then
+    return 0
+  fi
+  echo "$source_line" >> "$env_file"
+}
+
+_add_axonops_jvm_options /opt/cassandra/conf/cassandra-env.sh
 # Also add to /config if it exists (K8ssandra operator mounts config here)
-if [ -f /config/cassandra-env.sh ]; then
-    echo ". /usr/share/axonops/axonops-jvm.options" >> /config/cassandra-env.sh
-fi
+_add_axonops_jvm_options /config/cassandra-env.sh
 
 # Enable jemalloc for memory optimization (UBI path)
 if [ -f /usr/lib64/libjemalloc.so.2 ]; then

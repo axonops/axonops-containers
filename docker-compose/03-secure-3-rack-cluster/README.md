@@ -51,9 +51,14 @@ docker exec cassandra01 grep '^authenticator:' /opt/cassandra/conf/cassandra.yam
 
 ```bash
 cp env.example .env          # set AXONOPS_ORG_NAME
+./setup.sh                   # create and seed ./docker/, once
 docker compose up -d
 docker compose ps            # wait for all seven services to report healthy
 ```
+
+`setup.sh` is not optional: the three nodes read their configuration from host
+directories under [`./docker/`](#storage), and Cassandra will not start against
+an empty one.
 
 Then open <http://localhost:3000>.
 
@@ -108,6 +113,77 @@ changing the eight `ipv4_address` entries, `CASSANDRA_SEEDS`,
 fine for a cluster created from empty, which is what this is: seeds skip
 bootstrap streaming, and there is nothing to stream. For a cluster you grow
 later, make the new nodes non-seeds so they bootstrap properly.
+
+## Storage
+
+The three cluster nodes keep both their data and their configuration in host
+directories, not in Docker-managed volumes:
+
+```
+docker/cassandra01        ->  /var/lib/cassandra    data, plain bind mount
+docker/cassandra01-conf   ->  /opt/cassandra/conf   configuration, a named
+                                                    volume bound to the path
+```
+
+…and the same for `cassandra02` and `cassandra03`. The AxonOps platform services
+use ordinary named volumes.
+
+Both paths are written as `${PWD}/docker/…`, as in the original stack, so **run
+`docker compose` from this directory**. Driving it from elsewhere with
+`-f docker-compose/03-secure-3-rack-cluster/docker-compose.yaml` resolves `${PWD}`
+to wherever you are and mounts the wrong directories.
+
+**This is deliberate, and it is not what you would write from scratch.** It
+reproduces a customer environment, where the configuration has to be editable on
+the host and inspectable after the container is gone. The costs are real: the
+directories are not portable between machines, `docker compose down -v` does not
+clean them up, and on Linux their ownership has to match the `cassandra` user in
+the image (uid 999) or Cassandra cannot write. `setup.sh` handles the ownership
+and tells you when it could not.
+
+### setup.sh
+
+```bash
+./setup.sh              # create anything missing, seed configuration from the image
+./setup.sh --force      # re-seed the configuration directories, discarding edits
+./setup.sh --help
+```
+
+It seeds each `-conf` directory from `/opt/cassandra/conf` **inside the image
+you are about to run**, so the configuration always matches that Cassandra
+version. It reads `CASSANDRA_IMAGE` from `.env` if you set one there.
+
+Existing directories are left alone. Run it as often as you like; only `--force`
+overwrites, and only the configuration.
+
+### Editing the configuration
+
+Anything the environment variables do not cover, edit directly on the host and
+restart the node:
+
+```bash
+$EDITOR docker/cassandra01-conf/cassandra.yaml
+docker compose restart cassandra01
+```
+
+Two things to know before you do:
+
+- **The environment variables win.** On every start the entrypoint rewrites
+  `cluster_name`, `authenticator`, `authorizer`, `listen_address`,
+  `broadcast_rpc_address`, seeds, `endpoint_snitch`, `num_tokens`,
+  `native_transport_port`, and `dc`/`rack` in `cassandra-rackdc.properties`, from
+  the values in `docker-compose.yaml`. Editing those keys on the host has no
+  effect. Everything else you edit is kept.
+- **`cassandra-env.sh` gains a line.** The entrypoint appends
+  `. /usr/share/axonops/axonops-jvm.options` so the AxonOps Java agent loads. It
+  checks first, so a restart does not add it twice.
+
+### Keeping it out of git
+
+`docker/` is gitignored. Cassandra rewrites parts of the configuration at
+runtime, so committing it produces constant churn, and the data directories are
+large. If you want a customer's configuration in version control, commit the
+specific files deliberately with `git add -f`.
 
 ## Finish securing the cluster
 
@@ -229,13 +305,15 @@ cqlsh 127.0.0.1 9142 -u cassandra -p cassandra    # if you have cqlsh locally
 missing, that node did not read `cassandra-rackdc.properties` as expected —
 check `CASSANDRA_DC` and `CASSANDRA_RACK` in its environment.
 
-Data lives in named volumes: `cassandra01-data`, `cassandra02-data`,
-`cassandra03-data`, plus the four AxonOps volumes.
+Cluster data and configuration live under `./docker/` on the host — see
+[Storage](#storage). `docker compose down -v` removes the AxonOps volumes but
+leaves those directories; delete them by hand to start the cluster from empty.
 
 ## Requirements
 
 - Docker Engine 20.10+ and Compose V2
-- 12 GB RAM free at the defaults, 16 GB recommended; 30 GB disk
+- 12 GB RAM free at the defaults, 16 GB recommended; 30 GB disk, most of it
+  under `./docker/`
 - The `10.17.64.0/24` subnet free on the host
 - Ports 3000, 1888, 9142, 9242, 9342 free, and 7199, 7299, 7399 on localhost
 
@@ -254,8 +332,8 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 |----------|------|-----|
 | Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | The point of the port. Metrics, logs, alerting and repair scheduling in one platform, and no JMX exporter sidecars to configure |
 | `cassandra:5.0.8` | `ghcr.io/axonops/development/cassandra:5.0.8-…` | Same Cassandra, with the AxonOps agent and Java agent already installed. Development image for now — see [Before you start](#before-you-start) |
-| Bind mounts under `${PWD}/docker/` | Named volumes | Nothing to create before the first run, and `docker compose down -v` cleans up |
-| Bind-mounted `conf` volumes | None | This image takes its configuration from environment variables |
+| Bind mounts under `${PWD}/docker/` | Kept | Reproduces the customer environment. `setup.sh` creates and seeds them — see [Storage](#storage) |
+| Bind-mounted `conf` volumes | Kept | Same reason. The image can be driven entirely by environment variables, but this way the configuration is editable on the host |
 | `7000`, `7001` published per node | Not published | Internode ports; nothing outside the compose network uses them |
 | `7199` JMX published on all interfaces | Published on `127.0.0.1` only | The port is unauthenticated. See [Remote JMX](#remote-jmx) |
 | `cqlsh` healthcheck with hardcoded credentials | `nodetool statusbinary` | The image ships `cqlai`, not `cqlsh`, and the check needs no credentials |
@@ -266,7 +344,8 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 Kept as they were: the subnet and every address, cluster and rack layout, the
 seed list, `GossipingPropertyFileSnitch`, `PasswordAuthenticator`,
 `CassandraAuthorizer`, `LOCAL_JMX=no`, the ZGC flags, the `memlock` and `nofile`
-ulimits, and the published CQL port numbers.
+ulimits, the `./docker/` storage layout for data and configuration, and the
+published CQL port numbers.
 
 ## Troubleshooting
 
@@ -283,6 +362,31 @@ first node finishes starting, not during startup. Wait for
 docker compose logs cassandra01 | grep "default superuser"
 ```
 
+**`Expecting URI in variable: [cassandra.config]. Found[cassandra.yaml]`, with
+`sed: can't read /opt/cassandra/conf/cassandra.yaml` above it.** The node has an
+empty configuration directory. Either `setup.sh` was never run, or the bind
+mount is not resolving to the directory you think it is. Check what the
+container actually sees:
+
+```bash
+docker run --rm -v "$PWD/docker/cassandra01-conf:/x" busybox ls /x | wc -l
+```
+
+Zero means Docker created an empty directory instead of sharing yours — on
+Docker Desktop, a path outside the configured file-sharing list does exactly
+that. Move the project under a shared path, or add the path in Docker Desktop
+under Settings → Resources → File sharing.
+
+**`Permission denied` writing to the configuration or data directory (Linux).**
+The directories must be writable by uid 999, the `cassandra` user in the image:
+
+```bash
+sudo chown -R 999:999 docker/
+```
+
+`setup.sh` attempts this and warns when it cannot. Docker Desktop on macOS and
+Windows maps ownership for you, so this only affects Linux hosts.
+
 **A node never becomes healthy.** Nodes start in sequence, so a cold start takes
 several minutes. Watch `docker compose logs -f cassandra02`. If it is stuck on
 gossip, confirm the seed addresses match the `ipv4_address` entries.
@@ -295,7 +399,9 @@ or edit the subnet and all eight addresses together.
 **`nodetool status` shows fewer than three nodes.** Check the node that is
 missing came up (`docker compose ps`), then look for a cluster-name mismatch —
 a node that joined with a different `CASSANDRA_CLUSTER_NAME` on an earlier run
-keeps it in its data volume. `docker compose down -v` clears that.
+keeps it in its data directory. `docker compose down -v` does **not** clear that
+here, because the data is a host bind mount: remove `docker/cassandra0*/` by
+hand.
 
 **JMX from another host times out.** Expected — the ports are bound to
 `127.0.0.1`. See [Remote JMX](#remote-jmx).

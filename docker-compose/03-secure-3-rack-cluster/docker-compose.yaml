@@ -18,8 +18,16 @@
 #
 # Quick start:
 #   cp env.example .env      # set AXONOPS_ORG_NAME
+#   ./setup.sh               # create and seed ./docker/, once
 #   docker compose up -d
 #   open http://localhost:3000
+#
+# Storage: the three cluster nodes keep their data and their configuration in
+# host directories under ./docker/, the way the customer environment does. That
+# is not how you would write this from scratch — see the README — but it is what
+# is being reproduced, and it means the configuration can be edited on the host
+# and survives the container. ./setup.sh creates the directories and seeds the
+# configuration from the image; docker compose up will not work without it.
 #
 # Image pinning: every service is pinned to an immutable version tag, with the
 # equivalent SHA256 digest commented above it. Deploy the digest form in
@@ -234,7 +242,10 @@ services:
       - AXON_AGENT_SERVER_PORT=1888
       - AXON_AGENT_TLS_MODE=disabled
     volumes:
-      - cassandra01-data:/var/lib/cassandra
+      # Bind mounts, matching the customer environment this example
+      # reproduces. Run ./setup.sh once before the first start.
+      - ${PWD}/docker/cassandra01:/var/lib/cassandra
+      - conf01:/opt/cassandra/conf
     ulimits:
       memlock:
         soft: -1
@@ -285,7 +296,10 @@ services:
       - AXON_AGENT_SERVER_PORT=1888
       - AXON_AGENT_TLS_MODE=disabled
     volumes:
-      - cassandra02-data:/var/lib/cassandra
+      # Bind mounts, matching the customer environment this example
+      # reproduces. Run ./setup.sh once before the first start.
+      - ${PWD}/docker/cassandra02:/var/lib/cassandra
+      - conf02:/opt/cassandra/conf
     ulimits:
       memlock:
         soft: -1
@@ -336,7 +350,10 @@ services:
       - AXON_AGENT_SERVER_PORT=1888
       - AXON_AGENT_TLS_MODE=disabled
     volumes:
-      - cassandra03-data:/var/lib/cassandra
+      # Bind mounts, matching the customer environment this example
+      # reproduces. Run ./setup.sh once before the first start.
+      - ${PWD}/docker/cassandra03:/var/lib/cassandra
+      - conf03:/opt/cassandra/conf
     ulimits:
       memlock:
         soft: -1
@@ -370,11 +387,32 @@ networks:
         - subnet: 10.17.64.0/24
 
 volumes:
+  # The AxonOps platform keeps its state in ordinary named volumes.
   axondb-timeseries-data:
   axondb-timeseries-logs:
   axondb-search-data:
   axondb-search-logs:
   axon-server-data:
-  cassandra01-data:
-  cassandra02-data:
-  cassandra03-data:
+
+  # The cluster's configuration directories are host directories, declared as
+  # named volumes bound to a path, exactly as the customer environment does it.
+  # Cassandra data uses a plain bind mount on the service instead; both live
+  # under ./docker/, created and seeded by ./setup.sh.
+  conf01:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/docker/cassandra01-conf
+  conf02:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/docker/cassandra02-conf
+  conf03:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/docker/cassandra03-conf

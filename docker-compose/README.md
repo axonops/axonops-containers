@@ -41,8 +41,10 @@ Every example follows the same shape:
   README.md             Quick start, configuration reference, troubleshooting
 ```
 
-- **Configuration is `.env` only.** No example mounts or renders a config file,
-  and none needs `docker-compose.yaml` edited to run.
+- **Configuration is `.env` only**, and no `docker-compose.yaml` needs editing to
+  run. Example 03 is the one exception: it reproduces a customer environment
+  that bind-mounts Cassandra's configuration directory from the host, so it also
+  ships a `setup.sh` that creates and seeds it.
 - **Images** come from `ghcr.io/axonops/*` or
   `registry.axonops.com/axonops-public/*`, pinned to a version tag with the
   SHA256 digest in a comment above it. Deploy the digest in production — see
