@@ -188,8 +188,14 @@ services:
   # ===========================================================================
 
   cassandra01:
-    # Preferred (immutable): ghcr.io/axonops/cassandra/cassandra@sha256:f96804cc2fe74694988d6c28f9ae7b5b674e8959bd6f2d6b65eff3b4fa4340b5
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    # This is a development image, and deliberately so: authentication needs the
+    # entrypoint support for CASSANDRA_AUTHENTICATOR and CASSANDRA_AUTHORIZER,
+    # which the current production image ghcr.io/axonops/cassandra/cassandra:5.0.8
+    # predates — it would start this cluster with AllowAllAuthenticator and no
+    # warning. Switch to the production image once the next Cassandra release
+    # ships. See the README, "Before you start".
+    # Preferred (immutable): ghcr.io/axonops/development/cassandra@sha256:25fef89d4476139825da13a5ee02dba2fd28d9704e482f692e2d6850d8f8d3c7
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1}
     container_name: cassandra01
     hostname: cassandra01
     networks:
