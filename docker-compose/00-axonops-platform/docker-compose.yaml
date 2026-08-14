@@ -54,8 +54,8 @@ services:
   # axondb-search: OpenSearch 3.7.0 for logs and search functionality
   # =============================================================================
   axondb-search:
-    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:4291a1b3c099639e2cf7178eb27c576906e6404c3baaefa0634068d1ab53f41d
-    image: ghcr.io/axonops/axondb-search:3.7.0-1.6.0
+    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565
+    image: ghcr.io/axonops/axondb-search:3.7.0-1.6.1
     container_name: axondb-search
     hostname: axondb-search
     networks:
@@ -63,11 +63,14 @@ services:
     environment:
       # Cluster configuration
       - OPENSEARCH_CLUSTER_NAME=axonopsdb-search
-      # discovery.type is OpenSearch's own setting name, passed straight through.
-      # The image documents OPENSEARCH_DISCOVERY_TYPE but never writes it to
-      # opensearch.yml, so OpenSearch runs its production bootstrap checks and
-      # exits: "the default discovery settings are unsuitable for production
-      # use". Fixed in the entrypoint; keep this until a new build ships.
+      # Both names are set on purpose. OPENSEARCH_DISCOVERY_TYPE is the image's
+      # own variable and works from 3.7.0-1.6.1 onwards; discovery.type is
+      # OpenSearch's native setting, read straight from the environment, and is
+      # kept so this file also works against earlier images, where
+      # OPENSEARCH_DISCOVERY_TYPE was printed in the startup banner but never
+      # written to opensearch.yml — OpenSearch then ran its production bootstrap
+      # checks and exited with "the default discovery settings are unsuitable
+      # for production use". Drop the native line once no older image is in use.
       - discovery.type=single-node
       - OPENSEARCH_DISCOVERY_TYPE=single-node
       - OPENSEARCH_HEAP_SIZE=${AXONOPS_OPENSEARCH_HEAP_SIZE:-4g}

@@ -147,6 +147,50 @@ Every workflow must include:
 - Maintain acknowledgements for upstream projects
 - Keep legal notices current
 
+### Translated Documentation
+
+User-facing documentation is translated to French. A translation lives next to
+its English source as `<name>.fr.md` (for example `README.fr.md` beside
+`README.md`), not in a separate `docs/fr/` tree, so it is impossible to edit the
+source without seeing that a translation exists.
+
+**In scope (must have a `.fr.md` counterpart):**
+- `README.md`
+- `cassandra/README.md`, `k8ssandra/README.md`
+- `axonops/axondb-search/README.md`, `axonops/axondb-timeseries/README.md`
+- `axonops-schema-registry/README.md`, `strimzi/README.md`
+- `docker-compose/README.md`
+- Helm chart `README.md` files under `axonops/charts/*/`
+- `examples/DEPLOYMENT_GUIDE.md`, `examples/AXONOPS_DEPLOYMENT.md`,
+  `examples/K8SSANDRA_DEPLOYMENT.md`, `examples/STRIMZI_DEPLOYMENT.md`,
+  `examples/NODE_SELECTOR_GUIDE.md`
+
+Files are added to the list in `.github/workflows/docs-translations.yml` as
+their translations land — a file is only enforced once it has been translated.
+
+**Deliberately English-only:**
+- `DEVELOPMENT.md`, `RELEASE.md`, `PIPELINES.md` — contributor-facing, and they
+  change often
+- `CHANGELOG.md`, `TAG_CHANGELOG.md`, `VERSIONS.md` — generated or append-only
+- `k8ssandra/README_K8SSANDRA_SETUP.md` — setup and contributor notes
+- component `tests/README.md` files
+
+**Rules:**
+- Both files carry a language switcher line under the title
+  (`**English** | [Français](README.fr.md)` and its mirror).
+- Translate prose only. Code blocks, commands, image tags, environment variable
+  names, YAML keys, file paths, log messages and CLI output stay verbatim —
+  including the English comments inside code blocks, so a block can be diffed
+  against its source.
+- In reference tables, translate the description column only. Variable names,
+  types and defaults stay verbatim.
+- Keep the heading structure identical, so cross-links keep resolving.
+- Keep technical terms in English where that is the usage in the field —
+  cluster, node, agent, seed, healthcheck, digest, tag, workflow — and use them
+  consistently.
+- The `Docs Translations` CI job fails a PR that edits an in-scope English doc
+  without touching its translation.
+
 ## Git Workflow
 
 ### Branch Structure

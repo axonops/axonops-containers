@@ -81,7 +81,7 @@ that does not survive losing a node.
 | `cassandra02` | 10.17.64.6 | same | Cluster node, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | same | Cluster node, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (single-node Cassandra) | — |
-| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.0` | Log and event store (OpenSearch) | — |
+| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.35` | Backend and agent endpoint | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.37` | Web dashboard | `3000` |
 
@@ -158,6 +158,41 @@ version. It reads `CASSANDRA_IMAGE` from `.env` if you set one there.
 
 Existing directories are left alone. Run it as often as you like; only `--force`
 overwrites, and only the configuration.
+
+**What it actually does**, in order:
+
+1. **Parses the arguments** — `-f`/`--force` and `-h`/`--help`. Anything else is
+   an error. `--help` prints the header comment of the script itself.
+2. **Checks Docker** — `docker` on `PATH` and the daemon reachable. It exits
+   before touching the filesystem if either fails.
+3. **Resolves the image.** It greps `CASSANDRA_IMAGE=` out of `./.env` (last
+   occurrence wins, surrounding quotes stripped) and falls back to the default
+   compiled into the script,
+   `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` — which must match
+   the default in `docker-compose.yaml`. It does not parse the compose file.
+4. **Pulls the image if it is not present locally**, so the seeding step below
+   cannot fail on a missing image.
+5. **For each of `cassandra01`, `cassandra02`, `cassandra03`:**
+   - Creates `docker/<node>/` (the data directory) if it does not exist, and
+     says so. An existing one is never touched — your data is safe.
+   - Seeds `docker/<node>-conf/` unless it already contains a `cassandra.yaml`
+     and `--force` was not given. Seeding is `docker create` on the image (a
+     container that is never started), `docker cp <container>:/opt/cassandra/conf/.`
+     into the directory, then `docker rm -f`. The directory is deleted and
+     recreated first, so `--force` **discards every local edit in it**.
+   - Attempts `chown -R 999:999` on both directories — uid/gid of the
+     `cassandra` user in the image.
+6. **Prints what to do next** (`cp env.example .env`, `docker compose up -d`).
+
+The `chown` is best-effort. On Docker Desktop (macOS, Windows) it fails and that
+is expected — the file-sharing layer maps ownership for you. On Linux a failure
+is real, and the script warns with the exact `sudo chown -R 999:999 docker/`
+command to run. Everything else is fatal: the script is `set -euo pipefail`, so
+an unreachable daemon, an unpullable image or a failed `docker cp` stops it with
+an `error:` line rather than leaving a half-seeded directory behind.
+
+It never writes `.env`, never edits `docker-compose.yaml`, and never starts a
+container.
 
 ### Editing the configuration
 
@@ -316,17 +351,43 @@ verifies that Cassandra is serving CQL and that the `axon-agent` process is
 running — a node whose agent has died still answers queries but has quietly
 stopped being monitored.
 
+**What it actually does.** Two independent checks, one line of output each, and
+one exit code:
+
+1. **Cassandra.** `nodetool statusbinary` must print `running`, and the CQL port
+   must be listening (`ss -ln`). The port is read out of
+   `cassandra.yaml`'s `native_transport_port`, defaulting to `9042` — so it
+   follows the port you set rather than assuming one. Either failing exits
+   non-zero, which is what makes the container unhealthy.
+   (In the K8ssandra images, where the DataStax Management API is present, its
+   `/api/v0/probes/liveness` endpoint is used instead — the same probe the
+   K8ssandra Operator relies on. These three nodes use the plain Cassandra image,
+   so the `nodetool` path is the one that runs.)
+2. **The AxonOps agent.** It walks `/proc/<pid>/cmdline` looking for
+   `/usr/share/axonops/axon-agent` (override with `AXON_AGENT_BIN`). `/proc` is
+   read directly rather than with `pgrep`, which is not guaranteed to exist in
+   the UBI base image.
+
 A dead agent is reported in the check output but does not by itself make the
 container unhealthy, because failing the check can make an orchestrator restart
 or drain a node that is still serving. Set `HEALTHCHECK_REQUIRE_AGENT=true` on a
-node to treat it as a failure:
+node to treat it as a failure — that is the only thing the variable changes; the
+agent is checked and reported either way.
 
 ```bash
+# Run it by hand — the output names which of the two checks failed
 docker exec cassandra01 /usr/local/bin/axonops-healthcheck.sh
+
+# What Docker last saw
+docker inspect --format '{{.State.Health.Status}}' cassandra01
+docker inspect --format '{{(index .State.Health.Log 0).Output}}' cassandra01
 ```
 
-The agent starts only once Cassandra is up, so it is normally absent for part of
-the 120s start period.
+Compose runs it every 15s with a 10s timeout, 20 retries and a 120s start
+period. The agent starts only once Cassandra is up, so it is normally absent for
+part of that start period — which is what the start period is for. On a slow
+node with `HEALTHCHECK_REQUIRE_AGENT=true`, raise `start_period` rather than
+lowering `retries`.
 
 Both the agent check and `HEALTHCHECK_REQUIRE_AGENT` are in the pinned image,
 `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. On any earlier image
@@ -363,7 +424,7 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 | Bind-mounted `conf` volumes | Kept | Same reason. The image can be driven entirely by environment variables, but this way the configuration is editable on the host |
 | `7000`, `7001` published per node | Not published | Internode ports; nothing outside the compose network uses them |
 | `7199` JMX published on all interfaces | Published on `127.0.0.1` only | The port is unauthenticated. See [Remote JMX](#remote-jmx) |
-| `cqlsh` healthcheck with hardcoded credentials | The image's own `axonops-healthcheck.sh` | The image ships `cqlai`, not `cqlsh`, and the check needs no credentials. It also verifies the `axon-agent` is alive — see [Health of the cluster nodes](#health-of-the-cluster-nodes) |
+| `cqlsh` healthcheck with hardcoded credentials | The image's own `axonops-healthcheck.sh` | The image ships with `cqlai` and `cqlsh`, and the check needs no credentials. It also verifies the `axon-agent` is alive — see [Health of the cluster nodes](#health-of-the-cluster-nodes) |
 | Passwords in the YAML | `.env`, gitignored | Nothing secret in a committed file |
 | `restart: always` | `restart: unless-stopped` | Matches the other examples; a container you stopped stays stopped |
 | `CASSANDRA_OPEN_JMX`, `JMXPORT` | Removed | Neither is read by Cassandra or by the image — they did nothing in the original either |
