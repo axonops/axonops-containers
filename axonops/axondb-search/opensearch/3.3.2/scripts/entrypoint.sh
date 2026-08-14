@@ -106,6 +106,9 @@ export OPENSEARCH_JAVA_OPTS="-Dopensearch.performanceanalyzer.metrics.enabled=${
 export OPENSEARCH_CLUSTER_NAME="${OPENSEARCH_CLUSTER_NAME:-axonopsdb-search}"
 export OPENSEARCH_NODE_NAME="${OPENSEARCH_NODE_NAME:-${HOSTNAME}}"
 export OPENSEARCH_NETWORK_HOST="${OPENSEARCH_NETWORK_HOST:-0.0.0.0}"
+# README documents single-node as the default; without this the variable is
+# empty and OpenSearch falls back to multi-node discovery.
+export OPENSEARCH_DISCOVERY_TYPE="${OPENSEARCH_DISCOVERY_TYPE:-single-node}"
 
 # TLS/SSL settings (default: enabled)
 # When false, disables HTTPS on REST API (useful when TLS terminated at load balancer)
@@ -157,6 +160,16 @@ fi
 # Apply network host
 if [ -n "$OPENSEARCH_NETWORK_HOST" ]; then
     _sed-in-place "/etc/opensearch/opensearch.yml" -r 's/^(# )?(network\.host:).*/\2 '"$OPENSEARCH_NETWORK_HOST"'/'
+fi
+
+# Apply discovery type. The bundled opensearch.yml ships this commented out, and
+# with network.host set to a non-loopback address OpenSearch runs its production
+# bootstrap checks - which fail with "the default discovery settings are
+# unsuitable for production use" unless discovery is configured. Appended rather
+# than substituted so it works whether or not the line is present.
+if [ -n "$OPENSEARCH_DISCOVERY_TYPE" ]; then
+    _sed-in-place "/etc/opensearch/opensearch.yml" -r '/^(# )?discovery\.type:/d'
+    echo "discovery.type: ${OPENSEARCH_DISCOVERY_TYPE}" >> /etc/opensearch/opensearch.yml
 fi
 
 # Apply heap size override to jvm.options if env var set
