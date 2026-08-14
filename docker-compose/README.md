@@ -8,6 +8,24 @@ Runnable Docker Compose stacks built from the container images published by this
 repository. Each directory is self-contained: copy it, edit `.env`, run
 `docker compose up -d`.
 
+## Before you run anything
+
+The defaults in `env.example` are development values. Set these in your `.env`
+before starting a stack you care about:
+
+| Variable | Why |
+|---|---|
+| `AXONOPS_ORG_NAME` | Defaults to `example` (`my-organization` in 02). It names your organisation throughout AxonOps and is baked into agent registration — change it before first start, not after. |
+| `AXONOPS_DB_PASSWORD` | Password for the time series database (`axondb-timeseries`). The default `axonops` is public knowledge. Use a strong, unique value. |
+| `AXONOPS_SEARCH_PASSWORD` | Password for the search database (`axondb-search`). Same reasoning. The search image also enforces its own password policy — a weak value makes the container refuse to start. |
+| `AXONOPS_LICENSE_KEY` | Optional. Without it AxonOps runs with free edition features only. See [AxonOps editions](https://axonops.com/docs/editions/) for what each edition includes. |
+
+Example 02 (SaaS) is the exception: AxonOps runs in AxonOps Cloud, so only
+`AXONOPS_ORG_NAME` and your agent key apply — there are no local databases to
+give passwords to.
+
+Passwords live in `.env`, which is gitignored. Never commit one.
+
 ## Which one do I want?
 
 | | [00-axonops-platform](00-axonops-platform/) | [01-cassandra-cluster](01-cassandra-cluster/) | [02-saas-cassandra-cluster](02-saas-cassandra-cluster/) | [03-secure-3-rack-cluster](03-secure-3-rack-cluster/) |
