@@ -42,10 +42,18 @@ ships — `env.example` has both lines ready.
 Either way, check what you actually got once the stack is up:
 
 ```bash
-docker exec cassandra01 grep '^authenticator:' /opt/cassandra/conf/cassandra.yaml
+for n in cassandra01 cassandra02 cassandra03; do
+  printf '%s: ' "$n"
+  docker exec "$n" grep '^authenticator:' /opt/cassandra/conf/cassandra.yaml
+done
 # authenticator: PasswordAuthenticator   <- secured
 # authenticator: AllowAllAuthenticator   <- image too old, see above
 ```
+
+Check every node, not just the first. A single node left on an image that
+ignores `CASSANDRA_AUTHENTICATOR` joins the cluster and accepts unauthenticated
+connections on its own CQL port — the cluster is only as secured as its least
+secured node.
 
 ## Quick start
 
@@ -105,7 +113,7 @@ address a client can actually reach, and the RMI stub a node hands back carries
 that address. A DHCP-assigned Docker address changes on recreate and the value
 baked into `JVM_EXTRA_OPTS` would then point somewhere else. The subnet is
 therefore fixed in `docker-compose.yaml`, not a variable: changing it means
-changing the eight `ipv4_address` entries, `CASSANDRA_SEEDS`,
+changing the seven `ipv4_address` entries, `CASSANDRA_SEEDS`,
 `CASSANDRA_LISTEN_ADDRESS`, `CASSANDRA_BROADCAST_RPC_ADDRESS` and
 `java.rmi.server.hostname` together.
 
@@ -305,6 +313,32 @@ cqlsh 127.0.0.1 9142 -u cassandra -p cassandra    # if you have cqlsh locally
 missing, that node did not read `cassandra-rackdc.properties` as expected —
 check `CASSANDRA_DC` and `CASSANDRA_RACK` in its environment.
 
+### Health of the cluster nodes
+
+The three nodes use the healthcheck the image ships,
+`/usr/local/bin/axonops-healthcheck.sh`, rather than a check written here. It
+verifies that Cassandra is serving CQL and that the `axon-agent` process is
+running — a node whose agent has died still answers queries but has quietly
+stopped being monitored.
+
+A dead agent is reported in the check output but does not by itself make the
+container unhealthy, because failing the check can make an orchestrator restart
+or drain a node that is still serving. Set `HEALTHCHECK_REQUIRE_AGENT=true` on a
+node to treat it as a failure:
+
+```bash
+docker exec cassandra01 /usr/local/bin/axonops-healthcheck.sh
+```
+
+The agent starts only once Cassandra is up, so it is normally absent for part of
+the 120s start period.
+
+The agent check reached `axonops-healthcheck.sh` after the currently pinned
+development image was published, so on
+`ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1` the script
+verifies Cassandra only and `HEALTHCHECK_REQUIRE_AGENT` has no effect. Both
+take effect with the next Cassandra image release.
+
 Cluster data and configuration live under `./docker/` on the host — see
 [Storage](#storage). `docker compose down -v` removes the AxonOps volumes but
 leaves those directories; delete them by hand to start the cluster from empty.
@@ -336,7 +370,7 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 | Bind-mounted `conf` volumes | Kept | Same reason. The image can be driven entirely by environment variables, but this way the configuration is editable on the host |
 | `7000`, `7001` published per node | Not published | Internode ports; nothing outside the compose network uses them |
 | `7199` JMX published on all interfaces | Published on `127.0.0.1` only | The port is unauthenticated. See [Remote JMX](#remote-jmx) |
-| `cqlsh` healthcheck with hardcoded credentials | `nodetool statusbinary` | The image ships `cqlai`, not `cqlsh`, and the check needs no credentials |
+| `cqlsh` healthcheck with hardcoded credentials | The image's own `axonops-healthcheck.sh` | The image ships `cqlai`, not `cqlsh`, and the check needs no credentials. It also verifies the `axon-agent` is alive — see [Health of the cluster nodes](#health-of-the-cluster-nodes) |
 | Passwords in the YAML | `.env`, gitignored | Nothing secret in a committed file |
 | `restart: always` | `restart: unless-stopped` | Matches the other examples; a container you stopped stays stopped |
 | `CASSANDRA_OPEN_JMX`, `JMXPORT` | Removed | Neither is read by Cassandra or by the image — they did nothing in the original either |
@@ -394,7 +428,7 @@ gossip, confirm the seed addresses match the `ipv4_address` entries.
 **`Cannot assign requested address` or a subnet conflict on `up`.** Something
 else on the host uses `10.17.64.0/24` — often another Docker network. Check with
 `docker network ls` and `ip route`, then either remove the conflicting network
-or edit the subnet and all eight addresses together.
+or edit the subnet and all seven addresses together.
 
 **`nodetool status` shows fewer than three nodes.** Check the node that is
 missing came up (`docker compose ps`), then look for a cluster-name mismatch —

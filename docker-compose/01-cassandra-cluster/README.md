@@ -51,7 +51,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AXONOPS_ORG_NAME` | `my-organization` | Organisation name. Shared by `axon-server` and the agents — they must match. |
+| `AXONOPS_ORG_NAME` | `example` | Organisation name. Shared by `axon-server` and the agents — they must match. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Name of the monitored cluster in AxonOps |
 | `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Image for the monitored nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per monitored node |
@@ -61,7 +61,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | `axondb-search` admin password |
 | `AXONOPS_CASSANDRA_HEAP_SIZE` | `2G` | `axondb-timeseries` heap |
 | `AXONOPS_OPENSEARCH_HEAP_SIZE` | `2g` | `axondb-search` heap |
-| `AXONOPS_CASSANDRA_SSL` | `true` | TLS from `axon-server` to `axondb-timeseries` |
+| `AXONOPS_CASSANDRA_SSL` | `false` | TLS from `axon-server` to `axondb-timeseries` — leave off unless you mount a keystore, see [below](#configuration-variables-that-look-right-but-are-not) |
 | `AXONOPS_OPENSEARCH_SSL` | `true` | TLS from `axon-server` to `axondb-search` |
 
 `axon-server` is configured entirely through environment variables — there is no
@@ -94,6 +94,32 @@ ones — do not mix the two forms.
 The agents connect to `axon-server:1888` in plaintext (`AXON_AGENT_TLS_MODE=disabled`)
 because the traffic never leaves the compose network. Use TLS for agents on any
 other host.
+
+### Health of the monitored nodes
+
+The Cassandra nodes use the healthcheck the image ships,
+`/usr/local/bin/axonops-healthcheck.sh`, rather than a check written here. It
+verifies two things: Cassandra is serving CQL, and the `axon-agent` process is
+running — a node whose agent has died still answers queries but has quietly
+disappeared from AxonOps, and a check that only looks at Cassandra reports it
+healthy.
+
+A dead agent is reported in the check output but does not by itself make the
+container unhealthy, because failing the check can make an orchestrator restart
+or drain a node that is still serving. Set `HEALTHCHECK_REQUIRE_AGENT=true` on a
+node to treat it as a failure:
+
+```bash
+docker compose exec cassandra-0 /usr/local/bin/axonops-healthcheck.sh
+```
+
+The agent starts only once Cassandra is up, so it is normally absent for part of
+the 90s start period.
+
+The agent check reached `axonops-healthcheck.sh` after the currently pinned
+image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.8` the
+script verifies Cassandra only and `HEALTHCHECK_REQUIRE_AGENT` has no effect.
+Both take effect with the next Cassandra image release.
 
 ## Using the cluster
 

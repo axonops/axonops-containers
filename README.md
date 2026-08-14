@@ -44,7 +44,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Confluent-compatible Schema Registry with multi-backend storage support
 
 ### Docker Compose
-- **[docker-compose/](./docker-compose/)** - Every Compose stack: the AxonOps platform on its own, the platform with a monitored Cassandra cluster, and a cluster reporting to AxonOps SaaS
+- **[docker-compose/](./docker-compose/)** - Every Compose stack: the AxonOps platform on its own, the platform with a monitored Cassandra cluster, a cluster reporting to AxonOps SaaS, and a secured 3-rack cluster on a fixed subnet
 
 ## Red Hat Universal Base Image (UBI)
 

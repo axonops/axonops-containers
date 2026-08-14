@@ -96,6 +96,31 @@ docker compose exec cassandra-0 tail -f /var/log/axonops/axon-agent.log
 A healthy agent logs a successful connection. `Unable to connect to axonops
 services` means the endpoint is unreachable or the key is wrong.
 
+### Health of the nodes
+
+The nodes use the healthcheck the image ships,
+`/usr/local/bin/axonops-healthcheck.sh`, rather than a check written here. It
+verifies both that Cassandra is serving CQL and that the `axon-agent` process is
+running — which matters more here than in the self-hosted examples, since a node
+whose agent has died reports to SaaS not at all while still answering queries.
+
+A dead agent is reported in the check output but does not by itself make the
+container unhealthy; failing the check can make an orchestrator restart or drain
+a node that is still serving. Set `HEALTHCHECK_REQUIRE_AGENT=true` to treat it as
+a failure:
+
+```bash
+docker compose exec cassandra-0 /usr/local/bin/axonops-healthcheck.sh
+```
+
+The agent starts only once Cassandra is up, so it is normally absent for part of
+the 90s start period.
+
+The agent check reached `axonops-healthcheck.sh` after the currently pinned
+image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.8` the
+script verifies Cassandra only and `HEALTHCHECK_REQUIRE_AGENT` has no effect.
+Both take effect with the next Cassandra image release.
+
 ## Using the cluster
 
 ```bash
