@@ -23,22 +23,29 @@ lists every difference.
 
 ## Before you start
 
-Authentication in this example is set with `CASSANDRA_AUTHENTICATOR` and
+The three nodes default to
+`ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1`, not to the
+production `ghcr.io/axonops/cassandra/cassandra:5.0.8`. That is deliberate and
+temporary.
+
+Authentication here is set with `CASSANDRA_AUTHENTICATOR` and
 `CASSANDRA_AUTHORIZER`, which the image entrypoint applies to `cassandra.yaml`.
 **Images published before that entrypoint support ignore both variables**: the
 cluster starts, joins and appears in AxonOps exactly as it should, and accepts
-every connection without a password. Nothing in the logs calls this out.
+every connection without a password. Nothing in the logs calls this out. The
+current production image predates the change; the development image above is the
+first build that carries it.
 
-Check in one command once the stack is up:
+Move `CASSANDRA_IMAGE` to the production tag once the next Cassandra release
+ships — `env.example` has both lines ready.
+
+Either way, check what you actually got once the stack is up:
 
 ```bash
 docker exec cassandra01 grep '^authenticator:' /opt/cassandra/conf/cassandra.yaml
 # authenticator: PasswordAuthenticator   <- secured
-# authenticator: AllowAllAuthenticator   <- image too old, see below
+# authenticator: AllowAllAuthenticator   <- image too old, see above
 ```
-
-If you get `AllowAllAuthenticator`, point `CASSANDRA_IMAGE` in `.env` at an
-image built from this repository at or after that change.
 
 ## Quick start
 
@@ -62,7 +69,7 @@ that does not survive losing a node.
 
 | Service | Address | Image | Purpose | Published port |
 |---------|---------|-------|---------|----------------|
-| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
+| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
 | `cassandra02` | 10.17.64.6 | same | Cluster node, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | same | Cluster node, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (single-node Cassandra) | — |
@@ -189,7 +196,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_CASSANDRA_SSL` | `false` | TLS from `axon-server` to `axondb-timeseries` |
 | `CASSANDRA_CLUSTER_NAME` | `secure-cluster` | Cluster name shown in AxonOps |
 | `CASSANDRA_DC` | `dc1` | Datacentre name |
-| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.8` | Image for the three nodes |
+| `CASSANDRA_IMAGE` | `…/development/cassandra:5.0.8-2.0.31-dev-auth-1` | Image for the three nodes — see [Before you start](#before-you-start) |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per cluster node |
 | `CASSANDRA_MEM_LIMIT` | `2g` | Container memory limit per node |
 | `CASSANDRA_CPUS` | `2.0` | CPU limit per node |
@@ -246,7 +253,7 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 | Original | Here | Why |
 |----------|------|-----|
 | Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | The point of the port. Metrics, logs, alerting and repair scheduling in one platform, and no JMX exporter sidecars to configure |
-| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Same Cassandra, with the AxonOps agent and Java agent already installed |
+| `cassandra:5.0.8` | `ghcr.io/axonops/development/cassandra:5.0.8-…` | Same Cassandra, with the AxonOps agent and Java agent already installed. Development image for now — see [Before you start](#before-you-start) |
 | Bind mounts under `${PWD}/docker/` | Named volumes | Nothing to create before the first run, and `docker compose down -v` cleans up |
 | Bind-mounted `conf` volumes | None | This image takes its configuration from environment variables |
 | `7000`, `7001` published per node | Not published | Internode ports; nothing outside the compose network uses them |
