@@ -30,6 +30,11 @@ jobs:
           # to the source. Add files here as they are translated.
           IN_SCOPE=(
             "README.md"
+            "docker-compose/README.md"
+            "docker-compose/00-axonops-platform/README.md"
+            "docker-compose/01-cassandra-cluster/README.md"
+            "docker-compose/02-saas-cassandra-cluster/README.md"
+            "docker-compose/03-secure-3-rack-cluster/README.md"
           )
           LANGS=(fr)
 

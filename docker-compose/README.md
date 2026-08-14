@@ -1,5 +1,7 @@
 # Docker Compose Examples
 
+**English** | [Français](README.fr.md)
+
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
 </p>
@@ -157,6 +159,75 @@ version where it is and change the second or third component only.
 
 **Rolling back** is the same operation with the old tag: put it back, run
 `docker compose up -d <service>` again.
+
+### How do I update AxonOps without touching the Cassandra cluster?
+
+Upgrading AxonOps and upgrading Cassandra are separate operations. Everything on
+the AxonOps side — `axondb-timeseries`, `axondb-search`, `axon-server`,
+`axon-dash` — can be replaced while the cluster keeps running, because no
+Cassandra container is recreated and no `nodetool` command is involved. The
+agents are the one exception: they ship inside the Cassandra image, so upgrading
+an agent does recreate a Cassandra container (see above).
+
+**What the cluster sees.** Nothing. Agents buffer in memory while `axon-server`
+is down and flush when it returns; Cassandra itself never learns the monitoring
+stack restarted. Expect a gap in metrics for the length of the restart, and
+alerts that depend on data arriving may fire — silence noisy ones first if you
+have integrations wired up.
+
+**Before you start.**
+
+```bash
+docker compose ps                       # note what is healthy now
+docker compose config | grep image:     # record the tags you are moving away from
+```
+
+Back up the data volumes if the stack holds history you care about
+(`axondb-timeseries-data`, `axondb-search-data`, `axon-server-data` in example
+00). Recreating a container does not delete a named volume, but a rollback is
+easier with a copy.
+
+**Order.** Databases, then `axon-server`, then `axon-dash` — dependencies first,
+so nothing talks to something older than itself. Skip any component whose tag has
+not changed. Do one service at a time and confirm it is healthy before the next:
+
+```bash
+# 1. Edit docker-compose.yaml: new tag AND the digest comment above it
+# 2. Then, per service:
+docker compose pull <service>
+docker compose up -d --no-deps <service>   # --no-deps: do not restart anything else
+docker compose logs -f <service>
+docker compose ps                          # healthy before moving on
+```
+
+`--no-deps` matters here. Without it Compose may restart linked services, which
+in examples 01 and 03 pulls the Cassandra containers into an upgrade you did not
+ask for.
+
+**Verify, in this order:**
+
+```bash
+docker compose ps                       # all healthy
+docker compose exec axon-server \
+  curl -sf http://localhost:8080/api/v1/healthz
+```
+
+`axon-server`'s API port is not published to the host in these examples, which is
+why the check runs inside the container — it is the same probe the service's own
+healthcheck uses. Then open the dashboard on `localhost:3000` and confirm every
+node is still listed and metrics resume. A node showing as disconnected for more
+than a minute or two after the server is healthy means the agent did not
+reconnect — restart that agent's Cassandra container last, not first.
+
+**Rolling back** is the same loop with the previous tags. Database images are the
+one component where a rollback is not always safe: a newer version may have
+migrated its on-disk format, so roll `axondb-*` back only onto a restored volume
+copy, not onto data a newer version has already written.
+
+**Version skew.** Keep `axon-server` and `axon-dash` on releases from the same
+batch. Agents are the tolerant part — an older agent reporting to a newer server
+is normal and expected during a staged rollout, which is why agents come last and
+can wait for a maintenance window on the cluster.
 
 ## When something does not start
 

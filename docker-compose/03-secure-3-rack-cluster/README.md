@@ -1,5 +1,7 @@
 # Example 03 — A secured 3-rack cluster, monitored by AxonOps
 
+**English** | [Français](README.fr.md)
+
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
 </p>
