@@ -120,13 +120,12 @@ jobs:
         uses: ./.github/actions/axondb-search-verify-startup-banner
         with:
           container_name: axondb-test
-          expected_image: ghcr.io/axonops/axondb-search
-          is_production: 'true'
+          expected_opensearch_version: ${{ steps.version.outputs.opensearch_version }}
 
       - name: Verify versions (jemalloc, OpenSearch, Java, opensearch)
         uses: ./.github/actions/axondb-search-verify-versions
         with:
-          opensearch_version: ${{ steps.version.outputs.opensearch_version }}
+          expected_version: ${{ steps.version.outputs.opensearch_version }}
           container_name: axondb-test
 
       - name: Test healthcheck script
