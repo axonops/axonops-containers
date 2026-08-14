@@ -141,16 +141,17 @@ components:
   - name: cassandra
     kind: image
     description: Standalone Apache Cassandra with the AxonOps agent, built from the K8ssandra Dockerfile
-    git_tag: cassandra-1.0.0
+    git_tag: cassandra-1.1.0
     registry: ghcr.io
     repository: axonops/cassandra/cassandra
     tag_pattern: "{cassandra_version}-{agent_version}-{container_version}"
     current:
-      tag: "5.0.8-2.0.31-1.0.0"
-      digest: "sha256:f96804cc2fe74694988d6c28f9ae7b5b674e8959bd6f2d6b65eff3b4fa4340b5"
-    previous: []
+      tag: "5.0.8-2.0.31-1.1.0"
+      digest: "sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d"
+    previous:
+      - "5.0.8-2.0.31-1.0.0"
     notes: >-
-      First release. Build 1.0.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is not built here — upstream k8ssandra publishes no 5.0.9 base image.
+      Build 1.1.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. It adds `CASSANDRA_AUTHENTICATOR`, `CASSANDRA_AUTHORIZER`, `CASSANDRA_ROLE_MANAGER` and `CASSANDRA_NATIVE_TRANSPORT_PORT` support to the entrypoint, and the healthcheck now also verifies the AxonOps agent — 1.0.0 ignores all of these. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is not built here — upstream k8ssandra publishes no 5.0.9 base image.
   - name: strimzi-kafka
     kind: image
     description: Strimzi Kafka with the AxonOps agent
