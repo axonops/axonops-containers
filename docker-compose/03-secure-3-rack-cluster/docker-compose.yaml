@@ -257,7 +257,10 @@ services:
       - "9142:9042"                 # CQL
       - "127.0.0.1:7199:7199"       # JMX — localhost only, see README
     healthcheck:
-      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      # The image's own check: Cassandra serving, and the axon-agent alive so
+      # the node is really being monitored. A dead agent is reported but not
+      # fatal; HEALTHCHECK_REQUIRE_AGENT=true makes it fail the check instead.
+      test: ["CMD", "/usr/local/bin/axonops-healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -268,7 +271,12 @@ services:
     restart: unless-stopped
 
   cassandra02:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    # Same development image as cassandra01 — see the note there. A node left on
+    # the production tag ignores CASSANDRA_AUTHENTICATOR and joins the cluster
+    # with AllowAllAuthenticator, so the cluster is only as secured as its least
+    # secured node.
+    # Preferred (immutable): ghcr.io/axonops/development/cassandra@sha256:25fef89d4476139825da13a5ee02dba2fd28d9704e482f692e2d6850d8f8d3c7
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1}
     container_name: cassandra02
     hostname: cassandra02
     networks:
@@ -311,7 +319,10 @@ services:
       - "9242:9042"                 # CQL
       - "127.0.0.1:7299:7199"       # JMX — localhost only, see README
     healthcheck:
-      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      # The image's own check: Cassandra serving, and the axon-agent alive so
+      # the node is really being monitored. A dead agent is reported but not
+      # fatal; HEALTHCHECK_REQUIRE_AGENT=true makes it fail the check instead.
+      test: ["CMD", "/usr/local/bin/axonops-healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -322,7 +333,9 @@ services:
     restart: unless-stopped
 
   cassandra03:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    # Same development image as cassandra01 — see the note there.
+    # Preferred (immutable): ghcr.io/axonops/development/cassandra@sha256:25fef89d4476139825da13a5ee02dba2fd28d9704e482f692e2d6850d8f8d3c7
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1}
     container_name: cassandra03
     hostname: cassandra03
     networks:
@@ -365,7 +378,10 @@ services:
       - "9342:9042"                 # CQL
       - "127.0.0.1:7399:7199"       # JMX — localhost only, see README
     healthcheck:
-      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      # The image's own check: Cassandra serving, and the axon-agent alive so
+      # the node is really being monitored. A dead agent is reported but not
+      # fatal; HEALTHCHECK_REQUIRE_AGENT=true makes it fail the check instead.
+      test: ["CMD", "/usr/local/bin/axonops-healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -381,7 +397,7 @@ networks:
     ipam:
       config:
         # Fixed, because every address below is fixed. Changing the subnet means
-        # changing the eight ipv4_address entries, CASSANDRA_SEEDS,
+        # changing the seven ipv4_address entries, CASSANDRA_SEEDS,
         # CASSANDRA_LISTEN_ADDRESS, CASSANDRA_BROADCAST_RPC_ADDRESS and
         # java.rmi.server.hostname with it — which is why it is not a variable.
         - subnet: 10.17.64.0/24
