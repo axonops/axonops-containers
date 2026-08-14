@@ -189,6 +189,16 @@ curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/t
   jq -r '.results[] | "\(.name): \(.digest)"'
 ```
 
+### A Cassandra version exists upstream but not in k8ssandra
+
+Apache releases a Cassandra patch before k8ssandra builds a `cass-management-api` image
+for it. These images are built `FROM` that base, so a Cassandra version cannot be added
+to the matrix — nor to `K8SSANDRA_VERSIONS` — until the base image exists. Adding it
+early makes every build job for that version fail with "No k8ssandra version found".
+
+Current case: Cassandra **5.0.9** is released upstream; k8ssandra publishes no 5.0.9
+image. The newest supported line here is 5.0.8.
+
 ### k8ssandra hasn't released new images yet
 
 Check Docker Hub for available tags:
