@@ -45,6 +45,9 @@ jobs:
             "examples/NODE_SELECTOR_GUIDE.md"
             "axonops/charts/axonops/README.md"
             "axonops/charts/axon-dash/README.md"
+            "axonops/charts/axon-server/README.md"
+            "axonops/charts/axondb-search/README.md"
+            "axonops/charts/axondb-timeseries/README.md"
           )
           LANGS=(fr)
 

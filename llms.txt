@@ -100,6 +100,9 @@ French translations sit next to their English source as `<name>.fr.md`. The Engl
 - [examples/NODE_SELECTOR_GUIDE.fr.md](examples/NODE_SELECTOR_GUIDE.fr.md)
 - [axonops/charts/axonops/README.fr.md](axonops/charts/axonops/README.fr.md)
 - [axonops/charts/axon-dash/README.fr.md](axonops/charts/axon-dash/README.fr.md)
+- [axonops/charts/axon-server/README.fr.md](axonops/charts/axon-server/README.fr.md)
+- [axonops/charts/axondb-search/README.fr.md](axonops/charts/axondb-search/README.fr.md)
+- [axonops/charts/axondb-timeseries/README.fr.md](axonops/charts/axondb-timeseries/README.fr.md)
 
 ## Optional
 
