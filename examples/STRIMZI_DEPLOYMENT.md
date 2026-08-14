@@ -1,5 +1,7 @@
 # Strimzi Kafka Deployment Guide
 
+**English** | [Français](STRIMZI_DEPLOYMENT.fr.md)
+
 This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
 
 ## Quick Start

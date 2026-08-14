@@ -18234,6 +18234,8 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # On-Premises Deployment Guide
 
+**English** | [Français](DEPLOYMENT_GUIDE.fr.md)
+
 Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
 
 ## Overview
@@ -18506,6 +18508,8 @@ kubectl get pods -n k8ssandra-operator
 # Source: examples/AXONOPS_DEPLOYMENT.md
 
 # AxonOps Deployment Guide
+
+**English** | [Français](AXONOPS_DEPLOYMENT.fr.md)
 
 This guide covers deploying AxonOps monitoring and management services on Kubernetes.
 
@@ -18988,6 +18992,8 @@ Ready-to-use configurations are available in the [axonops/](axonops/) directory:
 
 # K8ssandra Deployment Guide
 
+**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md)
+
 This guide covers deploying Apache Cassandra using the K8ssandra operator on Kubernetes, with optional AxonOps monitoring integration.
 
 ## Quick Start
@@ -19373,6 +19379,8 @@ kubectl delete namespace k8ssandra-operator
 
 # Strimzi Kafka Deployment Guide
 
+**English** | [Français](STRIMZI_DEPLOYMENT.fr.md)
+
 This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
 
 ## Quick Start
@@ -19457,6 +19465,8 @@ Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before 
 # Source: examples/NODE_SELECTOR_GUIDE.md
 
 # Strimzi Node Selector Configuration Guide
+
+**English** | [Français](NODE_SELECTOR_GUIDE.fr.md)
 
 ## Overview
 

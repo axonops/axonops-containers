@@ -38,6 +38,11 @@ jobs:
             "cassandra/README.md"
             "strimzi/README.md"
             "axonops-schema-registry/README.md"
+            "examples/DEPLOYMENT_GUIDE.md"
+            "examples/AXONOPS_DEPLOYMENT.md"
+            "examples/K8SSANDRA_DEPLOYMENT.md"
+            "examples/STRIMZI_DEPLOYMENT.md"
+            "examples/NODE_SELECTOR_GUIDE.md"
           )
           LANGS=(fr)
 

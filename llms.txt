@@ -93,6 +93,11 @@ French translations sit next to their English source as `<name>.fr.md`. The Engl
 - [cassandra/README.fr.md](cassandra/README.fr.md)
 - [strimzi/README.fr.md](strimzi/README.fr.md)
 - [axonops-schema-registry/README.fr.md](axonops-schema-registry/README.fr.md)
+- [examples/DEPLOYMENT_GUIDE.fr.md](examples/DEPLOYMENT_GUIDE.fr.md)
+- [examples/AXONOPS_DEPLOYMENT.fr.md](examples/AXONOPS_DEPLOYMENT.fr.md)
+- [examples/K8SSANDRA_DEPLOYMENT.fr.md](examples/K8SSANDRA_DEPLOYMENT.fr.md)
+- [examples/STRIMZI_DEPLOYMENT.fr.md](examples/STRIMZI_DEPLOYMENT.fr.md)
+- [examples/NODE_SELECTOR_GUIDE.fr.md](examples/NODE_SELECTOR_GUIDE.fr.md)
 
 ## Optional
 
