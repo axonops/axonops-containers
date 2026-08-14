@@ -7,13 +7,20 @@
 #   3. Access dashboard at http://localhost:3000
 #
 # For more information, see README.md
+#
+# Image pinning: every service below is pinned to an immutable version tag, with
+# the equivalent SHA256 digest commented out above it. For production, swap to
+# the digest form - it is a cryptographic checksum of the exact image and cannot
+# be moved, whereas a tag can. See "Image Pinning: Tags vs Checksums" in
+# README.md, and ../VERSIONS.md for the current digest of every image.
 
 services:
   # =============================================================================
   # axondb-timeseries: Apache Cassandra 5.0.6 for metrics storage
   # =============================================================================
   axondb-timeseries:
-    image: ghcr.io/axonops/axondb-timeseries:5.0.6
+    # Preferred (immutable): ghcr.io/axonops/axondb-timeseries@sha256:1ff1df7b51d70e42a827a29ca70d2845206b00edf774b484f26aa9c16a9c89fb
+    image: ghcr.io/axonops/axondb-timeseries:5.0.6-1.2.0
     container_name: axondb-timeseries
     hostname: axondb-timeseries
     networks:
@@ -46,7 +53,8 @@ services:
   # axondb-search: OpenSearch 3.3.2 for logs and search functionality
   # =============================================================================
   axondb-search:
-    image: ghcr.io/axonops/axondb-search:3.3.2
+    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:033007e7043c175b6703e5ca0a5509a043ba3a074d7eb1ec35c3c565d0c312e9
+    image: ghcr.io/axonops/axondb-search:3.3.2-1.5.0
     container_name: axondb-search
     hostname: axondb-search
     networks:
@@ -79,7 +87,8 @@ services:
   # axon-server: AxonOps backend API and agent endpoint
   # =============================================================================
   axon-server:
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:latest
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
     container_name: axon-server
     hostname: axon-server
     networks:
@@ -117,7 +126,8 @@ services:
   # axon-dash: AxonOps web dashboard
   # =============================================================================
   axon-dash:
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:latest
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37
     container_name: axon-dash
     hostname: axon-dash
     networks:

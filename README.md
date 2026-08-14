@@ -9,6 +9,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 ## Table of Contents
 
 - [Components](#components)
+- [Current Versions](VERSIONS.md)
 - [Red Hat Universal Base Image (UBI)](#red-hat-universal-base-image-ubi)
 - [Repository Conventions](#repository-conventions)
 - [Security](#security)
@@ -67,6 +68,7 @@ All containers in this repository are built on **Red Hat Universal Base Image (U
 - **Automated CI/CD**: GitHub Actions with comprehensive testing
 - **Security scanning**: Trivy vulnerability scanning on all images
 - **Base images**: Red Hat UBI 9 (digest-pinned for supply chain security)
+- **Current versions**: [VERSIONS.md](VERSIONS.md) lists the current tag and digest of every published image and chart. It is generated from [versions.yaml](versions.yaml) by `./scripts/update-versions.sh` — edit the YAML, never the Markdown.
 
 ## Security
 

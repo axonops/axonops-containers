@@ -1,0 +1,228 @@
+# versions.yaml
+#
+# Single source of truth for the current release of every container image and
+# Helm chart published from this repository.
+#
+# Consumed by:
+#   - scripts/update-versions.sh  (regenerates VERSIONS.md, refreshes digests)
+#   - documentation examples, deployment manifests and, in future, CI jobs that
+#     need to know "what is the current version of X".
+#
+# Ordering rules (do not reorder by hand):
+#   - `components` are listed in deployment order: data stores first, then the
+#     AxonOps services that depend on them, then the operator images, then the
+#     Helm charts. Anything reading this file top-to-bottom gets a valid
+#     install order.
+#   - Within a component, `current` is the newest published release and
+#     `previous` is newest-first. Position in `previous` is the only ordering
+#     signal: do not rely on string sorting, the tag formats differ per image.
+#
+# Field reference:
+#   name             Component identifier, matches the directory in this repo.
+#   kind             `image` or `chart`.
+#   git_tag          Git tag in this repository that produced `current`.
+#   registry         Registry host serving the image.
+#   repository       Repository path within the registry.
+#   tag_pattern      How the image tag is composed for this component.
+#   current.tag      Newest published tag.
+#   current.digest   Manifest digest of `current.tag`, as published. This is the
+#                    value to deploy with — see VERSIONS.md and the root README
+#                    section "Gold Standard Security Deployment". Refresh with
+#                    `scripts/update-versions.sh --refresh`.
+#   previous         Previously published tags, newest-first.
+#   notes            Anything a consumer needs to know before pinning.
+
+schema_version: 1
+last_verified: "2026-08-13"
+components:
+  - name: axondb-timeseries
+    kind: image
+    description: AxonOps metrics store, Apache Cassandra based
+    git_tag: axondb-timeseries-1.4.0
+    registry: ghcr.io
+    repository: axonops/axondb-timeseries
+    tag_pattern: "{cassandra_version}-{container_version}"
+    current:
+      tag: "5.0.8-1.4.0"
+      digest: "sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c"
+    previous:
+      - "5.0.6-1.2.0"
+      - "5.0.6-1.1.0"
+      - "5.0.6-1.0.0"
+    notes: >-
+      The publish workflow builds one Cassandra version per run (`cassandra_dir` input). Dockerfiles exist for 5.0.6 through 5.0.9, but only the tags listed here are published.
+  - name: axondb-search
+    kind: image
+    description: AxonOps log and search store, OpenSearch based
+    git_tag: axondb-search-1.6.0
+    registry: ghcr.io
+    repository: axonops/axondb-search
+    tag_pattern: "{opensearch_version}-{container_version}"
+    current:
+      tag: "3.7.0-1.6.0"
+      digest: "sha256:4291a1b3c099639e2cf7178eb27c576906e6404c3baaefa0634068d1ab53f41d"
+    previous:
+      - "3.3.2-1.5.0"
+      - "3.3.2-1.4.0"
+      - "3.3.2-1.3.0"
+      - "3.3.2-1.2.0"
+    notes: "Dockerfiles exist for OpenSearch 3.3.2 and 3.7.0."
+  - name: axondb-search-backups
+    kind: image
+    description: Snapshot and restore sidecar for axondb-search
+    git_tag: null
+    registry: ghcr.io
+    repository: axonops/axondb-search-backups
+    tag_pattern: "{container_version}"
+    current:
+      tag: "1.2.0"
+      digest: "sha256:8f6cb72748ad243a1083d9323e5170cd2b881e5bff8d12280a855faded5b439a"
+    previous: []
+    notes: >-
+      The published tag does not correspond to any `axondb-search-backups-*` git tag in this repository (the newest of those is 0.0.26) and TAG_CHANGELOG.md still lists the old `3.3.2-0.0.x` image tags. Reconcile the tagging scheme before pinning anything to this image.
+  - name: axon-server
+    kind: image
+    description: AxonOps API backend
+    git_tag: null
+    registry: registry.axonops.com
+    repository: axonops-public/axonops-docker/axon-server
+    tag_pattern: "{version}"
+    current:
+      tag: "2.0.35"
+      digest: "sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7"
+    previous:
+      - "2.0.34"
+    notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
+  - name: axon-dash
+    kind: image
+    description: AxonOps web dashboard
+    git_tag: null
+    registry: registry.axonops.com
+    repository: axonops-public/axonops-docker/axon-dash
+    tag_pattern: "{version}"
+    current:
+      tag: "2.0.37"
+      digest: "sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362"
+    previous:
+      - "2.0.36"
+    notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
+  - name: axonops-schema-registry
+    kind: image
+    description: AxonOps schema registry
+    git_tag: axonops-schema-registry-0.2.0-0.0.1
+    registry: ghcr.io
+    repository: axonops/axonops-schema-registry
+    tag_pattern: "{sr_version}-{container_version}"
+    current:
+      tag: "0.2.1"
+      digest: "sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164"
+    previous:
+      - "0.2.0"
+      - "0.1.0"
+      - "0.0.1"
+    notes: >-
+      Pre-release. The published tags do not yet follow the documented `{SR_VERSION}-{CONTAINER_VERSION}` pattern, and the newest tags in the registry are feature builds (`0.4.0-mcp-phase7`), not releases.
+  - name: k8ssandra-cassandra
+    kind: image
+    description: Apache Cassandra with the AxonOps agent, for the K8ssandra operator
+    git_tag: k8ssandra-1.5.6
+    registry: ghcr.io
+    repository: axonops/k8ssandra/cassandra
+    tag_pattern: "{cassandra_version}-v{k8ssandra_api_version}-{container_version}"
+    current:
+      tag: "5.0.8-v0.1.120-1.5.6"
+      digest: "sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c"
+    previous:
+      - "5.0.8-v0.1.120-1.5.5"
+      - "5.0.8-v0.1.120-1.5.3"
+      - "5.0.8-v0.1.120-1.5.2"
+    notes: >-
+      Each release publishes one tag per Cassandra version. Build 1.5.6 covers 5.0.1, 5.0.2, 5.0.3, 5.0.5, 5.0.6, 5.0.7 and 5.0.8 — 5.0.4 was last built at 1.5.5 and 5.0.9 has never been published here. `current.digest` is the digest of the 5.0.8 variant only; every other Cassandra version has its own digest.
+  - name: cassandra
+    kind: image
+    description: Standalone Apache Cassandra with the AxonOps agent, built from the K8ssandra Dockerfile
+    git_tag: cassandra-1.0.0
+    registry: ghcr.io
+    repository: axonops/cassandra/cassandra
+    tag_pattern: "{cassandra_version}-{agent_version}-{container_version}"
+    current:
+      tag: null
+      digest: null
+    previous: []
+    notes: >-
+      Tagged (cassandra-1.0.0) but not yet published — the repository has no tags in the registry. Build matrix is Cassandra 5.0.1 through 5.0.8.
+  - name: strimzi-kafka
+    kind: image
+    description: Strimzi Kafka with the AxonOps agent
+    git_tag: strimzi-0.1.26
+    registry: ghcr.io
+    repository: axonops/strimzi/kafka
+    tag_pattern: "{operator_version}-{kafka_version}-{agent_version}-{container_version}"
+    current:
+      tag: "1.1.0-4.3.0-2.0.20-0.1.26"
+      digest: "sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124eb38672e5e964f51d5d87"
+    previous:
+      - "1.1.0-4.3.0-2.0.20-0.1.25"
+      - "1.1.0-4.3.0-2.0.20-0.1.24"
+    notes: >-
+      Build 0.1.26 publishes one tag per supported operator/Kafka combination (operators 0.46.1 through 1.1.0, AxonOps agent 2.0.20). `current.tag` is the newest combination; see the VERSION_MATRIX in .github/workflows/strimzi-publish-signed.yml for the full set.
+  - name: chart-axonops
+    kind: chart
+    description: Umbrella chart deploying the full AxonOps stack
+    git_tag: helm-1.1.21
+    registry: ghcr.io
+    repository: axonops/charts/axonops
+    tag_pattern: "{chart_version}"
+    current:
+      tag: "1.1.21"
+      digest: null
+    previous: []
+    notes: "Chart version comes from axonops/charts/axonops/Chart.yaml."
+  - name: chart-axon-server
+    kind: chart
+    description: axon-server chart
+    git_tag: helm-1.1.21
+    registry: ghcr.io
+    repository: axonops/charts/axon-server
+    tag_pattern: "{chart_version}"
+    current:
+      tag: "2.1.14"
+      digest: null
+    previous: []
+    notes: null
+  - name: chart-axon-dash
+    kind: chart
+    description: axon-dash chart
+    git_tag: helm-1.1.21
+    registry: ghcr.io
+    repository: axonops/charts/axon-dash
+    tag_pattern: "{chart_version}"
+    current:
+      tag: "0.1.10"
+      digest: null
+    previous: []
+    notes: null
+  - name: chart-axondb-timeseries
+    kind: chart
+    description: axondb-timeseries chart
+    git_tag: helm-1.1.21
+    registry: ghcr.io
+    repository: axonops/charts/axondb-timeseries
+    tag_pattern: "{chart_version}"
+    current:
+      tag: "0.1.7"
+      digest: null
+    previous: []
+    notes: null
+  - name: chart-axondb-search
+    kind: chart
+    description: axondb-search chart
+    git_tag: helm-1.1.21
+    registry: ghcr.io
+    repository: axonops/charts/axondb-search
+    tag_pattern: "{chart_version}"
+    current:
+      tag: "0.2.9"
+      digest: null
+    previous: []
+    notes: null
