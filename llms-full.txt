@@ -851,8 +851,10 @@ source without seeing that a translation exists.
   `examples/K8SSANDRA_DEPLOYMENT.md`, `examples/STRIMZI_DEPLOYMENT.md`,
   `examples/NODE_SELECTOR_GUIDE.md`
 
-Files are added to the list in `.github/workflows/docs-translations.yml` as
-their translations land — a file is only enforced once it has been translated.
+Every file on that list is translated, and all of them are enforced by
+`.github/workflows/docs-translations.yml`. A new in-scope document is added to
+that workflow's list once its translation lands — a file is only enforced when
+it has actually been translated.
 
 **Deliberately English-only:**
 - `DEVELOPMENT.md`, `RELEASE.md`, `PIPELINES.md` — contributor-facing, and they
