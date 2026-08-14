@@ -90,6 +90,7 @@ French translations sit next to their English source as `<name>.fr.md`. The Engl
 - [docker-compose/01-cassandra-cluster/README.fr.md](docker-compose/01-cassandra-cluster/README.fr.md)
 - [docker-compose/02-saas-cassandra-cluster/README.fr.md](docker-compose/02-saas-cassandra-cluster/README.fr.md)
 - [docker-compose/03-secure-3-rack-cluster/README.fr.md](docker-compose/03-secure-3-rack-cluster/README.fr.md)
+- [cassandra/README.fr.md](cassandra/README.fr.md)
 
 ## Optional
 
