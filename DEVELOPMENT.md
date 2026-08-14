@@ -192,6 +192,61 @@ their translations land — a file is only enforced once it has been translated.
 - The `Docs Translations` CI job fails a PR that edits an in-scope English doc
   without touching its translation.
 
+### LLM Documentation Indexes
+
+Two root-level files help LLMs, coding agents and AI-assisted developer tools
+find their way around the repository:
+
+- `llms.txt` — a hand-maintained map. A short description of the repository,
+  then links grouped by area, each saying what that document actually covers. It
+  is an index, not a copy: procedural detail stays in the README it points at.
+- `llms-full.txt` — every canonical document concatenated into one file, each
+  under a `# Source: <path>` heading, for tools that want the whole
+  documentation set as a single context source. **Generated. Never edit it by
+  hand.**
+
+Both are discovery and context aids. Neither controls crawlers, indexing, model
+training, licensing or attribution, and neither should be described as if it
+did.
+
+**Regenerating:**
+
+```bash
+./scripts/generate-llms-full.sh            # rewrite llms-full.txt
+./scripts/generate-llms-full.sh --check    # verify without writing; what CI runs
+```
+
+`--check` fails when `llms-full.txt` differs from what the manifest produces,
+when a tracked Markdown file is in neither list of the manifest, when a manifest
+path does not exist, or when a relative link in `llms.txt` does not resolve. The
+`LLM Docs Index` workflow runs it on every PR that touches documentation.
+
+**Adding a document:**
+
+1. Add the path to `scripts/llms-manifest.txt` as `include <path>`, in the
+   section for its area — the include order is the bundle order — or as
+   `exclude <path>  # reason` if it does not belong in the bundle.
+   Every tracked `.md` file must appear in one list or the other; the check
+   fails otherwise, so a new document cannot enter the repository without that
+   decision being made.
+2. Run `./scripts/generate-llms-full.sh` and commit the regenerated
+   `llms-full.txt` alongside your change.
+3. If the document is user-facing, add a link to `llms.txt` under the relevant
+   heading, with a phrase saying what it covers.
+
+**What is excluded, and why:**
+
+- `CHANGELOG.md` and `TAG_CHANGELOG.md` — release history, not guidance.
+- `VERSIONS.md` — generated, and it churns on every release. `llms.txt` links
+  it so the current tags and digests are still one hop away.
+- `*.fr.md` translations — the bundle would otherwise carry the same guidance
+  twice. `llms.txt` links both languages.
+- Per-version `tests/README.md` files — contributor scratch material.
+
+Compose files, Kubernetes manifests, Helm values, Dockerfiles and scripts are
+not bundled either: the documents link to them, and they are better read at
+their real path than as a snapshot.
+
 ## Git Workflow
 
 ### Branch Structure

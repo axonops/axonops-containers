@@ -1,0 +1,45 @@
+name: LLM Docs Index
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - 'llms.txt'
+      - 'llms-full.txt'
+      - 'scripts/generate-llms-full.sh'
+      - 'scripts/llms-manifest.txt'
+      - '.github/workflows/llms-docs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  llms-full-current:
+    name: llms.txt and llms-full.txt are current
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the generated bundle and the index
+        run: ./scripts/generate-llms-full.sh --check
+
+      - name: Explain a failure
+        if: failure()
+        run: |
+          cat >> "${GITHUB_STEP_SUMMARY}" <<'EOF'
+          ### llms-full.txt is out of date, or a document is unaccounted for
+
+          `llms-full.txt` is generated. Regenerate it and commit the result:
+
+          ```bash
+          ./scripts/generate-llms-full.sh
+          ```
+
+          If the failure names a Markdown file that is in neither list of
+          `scripts/llms-manifest.txt`, add it as an `include` (it belongs in the
+          bundle) or an `exclude` with a reason (it does not), then regenerate.
+
+          A new user-facing document usually also wants a link in `llms.txt`.
+          See the "LLM documentation indexes" section of `DEVELOPMENT.md`.
+          EOF
