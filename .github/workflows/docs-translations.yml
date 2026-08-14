@@ -1,0 +1,64 @@
+name: Docs Translations
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '.github/workflows/docs-translations.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  translation-parity:
+    name: Translated docs kept in sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check every edited in-scope doc has its translation updated
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # In-scope English docs. A translation exists as <name>.<lang>.md next
+          # to the source. Add files here as they are translated.
+          IN_SCOPE=(
+            "README.md"
+          )
+          LANGS=(fr)
+
+          CHANGED=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+
+          failed=0
+          for source in "${IN_SCOPE[@]}"; do
+            grep -qxF "${source}" <<< "${CHANGED}" || continue
+
+            for lang in "${LANGS[@]}"; do
+              translation="${source%.md}.${lang}.md"
+
+              if [ ! -f "${translation}" ]; then
+                echo "::error file=${source}::${source} is in scope for translation but ${translation} does not exist."
+                failed=1
+                continue
+              fi
+
+              if ! grep -qxF "${translation}" <<< "${CHANGED}"; then
+                echo "::error file=${source}::${source} was modified but ${translation} was not. Update the translation in the same PR, or the French docs silently go stale."
+                failed=1
+              fi
+            done
+          done
+
+          if [ "${failed}" -ne 0 ]; then
+            echo
+            echo "See the 'Translated documentation' section of DEVELOPMENT.md."
+            exit 1
+          fi
+
+          echo "Translation parity OK."
