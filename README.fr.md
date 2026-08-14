@@ -409,7 +409,7 @@ git tag merge-1.0.0 && git push origin merge-1.0.0
 # PR auto-created, review and merge to main
 ```
 
-**À utiliser pour :** tests de fonctionnalités, tests d'intégration, validation QA avant la production.
+**À utiliser pour :** tests de fonctionnalités, tests d'intégration, validation QA avant la mise en production.
 
 ---
 
