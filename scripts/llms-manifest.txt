@@ -100,6 +100,8 @@ exclude docker-compose/01-cassandra-cluster/README.fr.md    # translation
 exclude docker-compose/02-saas-cassandra-cluster/README.fr.md  # translation
 exclude docker-compose/03-secure-3-rack-cluster/README.fr.md   # translation
 exclude cassandra/README.fr.md                              # translation
+exclude strimzi/README.fr.md                                # translation
+exclude axonops-schema-registry/README.fr.md                # translation
 
 # Per-version test notes: contributor scratch material, superseded by each
 # component's DEVELOPMENT.md.

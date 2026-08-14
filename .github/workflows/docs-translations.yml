@@ -36,6 +36,8 @@ jobs:
             "docker-compose/02-saas-cassandra-cluster/README.md"
             "docker-compose/03-secure-3-rack-cluster/README.md"
             "cassandra/README.md"
+            "strimzi/README.md"
+            "axonops-schema-registry/README.md"
           )
           LANGS=(fr)
 
