@@ -12,6 +12,10 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 - [Components](#components)
 - [Current Versions](VERSIONS.md)
+- [Docker Compose](#docker-compose)
+  - [Quick start](#quick-start)
+  - [Which stack](#which-stack)
+  - [Compose or Kubernetes?](#compose-or-kubernetes)
 - [Red Hat Universal Base Image (UBI)](#red-hat-universal-base-image-ubi)
 - [Repository Conventions](#repository-conventions)
 - [Security](#security)
@@ -45,8 +49,65 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 ### Integrations
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Confluent-compatible Schema Registry with multi-backend storage support
 
-### Docker Compose
+### Compose Stacks
 - **[docker-compose/](./docker-compose/)** - Every Compose stack: the AxonOps platform on its own, the platform with a monitored Cassandra cluster, a cluster reporting to AxonOps SaaS, and a secured 3-rack cluster on a fixed subnet
+
+## Docker Compose
+
+Docker Compose is a first-class deployment path in this repository. Every stack
+lives under [`docker-compose/`](./docker-compose/), is built from the images
+published here, and is configured entirely through `.env` — no compose file
+needs editing to run one.
+
+### Quick start
+
+A complete self-hosted AxonOps platform on one host:
+
+```bash
+git clone https://github.com/axonops/axonops-containers.git
+cd axonops-containers/docker-compose/00-axonops-platform
+cp env.example .env          # set AXONOPS_ORG_NAME
+docker compose up -d
+docker compose ps            # wait for all four services to report healthy
+```
+
+Then open <http://localhost:3000>. A cold start takes 2–3 minutes: the two data
+stores initialise first, then `axon-server` and the dashboard come up behind
+them.
+
+The defaults in `env.example` are development values. Before running a stack you
+care about, set `AXONOPS_ORG_NAME`, `AXONOPS_DB_PASSWORD` and
+`AXONOPS_SEARCH_PASSWORD` — see
+[docker-compose/README.md](./docker-compose/README.md#before-you-run-anything).
+
+### Which stack
+
+| Stack | Use it to |
+|---|---|
+| [00-axonops-platform](./docker-compose/00-axonops-platform/) | run AxonOps for clusters you already have |
+| [01-cassandra-cluster](./docker-compose/01-cassandra-cluster/) | see the whole thing working end to end — platform plus 3 monitored nodes |
+| [02-saas-cassandra-cluster](./docker-compose/02-saas-cassandra-cluster/) | monitor a cluster from AxonOps SaaS, with no platform to run locally |
+| [03-secure-3-rack-cluster](./docker-compose/03-secure-3-rack-cluster/) | model a production-shaped cluster — authentication, 3 racks, fixed addressing, remote JMX |
+
+Full comparison, including container counts and RAM at defaults:
+[docker-compose/README.md](./docker-compose/README.md#which-one-do-i-want).
+
+### Compose or Kubernetes?
+
+Both paths deploy the same images; they differ in where the stack runs and what
+operates it.
+
+| | Docker Compose | Kubernetes |
+|---|---|---|
+| **Where** | a single host | a cluster |
+| **Use for** | evaluation, demos, development, small single-host deployments | production, HA, anything that has to survive a host |
+| **AxonOps platform** | [`docker-compose/`](./docker-compose/) stacks | Helm charts `oci://ghcr.io/axonops/charts/*` — see [VERSIONS.md](VERSIONS.md#helm-charts) and [examples/AXONOPS_DEPLOYMENT.md](./examples/AXONOPS_DEPLOYMENT.md) |
+| **Cassandra** | [`cassandra/`](./cassandra/) image, run directly | [`k8ssandra/`](./k8ssandra/) image via the K8ssandra operator — see [examples/K8SSANDRA_DEPLOYMENT.md](./examples/K8SSANDRA_DEPLOYMENT.md) |
+| **Scaling and failover** | manual | operator and scheduler |
+
+Agents report to `axon-server` the same way in both, so a cluster monitored by a
+Compose platform can be pointed at a Kubernetes one later without touching the
+monitored nodes.
 
 ## Red Hat Universal Base Image (UBI)
 

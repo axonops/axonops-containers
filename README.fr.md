@@ -12,6 +12,10 @@ Définitions de build de conteneurs et pipelines CI/CD des images de conteneurs 
 
 - [Composants](#composants)
 - [Versions actuelles](VERSIONS.md)
+- [Docker Compose](#docker-compose)
+  - [Démarrage rapide](#démarrage-rapide)
+  - [Quelle stack](#quelle-stack)
+  - [Compose ou Kubernetes ?](#compose-ou-kubernetes-)
 - [Red Hat Universal Base Image (UBI)](#red-hat-universal-base-image-ubi)
 - [Conventions du dépôt](#conventions-du-dépôt)
 - [Sécurité](#sécurité)
@@ -45,8 +49,65 @@ Définitions de build de conteneurs et pipelines CI/CD des images de conteneurs 
 ### Intégrations
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Schema Registry compatible Confluent avec prise en charge de plusieurs backends de stockage
 
-### Docker Compose
+### Stacks Compose
 - **[docker-compose/](./docker-compose/)** - Toutes les stacks Compose : la plateforme AxonOps seule, la plateforme avec un cluster Cassandra supervisé, un cluster reportant vers AxonOps SaaS, et un cluster sécurisé à 3 racks sur un sous-réseau fixe
+
+## Docker Compose
+
+Docker Compose est un mode de déploiement à part entière dans ce dépôt. Toutes
+les stacks se trouvent dans [`docker-compose/`](./docker-compose/), sont
+construites à partir des images publiées ici, et se configurent entièrement via
+`.env` — aucun fichier compose n'a besoin d'être modifié pour en exécuter une.
+
+### Démarrage rapide
+
+Une plateforme AxonOps auto-hébergée complète sur un seul hôte :
+
+```bash
+git clone https://github.com/axonops/axonops-containers.git
+cd axonops-containers/docker-compose/00-axonops-platform
+cp env.example .env          # définir AXONOPS_ORG_NAME
+docker compose up -d
+docker compose ps            # attendre que les quatre services soient healthy
+```
+
+Ouvrez ensuite <http://localhost:3000>. Un démarrage à froid prend 2 à 3
+minutes : les deux bases de données s'initialisent d'abord, puis `axon-server`
+et le dashboard démarrent derrière elles.
+
+Les valeurs par défaut de `env.example` sont des valeurs de développement. Avant
+de lancer une stack qui compte, définissez `AXONOPS_ORG_NAME`,
+`AXONOPS_DB_PASSWORD` et `AXONOPS_SEARCH_PASSWORD` — voir
+[docker-compose/README.fr.md](./docker-compose/README.fr.md).
+
+### Quelle stack
+
+| Stack | À utiliser pour |
+|---|---|
+| [00-axonops-platform](./docker-compose/00-axonops-platform/) | faire tourner AxonOps pour des clusters que vous avez déjà |
+| [01-cassandra-cluster](./docker-compose/01-cassandra-cluster/) | voir l'ensemble fonctionner de bout en bout — la plateforme et 3 nœuds supervisés |
+| [02-saas-cassandra-cluster](./docker-compose/02-saas-cassandra-cluster/) | superviser un cluster depuis AxonOps SaaS, sans plateforme à exécuter localement |
+| [03-secure-3-rack-cluster](./docker-compose/03-secure-3-rack-cluster/) | modéliser un cluster de forme production — authentification, 3 racks, adressage fixe, JMX distant |
+
+Comparaison complète, avec le nombre de conteneurs et la RAM par défaut :
+[docker-compose/README.fr.md](./docker-compose/README.fr.md).
+
+### Compose ou Kubernetes ?
+
+Les deux déploient les mêmes images ; ils diffèrent par l'endroit où la stack
+s'exécute et par ce qui l'exploite.
+
+| | Docker Compose | Kubernetes |
+|---|---|---|
+| **Où** | un seul hôte | un cluster |
+| **Pour** | évaluation, démonstrations, développement, petits déploiements mono-hôte | production, haute disponibilité, tout ce qui doit survivre à la perte d'un hôte |
+| **Plateforme AxonOps** | les stacks [`docker-compose/`](./docker-compose/) | charts Helm `oci://ghcr.io/axonops/charts/*` — voir [VERSIONS.md](VERSIONS.md#helm-charts) et [examples/AXONOPS_DEPLOYMENT.md](./examples/AXONOPS_DEPLOYMENT.md) |
+| **Cassandra** | image [`cassandra/`](./cassandra/), exécutée directement | image [`k8ssandra/`](./k8ssandra/) via l'opérateur K8ssandra — voir [examples/K8SSANDRA_DEPLOYMENT.md](./examples/K8SSANDRA_DEPLOYMENT.md) |
+| **Scaling et bascule** | manuels | opérateur et ordonnanceur |
+
+Les agents reportent à `axon-server` de la même manière dans les deux cas : un
+cluster supervisé par une plateforme Compose peut être redirigé plus tard vers
+une plateforme Kubernetes sans toucher aux nœuds supervisés.
 
 ## Red Hat Universal Base Image (UBI)
 
