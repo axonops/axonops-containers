@@ -26,6 +26,7 @@ Docker containers for Apache Cassandra with integrated AxonOps monitoring and ma
 - [Configuration](#configuration)
   - [AxonOps Agent Configuration](#axonops-agent-configuration)
   - [Container Environment Variables](#container-environment-variables)
+  - [Healthcheck](#healthcheck)
 - [Scripts Reference](#scripts-reference)
   - [scripts/install_k8ssandra.sh](#scriptsinstall_k8ssandrash)
   - [scripts/rebuild.sh](#scriptsrebuildsh)
@@ -665,6 +666,34 @@ containers:
         value: "${AXON_AGENT_ORG}"
       - name: AXON_AGENT_SERVER_HOST
         value: "${AXON_AGENT_SERVER_HOST}"
+```
+
+### Healthcheck
+
+The container healthcheck (`/usr/local/bin/axonops-healthcheck.sh`, run every 30s after a 120s start period) checks two things:
+
+1. **Cassandra** — the Management API liveness endpoint, the same probe the K8ssandra Operator relies on. In images built without the Management API (`INCLUDE_MGMT_API=false`) it is `nodetool statusbinary` plus a CQL port check instead.
+2. **AxonOps agent** — the `axon-agent` process is running, so the node is actually being monitored.
+
+By default a dead agent is reported in the healthcheck output but does not make the container unhealthy: Cassandra is still serving CQL, and failing the check can make Kubernetes restart or drain a node that is doing useful work. Set `HEALTHCHECK_REQUIRE_AGENT=true` to treat a dead agent as a failure.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HEALTHCHECK_REQUIRE_AGENT` | `false` | `true` makes the container unhealthy when `axon-agent` is not running |
+
+```yaml
+containers:
+  - name: cassandra
+    env:
+      - name: HEALTHCHECK_REQUIRE_AGENT
+        value: "true"
+```
+
+Note that the K8ssandra Operator sets its own liveness and readiness probes on the pod; they are unaffected by this and continue to use the Management API endpoints. The healthcheck here is the container-level one, visible through `docker inspect` and to any runtime that honours `HEALTHCHECK`.
+
+```bash
+docker inspect --format '{{.State.Health.Status}}' <container>
+kubectl exec <pod> -c cassandra -- /usr/local/bin/axonops-healthcheck.sh
 ```
 
 ## Scripts Reference

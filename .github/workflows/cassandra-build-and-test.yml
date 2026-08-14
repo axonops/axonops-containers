@@ -97,6 +97,11 @@ jobs:
         with:
           container_name: cassandra-test
 
+      - name: Test healthcheck
+        uses: ./.github/actions/k8ssandra-test-healthcheck
+        with:
+          container_name: cassandra-test
+
       - name: Test cqlai
         uses: ./.github/actions/k8ssandra-test-cqlai
         with:
