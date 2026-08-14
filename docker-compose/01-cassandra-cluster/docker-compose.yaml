@@ -176,8 +176,8 @@ services:
   # ===========================================================================
 
   cassandra-0:
-    # Preferred (immutable): ghcr.io/axonops/cassandra/cassandra@sha256:f96804cc2fe74694988d6c28f9ae7b5b674e8959bd6f2d6b65eff3b4fa4340b5
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    # Preferred (immutable): ghcr.io/axonops/cassandra/cassandra@sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0}
     container_name: cassandra-0
     hostname: cassandra-0
     networks: [axonops]
@@ -213,7 +213,7 @@ services:
     restart: unless-stopped
 
   cassandra-1:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0}
     container_name: cassandra-1
     hostname: cassandra-1
     networks: [axonops]
@@ -247,7 +247,7 @@ services:
     restart: unless-stopped
 
   cassandra-2:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0}
     container_name: cassandra-2
     hostname: cassandra-2
     networks: [axonops]

@@ -23,23 +23,18 @@ lists every difference.
 
 ## Before you start
 
-The three nodes default to
-`ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1`, not to the
-production `ghcr.io/axonops/cassandra/cassandra:5.0.8`. That is deliberate and
-temporary.
+The three nodes are pinned to the full version tag
+`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`, not to the floating
+`5.0.8`. That matters here more than in the other examples.
 
-Authentication here is set with `CASSANDRA_AUTHENTICATOR` and
-`CASSANDRA_AUTHORIZER`, which the image entrypoint applies to `cassandra.yaml`.
-**Images published before that entrypoint support ignore both variables**: the
-cluster starts, joins and appears in AxonOps exactly as it should, and accepts
-every connection without a password. Nothing in the logs calls this out. The
-current production image predates the change; the development image above is the
-first build that carries it.
+Authentication is set with `CASSANDRA_AUTHENTICATOR` and `CASSANDRA_AUTHORIZER`,
+which the image entrypoint applies to `cassandra.yaml`. **Images published
+before the 1.1.0 build ignore both variables**: the cluster starts, joins and
+appears in AxonOps exactly as it should, and accepts every connection without a
+password. Nothing in the logs calls this out.
 
-Move `CASSANDRA_IMAGE` to the production tag once the next Cassandra release
-ships — `env.example` has both lines ready.
-
-Either way, check what you actually got once the stack is up:
+So if you change `CASSANDRA_IMAGE`, keep it at 1.1.0 or later, and check what
+you actually got once the stack is up:
 
 ```bash
 for n in cassandra01 cassandra02 cassandra03; do
@@ -82,7 +77,7 @@ that does not survive losing a node.
 
 | Service | Address | Image | Purpose | Published port |
 |---------|---------|-------|---------|----------------|
-| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
+| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
 | `cassandra02` | 10.17.64.6 | same | Cluster node, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | same | Cluster node, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (single-node Cassandra) | — |
@@ -280,7 +275,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_CASSANDRA_SSL` | `false` | TLS from `axon-server` to `axondb-timeseries` |
 | `CASSANDRA_CLUSTER_NAME` | `secure-cluster` | Cluster name shown in AxonOps |
 | `CASSANDRA_DC` | `dc1` | Datacentre name |
-| `CASSANDRA_IMAGE` | `…/development/cassandra:5.0.8-2.0.31-dev-auth-1` | Image for the three nodes — see [Before you start](#before-you-start) |
+| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the three nodes — 1.1.0 or later, see [Before you start](#before-you-start) |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per cluster node |
 | `CASSANDRA_MEM_LIMIT` | `2g` | Container memory limit per node |
 | `CASSANDRA_CPUS` | `2.0` | CPU limit per node |
@@ -333,11 +328,9 @@ docker exec cassandra01 /usr/local/bin/axonops-healthcheck.sh
 The agent starts only once Cassandra is up, so it is normally absent for part of
 the 120s start period.
 
-The agent check reached `axonops-healthcheck.sh` after the currently pinned
-development image was published, so on
-`ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1` the script
-verifies Cassandra only and `HEALTHCHECK_REQUIRE_AGENT` has no effect. Both
-take effect with the next Cassandra image release.
+Both the agent check and `HEALTHCHECK_REQUIRE_AGENT` are in the pinned image,
+`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. On any earlier image
+the script verifies Cassandra only and the variable has no effect.
 
 Cluster data and configuration live under `./docker/` on the host — see
 [Storage](#storage). `docker compose down -v` removes the AxonOps volumes but
@@ -365,7 +358,7 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 | Original | Here | Why |
 |----------|------|-----|
 | Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | The point of the port. Metrics, logs, alerting and repair scheduling in one platform, and no JMX exporter sidecars to configure |
-| `cassandra:5.0.8` | `ghcr.io/axonops/development/cassandra:5.0.8-…` | Same Cassandra, with the AxonOps agent and Java agent already installed. Development image for now — see [Before you start](#before-you-start) |
+| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Same Cassandra, with the AxonOps agent and Java agent already installed |
 | Bind mounts under `${PWD}/docker/` | Kept | Reproduces the customer environment. `setup.sh` creates and seeds them — see [Storage](#storage) |
 | Bind-mounted `conf` volumes | Kept | Same reason. The image can be driven entirely by environment variables, but this way the configuration is editable on the host |
 | `7000`, `7001` published per node | Not published | Internode ports; nothing outside the compose network uses them |
@@ -383,9 +376,9 @@ published CQL port numbers.
 
 ## Troubleshooting
 
-**`authenticator: AllowAllAuthenticator` after starting.** The image predates
-entrypoint support for `CASSANDRA_AUTHENTICATOR`. See
-[Before you start](#before-you-start).
+**`authenticator: AllowAllAuthenticator` after starting.** `CASSANDRA_IMAGE`
+points at an image older than the 1.1.0 build, which predates entrypoint support
+for `CASSANDRA_AUTHENTICATOR`. See [Before you start](#before-you-start).
 
 **`Provided username cassandra and/or password are incorrect` right after the
 cluster comes up.** The default superuser is created a few seconds after the

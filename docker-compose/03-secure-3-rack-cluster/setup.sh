@@ -25,7 +25,7 @@ readonly DATA_ROOT="${SCRIPT_DIR}/docker"
 readonly NODES=(cassandra01 cassandra02 cassandra03)
 
 # Must match docker-compose.yaml. .env wins if it sets CASSANDRA_IMAGE.
-readonly DEFAULT_IMAGE="ghcr.io/axonops/development/cassandra:5.0.8-2.0.31-dev-auth-1"
+readonly DEFAULT_IMAGE="ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0"
 
 # The image runs Cassandra as uid/gid 999. A bind-mounted directory created by
 # Docker or by root is not writable by that user on Linux.

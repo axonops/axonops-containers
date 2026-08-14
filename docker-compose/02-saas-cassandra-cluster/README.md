@@ -36,9 +36,9 @@ nowhere.
 
 | Service | Image | Purpose | Published port |
 |---------|-------|---------|----------------|
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Seed node, `rack0` | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | `rack1` | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | `rack2` | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Seed node, `rack0` | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack1` | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack2` | — |
 
 One datacentre, `dc1`, with one rack per node. Only `cassandra-0` publishes CQL
 to the host; the others are reachable inside the compose network and through
@@ -70,7 +70,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_AGENT_KEY` | — | Agent key from the console. Required. |
 | `CASSANDRA_CLUSTER_NAME` | `saas-demo-cluster` | Cluster name shown in AxonOps |
 | `CASSANDRA_DC` | `dc1` | Datacentre name |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8` | Image for the nodes |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per node |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Young generation per node |
 | `CQL_PORT` | `9042` | Host port for CQL on `cassandra-0` |
@@ -117,7 +117,7 @@ The agent starts only once Cassandra is up, so it is normally absent for part of
 the 90s start period.
 
 The agent check reached `axonops-healthcheck.sh` after the currently pinned
-image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.8` the
+image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` the
 script verifies Cassandra only and `HEALTHCHECK_REQUIRE_AGENT` has no effect.
 Both take effect with the next Cassandra image release.
 
