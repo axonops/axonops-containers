@@ -190,7 +190,9 @@ COPY healthcheck.sh /usr/local/bin/axonops-healthcheck.sh
 RUN chmod 755 /axonops-entrypoint.sh /usr/local/bin/axonops-healthcheck.sh
 
 # Health check: Management API liveness endpoint when the API is present,
-# native transport status when it is not.
+# native transport status when it is not, plus the AxonOps agent. A dead agent
+# is reported but does not fail the check unless HEALTHCHECK_REQUIRE_AGENT is
+# set to true.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD /usr/local/bin/axonops-healthcheck.sh || exit 1
 
