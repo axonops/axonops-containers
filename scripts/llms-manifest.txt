@@ -112,6 +112,9 @@ exclude axonops/charts/axon-dash/README.fr.md               # translation
 exclude axonops/charts/axon-server/README.fr.md             # translation
 exclude axonops/charts/axondb-search/README.fr.md           # translation
 exclude axonops/charts/axondb-timeseries/README.fr.md       # translation
+exclude k8ssandra/README.fr.md                              # translation
+exclude axonops/axondb-timeseries/README.fr.md              # translation
+exclude axonops/axondb-search/README.fr.md                  # translation
 
 # Per-version test notes: contributor scratch material, superseded by each
 # component's DEVELOPMENT.md.

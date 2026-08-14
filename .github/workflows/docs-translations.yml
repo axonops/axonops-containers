@@ -48,6 +48,9 @@ jobs:
             "axonops/charts/axon-server/README.md"
             "axonops/charts/axondb-search/README.md"
             "axonops/charts/axondb-timeseries/README.md"
+            "k8ssandra/README.md"
+            "axonops/axondb-timeseries/README.md"
+            "axonops/axondb-search/README.md"
           )
           LANGS=(fr)
 
