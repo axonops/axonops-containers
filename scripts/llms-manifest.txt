@@ -107,6 +107,8 @@ exclude examples/AXONOPS_DEPLOYMENT.fr.md                   # translation
 exclude examples/K8SSANDRA_DEPLOYMENT.fr.md                 # translation
 exclude examples/STRIMZI_DEPLOYMENT.fr.md                   # translation
 exclude examples/NODE_SELECTOR_GUIDE.fr.md                  # translation
+exclude axonops/charts/axonops/README.fr.md                 # translation
+exclude axonops/charts/axon-dash/README.fr.md               # translation
 
 # Per-version test notes: contributor scratch material, superseded by each
 # component's DEVELOPMENT.md.

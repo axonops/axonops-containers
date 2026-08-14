@@ -1,5 +1,7 @@
 # AxonOps Dashboard
 
+**English** | [Français](README.fr.md)
+
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Dashboard - the web-based user interface for the AxonOps observability platform. The dashboard provides a rich UI for monitoring Apache Cassandra clusters, viewing metrics, configuring alerts, and managing backups.

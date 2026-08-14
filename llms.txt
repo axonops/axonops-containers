@@ -98,6 +98,8 @@ French translations sit next to their English source as `<name>.fr.md`. The Engl
 - [examples/K8SSANDRA_DEPLOYMENT.fr.md](examples/K8SSANDRA_DEPLOYMENT.fr.md)
 - [examples/STRIMZI_DEPLOYMENT.fr.md](examples/STRIMZI_DEPLOYMENT.fr.md)
 - [examples/NODE_SELECTOR_GUIDE.fr.md](examples/NODE_SELECTOR_GUIDE.fr.md)
+- [axonops/charts/axonops/README.fr.md](axonops/charts/axonops/README.fr.md)
+- [axonops/charts/axon-dash/README.fr.md](axonops/charts/axon-dash/README.fr.md)
 
 ## Optional
 

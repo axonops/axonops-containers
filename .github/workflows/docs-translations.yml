@@ -43,6 +43,8 @@ jobs:
             "examples/K8SSANDRA_DEPLOYMENT.md"
             "examples/STRIMZI_DEPLOYMENT.md"
             "examples/NODE_SELECTOR_GUIDE.md"
+            "axonops/charts/axonops/README.md"
+            "axonops/charts/axon-dash/README.md"
           )
           LANGS=(fr)
 

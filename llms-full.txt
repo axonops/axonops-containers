@@ -11501,6 +11501,8 @@ For the latest compatibility information, check individual chart documentation.
 
 # AxonOps Meta-Chart
 
+**English** | [Français](README.fr.md)
+
 ## Overview
 
 This Helm chart deploys the complete AxonOps observability stack for Apache Cassandra and Kafka monitoring. It acts as an umbrella chart that orchestrates the deployment of all AxonOps components with sensible defaults.
@@ -13340,6 +13342,8 @@ For additional support:
 # Source: axonops/charts/axon-dash/README.md
 
 # AxonOps Dashboard
+
+**English** | [Français](README.fr.md)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
