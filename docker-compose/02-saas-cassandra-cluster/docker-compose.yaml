@@ -44,7 +44,10 @@ services:
     ports:
       - "${CQL_PORT:-9042}:9042"
     healthcheck:
-      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      # The image's own check: Cassandra serving, and the axon-agent alive so
+      # the node is really being monitored. A dead agent is reported but not
+      # fatal; HEALTHCHECK_REQUIRE_AGENT=true makes it fail the check instead.
+      test: ["CMD", "/usr/local/bin/axonops-healthcheck.sh"]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -73,7 +76,10 @@ services:
     volumes:
       - cassandra-1-data:/var/lib/cassandra
     healthcheck:
-      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      # The image's own check: Cassandra serving, and the axon-agent alive so
+      # the node is really being monitored. A dead agent is reported but not
+      # fatal; HEALTHCHECK_REQUIRE_AGENT=true makes it fail the check instead.
+      test: ["CMD", "/usr/local/bin/axonops-healthcheck.sh"]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -105,7 +111,10 @@ services:
     volumes:
       - cassandra-2-data:/var/lib/cassandra
     healthcheck:
-      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      # The image's own check: Cassandra serving, and the axon-agent alive so
+      # the node is really being monitored. A dead agent is reported but not
+      # fatal; HEALTHCHECK_REQUIRE_AGENT=true makes it fail the check instead.
+      test: ["CMD", "/usr/local/bin/axonops-healthcheck.sh"]
       interval: 10s
       timeout: 10s
       retries: 10

@@ -16,10 +16,10 @@
 
 services:
   # =============================================================================
-  # axondb-timeseries: Apache Cassandra 5.0.6 for metrics storage
+  # axondb-timeseries: Apache Cassandra 5.0.8 for metrics storage
   # =============================================================================
   axondb-timeseries:
-    # Preferred (immutable): ghcr.io/axonops/axondb-timeseries@sha256:1ff1df7b51d70e42a827a29ca70d2845206b00edf774b484f26aa9c16a9c89fb
+    # Preferred (immutable): ghcr.io/axonops/axondb-timeseries@sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c
     image: ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0
     container_name: axondb-timeseries
     hostname: axondb-timeseries
@@ -51,10 +51,10 @@ services:
     restart: unless-stopped
 
   # =============================================================================
-  # axondb-search: OpenSearch 3.3.2 for logs and search functionality
+  # axondb-search: OpenSearch 3.7.0 for logs and search functionality
   # =============================================================================
   axondb-search:
-    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:033007e7043c175b6703e5ca0a5509a043ba3a074d7eb1ec35c3c565d0c312e9
+    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:4291a1b3c099639e2cf7178eb27c576906e6404c3baaefa0634068d1ab53f41d
     image: ghcr.io/axonops/axondb-search:3.7.0-1.6.0
     container_name: axondb-search
     hostname: axondb-search
