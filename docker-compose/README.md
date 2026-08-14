@@ -78,6 +78,86 @@ Every example follows the same shape:
 - Docker Engine 20.10+ and Docker Compose V2
 - Per-example RAM, disk and port requirements are in that example's README
 
+## FAQ
+
+### How do I update `axon-server`, `axon-dash` and the agent?
+
+Every image in these files is pinned to an exact version tag, so
+`docker compose pull` on its own gets you nothing new — an upgrade means editing
+the tag (or the digest, if you deploy the digest form) and recreating that one
+service. Current tags and digests for every image:
+[VERSIONS.md](../VERSIONS.md).
+
+**Order.** Data stores first if they changed, then `axon-server`, then
+`axon-dash`, then the agents. Keep `axon-server` and `axon-dash` on releases from
+the same batch — the dash talks to the server's API, not the other way round, so
+a newer dash against an older server is the combination to avoid.
+
+**`axon-server` and `axon-dash`.** Both are pinned directly in
+`docker-compose.yaml`, with the digest in a comment above the tag:
+
+```yaml
+  axon-server:
+    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+```
+
+Change the tag and the digest comment together — a stale comment beside a new
+tag is how someone later deploys the wrong image — then recreate just that
+service:
+
+```bash
+docker compose pull axon-server
+docker compose up -d axon-server        # recreates only this container
+docker compose logs -f axon-server      # watch it come up
+docker compose ps                       # healthy?
+```
+
+Then the same two commands for `axon-dash`. Example 02 has neither — AxonOps
+Cloud runs and upgrades both for you, so there the agent is the only thing you
+update. Both are stateless: everything lives
+in `axondb-timeseries` and `axondb-search`, which you are not touching, so a
+recreate loses no data. Agents reconnect on their own once the server is back.
+
+**The agent.** It ships inside the Cassandra image rather than as its own
+container, and it is the middle component of the tag —
+`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` is Cassandra 5.0.8 with
+agent 2.0.31 from build 1.1.0. Upgrading the agent therefore means moving to a
+new image tag, which in examples 01, 02 and 03 is `CASSANDRA_IMAGE` in `.env`:
+
+```bash
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+```
+
+Recreate the nodes **one at a time**, waiting for each to come back healthy
+before starting the next, and drain first so the node stops taking writes it
+would lose:
+
+```bash
+docker compose pull
+docker compose exec cassandra-1 nodetool drain
+docker compose up -d --no-deps cassandra-1
+docker compose ps                            # wait for healthy, then the next node
+docker compose exec cassandra-1 nodetool status
+```
+
+The nodes are `cassandra-0`, `cassandra-1` and `cassandra-2` in examples 01 and
+02, and `cassandra01`, `cassandra02` and `cassandra03` in example 03.
+
+Data survives — it is on a named volume (example 03 uses host directories under
+`./docker/`), and neither is removed by recreating a container. In example 00
+there are no Cassandra containers to upgrade: the agents run on your own hosts,
+and you upgrade them there.
+
+**Changing the Cassandra version is not the same thing.** Only the first
+component of the tag is Cassandra itself, and moving it is a real database
+upgrade — snapshot, `nodetool upgradesstables` afterwards, upstream release
+notes — not an image swap. To pick up a new agent or build, keep the Cassandra
+version where it is and change the second or third component only.
+
+**Rolling back** is the same operation with the old tag: put it back, run
+`docker compose up -d <service>` again.
+
 ## When something does not start
 
 Each README has a troubleshooting section for its own stack. One class of
