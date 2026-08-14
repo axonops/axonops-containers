@@ -1,5 +1,7 @@
 # AxonOps Schema Registry
 
+**English** | [Français](README.fr.md)
+
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axonops-schema-registry)
 
 Production-ready Confluent-compatible Kafka Schema Registry with multi-backend storage support, built on Red Hat UBI 9.

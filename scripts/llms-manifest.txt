@@ -99,6 +99,22 @@ exclude docker-compose/00-axonops-platform/README.fr.md     # translation
 exclude docker-compose/01-cassandra-cluster/README.fr.md    # translation
 exclude docker-compose/02-saas-cassandra-cluster/README.fr.md  # translation
 exclude docker-compose/03-secure-3-rack-cluster/README.fr.md   # translation
+exclude cassandra/README.fr.md                              # translation
+exclude strimzi/README.fr.md                                # translation
+exclude axonops-schema-registry/README.fr.md                # translation
+exclude examples/DEPLOYMENT_GUIDE.fr.md                     # translation
+exclude examples/AXONOPS_DEPLOYMENT.fr.md                   # translation
+exclude examples/K8SSANDRA_DEPLOYMENT.fr.md                 # translation
+exclude examples/STRIMZI_DEPLOYMENT.fr.md                   # translation
+exclude examples/NODE_SELECTOR_GUIDE.fr.md                  # translation
+exclude axonops/charts/axonops/README.fr.md                 # translation
+exclude axonops/charts/axon-dash/README.fr.md               # translation
+exclude axonops/charts/axon-server/README.fr.md             # translation
+exclude axonops/charts/axondb-search/README.fr.md           # translation
+exclude axonops/charts/axondb-timeseries/README.fr.md       # translation
+exclude k8ssandra/README.fr.md                              # translation
+exclude axonops/axondb-timeseries/README.fr.md              # translation
+exclude axonops/axondb-search/README.fr.md                  # translation
 
 # Per-version test notes: contributor scratch material, superseded by each
 # component's DEVELOPMENT.md.

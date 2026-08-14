@@ -1,5 +1,7 @@
 # AxonDB Search Database
 
+**English** | [Français](README.fr.md)
+
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-search)
 
 Production-ready OpenSearch 3.3.2 container optimized for search workloads in AxonOps self-hosted deployments.
