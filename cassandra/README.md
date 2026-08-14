@@ -98,6 +98,10 @@ The same `CASSANDRA_*` variables the K8ssandra image and the official Cassandra 
 | `CASSANDRA_BROADCAST_RPC_ADDRESS` | broadcast address | Address clients are told to use |
 | `CASSANDRA_NUM_TOKENS` | Cassandra default | vnode count |
 | `CASSANDRA_ENDPOINT_SNITCH` | Cassandra default | Snitch |
+| `CASSANDRA_NATIVE_TRANSPORT_PORT` | `9042` | CQL port |
+| `CASSANDRA_AUTHENTICATOR` | `AllowAllAuthenticator` | Set to `PasswordAuthenticator` to require credentials |
+| `CASSANDRA_AUTHORIZER` | `AllowAllAuthorizer` | Set to `CassandraAuthorizer` to enforce permissions |
+| `CASSANDRA_ROLE_MANAGER` | `CassandraRoleManager` | Role manager implementation |
 | `CASSANDRA_DC` | Cassandra default | Datacentre in `cassandra-rackdc.properties` |
 | `CASSANDRA_RACK` | Cassandra default | Rack in `cassandra-rackdc.properties` |
 

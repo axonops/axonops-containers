@@ -1,0 +1,374 @@
+# Example 03 — A secured 3-rack Cassandra cluster on a fixed subnet, monitored by AxonOps
+#
+# A port of a widely-shared community Compose stack:
+#   https://github.com/crystalloide/cassandra-reaper — "Cluster 3 noeuds 3 racks
+#   1 DC Prometheus Grafana Reaper sécurisé"
+#
+# The cluster topology, addressing, JVM settings and security posture are kept
+# as they were. What changed is the monitoring: Prometheus, Grafana, the three
+# cassandra_exporter sidecars and Reaper are replaced by the AxonOps platform,
+# which covers metrics, logs, alerting and repair scheduling in one place.
+#
+#   cassandra01..03    The monitored cluster — 1 DC, 3 racks, static IPs,
+#                      PasswordAuthenticator, CassandraAuthorizer, remote JMX
+#   axondb-timeseries  Apache Cassandra, single-node metrics store for AxonOps
+#   axondb-search      OpenSearch, log and event store for AxonOps
+#   axon-server        AxonOps backend, agent endpoint on 1888
+#   axon-dash          AxonOps web dashboard on 3000
+#
+# Quick start:
+#   cp env.example .env      # set AXONOPS_ORG_NAME
+#   docker compose up -d
+#   open http://localhost:3000
+#
+# Image pinning: every service is pinned to an immutable version tag, with the
+# equivalent SHA256 digest commented above it. Deploy the digest form in
+# production — see ../00-axonops-platform/README.md "Image Pinning: Tags vs Checksums"
+# and ../../VERSIONS.md for the current digest of every image.
+
+services:
+  # ===========================================================================
+  # AxonOps platform
+  #
+  # Replaces Prometheus, Grafana, the cassandra_exporter sidecars and Reaper
+  # from the original stack. Configuration is entirely by environment variable;
+  # nothing here mounts or renders a config file.
+  # ===========================================================================
+
+  axondb-timeseries:
+    # Preferred (immutable): ghcr.io/axonops/axondb-timeseries@sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c
+    image: ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0
+    container_name: axondb-timeseries
+    hostname: axondb-timeseries
+    networks:
+      cassandra_network:
+        ipv4_address: 10.17.64.20
+    environment:
+      - CASSANDRA_CLUSTER_NAME=axonopsdb-timeseries
+      - CASSANDRA_DC=axonopsdb_dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_NUM_TOKENS=16
+      - CASSANDRA_HEAP_SIZE=${AXONOPS_CASSANDRA_HEAP_SIZE:-2G}
+      - AXONOPS_DB_USER=axonops
+      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      # No CQL TLS here. The image only enables client_encryption_options when a
+      # keystore is mounted at CASSANDRA_KEYSTORE_PATH; there is no environment
+      # variable that turns it on by itself, so the native transport is
+      # plaintext and axon-server must connect the same way (CQL_SSL below).
+      # This is the AxonOps metrics store, not the monitored cluster — it never
+      # leaves the compose network and no client connects to it directly.
+    volumes:
+      - axondb-timeseries-data:/var/lib/cassandra
+      - axondb-timeseries-logs:/var/log/cassandra
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  axondb-search:
+    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:4291a1b3c099639e2cf7178eb27c576906e6404c3baaefa0634068d1ab53f41d
+    image: ghcr.io/axonops/axondb-search:3.7.0-1.6.0
+    container_name: axondb-search
+    hostname: axondb-search
+    networks:
+      cassandra_network:
+        ipv4_address: 10.17.64.21
+    environment:
+      - OPENSEARCH_CLUSTER_NAME=axonopsdb-search
+      # discovery.type is OpenSearch's own setting name, passed straight through.
+      # The image documents OPENSEARCH_DISCOVERY_TYPE, but 3.7.0-1.6.0 prints it
+      # in the startup banner without ever writing it to opensearch.yml, so
+      # OpenSearch runs its production bootstrap checks and refuses to start:
+      #   the default discovery settings are unsuitable for production use
+      # Fixed in the entrypoint for the next build; keep this until that ships.
+      - discovery.type=single-node
+      - OPENSEARCH_DISCOVERY_TYPE=single-node
+      - OPENSEARCH_HEAP_SIZE=${AXONOPS_OPENSEARCH_HEAP_SIZE:-2g}
+      - AXONOPS_SEARCH_USER=admin
+      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - AXONOPS_SEARCH_TLS_ENABLED=${AXONOPS_OPENSEARCH_SSL:-true}
+    volumes:
+      - axondb-search-data:/var/lib/opensearch
+      - axondb-search-logs:/var/log/opensearch
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  axon-server:
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    container_name: axon-server
+    hostname: axon-server
+    networks:
+      cassandra_network:
+        ipv4_address: 10.17.64.22
+    environment:
+      - AXONSERVER_ORGNAME=${AXONOPS_ORG_NAME:-example}
+      - LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
+      - AXON_LOG_FILE=/dev/stdout
+      - TLS_MODE=disabled
+      - AXONDASH_HOST=axon-dash
+      - AXONDASH_PORT=3000
+      - AXONDASH_HTTPS=false
+      # Metrics store (axondb-timeseries)
+      - CQL_HOSTS=axondb-timeseries
+      - CQL_USERNAME=axonops
+      - CQL_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      - CQL_LOCAL_DC=axonopsdb_dc1
+      - CQL_PROTO_VERSION=4
+      - CQL_AUTO_CREATE_TABLES=true
+      - CQL_SSL=${AXONOPS_CASSANDRA_SSL:-false}
+      - CQL_SSL_SKIP_VERIFY=true
+      - "CQL_KS_REPLICATION={ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
+      # Log and event store (axondb-search)
+      - SEARCH_DB_HOSTS=https://axondb-search:9200
+      - SEARCH_DB_USERNAME=admin
+      - SEARCH_DB_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - SEARCH_DB_SKIP_VERIFY=true
+    volumes:
+      - axon-server-data:/var/lib/axonops
+    ports:
+      # Agent endpoint, published so agents outside this compose project can connect
+      - "1888:1888"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      axondb-timeseries:
+        condition: service_healthy
+      axondb-search:
+        condition: service_healthy
+    restart: unless-stopped
+
+  axon-dash:
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37
+    container_name: axon-dash
+    hostname: axon-dash
+    networks:
+      cassandra_network:
+        ipv4_address: 10.17.64.23
+    environment:
+      # axon-dash maps its axon-dash.yml onto environment variables by section
+      # and key: axon-server.private_endpoints becomes AXONSERVER_PRIVATE_ENDPOINTS.
+      - AXONSERVER_PRIVATE_ENDPOINTS=http://axon-server:8080
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Monitored Cassandra cluster — 1 DC, 3 racks, static addresses
+  #
+  # Every node is a seed and every node carries a fixed IPv4 address on the
+  # 10.17.64.0/24 subnet, exactly as in the original stack: with remote JMX and
+  # -Djava.rmi.server.hostname the address a node advertises has to be one that
+  # is reachable and stable, which a DHCP-assigned Docker address is not.
+  #
+  # Nodes start one at a time — Cassandra bootstraps a single node at a time —
+  # so a cold start takes a few minutes.
+  # ===========================================================================
+
+  cassandra01:
+    # Preferred (immutable): ghcr.io/axonops/cassandra/cassandra@sha256:f96804cc2fe74694988d6c28f9ae7b5b674e8959bd6f2d6b65eff3b4fa4340b5
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    container_name: cassandra01
+    hostname: cassandra01
+    networks:
+      cassandra_network:
+        ipv4_address: 10.17.64.5
+    mem_limit: ${CASSANDRA_MEM_LIMIT:-2g}
+    cpus: ${CASSANDRA_CPUS:-2.0}
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-secure-cluster}
+      - CASSANDRA_DC=${CASSANDRA_DC:-dc1}
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_LISTEN_ADDRESS=10.17.64.5
+      - CASSANDRA_BROADCAST_RPC_ADDRESS=10.17.64.5
+      - CASSANDRA_SEEDS=10.17.64.5,10.17.64.6,10.17.64.7
+      - CASSANDRA_NATIVE_TRANSPORT_PORT=9042
+      - CASSANDRA_NUM_TOKENS=16
+      # Authentication and authorization on, as in the original stack. Cassandra
+      # starts with the built-in cassandra/cassandra superuser — rotate it and
+      # raise the system_auth replication factor before using this for anything
+      # real; both steps are in the README.
+      - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
+      - CASSANDRA_AUTHORIZER=CassandraAuthorizer
+      # Remote JMX. cassandra-env.sh turns on JMX authentication whenever
+      # LOCAL_JMX=no, which needs a jmxremote.password file that this image does
+      # not ship, so JVM_EXTRA_OPTS turns it back off — JVM_EXTRA_OPTS is
+      # appended last, and the last -D of a repeated system property wins. The
+      # JMX ports are published to 127.0.0.1 only; see the README.
+      - LOCAL_JMX=no
+      - MAX_HEAP_SIZE=${CASSANDRA_HEAP_SIZE:-1G}
+      - JVM_EXTRA_OPTS=-XX:-UseG1GC -XX:+UseZGC -XX:+AlwaysPreTouch -XX:ConcGCThreads=2 -XX:ParallelGCThreads=2 -Djava.rmi.server.hostname=10.17.64.5 -Dcom.sun.management.jmxremote.authenticate=false
+      # AxonOps agent. Plaintext to axon-server because both ends are on this
+      # network; example 02 shows the TLS settings used against AxonOps SaaS.
+      - AXON_AGENT_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXON_AGENT_SERVER_HOST=axon-server
+      - AXON_AGENT_SERVER_PORT=1888
+      - AXON_AGENT_TLS_MODE=disabled
+    volumes:
+      - cassandra01-data:/var/lib/cassandra
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 100000
+        hard: 100000
+    ports:
+      - "9142:9042"                 # CQL
+      - "127.0.0.1:7199:7199"       # JMX — localhost only, see README
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cassandra02:
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    container_name: cassandra02
+    hostname: cassandra02
+    networks:
+      cassandra_network:
+        ipv4_address: 10.17.64.6
+    mem_limit: ${CASSANDRA_MEM_LIMIT:-2g}
+    cpus: ${CASSANDRA_CPUS:-2.0}
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-secure-cluster}
+      - CASSANDRA_DC=${CASSANDRA_DC:-dc1}
+      - CASSANDRA_RACK=rack2
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_LISTEN_ADDRESS=10.17.64.6
+      - CASSANDRA_BROADCAST_RPC_ADDRESS=10.17.64.6
+      - CASSANDRA_SEEDS=10.17.64.5,10.17.64.6,10.17.64.7
+      - CASSANDRA_NATIVE_TRANSPORT_PORT=9042
+      - CASSANDRA_NUM_TOKENS=16
+      - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
+      - CASSANDRA_AUTHORIZER=CassandraAuthorizer
+      - LOCAL_JMX=no
+      - MAX_HEAP_SIZE=${CASSANDRA_HEAP_SIZE:-1G}
+      - JVM_EXTRA_OPTS=-XX:-UseG1GC -XX:+UseZGC -XX:+AlwaysPreTouch -XX:ConcGCThreads=2 -XX:ParallelGCThreads=2 -Djava.rmi.server.hostname=10.17.64.6 -Dcom.sun.management.jmxremote.authenticate=false
+      - AXON_AGENT_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXON_AGENT_SERVER_HOST=axon-server
+      - AXON_AGENT_SERVER_PORT=1888
+      - AXON_AGENT_TLS_MODE=disabled
+    volumes:
+      - cassandra02-data:/var/lib/cassandra
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 100000
+        hard: 100000
+    ports:
+      - "9242:9042"                 # CQL
+      - "127.0.0.1:7299:7199"       # JMX — localhost only, see README
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    depends_on:
+      cassandra01:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cassandra03:
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8}
+    container_name: cassandra03
+    hostname: cassandra03
+    networks:
+      cassandra_network:
+        ipv4_address: 10.17.64.7
+    mem_limit: ${CASSANDRA_MEM_LIMIT:-2g}
+    cpus: ${CASSANDRA_CPUS:-2.0}
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-secure-cluster}
+      - CASSANDRA_DC=${CASSANDRA_DC:-dc1}
+      - CASSANDRA_RACK=rack3
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_LISTEN_ADDRESS=10.17.64.7
+      - CASSANDRA_BROADCAST_RPC_ADDRESS=10.17.64.7
+      - CASSANDRA_SEEDS=10.17.64.5,10.17.64.6,10.17.64.7
+      - CASSANDRA_NATIVE_TRANSPORT_PORT=9042
+      - CASSANDRA_NUM_TOKENS=16
+      - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
+      - CASSANDRA_AUTHORIZER=CassandraAuthorizer
+      - LOCAL_JMX=no
+      - MAX_HEAP_SIZE=${CASSANDRA_HEAP_SIZE:-1G}
+      - JVM_EXTRA_OPTS=-XX:-UseG1GC -XX:+UseZGC -XX:+AlwaysPreTouch -XX:ConcGCThreads=2 -XX:ParallelGCThreads=2 -Djava.rmi.server.hostname=10.17.64.7 -Dcom.sun.management.jmxremote.authenticate=false
+      - AXON_AGENT_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXON_AGENT_SERVER_HOST=axon-server
+      - AXON_AGENT_SERVER_PORT=1888
+      - AXON_AGENT_TLS_MODE=disabled
+    volumes:
+      - cassandra03-data:/var/lib/cassandra
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 100000
+        hard: 100000
+    ports:
+      - "9342:9042"                 # CQL
+      - "127.0.0.1:7399:7199"       # JMX — localhost only, see README
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool statusbinary | grep -q '^running$$'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    depends_on:
+      cassandra02:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  cassandra_network:
+    driver: bridge
+    ipam:
+      config:
+        # Fixed, because every address below is fixed. Changing the subnet means
+        # changing the eight ipv4_address entries, CASSANDRA_SEEDS,
+        # CASSANDRA_LISTEN_ADDRESS, CASSANDRA_BROADCAST_RPC_ADDRESS and
+        # java.rmi.server.hostname with it — which is why it is not a variable.
+        - subnet: 10.17.64.0/24
+
+volumes:
+  axondb-timeseries-data:
+  axondb-timeseries-logs:
+  axondb-search-data:
+  axondb-search-logs:
+  axon-server-data:
+  cassandra01-data:
+  cassandra02-data:
+  cassandra03-data:

@@ -10,20 +10,25 @@ repository. Each directory is self-contained: copy it, edit `.env`, run
 
 ## Which one do I want?
 
-| | [00-axonops-platform](00-axonops-platform/) | [01-cassandra-cluster](01-cassandra-cluster/) | [02-saas-cassandra-cluster](02-saas-cassandra-cluster/) |
-|---|---|---|---|
-| **Use it to** | run AxonOps for clusters you already have | see the whole thing working end to end | monitor a cluster without running AxonOps |
-| AxonOps | self-hosted | self-hosted | SaaS |
-| Cassandra | none — bring your own | 3 nodes, monitored | 3 nodes, monitored |
-| Containers | 4 | 7 | 3 |
-| RAM at defaults | ~10 GB | ~10 GB | ~5 GB |
-| Dashboard | `localhost:3000` | `localhost:3000` | AxonOps console |
-| You need | nothing | nothing | a SaaS org and agent key |
+| | [00-axonops-platform](00-axonops-platform/) | [01-cassandra-cluster](01-cassandra-cluster/) | [02-saas-cassandra-cluster](02-saas-cassandra-cluster/) | [03-secure-3-rack-cluster](03-secure-3-rack-cluster/) |
+|---|---|---|---|---|
+| **Use it to** | run AxonOps for clusters you already have | see the whole thing working end to end | monitor a cluster without running AxonOps | model a production-shaped, secured cluster |
+| AxonOps | self-hosted | self-hosted | SaaS | self-hosted |
+| Cassandra | none — bring your own | 3 nodes, monitored | 3 nodes, monitored | 3 nodes, 3 racks, monitored |
+| Cluster auth | — | off | off | `PasswordAuthenticator` |
+| Containers | 4 | 7 | 3 | 7 |
+| RAM at defaults | ~10 GB | ~10 GB | ~5 GB | ~12 GB |
+| Dashboard | `localhost:3000` | `localhost:3000` | AxonOps console | `localhost:3000` |
+| You need | nothing | nothing | a SaaS org and agent key | nothing |
 
 Start with **01** if you are evaluating AxonOps and want to watch a real cluster
 appear in a dashboard. Start with **00** if you already run Cassandra or Kafka
 and want somewhere for its agents to report. Start with **02** if you have an
-AxonOps Cloud account.
+AxonOps Cloud account. Start with **03** if you want a cluster that resembles a
+real deployment — authentication, one rack per node, fixed addressing and remote
+JMX — or if you are porting the widely-shared
+[Prometheus / Grafana / Reaper Compose stack](https://github.com/crystalloide/cassandra-reaper)
+that it is based on.
 
 ## Conventions
 

@@ -209,12 +209,16 @@ configure_cassandra_from_env() {
     -r 's/(- seeds:).*/\1 "'"$CASSANDRA_SEEDS"'"/'
 
   for yaml in \
+    authenticator \
+    authorizer \
     broadcast_address \
     broadcast_rpc_address \
     cluster_name \
     endpoint_snitch \
     listen_address \
+    native_transport_port \
     num_tokens \
+    role_manager \
     rpc_address \
   ; do
     var="CASSANDRA_${yaml^^}"
@@ -234,7 +238,7 @@ configure_cassandra_from_env() {
     fi
   done
 
-  echo "Cassandra configured: seeds=${CASSANDRA_SEEDS} listen=${CASSANDRA_LISTEN_ADDRESS} rpc=${CASSANDRA_RPC_ADDRESS} dc=${CASSANDRA_DC:-default} rack=${CASSANDRA_RACK:-default}"
+  echo "Cassandra configured: seeds=${CASSANDRA_SEEDS} listen=${CASSANDRA_LISTEN_ADDRESS} rpc=${CASSANDRA_RPC_ADDRESS} dc=${CASSANDRA_DC:-default} rack=${CASSANDRA_RACK:-default} authenticator=${CASSANDRA_AUTHENTICATOR:-AllowAllAuthenticator} authorizer=${CASSANDRA_AUTHORIZER:-AllowAllAuthorizer}"
 }
 
 # Print startup banner (after config ready, before starting Cassandra)

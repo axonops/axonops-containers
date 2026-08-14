@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `docker-compose/03-secure-3-rack-cluster/` — a three-node, three-rack Cassandra cluster with `PasswordAuthenticator`, `CassandraAuthorizer`, remote JMX and static addressing on a fixed `10.17.64.0/24` subnet, monitored by a self-hosted AxonOps platform. It is a port of the widely-shared [crystalloide/cassandra-reaper](https://github.com/crystalloide/cassandra-reaper) Compose stack with Prometheus, Grafana, the three `cassandra_exporter` sidecars and Reaper replaced by AxonOps; the cluster topology, addressing, JVM flags, ulimits and security settings are kept as they were, and the README tables every deviation.
+- The standalone Cassandra image entrypoint applies `CASSANDRA_AUTHENTICATOR`, `CASSANDRA_AUTHORIZER`, `CASSANDRA_ROLE_MANAGER` and `CASSANDRA_NATIVE_TRANSPORT_PORT` to `cassandra.yaml`. It already handled the addressing, snitch, cluster-name and token variables, but not these four, so a cluster asked for authentication started silently with `AllowAllAuthenticator` — the same documented-but-unwired failure the `OPENSEARCH_*` variables had. The list now matches the official Cassandra image's. Only affects images built with `INCLUDE_MGMT_API=false`; with the Management API present the upstream entrypoint applies these itself.
+
 ### Fixed
 - `cassandra-publish-signed` and `k8ssandra-publish-signed` pushed tagged images *before* running their verification steps, so any post-push failure left published tags that were never verified and never signed. This happened on the Cassandra 1.0.0 run: 5.0.3 was pushed, failed its cqlai test, skipped signing, and sat in the registry unsigned. Both pipelines now push by digest only, run the test suite, sign the digest, and apply tags last with `docker buildx imagetools create` — asserting that every tag resolves to the digest that was signed. A failure at any stage now leaves nothing pullable by tag.
 - `k8ssandra-publish-signed` re-ran the entire multi-arch build after signing purely to re-apply tags. That second build is gone; tagging copies the existing index instead.
