@@ -1,7 +1,8 @@
 ARG CASSANDRA_VERSION=4.1
 ARG K8SSANDRA_BASE_DIGEST=required
 ARG K8SSANDRA_API_VERSION=required
-FROM docker.io/k8ssandra/cass-management-api@${K8SSANDRA_BASE_DIGEST}
+
+FROM ghcr.io/k8ssandra/cass-management-api@${K8SSANDRA_BASE_DIGEST}
 
 # Re-declare ARGs after FROM (Docker ARG scope rule - ARGs before FROM only available in FROM line)
 ARG CASSANDRA_VERSION
@@ -19,6 +20,14 @@ ARG GIT_TAG
 ARG GITHUB_ACTOR
 ARG IS_PRODUCTION_RELEASE=false
 ARG IMAGE_FULL_NAME
+ARG AXON_AGENT_VERSION=latest
+ARG AXON_AGENT_JAVA_VERSION=latest
+
+# Set to false to strip the K8ssandra Management API from the image. Used to
+# build the standalone ghcr.io/axonops/cassandra/cassandra image, which is
+# Cassandra plus the AxonOps agent and nothing else. Leave true for the
+# K8ssandra Operator image.
+ARG INCLUDE_MGMT_API=true
 
 # Legacy labels (for backward compatibility)
 LABEL maintainer="AxonOps"
@@ -48,6 +57,7 @@ LABEL org.opencontainers.image.base.digest="${K8SSANDRA_BASE_DIGEST}"
 # AxonOps-specific labels (com.axonops.* namespace)
 LABEL com.axonops.cassandra.version="${CASSANDRA_VERSION}"
 LABEL com.axonops.k8ssandra-api.version="${K8SSANDRA_API_VERSION}"
+LABEL com.axonops.k8ssandra-api.included="${INCLUDE_MGMT_API}"
 LABEL com.axonops.cqlai.version="${CQLAI_VERSION}"
 LABEL com.axonops.build.actor="${GITHUB_ACTOR}"
 
@@ -80,10 +90,20 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.
     rm -rf /var/cache/yum /var/cache/dnf
 
 # Install AxonOps agents and configure
-RUN groupadd --gid 9988 axonops && \
+RUN if [ "$AXON_AGENT_JAVA_VERSION" == "latest" ]; then \
+      axon_agent_java_pkg="axon-cassandra4.1-agent"; \
+    else \
+      axon_agent_java_pkg="axon-cassandra4.1-agent-${AXON_AGENT_JAVA_VERSION}"; \
+    fi && \
+if [ "$AXON_AGENT_VERSION" == "latest" ]; then \
+      axon_agent_pkg="axon-agent"; \
+    else \
+      axon_agent_pkg="axon-agent-${AXON_AGENT_VERSION}"; \
+    fi && \
+    groupadd --gid 9988 axonops && \
     useradd --gid 9988 --uid 9988 --shell /bin/bash -c "AxonOps" -G cassandra axonops && \
     usermod -aG axonops cassandra && \
-    microdnf -y install axon-cassandra4.1-agent axon-agent gettext && \
+    microdnf -y install ${axon_agent_pkg} ${axon_agent_java_pkg} gettext && \
     chown -R cassandra:cassandra /etc/axonops /var/lib/axonops /var/log/axonops && \
     chmod 755 /usr/share/axonops/axon-agent && \
     rm -f /etc/axonops/axon-agent.yml && \
@@ -95,8 +115,6 @@ RUN groupadd --gid 9988 axonops && \
     setcap cap_chown,cap_fowner+eip /usr/share/axonops/axon-agent && \
     rm -rf /var/cache/yum /var/cache/dnf
 
-# Install cqlai (pinned version - must be provided as build arg)
-ARG CQLAI_VERSION
 RUN if [ -z "$CQLAI_VERSION" ]; then \
       echo "ERROR: CQLAI_VERSION build arg is required"; \
       exit 1; \
@@ -116,6 +134,35 @@ RUN if [ -z "$CQLAI_VERSION" ]; then \
     rm -f "${CQLAI_RPM}" SHA256SUMS.txt && \
     rm -rf /var/tmp/rpm-* /var/cache/yum /var/cache/dnf
 
+# Strip the K8ssandra Management API when building the standalone image.
+#
+# MAAC_PATH and CDC_AGENT_PATH are inherited from the base image and cannot be
+# unset conditionally in a Dockerfile, so they keep pointing at the removed
+# directories. Nothing reads them once the API is gone: the entrypoint and the
+# healthcheck both branch on whether the server jar actually exists.
+#
+# Note: this removes the files from the running container, but the base image
+# layers still carry them, so the image download size is unchanged.
+RUN if [ "$INCLUDE_MGMT_API" = "false" ]; then \
+      echo "AXONOPS_BUILD: removing the K8ssandra Management API and CDC agent" && \
+      rm -rf "${MAAC_PATH:-/opt/management-api}" "${CDC_AGENT_PATH:-/opt/cdc_agent}" && \
+      test ! -d "${MAAC_PATH:-/opt/management-api}" || (echo "ERROR: Management API still present" >&2 && exit 1) && \
+      # The base image bakes the Management API java agent into cassandra-env.sh.
+      # Left in place the JVM refuses to start once the jar is gone.
+      for env_file in /opt/cassandra/conf/cassandra-env.sh /etc/cassandra/cassandra-env.sh; do \
+        if [ -f "$env_file" ]; then \
+          sed -i '/javaagent:.*datastax-mgmtapi-agent\.jar/d' "$env_file"; \
+        fi; \
+      done && \
+      if grep -rq 'datastax-mgmtapi-agent\.jar' /opt/cassandra/conf/cassandra-env.sh; then \
+        echo "ERROR: Management API java agent still referenced in cassandra-env.sh" >&2; \
+        exit 1; \
+      fi; \
+    else \
+      test -f "${MAAC_PATH:-/opt/management-api}/datastax-mgmtapi-server.jar" || \
+        (echo "ERROR: Management API missing from the base image" >&2 && exit 1); \
+    fi
+
 # Write build information to file for runtime access (after all packages installed)
 # Values are quoted for safe sourcing in bash
 RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
@@ -127,6 +174,7 @@ RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
     echo "IS_PRODUCTION_RELEASE=\"${IS_PRODUCTION_RELEASE}\"" >> /etc/axonops/build-info.txt && \
     echo "CASSANDRA_VERSION=\"${CASSANDRA_VERSION}\"" >> /etc/axonops/build-info.txt && \
     echo "K8SSANDRA_API_VERSION=\"${K8SSANDRA_API_VERSION}\"" >> /etc/axonops/build-info.txt && \
+    echo "INCLUDE_MGMT_API=\"${INCLUDE_MGMT_API}\"" >> /etc/axonops/build-info.txt && \
     echo "K8SSANDRA_BASE_DIGEST=\"${K8SSANDRA_BASE_DIGEST}\"" >> /etc/axonops/build-info.txt && \
     echo "JAVA_VERSION=\"$(java -version 2>&1 | head -2 | tail -1 || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
     echo "AXON_AGENT_VERSION=\"$(/usr/share/axonops/axon-agent --version 2>&1 | head -1 | awk '{print $NF}' || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
@@ -137,14 +185,23 @@ RUN echo "CONTAINER_VERSION=\"${VERSION}\"" > /etc/axonops/build-info.txt && \
     echo "PLATFORM=\"$(uname -m || echo 'unknown')\"" >> /etc/axonops/build-info.txt && \
     chown cassandra:cassandra /etc/axonops/build-info.txt || true
 
-ENV JVM_EXTRA_OPTS="-javaagent:/usr/share/axonops/axon-cassandra${MAJOR_VERSION}-agent.jar=/etc/axonops/axon-agent.yml"
+# The entrypoint sources /usr/share/axonops/axonops-jvm.options from
+# cassandra-env.sh to attach the java agent. The Cassandra 5.0 agent RPM ships
+# that file; the 4.1 RPM does not, so write it here. Cassandra 4.1 runs on
+# JDK11 and needs none of the JDK17 --add-opens/--add-exports flags the 5.0
+# file carries.
+RUN printf 'JVM_OPTS="$JVM_OPTS -javaagent:/usr/share/axonops/axon-cassandra%s-agent.jar=/etc/axonops/axon-agent.yml"\n' "${MAJOR_VERSION}" \
+      > /usr/share/axonops/axonops-jvm.options && \
+    chmod 644 /usr/share/axonops/axonops-jvm.options
+
 COPY axonops-entrypoint.sh /axonops-entrypoint.sh
 COPY healthcheck.sh /usr/local/bin/axonops-healthcheck.sh
 RUN chmod 755 /axonops-entrypoint.sh /usr/local/bin/axonops-healthcheck.sh
 
-# Health check: Management API liveness endpoint, plus the AxonOps agent. A dead
-# agent is reported but does not fail the check unless HEALTHCHECK_REQUIRE_AGENT
-# is set to true.
+# Health check: Management API liveness endpoint when the API is present,
+# native transport status when it is not, plus the AxonOps agent. A dead agent
+# is reported but does not fail the check unless HEALTHCHECK_REQUIRE_AGENT is
+# set to true.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD /usr/local/bin/axonops-healthcheck.sh || exit 1
 
