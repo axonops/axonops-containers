@@ -93,6 +93,20 @@ When `5.0.6-v0.1.110-1.0.0` is built (and it's the latest of everything):
 **Currently Supported:**
 - **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8 (8 versions)
 
+The newest supported line is 5.0.8.
+
+**Not supported:**
+- **5.0.9:** Apache Cassandra 5.0.9 is released upstream, but k8ssandra publishes no
+  `cass-management-api` image for it. These images are built `FROM` that base, so 5.0.9
+  cannot be built here until k8ssandra ships it. Check with:
+
+  ```bash
+  curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/tags?page_size=100&name=5.0.9-ubi" | \
+    jq -r '.results[].name'
+  ```
+
+  When a 5.0.9 base appears, follow [Adding Support for New Cassandra Versions](#adding-support-for-new-cassandra-versions).
+
 **Future Support:**
 - **4.0.x and 4.1.x:** Available in repository but not yet published due to AxonOps agent compatibility issues. Reach out if you need these versions.
 

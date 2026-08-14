@@ -8589,6 +8589,20 @@ When `5.0.6-v0.1.110-1.0.0` is built (and it's the latest of everything):
 **Currently Supported:**
 - **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8 (8 versions)
 
+The newest supported line is 5.0.8.
+
+**Not supported:**
+- **5.0.9:** Apache Cassandra 5.0.9 is released upstream, but k8ssandra publishes no
+  `cass-management-api` image for it. These images are built `FROM` that base, so 5.0.9
+  cannot be built here until k8ssandra ships it. Check with:
+
+  ```bash
+  curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/tags?page_size=100&name=5.0.9-ubi" | \
+    jq -r '.results[].name'
+  ```
+
+  When a 5.0.9 base appears, follow [Adding Support for New Cassandra Versions](#adding-support-for-new-cassandra-versions).
+
 **Future Support:**
 - **4.0.x and 4.1.x:** Available in repository but not yet published due to AxonOps agent compatibility issues. Reach out if you need these versions.
 
@@ -10143,6 +10157,16 @@ API_VERSION="0.1.111"
 curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/tags?name=${VERSION}-ubi-v${API_VERSION}" | \
   jq -r '.results[] | "\(.name): \(.digest)"'
 ```
+
+### A Cassandra version exists upstream but not in k8ssandra
+
+Apache releases a Cassandra patch before k8ssandra builds a `cass-management-api` image
+for it. These images are built `FROM` that base, so a Cassandra version cannot be added
+to the matrix — nor to `K8SSANDRA_VERSIONS` — until the base image exists. Adding it
+early makes every build job for that version fail with "No k8ssandra version found".
+
+Current case: Cassandra **5.0.9** is released upstream; k8ssandra publishes no 5.0.9
+image. The newest supported line here is 5.0.8.
 
 ### k8ssandra hasn't released new images yet
 
