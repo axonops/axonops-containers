@@ -17,6 +17,7 @@ Définitions de build de conteneurs et pipelines CI/CD des images de conteneurs 
   - [Quelle stack](#quelle-stack)
   - [Compose ou Kubernetes ?](#compose-ou-kubernetes-)
 - [Red Hat Universal Base Image (UBI)](#red-hat-universal-base-image-ubi)
+- [Versions prises en charge](#versions-prises-en-charge)
 - [Conventions du dépôt](#conventions-du-dépôt)
 - [Sécurité](#sécurité)
   - [Politique CVE](#politique-cve)
@@ -127,6 +128,44 @@ Tous les conteneurs de ce dépôt sont construits sur **Red Hat Universal Base I
 - [Catalogue de conteneurs UBI 9](https://catalog.redhat.com/software/containers/search?q=ubi9)
 - [Documentation UBI](https://developers.redhat.com/products/rhel/ubi)
 
+## Versions prises en charge
+
+Les versions d'Apache Cassandra construites par ce dépôt sont déclarées une seule fois,
+dans la section `build_matrix` de [versions.yaml](versions.yaml). Les matrices des
+workflows, les versions par défaut, les cibles des tags flottants et les notes de
+publication en sont toutes dérivées — aucun fichier de workflow ne nomme une version de
+Cassandra.
+
+```bash
+./scripts/build-matrix.sh versions   # toutes les versions construites
+./scripts/build-matrix.sh newest     # ce que le tag `latest` désigne
+```
+
+**La politique :**
+
+- **Ajout** lorsque Apache a publié le correctif *et* que k8ssandra a publié l'image de
+  base `cass-management-api` correspondante. Les deux images Cassandra d'ici sont
+  construites `FROM` cette base, la seconde condition n'est donc pas négociable : une
+  version ajoutée avant l'existence de sa base fait échouer tous ses jobs de build.
+  Cassandra 5.0.9 est exactement dans ce cas aujourd'hui — publiée en amont, pas d'image
+  de base, donc pas construite.
+- **Conservation** une fois ajoutée. Un correctif plus récent n'en retire pas un plus
+  ancien : chaque version de la matrice continue d'être reconstruite et analysée pour
+  les CVE, si bien qu'un déploiement épinglé sur un correctif ancien reçoit toujours les
+  corrections.
+- **Retrait** uniquement lorsque la ligne est en fin de vie en amont, ou qu'une
+  dépendance la rend inconstructible. Dans les deux cas la ligne reste dans
+  `versions.yaml` avec `published: false` et la raison, plutôt que d'être supprimée.
+- **Maintenue mais non publiée** lorsque les Dockerfiles sont entretenus sans que les
+  images soient livrées. Cassandra 4.0 et 4.1 sont dans cet état : l'agent AxonOps n'est
+  pas encore compatible avec leurs images de base JDK 11. Contactez-nous si vous en avez
+  besoin.
+
+Actuellement publiées : **Cassandra 5.0.1 à 5.0.8**, `latest` et `5.0-latest` désignant
+la 5.0.8. Voir [k8ssandra/README.fr.md](k8ssandra/README.fr.md#versions-de-cassandra-prises-en-charge)
+pour le détail par ligne et [VERSIONS.md](VERSIONS.md) pour le tag et le digest actuels
+de chaque image publiée.
+
 ## Conventions du dépôt
 
 - **Prise en charge multi-architecture** : linux/amd64, linux/arm64
@@ -135,6 +174,7 @@ Tous les conteneurs de ce dépôt sont construits sur **Red Hat Universal Base I
 - **Analyse de sécurité** : analyse de vulnérabilités Trivy sur toutes les images
 - **Images de base** : Red Hat UBI 9 (épinglées par digest pour la sécurité de la chaîne d'approvisionnement)
 - **Versions actuelles** : [VERSIONS.md](VERSIONS.md) liste le tag et le digest actuels de chaque image et chart publiés. Ce fichier est généré à partir de [versions.yaml](versions.yaml) par `./scripts/update-versions.sh` — modifiez le YAML, jamais le Markdown.
+- **Matrice de build** : les versions de Cassandra construites sont déclarées une seule fois, dans la section `build_matrix` de [versions.yaml](versions.yaml), et lues par les workflows via `./scripts/build-matrix.sh`. N'écrivez jamais une liste de versions dans un fichier de workflow — voir [Versions prises en charge](#versions-prises-en-charge).
 
 ## Sécurité
 

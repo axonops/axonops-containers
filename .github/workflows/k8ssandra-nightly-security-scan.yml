@@ -11,7 +11,20 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  k8ssandra-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build matrix
+        id: matrix
+        run: ./scripts/build-matrix.sh versions
+
   security-scan:
+    needs: k8ssandra-versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -19,8 +32,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Scan all published versions
-        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8]
+        # Every published version, from versions.yaml. A version dropped from
+        # the build matrix but still scanned here reports CVEs against an image
+        # nobody publishes any more.
+        cassandra_version: ${{ fromJSON(needs.k8ssandra-versions.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

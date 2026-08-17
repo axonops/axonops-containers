@@ -228,3 +228,70 @@ components:
       digest: null
     previous: []
     notes: null
+
+# ---------------------------------------------------------------------------
+# build_matrix
+#
+# Which Apache Cassandra versions are built. This is the only place the list is
+# declared: every workflow matrix, floating-tag decision and default version is
+# derived from here by `scripts/build-matrix.sh`. Do not repeat a version list
+# in a workflow file - CI cannot tell when two copies drift apart, and that is
+# how 5.0.1 and 5.0.2 came to be built by the publish matrix but left out of
+# its ALL_VERSIONS, and how the cloud install test stayed on 5.0.7 after
+# everything else moved to 5.0.8.
+#
+# One list covers both published images - `ghcr.io/axonops/k8ssandra/cassandra`
+# and `ghcr.io/axonops/cassandra/cassandra`. They are built from the same
+# `k8ssandra/<line>/Dockerfile` and the same `cass-management-api` base digest
+# and differ only in whether the Management API is included, so a version
+# available to one is available to the other. Splitting the list would only
+# create two things to keep in step.
+#
+# Field reference:
+#   line       Cassandra minor line ("5.0", "4.1", "4.0"), matching the build
+#              directory under `k8ssandra/`.
+#   published  Whether images for this line are built and pushed. A line with
+#              `published: false` keeps its Dockerfiles in the repository but is
+#              skipped by every workflow; `reason` says why.
+#   versions   Patch versions built for the line, oldest first. The last entry
+#              is the newest supported version and is what the floating tags
+#              (`{line}-latest`, `latest`) resolve to. Position is the only
+#              ordering signal - nothing sorts these strings, because a string
+#              sort puts 5.0.10 before 5.0.9.
+#   reason     Required when `published` is false.
+#
+# Both images are built `FROM ghcr.io/k8ssandra/cass-management-api`, so a
+# Cassandra version cannot be added here before k8ssandra publishes that base
+# image. `scripts/build-matrix.sh check` verifies every version listed here has
+# a matching key in the `K8SSANDRA_VERSIONS` repository variable, and the
+# publish and build-and-test workflows run it before building anything.
+build_matrix:
+  lines:
+    - line: "5.0"
+      published: true
+      versions:
+        - "5.0.1"
+        - "5.0.2"
+        - "5.0.3"
+        - "5.0.4"
+        - "5.0.5"
+        - "5.0.6"
+        - "5.0.7"
+        - "5.0.8"
+      notes: >-
+        Cassandra 5.0.9 is released upstream but k8ssandra publishes no 5.0.9
+        `cass-management-api` image, so it cannot be built here yet.
+    - line: "4.1"
+      published: false
+      versions: []
+      reason: >-
+        Dockerfiles are maintained in `k8ssandra/4.1/` but no image is
+        published: the AxonOps agent is not yet compatible with the JDK 11
+        based 4.1 base image. Retained so the line can be published without
+        rewriting it.
+    - line: "4.0"
+      published: false
+      versions: []
+      reason: >-
+        Dockerfiles are maintained in `k8ssandra/4.0/` but no image is
+        published, for the same AxonOps agent compatibility reason as 4.1.
