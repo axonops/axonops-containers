@@ -41,6 +41,9 @@ jobs:
   test-k8ssandra-installation:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,14 +63,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          if gh api --paginate "/orgs/axonops/packages/container/development%2Fk8ssandra%2Fcassandra/versions" \
-            --jq '.[].metadata.container.tags[]' | grep -qx "${CASSANDRA_VERSION}"; then
+          set -uo pipefail
+          # Write the tag list to a file first. Piping straight into `grep -q`
+          # kills `gh` with SIGPIPE on the first match, and pipefail then turns
+          # a found tag into a failed pipeline - the check reported every image
+          # as missing.
+          if ! gh api --paginate \
+            "/orgs/axonops/packages/container/development%2Fk8ssandra%2Fcassandra/versions" \
+            --jq '.[].metadata.container.tags[]' > "${RUNNER_TEMP:-/tmp}/dev-tags.txt"; then
+            # A token without package read access must not masquerade as a
+            # missing image. Warn and let the install step be the judge.
+            echo "::warning::could not list development image tags; skipping the pre-flight check"
+            exit 0
+          fi
+          if grep -qx "${CASSANDRA_VERSION}" "${RUNNER_TEMP:-/tmp}/dev-tags.txt"; then
             echo "✓ ghcr.io/axonops/development/k8ssandra/cassandra:${CASSANDRA_VERSION} exists"
           else
             echo "ERROR: no development image tagged ${CASSANDRA_VERSION}"
             echo "Publish it first: gh workflow run k8ssandra-development-publish-signed.yml --ref development \\"
-            echo "  -f dev_git_tag=development -f container_version=<version>"
+            echo "  -f dev_git_tag=development -f container_version=${CASSANDRA_VERSION}"
             exit 1
           fi
 
