@@ -1,6 +1,6 @@
 name: K8ssandra E2E Test
 
-run-name: "K8ssandra E2E: Cassandra ${{ inputs.cassandra_version }} (${{ inputs.container_image }})"
+run-name: "K8ssandra E2E: ${{ inputs.container_image }}"
 
 on:
   workflow_dispatch:
@@ -10,9 +10,9 @@ on:
         required: true
         type: string
       cassandra_version:
-        description: 'Cassandra version (e.g., 5.0.8)'
+        description: 'Cassandra version to test. Leave empty for the newest published version.'
         required: false
-        default: '5.0.8'
+        default: ''
 
 env:
   NAMESPACE: k8ssandra-operator
@@ -30,6 +30,15 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Defaulted from versions.yaml rather than written into the input, where a
+      # stale default silently tests the wrong version.
+      - name: Resolve Cassandra version
+        run: |
+          set -euo pipefail
+          VERSION="${{ inputs.cassandra_version }}"
+          [ -n "$VERSION" ] || VERSION="$(./scripts/build-matrix.sh newest | tail -1)"
+          echo "CASSANDRA_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Get cache date
         id: cache_date
@@ -51,7 +60,7 @@ jobs:
           IMAGE_TAG="${{ inputs.container_image }}"
 
           # Extract Cassandra version from input
-          CASS_VERSION=$(echo "${{ inputs.cassandra_version }}" | tr '.' '-')
+          CASS_VERSION=$(echo "${CASSANDRA_VERSION}" | tr '.' '-')
 
           # Extract AxonOps version from image tag (e.g., 5.0.6-v0.1.110-1.0.8 -> 1.0.8)
           AXON_VERSION=$(echo "$IMAGE_TAG" | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+$' | tr '.' '-' || echo "unknown")
@@ -62,7 +71,7 @@ jobs:
 
           echo "cluster_name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
           echo "pod_name=${POD_NAME}" >> $GITHUB_OUTPUT
-          echo "Cluster name: ${CLUSTER_NAME} (Cassandra ${{ inputs.cassandra_version }}, AxonOps ${AXON_VERSION})"
+          echo "Cluster name: ${CLUSTER_NAME} (Cassandra ${CASSANDRA_VERSION}, AxonOps ${AXON_VERSION})"
           echo "Pod name: ${POD_NAME}"
           echo "Testing image: ${{ inputs.container_image }}"
 
@@ -85,7 +94,7 @@ jobs:
           cluster_name: ${{ steps.cluster.outputs.cluster_name }}
           namespace: ${{ env.NAMESPACE }}
           container_image: ${{ inputs.container_image }}
-          cassandra_version: ${{ inputs.cassandra_version }}
+          cassandra_version: ${{ env.CASSANDRA_VERSION }}
           axon_agent_key: ${{ secrets.AXONOPS_AGENT_KEY }}
           axon_agent_org: ${{ vars.AXONOPS_AGENT_ORG }}
           axon_agent_host: ${{ vars.AXONOPS_SERVER }}

@@ -33,7 +33,35 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # versions.yaml is the only place the version list lives. This job splits it
+  # into the newest version, tested first, and the rest, tested after it passes.
+  k8ssandra-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      newest: ${{ steps.newest.outputs.result }}
+      others: ${{ steps.others.outputs.others }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate build matrix against available k8ssandra base images
+        run: ./scripts/build-matrix.sh check --k8ssandra-versions '${{ vars.K8SSANDRA_VERSIONS }}'
+
+      - name: Newest version
+        id: newest
+        run: ./scripts/build-matrix.sh newest
+
+      - name: Remaining versions
+        id: others
+        env:
+          NEWEST: ${{ steps.newest.outputs.result }}
+        run: |
+          set -euo pipefail
+          ALL=$(./scripts/build-matrix.sh versions | tail -1)
+          echo "others=$(jq -c --arg n "$NEWEST" 'map(select(. != $n))' <<<"$ALL")" >> "$GITHUB_OUTPUT"
+
   k8ssandra-test:
+    needs: k8ssandra-versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -41,8 +69,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Currently only testing 5.0 (4.0/4.1 support pending AxonOps agent fixes)
-        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON('["5.0.8"]') }}
+        # Published lines only - 4.0 and 4.1 are declared unpublished in
+        # versions.yaml and are therefore not in this list.
+        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON(format('["{0}"]', needs.k8ssandra-versions.outputs.newest)) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -194,7 +223,7 @@ jobs:
           docker rm cassandra-test || true
 
   k8ssandra-test-other-versions:
-    needs: k8ssandra-test
+    needs: [k8ssandra-versions, k8ssandra-test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -202,8 +231,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Test other 5.0 versions after 5.0.8 passes
-        cassandra_version: [5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7]
+        # Every published version except the newest, which k8ssandra-test above
+        # has already passed.
+        cassandra_version: ${{ fromJSON(needs.k8ssandra-versions.outputs.others) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

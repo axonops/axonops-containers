@@ -6,7 +6,9 @@ name: Cassandra Build and Test
 on:
   pull_request:
     paths:
-      - 'k8ssandra/5.0/**'
+      # Every line's Dockerfiles, not just 5.0 - a new line must trigger this too.
+      - 'k8ssandra/**'
+      - '!k8ssandra/**/*.md'
       - 'cassandra/**'
       - '.github/workflows/cassandra-build-and-test.yml'
       - '.github/actions/cassandra-*/**'
@@ -21,14 +23,32 @@ env:
   IMAGE_NAME: axonops/cassandra/cassandra
 
 jobs:
+  cassandra-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      newest: ${{ steps.newest.outputs.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate build matrix against available k8ssandra base images
+        run: ./scripts/build-matrix.sh check --k8ssandra-versions '${{ vars.K8SSANDRA_VERSIONS }}'
+
+      - name: Newest version
+        id: newest
+        run: ./scripts/build-matrix.sh newest
+
   cassandra-build-and-test:
+    needs: cassandra-versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        cassandra_version: [5.0.8]
+        # The newest published version, from versions.yaml. The publish
+        # workflow covers the rest of the matrix.
+        cassandra_version: ${{ inputs.cassandra_version && fromJSON(format('["{0}"]', inputs.cassandra_version)) || fromJSON(format('["{0}"]', needs.cassandra-versions.outputs.newest)) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -17,6 +17,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
   - [Which stack](#which-stack)
   - [Compose or Kubernetes?](#compose-or-kubernetes)
 - [Red Hat Universal Base Image (UBI)](#red-hat-universal-base-image-ubi)
+- [Supported Versions](#supported-versions)
 - [Repository Conventions](#repository-conventions)
 - [Security](#security)
   - [CVE Policy](#cve-policy)
@@ -127,6 +128,40 @@ All containers in this repository are built on **Red Hat Universal Base Image (U
 - [UBI 9 Container Catalog](https://catalog.redhat.com/software/containers/search?q=ubi9)
 - [UBI Documentation](https://developers.redhat.com/products/rhel/ubi)
 
+## Supported Versions
+
+Which Apache Cassandra versions this repository builds is declared once, in the
+`build_matrix` section of [versions.yaml](versions.yaml). Workflow matrices, default
+versions, floating tag targets and release notes are all derived from it — no workflow
+file names a Cassandra version.
+
+```bash
+./scripts/build-matrix.sh versions   # every version built
+./scripts/build-matrix.sh newest     # what the `latest` tag resolves to
+```
+
+**The policy:**
+
+- **Added** when Apache has released the patch *and* k8ssandra has published a matching
+  `cass-management-api` base image. Both Cassandra images here are built `FROM` that
+  base, so the second condition is not negotiable: a version added before its base
+  exists fails every build job for it. Cassandra 5.0.9 is in exactly that position
+  today — released upstream, no base image, therefore not built.
+- **Kept** once added. A newer patch does not retire an older one: every version in the
+  matrix keeps being rebuilt and CVE-scanned, so a deployment pinned to an older patch
+  still receives fixes.
+- **Retired** only when the line is end-of-life upstream, or when a dependency makes it
+  unbuildable. Either way the line stays in `versions.yaml` marked `published: false`
+  with the reason, rather than being deleted.
+- **Retained but unpublished** where the Dockerfiles are maintained and the images are
+  not shipped. Cassandra 4.0 and 4.1 are in this state: the AxonOps agent is not yet
+  compatible with their JDK 11 base images. Get in touch if you need them.
+
+Currently published: **Cassandra 5.0.1 – 5.0.8**, with `latest` and `5.0-latest`
+resolving to 5.0.8. See [k8ssandra/README.md](k8ssandra/README.md#supported-cassandra-versions)
+for the per-line detail and [VERSIONS.md](VERSIONS.md) for the current tag and digest of
+every published image.
+
 ## Repository Conventions
 
 - **Multi-architecture support**: linux/amd64, linux/arm64
@@ -135,6 +170,7 @@ All containers in this repository are built on **Red Hat Universal Base Image (U
 - **Security scanning**: Trivy vulnerability scanning on all images
 - **Base images**: Red Hat UBI 9 (digest-pinned for supply chain security)
 - **Current versions**: [VERSIONS.md](VERSIONS.md) lists the current tag and digest of every published image and chart. It is generated from [versions.yaml](versions.yaml) by `./scripts/update-versions.sh` — edit the YAML, never the Markdown.
+- **Build matrix**: the Cassandra versions built are declared once, in the `build_matrix` section of [versions.yaml](versions.yaml), and read by workflows through `./scripts/build-matrix.sh`. Never write a version list into a workflow file — see [Supported Versions](#supported-versions).
 
 ## Security
 
