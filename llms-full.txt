@@ -9208,6 +9208,9 @@ The AxonOps agent is configured via environment variables passed to the Cassandr
 | `AXON_AGENT_ORG` | Your AxonOps organization ID | Required |
 | `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
 | `AXON_AGENT_LOG_OUTPUT` | Agent log output destination | `std` |
+| `AXON_AGENT_NTP_HOST` | NTP server used for clock-skew checks, `host` or `host:port` (port defaults to `123`) | `pool.ntp.org` |
+
+NTP auto-detection does not work inside Kubernetes, so the container defaults `AXON_AGENT_NTP_HOST` to the public `pool.ntp.org` and logs a warning on every start until you override it. Set it to the same NTP source your Cassandra hosts use, otherwise clock-skew readings compare against a pool your nodes never sync with.
 | `AXON_AGENT_ARGS` | Additional agent arguments | - |
 
 ### Container Environment Variables

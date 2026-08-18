@@ -26,6 +26,38 @@ fi
 if [ -z "$AXON_AGENT_SERVER_PORT" ]; then
   export AXON_AGENT_SERVER_PORT="443"
 fi
+
+# Default the NTP host used for clock-skew checks.
+#
+# The agent auto-detects the host's NTP configuration, but that does not work
+# inside Kubernetes: the container has no ntp.conf/chrony.conf to read. Without
+# this default the agent falls back to a public NTP pool of its own choosing,
+# which is almost never the NTP source the Cassandra nodes actually use. Set an
+# explicit default here and say so loudly, so an unconfigured deployment is
+# visible in the container logs.
+if [ -z "$AXON_AGENT_NTP_HOST" ]; then
+  export AXON_AGENT_NTP_HOST="pool.ntp.org"
+  echo "WARNING: AXON_AGENT_NTP_HOST is not set, defaulting to ${AXON_AGENT_NTP_HOST}."
+  echo "WARNING: Clock-skew checks will use a public NTP pool, which is unlikely to be the NTP source your Cassandra hosts use."
+  echo "WARNING: Set AXON_AGENT_NTP_HOST to your own NTP server, e.g. AXON_AGENT_NTP_HOST=10.0.0.1:123 (port defaults to 123)."
+else
+  case "$AXON_AGENT_NTP_HOST" in
+    *:*)
+      _ntp_port="${AXON_AGENT_NTP_HOST##*:}"
+      case "$_ntp_port" in
+        ''|*[!0-9]*)
+          echo "WARNING: AXON_AGENT_NTP_HOST='${AXON_AGENT_NTP_HOST}' has a non-numeric port. Expected host or host:port, e.g. 10.0.0.1:123."
+          ;;
+        *)
+          if [ "$_ntp_port" -lt 1 ] || [ "$_ntp_port" -gt 65535 ]; then
+            echo "WARNING: AXON_AGENT_NTP_HOST='${AXON_AGENT_NTP_HOST}' has an out-of-range port. Expected 1-65535."
+          fi
+          ;;
+      esac
+      unset _ntp_port
+      ;;
+  esac
+fi
 if [ -z "$AXON_AGENT_ORG" ]; then
   echo "ERROR: AXON_AGENT_ORG environment variable is not set. Exiting."
   exit 1
