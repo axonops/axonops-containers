@@ -52,7 +52,7 @@ This document covers k8ssandra-specific development practices, workflows, and te
 - Name: `github-ci-<version>-<run_id>`
 - Single-node cluster (minimized resources for GitHub runner)
 - Heap: 1GB
-- Storage: 2Gi Cassandra data, 512Mi AxonOps data
+- Storage: 2Gi Cassandra data, 2Gi AxonOps data
 - Authentication: Enabled (k8ssandra default)
 
 **Uses secrets/variables:**

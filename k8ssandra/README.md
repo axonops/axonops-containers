@@ -814,8 +814,10 @@ AxonOps requires a persistent volume to store its configuration. Add this to you
                   - ReadWriteOnce
                 resources:
                   requests:
-                    storage: 512Mi
+                    storage: ${AXONOPS_STORAGE_SIZE}
 ```
+
+`AXONOPS_STORAGE_SIZE` defaults to `2Gi` in `examples/k8ssandra/k8ssandra-config.env`. Set it before rendering the manifest to change the size. Most StorageClasses cannot shrink a volume once created, so pick the size before the first apply.
 
 **AxonOps Integration:**
 The example shows proper environment variable injection for the AxonOps agent using the container-level environment variables approach required by K8ssandra.

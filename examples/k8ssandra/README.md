@@ -57,6 +57,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 | `CASSANDRA_DC_SIZE` | `3` | Number of nodes |
 | `STORAGE_CLASS` | `` | StorageClass name |
 | `STORAGE_SIZE` | `2Gi` | Storage per node |
+| `AXONOPS_STORAGE_SIZE` | `2Gi` | Size of the AxonOps agent data volume (`/var/lib/axonops`) |
 | `AXON_AGENT_KEY` | - | AxonOps API key |
 | `AXON_AGENT_ORG` | - | AxonOps organization |
 | `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server |
