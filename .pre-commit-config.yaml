@@ -14,3 +14,17 @@ repos:
       - id: yamllint
         args: [-c=.yamllint]
         exclude: ^(axonops/charts/.*|\.github/workflows/.*)
+  - repo: local
+    hooks:
+      - id: llms-full
+        name: regenerate llms-full.txt
+        entry: scripts/generate-llms-full.sh
+        language: script
+        pass_filenames: false
+        files: '\.md$|^llms\.txt$|^scripts/llms-manifest\.txt$'
+      - id: llms-check
+        name: check llms.txt manifest coverage and links
+        entry: scripts/generate-llms-full.sh --check
+        language: script
+        pass_filenames: false
+        files: '\.md$|^llms\.txt$|^scripts/llms-manifest\.txt$'
