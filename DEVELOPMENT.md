@@ -223,6 +223,16 @@ when a tracked Markdown file is in neither list of the manifest, when a manifest
 path does not exist, or when a relative link in `llms.txt` does not resolve. The
 `LLM Docs Index` workflow runs it on every PR that touches documentation.
 
+Both modes also run as pre-commit hooks on any commit that touches a `.md` file,
+`llms.txt` or the manifest, so a stale bundle is caught locally instead of in
+CI. The first hook rewrites `llms-full.txt`; as with any pre-commit hook that
+edits a file, the commit is refused when it changes something, and you re-stage
+the regenerated bundle and commit again. Install the hooks once with:
+
+```bash
+pre-commit install
+```
+
 **Adding a document:**
 
 1. Add the path to `scripts/llms-manifest.txt` as `include <path>`, in the
