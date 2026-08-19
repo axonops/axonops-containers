@@ -822,8 +822,10 @@ AxonOps a besoin d'un volume persistant pour stocker sa configuration. Ajoutez c
                   - ReadWriteOnce
                 resources:
                   requests:
-                    storage: 512Mi
+                    storage: ${AXONOPS_STORAGE_SIZE}
 ```
+
+`AXONOPS_STORAGE_SIZE` vaut `2Gi` par défaut dans `examples/k8ssandra/k8ssandra-config.env`. Définissez cette variable avant de générer le manifeste pour changer la taille. La plupart des StorageClasses ne permettent pas de réduire un volume après sa création : choisissez donc la taille avant le premier `apply`.
 
 **Intégration AxonOps :**
 L'exemple montre l'injection correcte des variables d'environnement de l'agent AxonOps, au niveau du conteneur — l'approche exigée par K8ssandra.
