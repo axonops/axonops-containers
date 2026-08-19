@@ -671,6 +671,9 @@ L'agent AxonOps se configure par des variables d'environnement passées au conte
 | `AXON_AGENT_ORG` | L'identifiant de votre organisation AxonOps | Obligatoire |
 | `AXON_AGENT_SERVER_HOST` | Nom d'hôte du serveur AxonOps | `agents.axonops.cloud` |
 | `AXON_AGENT_LOG_OUTPUT` | Destination des logs de l'agent | `std` |
+| `AXON_AGENT_NTP_HOST` | Serveur NTP utilisé pour les contrôles de dérive d'horloge, `hôte` ou `hôte:port` (le port par défaut est `123`) | `pool.ntp.org` |
+
+La détection automatique NTP ne fonctionne pas dans Kubernetes : le conteneur applique donc par défaut `AXON_AGENT_NTP_HOST=pool.ntp.org` et journalise un avertissement à chaque démarrage tant que la valeur n'est pas remplacée. Définissez-la sur la source NTP utilisée par vos hôtes Cassandra, sinon les mesures de dérive d'horloge sont comparées à un pool avec lequel vos nœuds ne se synchronisent jamais.
 | `AXON_AGENT_ARGS` | Arguments supplémentaires de l'agent | - |
 
 ### Variables d'environnement du conteneur
