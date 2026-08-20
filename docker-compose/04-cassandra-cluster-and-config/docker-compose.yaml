@@ -1,0 +1,243 @@
+# Example 04 — Self-hosted AxonOps, a monitored Cassandra node, and alerts
+#                configured as code
+#
+# Same platform as example 01, cut down to a single monitored node, plus one
+# extra service: a one-shot Ansible container that applies alert configuration
+# to AxonOps through its API once the stack is up.
+#
+#   axondb-timeseries  Apache Cassandra, metrics store for AxonOps
+#   axondb-search      OpenSearch, log and event store for AxonOps
+#   axon-server        AxonOps backend, agent endpoint on 1888
+#   axon-dash          AxonOps web dashboard on 3000
+#   cassandra          The monitored node, Cassandra + the AxonOps agent
+#   config             Runs config.yaml once, then exits. Alerts as code.
+#
+# Quick start:
+#   cp env.example .env      # set AXONOPS_ORG_NAME
+#   docker compose up -d
+#   docker compose logs -f config
+#   open http://localhost:3000
+#
+# Image pinning: every service is pinned to an immutable version tag, with the
+# equivalent SHA256 digest commented above it. Deploy the digest form in
+# production — see ../00-axonops-platform/README.md "Image Pinning: Tags vs Checksums"
+# and ../../VERSIONS.md for the current digest of every image.
+
+services:
+  # ===========================================================================
+  # AxonOps platform
+  # ===========================================================================
+
+  axondb-timeseries:
+    # Preferred (immutable): ghcr.io/axonops/axondb-timeseries@sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c
+    image: ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0
+    container_name: axondb-timeseries
+    hostname: axondb-timeseries
+    networks: [axonops]
+    environment:
+      - CASSANDRA_CLUSTER_NAME=axonopsdb-timeseries
+      - CASSANDRA_DC=axonopsdb_dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_NUM_TOKENS=16
+      - CASSANDRA_HEAP_SIZE=${AXONOPS_CASSANDRA_HEAP_SIZE:-2G}
+      - AXONOPS_DB_USER=axonops
+      - AXONOPS_DB_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+    volumes:
+      - axondb-timeseries-data:/var/lib/cassandra
+      - axondb-timeseries-logs:/var/log/cassandra
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  axondb-search:
+    # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565
+    image: ghcr.io/axonops/axondb-search:3.7.0-1.6.1
+    container_name: axondb-search
+    hostname: axondb-search
+    networks: [axonops]
+    environment:
+      - OPENSEARCH_CLUSTER_NAME=axonopsdb-search
+      - discovery.type=single-node
+      - OPENSEARCH_DISCOVERY_TYPE=single-node
+      - OPENSEARCH_HEAP_SIZE=${AXONOPS_OPENSEARCH_HEAP_SIZE:-2g}
+      - AXONOPS_SEARCH_USER=admin
+      - AXONOPS_SEARCH_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - AXONOPS_SEARCH_TLS_ENABLED=${AXONOPS_OPENSEARCH_SSL:-true}
+    volumes:
+      - axondb-search-data:/var/lib/opensearch
+      - axondb-search-logs:/var/log/opensearch
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  axon-server:
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    container_name: axon-server
+    hostname: axon-server
+    networks: [axonops]
+    environment:
+      - AXONSERVER_ORGNAME=${AXONOPS_ORG_NAME:-example}
+      - LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
+      - AXON_LOG_FILE=/dev/stdout
+      - TLS_MODE=disabled
+
+      - AXONDASH_HOST=axon-dash
+      - AXONDASH_PORT=3000
+      - AXONDASH_HTTPS=false
+
+      - CQL_HOSTS=axondb-timeseries
+      - CQL_USERNAME=axonops
+      - CQL_PASSWORD=${AXONOPS_DB_PASSWORD:-axonops}
+      - CQL_LOCAL_DC=axonopsdb_dc1
+      - CQL_PROTO_VERSION=4
+      - CQL_AUTO_CREATE_TABLES=true
+      - CQL_SSL=${AXONOPS_CASSANDRA_SSL:-false}
+      - CQL_SSL_SKIP_VERIFY=true
+      - "CQL_KS_REPLICATION={ 'class': 'NetworkTopologyStrategy', 'axonopsdb_dc1': 1 }"
+
+      - SEARCH_DB_HOSTS=https://axondb-search:9200
+      - SEARCH_DB_USERNAME=admin
+      - SEARCH_DB_PASSWORD=${AXONOPS_SEARCH_PASSWORD:-MyS3cur3P@ss2025}
+      - SEARCH_DB_SKIP_VERIFY=true
+    volumes:
+      - axon-server-data:/var/lib/axonops
+    ports:
+      - "1888:1888"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      axondb-timeseries:
+        condition: service_healthy
+      axondb-search:
+        condition: service_healthy
+    restart: unless-stopped
+
+  axon-dash:
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37
+    container_name: axon-dash
+    hostname: axon-dash
+    networks: [axonops]
+    environment:
+      - AXONSERVER_PRIVATE_ENDPOINTS=http://axon-server:8080
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Monitored cluster
+  # ===========================================================================
+
+  cassandra:
+    # Preferred (immutable): ghcr.io/axonops/cassandra/cassandra@sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0}
+    container_name: cassandra
+    hostname: cassandra
+    networks: [axonops]
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-demo-cluster}
+      - CASSANDRA_SEEDS=cassandra
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_NUM_TOKENS=16
+      - MAX_HEAP_SIZE=${CASSANDRA_HEAP_SIZE:-1G}
+      - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
+      # The agent organisation must match AXONSERVER_ORGNAME above, or the node
+      # registers into an organisation the dashboard is not showing.
+      - AXON_AGENT_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXON_AGENT_SERVER_HOST=axon-server
+      - AXON_AGENT_SERVER_PORT=1888
+      - AXON_AGENT_TLS_MODE=disabled
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+    ports:
+      - "9042:9042"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/axonops-healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Configuration as code
+  # ===========================================================================
+  #
+  # A one-shot container: it runs config.yaml against the AxonOps API and exits.
+  # `docker compose ps` will show it as Exited (0) once it has finished, which
+  # is the expected end state — it is not a long-running service.
+  #
+  # Re-apply after editing config.yaml:
+  #   docker compose run --rm config
+  #
+  # The playbook is idempotent: applying it twice changes nothing the second
+  # time, so it is safe to run on every deploy.
+
+  config:
+    # The AxonOps Ansible execution environment. It ships Ansible plus the
+    # axonops.axonops collection, so nothing needs installing at run time.
+    image: ghcr.io/axonops/axonops-ansible-ee:v0.6.4
+    container_name: axonops-config
+    hostname: axonops-config
+    networks: [axonops]
+    command: ["ansible-playbook", "-i", "localhost,", "--connection=local", "-v", "/config.yaml"]
+    environment:
+      # The collection reads org and cluster from the environment when the
+      # playbook does not set them. They must match the values the agent
+      # registered with, above.
+      - AXONOPS_ORG=${AXONOPS_ORG_NAME:-example}
+      - AXONOPS_CLUSTER=${CASSANDRA_CLUSTER_NAME:-demo-cluster}
+      # Self-hosted AxonOps: point the modules at the dashboard, which proxies
+      # the API. For AxonOps Cloud, drop this and set AXONOPS_TOKEN instead.
+      - AXONOPS_URL=http://axon-dash:3000
+      # Only used by the commented-out Slack block in config.yaml. Set it in
+      # .env; it stays out of the playbook.
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+    depends_on:
+      # Wait for the monitored node, not just the dashboard: an alert rule is
+      # attached to a cluster, and the cluster only exists in AxonOps once its
+      # agent has registered.
+      cassandra:
+        condition: service_healthy
+    restart: "no"
+
+networks:
+  axonops:
+    driver: bridge
+
+volumes:
+  axondb-timeseries-data:
+  axondb-timeseries-logs:
+  axondb-search-data:
+  axondb-search-logs:
+  axon-server-data:
+  cassandra-data:
