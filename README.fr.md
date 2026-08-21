@@ -1,6 +1,6 @@
 # Images de conteneurs AxonOps
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![Licence](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tickets GitHub](https://img.shields.io/github/issues/axonops/axonops-containers)](https://github.com/axonops/axonops-containers/issues)

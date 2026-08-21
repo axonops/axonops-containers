@@ -1,6 +1,6 @@
 # Exemple 03 — Un cluster sécurisé à 3 racks, supervisé par AxonOps
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>

@@ -1,6 +1,6 @@
 # Guide de déploiement Strimzi Kafka
 
-[English](STRIMZI_DEPLOYMENT.md) | **Français**
+[English](STRIMZI_DEPLOYMENT.md) | **Français** | [Español](STRIMZI_DEPLOYMENT.es.md) | [Galego](STRIMZI_DEPLOYMENT.gl.md)
 
 Ce guide traite du déploiement d'Apache Kafka avec l'opérateur Strimzi sur Kubernetes, avec l'intégration de la supervision AxonOps en option.
 

@@ -1,6 +1,6 @@
 # K8ssandra Deployment Guide
 
-**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md)
+**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md) | [Español](K8SSANDRA_DEPLOYMENT.es.md) | [Galego](K8SSANDRA_DEPLOYMENT.gl.md)
 
 This guide covers deploying Apache Cassandra using the K8ssandra operator on Kubernetes, with optional AxonOps monitoring integration.
 

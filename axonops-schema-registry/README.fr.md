@@ -1,6 +1,6 @@
 # AxonOps Schema Registry
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![Paquet GHCR](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axonops-schema-registry)
 

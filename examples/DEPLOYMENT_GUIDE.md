@@ -1,6 +1,6 @@
 # On-Premises Deployment Guide
 
-**English** | [Français](DEPLOYMENT_GUIDE.fr.md)
+**English** | [Français](DEPLOYMENT_GUIDE.fr.md) | [Español](DEPLOYMENT_GUIDE.es.md) | [Galego](DEPLOYMENT_GUIDE.gl.md)
 
 Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
 
