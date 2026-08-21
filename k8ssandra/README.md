@@ -104,8 +104,8 @@ step with what is actually built. Read the current list with:
 ```
 
 **Currently published:**
-- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8 (8 versions).
-  The newest is 5.0.8, so `latest` and `5.0-latest` resolve to it.
+- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8, 5.0.9 (9 versions).
+  The newest is 5.0.9, so `latest` and `5.0-latest` resolve to it.
 
 **Support policy.** A Cassandra patch release is added to the matrix when two things
 are true: Apache has released it, and k8ssandra has published a matching
@@ -117,15 +117,6 @@ on its pinned version and still receive rebuilds. A line is dropped only when it
 end-of-life upstream, and that is recorded in `versions.yaml` with a reason.
 
 **Not built:**
-- **5.0.9:** released by Apache, but k8ssandra publishes no 5.0.9
-  `cass-management-api` image. Check whether one has appeared with:
-
-  ```bash
-  curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/tags?page_size=100&name=5.0.9-ubi" | \
-    jq -r '.results[].name'
-  ```
-
-  When it does, follow [Adding Support for New Cassandra Versions](#adding-support-for-new-cassandra-versions).
 - **4.0.x and 4.1.x:** Dockerfiles are maintained in `k8ssandra/4.0/` and
   `k8ssandra/4.1/`, but no image is published — the AxonOps agent is not yet compatible
   with the JDK 11 based 4.x base images. Both lines are declared `published: false` in
