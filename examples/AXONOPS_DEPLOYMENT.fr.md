@@ -1,6 +1,6 @@
 # Guide de déploiement AxonOps
 
-[English](AXONOPS_DEPLOYMENT.md) | **Français**
+[English](AXONOPS_DEPLOYMENT.md) | **Français** | [Español](AXONOPS_DEPLOYMENT.es.md) | [Galego](AXONOPS_DEPLOYMENT.gl.md)
 
 Ce guide traite du déploiement des services de supervision et de gestion AxonOps sur Kubernetes.
 

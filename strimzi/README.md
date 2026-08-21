@@ -1,6 +1,6 @@
 # AxonOps Strimzi Kafka
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 This repository provides custom Strimzi Kafka container images with integrated AxonOps monitoring and observability components.
 

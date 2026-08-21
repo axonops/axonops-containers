@@ -1,6 +1,6 @@
 # Base de données time-series AxonDB
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![Paquet GHCR](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-timeseries)
 
@@ -96,7 +96,7 @@ Lorsque `5.0.6-1.0.0` est construit (et qu'il est le plus récent) :
    ```
    - immuable à 100 %, garanti cryptographiquement
    - requis dans les environnements réglementés
-   - vérifiez la signature avec Cosign (voir [Sécurité](#security))
+   - vérifiez la signature avec Cosign (voir la note de sécurité ci-dessous)
 
 2. **🥈 Tag immuable** (standard de production)
    ```bash

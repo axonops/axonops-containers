@@ -24,7 +24,7 @@ indexing, model training, licensing or attribution.
 
 # AxonOps Container Images
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub Issues](https://img.shields.io/github/issues/axonops/axonops-containers)](https://github.com/axonops/axonops-containers/issues)
@@ -870,12 +870,13 @@ Every workflow must include:
 
 ### Translated Documentation
 
-User-facing documentation is translated to French. A translation lives next to
-its English source as `<name>.fr.md` (for example `README.fr.md` beside
-`README.md`), not in a separate `docs/fr/` tree, so it is impossible to edit the
-source without seeing that a translation exists.
+User-facing documentation is translated to French, Spanish and Galician. A
+translation lives next to its English source as `<name>.fr.md`, `<name>.es.md`
+or `<name>.gl.md` (for example `README.es.md` beside `README.md`), not in a
+separate `docs/<lang>/` tree, so it is impossible to edit the source without
+seeing that translations exist.
 
-**In scope (must have a `.fr.md` counterpart):**
+**In scope (must have a `.fr.md`, `.es.md` and `.gl.md` counterpart):**
 - `README.md`
 - `cassandra/README.md`, `k8ssandra/README.md`
 - `axonops/axondb-search/README.md`, `axonops/axondb-timeseries/README.md`
@@ -887,10 +888,11 @@ source without seeing that a translation exists.
   `examples/K8SSANDRA_DEPLOYMENT.md`, `examples/STRIMZI_DEPLOYMENT.md`,
   `examples/NODE_SELECTOR_GUIDE.md`
 
-Every file on that list is translated, and all of them are enforced by
-`.github/workflows/docs-translations.yml`. A new in-scope document is added to
-that workflow's list once its translation lands — a file is only enforced when
-it has actually been translated.
+Every file on that list is translated into all three languages, and all of them
+are enforced by `.github/workflows/docs-translations.yml`, whose `LANGS` list is
+`fr es gl`. A new in-scope document is added to that workflow's list once its
+translations land — a file is only enforced when it has actually been
+translated.
 
 **Deliberately English-only:**
 - `DEVELOPMENT.md`, `RELEASE.md`, `PIPELINES.md` — contributor-facing, and they
@@ -900,8 +902,9 @@ it has actually been translated.
 - component `tests/README.md` files
 
 **Rules:**
-- Both files carry a language switcher line under the title
-  (`**English** | [Français](README.fr.md)` and its mirror).
+- Every file carries the same language switcher line under the title, with the
+  current language in bold and unlinked:
+  `**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)`.
 - Translate prose only. Code blocks, commands, image tags, environment variable
   names, YAML keys, file paths, log messages and CLI output stay verbatim —
   including the English comments inside code blocks, so a block can be diffed
@@ -972,8 +975,8 @@ pre-commit install
 - `CHANGELOG.md` and `TAG_CHANGELOG.md` — release history, not guidance.
 - `VERSIONS.md` — generated, and it churns on every release. `llms.txt` links
   it so the current tags and digests are still one hop away.
-- `*.fr.md` translations — the bundle would otherwise carry the same guidance
-  twice. `llms.txt` links both languages.
+- `*.fr.md`, `*.es.md` and `*.gl.md` translations — the bundle would otherwise
+  carry the same guidance four times. `llms.txt` links every language.
 - Per-version `tests/README.md` files — contributor scratch material.
 
 Compose files, Kubernetes manifests, Helm values, Dockerfiles and scripts are
@@ -1638,7 +1641,7 @@ See component-specific RELEASE.md files for detailed instructions.
 
 # AxonDB Time-Series Database
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-timeseries)
 
@@ -1734,7 +1737,7 @@ When `5.0.6-1.0.0` is built (and it's the latest):
    ```
    - 100% immutable, cryptographically guaranteed
    - Required for regulated environments
-   - Verify signature with Cosign (see [Security](#security))
+   - Verify signature with Cosign (see the security note below)
 
 2. **🥈 Immutable Tag** (Production Standard)
    ```bash
@@ -3902,7 +3905,7 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonDB Search Database
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-search)
 
@@ -3999,7 +4002,7 @@ When `3.3.2-1.0.0` is built (and it's the latest):
    ```
    - 100% immutable, cryptographically guaranteed
    - Required for regulated environments
-   - Verify signature with Cosign (see [Security](#security))
+   - Verify signature with Cosign (see the security note below)
 
 2. **🥈 Immutable Tag** (Production Standard)
    ```bash
@@ -6840,7 +6843,7 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonOps Schema Registry
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axonops-schema-registry)
 
@@ -8345,7 +8348,7 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonOps Apache Cassandra Container
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/cassandra%2Fcassandra)
 
@@ -8552,7 +8555,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at [axonop
 
 # AxonOps K8ssandra Containers
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/k8ssandra%2Fcassandra)
 
@@ -10968,7 +10971,7 @@ After publishing:
 
 # AxonOps Strimzi Kafka
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 This repository provides custom Strimzi Kafka container images with integrated AxonOps monitoring and observability components.
 
@@ -11625,7 +11628,7 @@ For the latest compatibility information, check individual chart documentation.
 
 # AxonOps Meta-Chart
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ## Overview
 
@@ -12176,7 +12179,7 @@ Copyright AxonOps. All rights reserved.
 
 # AxonOps Server
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 2.1.3](https://img.shields.io/badge/Version-2.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
@@ -13469,7 +13472,7 @@ For additional support:
 
 # AxonOps Dashboard
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
@@ -14403,7 +14406,7 @@ For additional support:
 
 # AxonOps Timeseries Database
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 5.0.5-1.0.0](https://img.shields.io/badge/AppVersion-5.0.5--1.0.0-informational?style=flat-square)
 
@@ -15538,7 +15541,7 @@ Remember that hostPath is best suited for single-node deployments and testing sc
 
 # AxonOps Search DB
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.3.2-1.1.0](https://img.shields.io/badge/AppVersion-3.3.2--1.1.0-informational?style=flat-square)
 
@@ -16928,7 +16931,7 @@ The IAM user or role needs the following minimum permissions:
 
 # Docker Compose Examples
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17181,7 +17184,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 00 — The AxonOps platform on its own
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17403,7 +17406,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 01 — Self-hosted AxonOps monitoring a 3-node Cassandra cluster
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17643,7 +17646,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 02 — AxonOps SaaS monitoring a 3-node Cassandra cluster
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17847,7 +17850,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 03 — A secured 3-rack cluster, monitored by AxonOps
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -18370,7 +18373,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 04 — Self-hosted AxonOps with alerts configured as code
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -18550,7 +18553,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # On-Premises Deployment Guide
 
-**English** | [Français](DEPLOYMENT_GUIDE.fr.md)
+**English** | [Français](DEPLOYMENT_GUIDE.fr.md) | [Español](DEPLOYMENT_GUIDE.es.md) | [Galego](DEPLOYMENT_GUIDE.gl.md)
 
 Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
 
@@ -18575,7 +18578,6 @@ Ready-to-use Kubernetes manifests are available in the following directories:
 | [axonops/](axonops/) | AxonOps server, dashboard, and database components |
 | [strimzi/cloud/](strimzi/cloud/) | Production Strimzi Kafka for cloud environments |
 | [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka with local persistent volumes |
-| [strimzi/single/](strimzi/single/) | Single-node Strimzi Kafka for development |
 | [k8ssandra/](k8ssandra/) | K8ssandra Cassandra cluster examples |
 
 ## Prerequisites
@@ -18825,7 +18827,7 @@ kubectl get pods -n k8ssandra-operator
 
 # AxonOps Deployment Guide
 
-**English** | [Français](AXONOPS_DEPLOYMENT.fr.md)
+**English** | [Français](AXONOPS_DEPLOYMENT.fr.md) | [Español](AXONOPS_DEPLOYMENT.es.md) | [Galego](AXONOPS_DEPLOYMENT.gl.md)
 
 This guide covers deploying AxonOps monitoring and management services on Kubernetes.
 
@@ -19308,7 +19310,7 @@ Ready-to-use configurations are available in the [axonops/](axonops/) directory:
 
 # K8ssandra Deployment Guide
 
-**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md)
+**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md) | [Español](K8SSANDRA_DEPLOYMENT.es.md) | [Galego](K8SSANDRA_DEPLOYMENT.gl.md)
 
 This guide covers deploying Apache Cassandra using the K8ssandra operator on Kubernetes, with optional AxonOps monitoring integration.
 
@@ -19695,7 +19697,7 @@ kubectl delete namespace k8ssandra-operator
 
 # Strimzi Kafka Deployment Guide
 
-**English** | [Français](STRIMZI_DEPLOYMENT.fr.md)
+**English** | [Français](STRIMZI_DEPLOYMENT.fr.md) | [Español](STRIMZI_DEPLOYMENT.es.md) | [Galego](STRIMZI_DEPLOYMENT.gl.md)
 
 This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
 
@@ -19740,7 +19742,6 @@ Choose one of the deployment examples based on your use case. Each example inclu
 | --- | --- | --- |
 | [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, cloud storage |
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
-| [strimzi/single/](strimzi/single/) | Development | Single dual-role node |
 
 Each example directory contains:
 
@@ -19782,7 +19783,7 @@ Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before 
 
 # Strimzi Node Selector Configuration Guide
 
-**English** | [Français](NODE_SELECTOR_GUIDE.fr.md)
+**English** | [Français](NODE_SELECTOR_GUIDE.fr.md) | [Español](NODE_SELECTOR_GUIDE.es.md) | [Galego](NODE_SELECTOR_GUIDE.gl.md)
 
 ## Overview
 
