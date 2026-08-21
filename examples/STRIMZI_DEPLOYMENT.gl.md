@@ -45,7 +45,6 @@ Escolla un dos exemplos de despregamento segundo o seu caso de uso. Cada exemplo
 | --- | --- | --- |
 | [strimzi/cloud/](strimzi/cloud/) | Produción | 6 brokers, 3 controllers, almacenamento na nube |
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Volumes persistentes locais, configurables |
-| [strimzi/single/](strimzi/single/) | Desenvolvemento | Un único nodo de dobre rol |
 
 Cada directorio de exemplo contén:
 

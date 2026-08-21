@@ -107,7 +107,7 @@ inclúe `latest` e `5.0.6`, porque:
    ```
    - 100 % inmutable, garantido criptograficamente
    - Obrigatoria en entornos regulados
-   - Verifique a sinatura con Cosign (véxase [Seguridade](#seguridade))
+   - Verifique a sinatura con Cosign (véxase a nota de seguridade máis abaixo)
 
 2. **🥈 Etiqueta inmutable** (o estándar de produción)
    ```bash

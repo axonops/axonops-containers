@@ -108,7 +108,7 @@ incluye `latest` y `3.3.2`, porque:
    ```
    - 100 % inmutable, garantizado criptográficamente
    - Obligatoria en entornos regulados
-   - Verifique la firma con Cosign (véase [Seguridad](#seguridad))
+   - Verifique la firma con Cosign (véase la nota de seguridad más abajo)
 
 2. **🥈 Etiqueta inmutable** (el estándar de producción)
    ```bash

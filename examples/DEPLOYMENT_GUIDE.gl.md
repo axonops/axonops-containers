@@ -28,7 +28,6 @@ Hai manifestos de Kubernetes listos para usar nos seguintes directorios:
 | [axonops/](axonops/) | Servidor, panel e compoñentes de base de datos de AxonOps |
 | [strimzi/cloud/](strimzi/cloud/) | Strimzi Kafka de produción para entornos cloud |
 | [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka con volumes persistentes locais |
-| [strimzi/single/](strimzi/single/) | Strimzi Kafka dun só nodo para desenvolvemento |
 | [k8ssandra/](k8ssandra/) | Exemplos de clúster de Cassandra con K8ssandra |
 
 ## Requisitos previos

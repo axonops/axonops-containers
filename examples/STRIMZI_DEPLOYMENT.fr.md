@@ -45,7 +45,6 @@ Choisissez l'un des exemples de déploiement selon votre cas d'usage. Chaque exe
 | --- | --- | --- |
 | [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, stockage cloud |
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Volumes persistants locaux, configurables |
-| [strimzi/single/](strimzi/single/) | Développement | Un seul nœud à double rôle |
 
 Chaque répertoire d'exemple contient :
 

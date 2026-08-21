@@ -45,7 +45,6 @@ Choose one of the deployment examples based on your use case. Each example inclu
 | --- | --- | --- |
 | [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, cloud storage |
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
-| [strimzi/single/](strimzi/single/) | Development | Single dual-role node |
 
 Each example directory contains:
 

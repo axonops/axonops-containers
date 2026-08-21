@@ -97,7 +97,7 @@ Lorsque `3.3.2-1.0.0` est construit (et qu'il est le plus récent) :
    ```
    - immuable à 100 %, garanti cryptographiquement
    - requis dans les environnements réglementés
-   - vérifiez la signature avec Cosign (voir [Sécurité](#security))
+   - vérifiez la signature avec Cosign (voir la note de sécurité ci-dessous)
 
 2. **🥈 Tag immuable** (standard de production)
    ```bash

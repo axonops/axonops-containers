@@ -25,7 +25,6 @@ Des manifestes Kubernetes prêts à l'emploi se trouvent dans les répertoires s
 | [axonops/](axonops/) | Serveur AxonOps, dashboard et composants de base de données |
 | [strimzi/cloud/](strimzi/cloud/) | Strimzi Kafka de production pour les environnements cloud |
 | [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka avec volumes persistants locaux |
-| [strimzi/single/](strimzi/single/) | Strimzi Kafka à nœud unique, pour le développement |
 | [k8ssandra/](k8ssandra/) | Exemples de clusters Cassandra K8ssandra |
 
 ## Prérequis

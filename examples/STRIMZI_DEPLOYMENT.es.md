@@ -45,7 +45,6 @@ Elija uno de los ejemplos de despliegue según su caso de uso. Cada ejemplo incl
 | --- | --- | --- |
 | [strimzi/cloud/](strimzi/cloud/) | Producción | 6 brokers, 3 controllers, almacenamiento en la nube |
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Volúmenes persistentes locales, configurables |
-| [strimzi/single/](strimzi/single/) | Desarrollo | Un único nodo de doble rol |
 
 Cada directorio de ejemplo contiene:
 

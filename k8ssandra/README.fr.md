@@ -126,7 +126,7 @@ consigné dans `versions.yaml` avec la raison.
     jq -r '.results[].name'
   ```
 
-  Quand ce sera le cas, suivez [Ajouter la prise en charge de nouvelles versions de Cassandra](#ajouter-la-prise-en-charge-de-nouvelles-versions-de-cassandra).
+  Quand ce sera le cas, suivez [Ajouter la prise en charge de nouvelles versions de Cassandra](#ajouter-la-prise-en-charge-dune-nouvelle-version-de-cassandra).
 - **4.0.x et 4.1.x :** les Dockerfiles sont entretenus dans `k8ssandra/4.0/` et
   `k8ssandra/4.1/`, mais aucune image n'est publiée — l'agent AxonOps n'est pas encore
   compatible avec les images de base 4.x en JDK 11. Les deux lignes sont déclarées
@@ -245,7 +245,7 @@ section annonçait encore 5.0.1 à 5.0.6 longtemps après la publication des 5.0
 
 Chaque ligne contient l'agent AxonOps, cqlai et jemalloc. Les images de base sont
 épinglées par digest, jamais par le tag indiqué ci-dessus — voir
-[Sécurité de la chaîne d'approvisionnement](#ajouter-la-prise-en-charge-de-nouvelles-versions-de-cassandra).
+[Sécurité de la chaîne d'approvisionnement](#ajouter-la-prise-en-charge-dune-nouvelle-version-de-cassandra).
 
 ## Prise en main
 

@@ -96,7 +96,7 @@ When `5.0.6-1.0.0` is built (and it's the latest):
    ```
    - 100% immutable, cryptographically guaranteed
    - Required for regulated environments
-   - Verify signature with Cosign (see [Security](#security))
+   - Verify signature with Cosign (see the security note below)
 
 2. **🥈 Immutable Tag** (Production Standard)
    ```bash
