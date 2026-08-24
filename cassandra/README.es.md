@@ -155,19 +155,19 @@ El agente sólo se arranca una vez Cassandra está levantada, así que normalmen
 
 ## Versiones admitidas
 
-Apache Cassandra de la 5.0.1 a la 5.0.8. La matriz está acotada por la variable de repositorio `K8SSANDRA_VERSIONS`, que fija un digest de imagen base por versión de Cassandra: una versión sólo puede construirse aquí una vez tiene una entrada allí.
+Apache Cassandra de la 4.0.0 a la 4.0.21, de la 4.1.0 a la 4.1.12 y de la 5.0.1 a la 5.0.9 — 42 versiones en total (4.0.2 y 4.0.16 no tienen imagen base y se omiten). La matriz está acotada por la variable de repositorio `K8SSANDRA_VERSIONS`, que fija un digest de imagen base por versión de Cassandra: una versión sólo puede construirse aquí una vez tiene una entrada allí.
 
 ## Construcción local
 
 ```bash
 DIGEST=$(gh api /repos/axonops/axonops-containers/actions/variables/K8SSANDRA_VERSIONS \
-  --jq '.value | fromjson | ."5.0.8+0.1.120"')
+  --jq '.value | fromjson | ."5.0.9+0.1.125"')
 
 docker build -t axonops-cassandra:local \
-  --build-arg CASSANDRA_VERSION=5.0.8 \
+  --build-arg CASSANDRA_VERSION=5.0.9 \
   --build-arg MAJOR_VERSION=5.0 \
   --build-arg K8SSANDRA_BASE_DIGEST="$DIGEST" \
-  --build-arg K8SSANDRA_API_VERSION=0.1.120 \
+  --build-arg K8SSANDRA_API_VERSION=0.1.125 \
   --build-arg INCLUDE_MGMT_API=false \
   --build-arg CQLAI_VERSION=0.1.7 \
   k8ssandra/5.0

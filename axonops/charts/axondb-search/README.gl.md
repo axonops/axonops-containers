@@ -2,7 +2,7 @@
 
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | **Galego**
 
-![Versión: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.3.2-1.1.0](https://img.shields.io/badge/AppVersion-3.3.2--1.1.0-informational?style=flat-square)
+![Versión: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.7.0-1.6.1](https://img.shields.io/badge/AppVersion-3.7.0--1.6.1-informational?style=flat-square)
 
 Un chart de Helm para despregar a base de datos de busca de AxonOps sobre
 Kubernetes. Esta base de datos dá soporte ás capacidades de indexación e busca da
@@ -28,6 +28,7 @@ plataforma AxonOps para rexistros, eventos e datos operativos.
 - [Xestión externa de segredos (vals-operator)](#xestión-externa-de-segredos-vals-operator)
 - [Configuración](#configuración)
 - [Actualización](#actualización)
+  - [Actualización á versión 0.3.0 do chart (OpenSearch 3.3.2 a 3.7.0)](#actualización-á-versión-030-do-chart-opensearch-332-a-370)
 - [Desinstalación](#desinstalación)
 - [Resolución de problemas](#resolución-de-problemas)
 
@@ -986,6 +987,39 @@ kubectl rollout status statefulset/axondb-search-cluster-master
 **Importante:** nos clústeres de varios nodos, as actualizacións fanse cunha
 estratexia de actualización progresiva. Asegúrese de ter capacidade abonda para
 asumir o tráfico durante a actualización.
+
+### Actualización á versión 0.3.0 do chart (OpenSearch 3.3.2 a 3.7.0)
+
+A versión 0.3.0 do chart move `appVersion` de `3.3.2-1.5.0` a `3.7.0-1.6.1`. Como
+`image.tag` está baleiro por defecto, o chart toma a súa etiqueta de imaxe de
+`appVersion`, así que un `helm upgrade` a 0.3.0 move OpenSearch a outra liña de versión
+no canto de aplicar un parche. Isto non se reverte volvendo atrás o chart: unha vez que
+un nodo arrancou con 3.7.0 xa actualizou o seu índice Lucene en disco, e 3.3.2 non
+poderá lelo.
+
+Antes de actualizar:
+
+```bash
+# 1. Take a snapshot. The chart's backup support is documented under "Backup Configuration" above.
+#    Verify the snapshot completed before going any further.
+kubectl exec -it axondb-search-cluster-master-0 -- \
+  curl -s -k -u admin:"$OPENSEARCH_PASSWORD" \
+  "https://localhost:9200/_snapshot/<repository>/<snapshot>?pretty"
+
+# 2. Confirm the cluster is green — never upgrade a yellow or red cluster.
+kubectl exec -it axondb-search-cluster-master-0 -- \
+  curl -s -k -u admin:"$OPENSEARCH_PASSWORD" "https://localhost:9200/_cluster/health?pretty"
+```
+
+A actualización progresiva tumba cada nodo por quendas, así que a latencia das consultas
+sobe e as instalacións dun só nodo quedan non dispoñibles mentres dura. Para quedar en
+OpenSearch 3.3.2 e aínda así recoller os cambios de plantilla do chart, fixe a imaxe
+antiga explicitamente:
+
+```yaml
+image:
+  tag: "3.3.2-1.5.0"
+```
 
 ## Desinstalación
 

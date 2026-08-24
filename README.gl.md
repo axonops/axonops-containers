@@ -150,8 +150,7 @@ versión de Cassandra.
   base `cass-management-api` correspondente. As dúas imaxes de Cassandra de aquí
   constrúense `FROM` esa base, así que a segunda condición non é negociable: unha
   versión engadida antes de que exista a súa base fai fallar todos os seus jobs de
-  build. Cassandra 5.0.9 está hoxe exactamente nesa situación: publicada upstream,
-  sen imaxe base e, polo tanto, non construída.
+  build.
 - **Consérvase** unha vez engadida. Un parche máis novo non retira un máis vello:
   todas as versións da matriz séguense reconstruíndo e escaneando na busca de CVE,
   así que un despregamento fixado a un parche antigo segue recibindo correccións.
@@ -160,12 +159,11 @@ versión de Cassandra.
   permanece en `versions.yaml` marcada como `published: false` co motivo, no canto
   de borrarse.
 - **Consérvase pero non se publica** cando os Dockerfiles se manteñen e as imaxes
-  non se distribúen. Cassandra 4.0 e 4.1 están nese estado: o axente de AxonOps
-  aínda non é compatible coas súas imaxes base con JDK 11. Póñase en contacto
-  connosco se as precisa.
+  non se distribúen. Hoxe non hai ningunha liña nese estado.
 
-Publicadas actualmente: **Cassandra 5.0.1 – 5.0.8**, con `latest` e `5.0-latest`
-resolvendo a 5.0.8. Véxase
+Publicadas actualmente: **Cassandra 4.0.0 – 4.0.21, 4.1.0 – 4.1.12 e 5.0.1 – 5.0.9**,
+con `4.0-latest`, `4.1-latest` e `5.0-latest` resolvendo ao parche máis recente de
+cada liña, e `latest` resolvendo a 5.0.9. Véxase
 [k8ssandra/README.gl.md](k8ssandra/README.gl.md#versións-de-cassandra-admitidas)
 para o detalle por liña, e [VERSIONS.md](VERSIONS.md) para a etiqueta e o digest
 actuais de cada imaxe publicada.

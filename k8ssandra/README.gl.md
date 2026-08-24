@@ -113,8 +113,16 @@ a lista actual con:
 ```
 
 **Publicadas actualmente:**
-- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7 e 5.0.8 (8 versións).
-  A máis recente é 5.0.8, así que `latest` e `5.0-latest` resolven a ela.
+- **4.0.x:** 4.0.0, 4.0.1, 4.0.3, 4.0.4, 4.0.5, 4.0.6, 4.0.7, 4.0.8, 4.0.9, 4.0.10,
+  4.0.11, 4.0.12, 4.0.13, 4.0.14, 4.0.15, 4.0.17, 4.0.18, 4.0.19, 4.0.20 e 4.0.21
+  (20 versións). A máis recente é 4.0.21, así que `4.0-latest` resolve a ela.
+  4.0.2 e 4.0.16 non están porque k8ssandra non publica ningunha imaxe base
+  `cass-management-api` para elas.
+- **4.1.x:** 4.1.0, 4.1.1, 4.1.2, 4.1.3, 4.1.4, 4.1.5, 4.1.6, 4.1.7, 4.1.8, 4.1.9,
+  4.1.10, 4.1.11 e 4.1.12 (13 versións). A máis recente é 4.1.12, así que
+  `4.1-latest` resolve a ela.
+- **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8 e 5.0.9 (9 versións).
+  A máis recente é 5.0.9, así que `latest` e `5.0-latest` resolven a ela.
 
 **Política de soporte.** Unha release de parche de Cassandra engádese á matriz
 cando se cumpren dúas cousas: que Apache a publicase e que k8ssandra publicase
@@ -127,22 +135,10 @@ pode quedar na súa versión fixada e seguir recibindo reconstrucións. Unha li�
 se retira cando chega á súa fin de vida upstream, e iso rexístrase en
 `versions.yaml` co motivo.
 
-**Non construídas:**
-- **5.0.9:** publicada por Apache, pero k8ssandra non publica ningunha imaxe
-  `cass-management-api` para 5.0.9. Comprobe se xa apareceu con:
-
-  ```bash
-  curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/tags?page_size=100&name=5.0.9-ubi" | \
-    jq -r '.results[].name'
-  ```
-
-  Cando apareza, siga
-  [Engadir soporte para novas versións de Cassandra](#engadir-soporte-para-novas-versións-de-cassandra).
-- **4.0.x e 4.1.x:** os Dockerfiles mantéñense en `k8ssandra/4.0/` e
-  `k8ssandra/4.1/`, pero non se publica ningunha imaxe: o axente de AxonOps aínda
-  non é compatible coas imaxes base de 4.x baseadas en JDK 11. Ambas as liñas
-  están declaradas `published: false` en `versions.yaml` con ese motivo, e todos
-  os workflows sáltanas. Póñase en contacto connosco se as precisa.
+As liñas 4.0 e 4.1 corren sobre a imaxe base de JDK 11 e usan os RPM
+`axon-cassandra4.0-agent` e `axon-cassandra4.1-agent`, que non traen ningún ficheiro
+`axonops-jvm.options` propio: escríbeno os Dockerfiles. `latest` segue resolvendo ao
+parche 5.0 máis recente, non á versión máis recente en xeral.
 
 Consulte todas as etiquetas dispoñibles:
 [GitHub Container Registry](https://github.com/axonops/axonops-containers/pkgs/container/k8ssandra%2Fcassandra)

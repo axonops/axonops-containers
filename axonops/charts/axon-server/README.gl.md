@@ -2,7 +2,7 @@
 
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | **Galego**
 
-![Versión: 2.1.3](https://img.shields.io/badge/Version-2.1.3-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
+![Versión: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
 
 Un chart de Helm para despregar o servidor de AxonOps, a plataforma de
 observabilidade unificada para Apache Cassandra. O servidor de AxonOps é o

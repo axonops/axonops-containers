@@ -151,8 +151,7 @@ workflow nombra una versión de Cassandra.
   imagen base `cass-management-api` correspondiente. Las dos imágenes de Cassandra
   de aquí se construyen `FROM` esa base, así que la segunda condición no es
   negociable: una versión añadida antes de que exista su base hace fallar todos
-  sus jobs de build. Cassandra 5.0.9 está hoy exactamente en esa situación:
-  publicada upstream, sin imagen base y, por tanto, no construida.
+  sus jobs de build.
 - **Se conserva** una vez añadida. Un parche más nuevo no retira uno más antiguo:
   todas las versiones de la matriz se siguen reconstruyendo y escaneando en busca
   de CVE, así que un despliegue fijado a un parche antiguo sigue recibiendo
@@ -162,12 +161,11 @@ workflow nombra una versión de Cassandra.
   línea permanece en `versions.yaml` marcada como `published: false` con el
   motivo, en lugar de borrarse.
 - **Se conserva pero no se publica** cuando los Dockerfiles se mantienen y las
-  imágenes no se distribuyen. Cassandra 4.0 y 4.1 están en ese estado: el agente
-  de AxonOps todavía no es compatible con sus imágenes base con JDK 11. Póngase en
-  contacto con nosotros si las necesita.
+  imágenes no se distribuyen. Hoy no hay ninguna línea en ese estado.
 
-Publicadas actualmente: **Cassandra 5.0.1 – 5.0.8**, con `latest` y `5.0-latest`
-resolviendo a 5.0.8. Véase
+Publicadas actualmente: **Cassandra 4.0.0 – 4.0.21, 4.1.0 – 4.1.12 y 5.0.1 – 5.0.9**,
+con `4.0-latest`, `4.1-latest` y `5.0-latest` resolviendo al parche más reciente de
+cada línea, y `latest` resolviendo a 5.0.9. Véase
 [k8ssandra/README.es.md](k8ssandra/README.es.md#versiones-de-cassandra-admitidas)
 para el detalle por línea, y [VERSIONS.md](VERSIONS.md) para la etiqueta y el
 digest actuales de cada imagen publicada.
