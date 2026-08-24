@@ -33,6 +33,7 @@ This file and [llms-full.txt](llms-full.txt) are documentation-discovery aids. N
 - [docker-compose/01-cassandra-cluster/README.md](docker-compose/01-cassandra-cluster/README.md): the platform plus a monitored 3-node Cassandra cluster. Contains the `axon-server` environment-variable mapping and the known variable-name traps
 - [docker-compose/02-saas-cassandra-cluster/README.md](docker-compose/02-saas-cassandra-cluster/README.md): a 3-node cluster reporting to AxonOps SaaS, with no platform running locally
 - [docker-compose/03-secure-3-rack-cluster/README.md](docker-compose/03-secure-3-rack-cluster/README.md): a 3-rack cluster with `PasswordAuthenticator`, `CassandraAuthorizer`, remote JMX and static addressing
+- [docker-compose/04-cassandra-cluster-and-config/README.md](docker-compose/04-cassandra-cluster-and-config/README.md): the platform plus one monitored node, with alert rules, service checks and notification routes applied from `config.yaml` by a one-shot Ansible container. Contains the metric-alert-rule field reference
 
 Each stack directory also holds its `docker-compose.yaml` and an `env.example` documenting every variable with its default — those two files are the configuration reference for that stack.
 
@@ -67,6 +68,7 @@ Each chart's `values.yaml` is the authoritative list of settings and defaults.
 
 - [docker-compose/01-cassandra-cluster/README.md](docker-compose/01-cassandra-cluster/README.md): a monitored 3-node cluster on a single host
 - [docker-compose/03-secure-3-rack-cluster/README.md](docker-compose/03-secure-3-rack-cluster/README.md): a secured 3-rack cluster with authentication and remote JMX
+- [docker-compose/04-cassandra-cluster-and-config/README.md](docker-compose/04-cassandra-cluster-and-config/README.md): a monitored node whose AxonOps alerting is configured as code
 - [examples/K8SSANDRA_DEPLOYMENT.md](examples/K8SSANDRA_DEPLOYMENT.md): Cassandra on Kubernetes via the K8ssandra operator
 - [cassandra/README.md](cassandra/README.md): the image itself — what the entrypoint rewrites, and which environment variables it reads
 
@@ -90,6 +92,7 @@ French translations sit next to their English source as `<name>.fr.md`. The Engl
 - [docker-compose/01-cassandra-cluster/README.fr.md](docker-compose/01-cassandra-cluster/README.fr.md)
 - [docker-compose/02-saas-cassandra-cluster/README.fr.md](docker-compose/02-saas-cassandra-cluster/README.fr.md)
 - [docker-compose/03-secure-3-rack-cluster/README.fr.md](docker-compose/03-secure-3-rack-cluster/README.fr.md)
+- [docker-compose/04-cassandra-cluster-and-config/README.fr.md](docker-compose/04-cassandra-cluster-and-config/README.fr.md)
 - [cassandra/README.fr.md](cassandra/README.fr.md)
 - [strimzi/README.fr.md](strimzi/README.fr.md)
 - [axonops-schema-registry/README.fr.md](axonops-schema-registry/README.fr.md)

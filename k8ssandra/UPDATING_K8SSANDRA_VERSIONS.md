@@ -234,8 +234,8 @@ for it. These images are built `FROM` that base, so a Cassandra version cannot b
 to the matrix — nor to `K8SSANDRA_VERSIONS` — until the base image exists. Adding it
 early makes every build job for that version fail with "No k8ssandra version found".
 
-Current case: Cassandra **5.0.9** is released upstream; k8ssandra publishes no 5.0.9
-image. The newest supported line here is 5.0.8.
+No version is in that state today: k8ssandra published a 5.0.9 base image at API
+v0.1.125 and 5.0.9 is in the matrix. The newest supported line is 5.0.9.
 
 `./scripts/build-matrix.sh check --k8ssandra-versions "$(gh variable get K8SSANDRA_VERSIONS --repo axonops/axonops-containers)"`
 catches this before anything is built, and every publish workflow runs it first.
@@ -252,6 +252,7 @@ curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/t
 
 | Date | API Version | Container Version | Notes |
 |------|-------------|-------------------|-------|
+| 2026-08 | 0.1.125 | — | Bump from 0.1.124. Adds Cassandra 5.0.9, which k8ssandra published a base image for at this API version; 5.0.9 becomes the newest supported version and the floating tags resolve to it. Also carries 4.0.21 and 4.1.12 digests for the unpublished 4.x lines |
 | 2026-06 | 0.1.120 | — | Security fix: bump all versions to newer UBI 9 base; resolves unignored CVEs in nightly scan. Added Cassandra 4.0.20, 4.1.11, 5.0.8 |
 | 2025-01 | 0.1.113 | — | Bump to 0.1.113 |
 | 2025-01 | 0.1.111 | 1.1.0 | Initial documented update |

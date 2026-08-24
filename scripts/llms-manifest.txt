@@ -69,6 +69,7 @@ include docker-compose/00-axonops-platform/README.md
 include docker-compose/01-cassandra-cluster/README.md
 include docker-compose/02-saas-cassandra-cluster/README.md
 include docker-compose/03-secure-3-rack-cluster/README.md
+include docker-compose/04-cassandra-cluster-and-config/README.md
 
 # ---------------------------------------------------------------------------
 # Kubernetes deployment guides and examples
@@ -99,6 +100,7 @@ exclude docker-compose/00-axonops-platform/README.fr.md     # translation
 exclude docker-compose/01-cassandra-cluster/README.fr.md    # translation
 exclude docker-compose/02-saas-cassandra-cluster/README.fr.md  # translation
 exclude docker-compose/03-secure-3-rack-cluster/README.fr.md   # translation
+exclude docker-compose/04-cassandra-cluster-and-config/README.fr.md  # translation
 exclude cassandra/README.fr.md                              # translation
 exclude strimzi/README.fr.md                                # translation
 exclude axonops-schema-registry/README.fr.md                # translation

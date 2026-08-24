@@ -32,16 +32,16 @@ jamais un.
 
 ## Lequel me faut-il ?
 
-| | [00-axonops-platform](00-axonops-platform/README.fr.md) | [01-cassandra-cluster](01-cassandra-cluster/README.fr.md) | [02-saas-cassandra-cluster](02-saas-cassandra-cluster/README.fr.md) | [03-secure-3-rack-cluster](03-secure-3-rack-cluster/README.fr.md) |
-|---|---|---|---|---|
-| **À utiliser pour** | exécuter AxonOps pour des clusters que vous avez déjà | voir l'ensemble fonctionner de bout en bout | superviser un cluster sans exécuter AxonOps | modéliser un cluster sécurisé, proche de la production |
-| AxonOps | auto-hébergé | auto-hébergé | SaaS | auto-hébergé |
-| Cassandra | aucun — apportez le vôtre | 3 nœuds, supervisés | 3 nœuds, supervisés | 3 nœuds, 3 racks, supervisés |
-| Authentification du cluster | — | désactivée | désactivée | `PasswordAuthenticator` |
-| Conteneurs | 4 | 7 | 3 | 7 |
-| RAM aux valeurs par défaut | ~10 Go | ~10 Go | ~5 Go | ~12 Go |
-| Tableau de bord | `localhost:3000` | `localhost:3000` | console AxonOps | `localhost:3000` |
-| Prérequis | rien | rien | une organisation SaaS et une clé d'agent | rien |
+| | [00-axonops-platform](00-axonops-platform/README.fr.md) | [01-cassandra-cluster](01-cassandra-cluster/README.fr.md) | [02-saas-cassandra-cluster](02-saas-cassandra-cluster/README.fr.md) | [03-secure-3-rack-cluster](03-secure-3-rack-cluster/README.fr.md) | [04-cassandra-cluster-and-config](04-cassandra-cluster-and-config/README.fr.md) |
+|---|---|---|---|---|---|
+| **À utiliser pour** | exécuter AxonOps pour des clusters que vous avez déjà | voir l'ensemble fonctionner de bout en bout | superviser un cluster sans exécuter AxonOps | modéliser un cluster sécurisé, proche de la production | garder les alertes dans git plutôt que dans l'interface |
+| AxonOps | auto-hébergé | auto-hébergé | SaaS | auto-hébergé | auto-hébergé |
+| Cassandra | aucun — apportez le vôtre | 3 nœuds, supervisés | 3 nœuds, supervisés | 3 nœuds, 3 racks, supervisés | 1 nœud, supervisé |
+| Authentification du cluster | — | désactivée | désactivée | `PasswordAuthenticator` | désactivée |
+| Conteneurs | 4 | 7 | 3 | 7 | 5, plus une tâche de configuration ponctuelle |
+| RAM aux valeurs par défaut | ~10 Go | ~10 Go | ~5 Go | ~12 Go | ~6 Go |
+| Tableau de bord | `localhost:3000` | `localhost:3000` | console AxonOps | `localhost:3000` | `localhost:3000` |
+| Prérequis | rien | rien | une organisation SaaS et une clé d'agent | rien | rien |
 
 Commencez par **01** si vous évaluez AxonOps et voulez voir un vrai cluster
 apparaître dans un tableau de bord. Commencez par **00** si vous exploitez déjà
@@ -51,7 +51,9 @@ par **03** si vous voulez un cluster qui ressemble à un déploiement réel —
 authentification, un rack par nœud, adressage fixe et JMX distant — ou si vous
 portez la très répandue
 [stack Compose Prometheus / Grafana / Reaper](https://github.com/crystalloide/cassandra-reaper)
-dont il est issu.
+dont il est issu. Commencez par **04** si vous voulez des règles d'alerte, des
+contrôles de service et des routes de notification définis dans un fichier et
+appliqués par un conteneur, plutôt que saisis dans le tableau de bord.
 
 ## Conventions
 

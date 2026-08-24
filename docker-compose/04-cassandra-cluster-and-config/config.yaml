@@ -1,0 +1,143 @@
+---
+# Example 04 — AxonOps alert configuration as code.
+#
+# Applied by the `config` service in docker-compose.yaml, which runs this
+# playbook once against the AxonOps API and exits. Everything below is
+# idempotent: re-running changes nothing unless you edited it.
+#
+# Re-apply after an edit:
+#   docker compose run --rm config
+#
+# Apply only part of it, using the role's tags:
+#   docker compose run --rm config \
+#     ansible-playbook -i localhost, --connection=local -v /config.yaml --tags metrics
+#
+# Useful tags: metrics, log_alerts, service_checks, routes, slack, teams,
+# pagerduty, backups, adaptive_repair, dashboards.
+
+- name: Configure AxonOps alerts
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  environment:
+    # Self-hosted AxonOps. axon-dash proxies the API, so this is the endpoint
+    # the modules talk to. Also set in docker-compose.yaml; kept here so the
+    # playbook is runnable on its own.
+    #
+    # AxonOps Cloud instead? Remove AXONOPS_URL and export AXONOPS_TOKEN with an
+    # API token from the console.
+    AXONOPS_URL: "http://axon-dash:3000"
+
+  vars:
+    # org and cluster come from AXONOPS_ORG / AXONOPS_CLUSTER in the container
+    # environment. Override here if you prefer them in the playbook:
+    # org: my-organization
+    # cluster: demo-cluster
+    cluster_type: cassandra
+
+    # The modules hide their task output by default, because the same fields can
+    # carry credentials. That also hides API errors, so leave this on until the
+    # configuration applies cleanly.
+    enable_logging: true
+
+    # =========================================================================
+    # Metric alert rules
+    # =========================================================================
+    #
+    # A metric alert watches one chart on one dashboard — the same names you see
+    # in the AxonOps UI — and fires when the value crosses a threshold for
+    # longer than `duration`.
+    #
+    #   dashboard/chart   Copy them exactly as the dashboard spells them.
+    #   operator          '>=', '<=', '>', '<', '==', '!='
+    #   warning_value     Threshold for a warning.
+    #   critical_value    Threshold for a critical alert.
+    #   duration          How long the condition must hold: 5m, 15m, 1h.
+    #   description       Shown on the alert. Say what it means, not what it is.
+    #   present           false deletes the rule. Default true.
+    #
+    # Optional narrowing: scope, dc, rack, host_id, keyspace, group_by,
+    # percentile, consistency, routing.
+    axonops_alert_rules:
+      - name: DOWN count per node
+        dashboard: Overview
+        chart: Number of Endpoints Down Per Node Point Of View
+        operator: '>='
+        warning_value: 1
+        critical_value: 2
+        duration: 15m
+        description: Nodes are seeing peers as DOWN
+
+      - name: CPU usage per host
+        dashboard: System
+        chart: CPU usage per host
+        operator: '>='
+        warning_value: 90
+        critical_value: 99
+        duration: 1h
+        description: Sustained high CPU on a Cassandra host
+
+    # =========================================================================
+    # Everything below is commented out — uncomment what you need
+    # =========================================================================
+
+    # Log alert rules. Fire on the volume of matching log lines the agent ships.
+    #
+    #   content   Substring to match in the log message.
+    #   level     Log level to match: ERROR, WARN, INFO.
+    #   type      AxonOps event type, e.g. LogEvent.
+    #   source    Log source, e.g. /var/log/cassandra/system.log
+    #
+    # axonops_log_alert_rule:
+    #   - name: Repair failures
+    #     content: "Repair session .* failed"
+    #     level: ERROR
+    #     operator: '>='
+    #     warning_value: 1
+    #     critical_value: 5
+    #     duration: 30m
+    #     description: Repair sessions are failing
+
+    # Service checks. Run on the monitored node via its agent, and alert when
+    # they fail. TCP checks dial a host:port; shell checks run a script and
+    # alert on a non-zero exit.
+    #
+    # axonops_tcp_check:
+    #   - name: CQL native transport
+    #     interval: 1m
+    #     timeout: 10s
+    #     tcp: localhost:9042
+    #
+    # axonops_shell_check:
+    #   - name: Commitlog directory writable
+    #     interval: 5m
+    #     timeout: 30s
+    #     shell: /bin/bash
+    #     script: test -w /var/lib/cassandra/commitlog
+
+    # Notification integrations. Create the integration first, then route alerts
+    # to it. The webhook is a secret — keep it in .env and read it from the
+    # environment, never inline.
+    #
+    # axonops_slack_integrations:
+    #   - name: cassandra-alerts
+    #     webhook_url: "{{ lookup('env', 'SLACK_WEBHOOK_URL') }}"
+    #
+    # Alert routes send a severity to an integration.
+    #
+    #   type              info | warning | error
+    #   severity          The severity to route.
+    #   integration_type  slack | teams | pagerduty
+    #   integration_name  Name of the integration above.
+    #   enable_override   true lets a rule's own routing win over this route.
+    #
+    # axonops_alert_routes:
+    #   - type: error
+    #     severity: error
+    #     integration_type: slack
+    #     integration_name: cassandra-alerts
+    #     enable_override: false
+
+  roles:
+    - role: axonops.axonops.configurations

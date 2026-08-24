@@ -104,8 +104,8 @@ peut pas diverger de ce qui est réellement construit. Lisez la liste courante a
 ```
 
 **Actuellement publiées :**
-- **5.0.x :** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8 (8 versions).
-  La plus récente est la 5.0.8, `latest` et `5.0-latest` la désignent donc.
+- **5.0.x :** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8, 5.0.9 (9 versions).
+  La plus récente est la 5.0.9, `latest` et `5.0-latest` la désignent donc.
 
 **Politique de prise en charge.** Un correctif de Cassandra entre dans la matrice quand
 deux conditions sont réunies : Apache l'a publié, et k8ssandra a publié l'image de base
@@ -118,15 +118,6 @@ Une ligne n'est abandonnée que lorsqu'elle est en fin de vie en amont, et cela 
 consigné dans `versions.yaml` avec la raison.
 
 **Non construites :**
-- **5.0.9 :** publiée par Apache, mais k8ssandra ne publie aucune image
-  `cass-management-api` 5.0.9. Vérifiez si elle est apparue avec :
-
-  ```bash
-  curl -sL "https://hub.docker.com/v2/repositories/k8ssandra/cass-management-api/tags?page_size=100&name=5.0.9-ubi" | \
-    jq -r '.results[].name'
-  ```
-
-  Quand ce sera le cas, suivez [Ajouter la prise en charge de nouvelles versions de Cassandra](#ajouter-la-prise-en-charge-de-nouvelles-versions-de-cassandra).
 - **4.0.x et 4.1.x :** les Dockerfiles sont entretenus dans `k8ssandra/4.0/` et
   `k8ssandra/4.1/`, mais aucune image n'est publiée — l'agent AxonOps n'est pas encore
   compatible avec les images de base 4.x en JDK 11. Les deux lignes sont déclarées
@@ -671,6 +662,9 @@ L'agent AxonOps se configure par des variables d'environnement passées au conte
 | `AXON_AGENT_ORG` | L'identifiant de votre organisation AxonOps | Obligatoire |
 | `AXON_AGENT_SERVER_HOST` | Nom d'hôte du serveur AxonOps | `agents.axonops.cloud` |
 | `AXON_AGENT_LOG_OUTPUT` | Destination des logs de l'agent | `std` |
+| `AXON_AGENT_NTP_HOST` | Serveur NTP utilisé pour les contrôles de dérive d'horloge, `hôte` ou `hôte:port` (le port par défaut est `123`) | `pool.ntp.org` |
+
+La détection automatique NTP ne fonctionne pas dans Kubernetes : le conteneur applique donc par défaut `AXON_AGENT_NTP_HOST=pool.ntp.org` et journalise un avertissement à chaque démarrage tant que la valeur n'est pas remplacée. Définissez-la sur la source NTP utilisée par vos hôtes Cassandra, sinon les mesures de dérive d'horloge sont comparées à un pool avec lequel vos nœuds ne se synchronisent jamais.
 | `AXON_AGENT_ARGS` | Arguments supplémentaires de l'agent | - |
 
 ### Variables d'environnement du conteneur
@@ -819,8 +813,10 @@ AxonOps a besoin d'un volume persistant pour stocker sa configuration. Ajoutez c
                   - ReadWriteOnce
                 resources:
                   requests:
-                    storage: 512Mi
+                    storage: ${AXONOPS_STORAGE_SIZE}
 ```
+
+`AXONOPS_STORAGE_SIZE` vaut `2Gi` par défaut dans `examples/k8ssandra/k8ssandra-config.env`. Définissez cette variable avant de générer le manifeste pour changer la taille. La plupart des StorageClasses ne permettent pas de réduire un volume après sa création : choisissez donc la taille avant le premier `apply`.
 
 **Intégration AxonOps :**
 L'exemple montre l'injection correcte des variables d'environnement de l'agent AxonOps, au niveau du conteneur — l'approche exigée par K8ssandra.

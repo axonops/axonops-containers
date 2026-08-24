@@ -23,6 +23,10 @@ inputs:
   axon_agent_host:
     description: 'AxonOps server host'
     required: true
+  axonops_storage_size:
+    description: 'Size of the AxonOps agent data volume mounted at /var/lib/axonops'
+    required: false
+    default: '2Gi'
 
 runs:
   using: 'composite'
@@ -81,7 +85,7 @@ runs:
                           - ReadWriteOnce
                         resources:
                           requests:
-                            storage: 512Mi
+                            storage: ${{ inputs.axonops_storage_size }}
         EOF
 
         echo "Manifest created"
