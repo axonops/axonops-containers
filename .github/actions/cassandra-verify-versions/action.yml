@@ -45,11 +45,20 @@ runs:
         docker exec ${{ inputs.container_name }} java -version > /tmp/java-ver.txt 2>&1 || true
         JAVA_VERSION=$(head -n 1 /tmp/java-ver.txt)
         echo "Java version: ${JAVA_VERSION}"
-        if ! echo "$JAVA_VERSION" | grep -q 'version "17'; then
-          echo "ERROR: expected Java 17 for Cassandra 5.0, found: ${JAVA_VERSION}"
+        # The base image decides the JDK: the 4.x cass-management-api images are
+        # JDK 11, 5.0 is JDK 17. Asserting 17 unconditionally fails every 4.x
+        # build on a correct image.
+        CASSANDRA_MAJOR=$(echo "${{ inputs.cassandra_version }}" | cut -d. -f1)
+        if [ "$CASSANDRA_MAJOR" = "4" ]; then
+          EXPECTED_JAVA="11"
+        else
+          EXPECTED_JAVA="17"
+        fi
+        if ! echo "$JAVA_VERSION" | grep -q "version \"${EXPECTED_JAVA}"; then
+          echo "ERROR: expected Java ${EXPECTED_JAVA} for Cassandra ${{ inputs.cassandra_version }}, found: ${JAVA_VERSION}"
           exit 1
         fi
-        echo "Java 17 verified"
+        echo "Java ${EXPECTED_JAVA} verified"
 
     - name: Verify jemalloc is loaded
       shell: bash
@@ -81,7 +90,10 @@ runs:
           exit 1
         fi
         CMDLINE=$(docker exec ${{ inputs.container_name }} bash -c "tr '\0' '\n' < /proc/${CASSANDRA_PID}/cmdline")
-        if ! echo "$CMDLINE" | grep -q "javaagent:/usr/share/axonops/axon-cassandra5.0-agent.jar"; then
+        # One agent jar per Cassandra line: axon-cassandra4.0-agent.jar,
+        # axon-cassandra4.1-agent.jar, axon-cassandra5.0-agent.jar.
+        CASSANDRA_LINE=$(echo "${{ inputs.cassandra_version }}" | cut -d. -f1,2)
+        if ! echo "$CMDLINE" | grep -q "javaagent:/usr/share/axonops/axon-cassandra${CASSANDRA_LINE}-agent.jar"; then
           echo "ERROR: AxonOps Java agent is not attached to the Cassandra JVM"
           echo "$CMDLINE" | grep -i javaagent || echo "(no javaagent flags)"
           exit 1

@@ -236,6 +236,8 @@ jobs:
             const build = '${{ inputs.container_version }}';
             const versions = '${{ needs.cassandra-versions.outputs.all_versions }}'.split(' ');
             const latest = versions[versions.length - 1];
+            const latestLine = latest.split('.').slice(0, 2).join('.');
+            const lines = [...new Set(versions.map(v => v.split('.').slice(0, 2).join('.')))];
             const example = `${latest}-${agent}-${build}`;
             const body = [
               `AxonOps Apache Cassandra signed container images, build ${build}.`,
@@ -256,7 +258,7 @@ jobs:
               `- Immutable: \`{CASSANDRA}-{AGENT}-{BUILD}\` (e.g. \`${example}\`)`,
               `- Latest build for a Cassandra + agent pair: \`{CASSANDRA}-{AGENT}\``,
               `- Latest agent and build for a Cassandra version: \`{CASSANDRA}\``,
-              `- Minor-latest: \`5.0-latest\` (points to ${latest})`,
+              `- Minor-latest: one per line - ${lines.map(l => `\`${l}-latest\``).join(', ')} (\`${latestLine}-latest\` points to ${latest})`,
               `- Global-latest: \`latest\` (points to ${latest})`,
               ``,
               `**Verify signatures:**`,
