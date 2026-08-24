@@ -153,11 +153,11 @@ file names a Cassandra version.
   unbuildable. Either way the line stays in `versions.yaml` marked `published: false`
   with the reason, rather than being deleted.
 - **Retained but unpublished** where the Dockerfiles are maintained and the images are
-  not shipped. Cassandra 4.0 and 4.1 are in this state: the AxonOps agent is not yet
-  compatible with their JDK 11 base images. Get in touch if you need them.
+  not shipped. No line is in this state today.
 
-Currently published: **Cassandra 5.0.1 – 5.0.9**, with `latest` and `5.0-latest`
-resolving to 5.0.9. See [k8ssandra/README.md](k8ssandra/README.md#supported-cassandra-versions)
+Currently published: **Cassandra 4.0.0 – 4.0.21, 4.1.0 – 4.1.12 and 5.0.1 – 5.0.9**,
+with `4.0-latest`, `4.1-latest` and `5.0-latest` resolving to the newest patch of each
+line and `latest` resolving to 5.0.9. See [k8ssandra/README.md](k8ssandra/README.md#supported-cassandra-versions)
 for the per-line detail and [VERSIONS.md](VERSIONS.md) for the current tag and digest of
 every published image.
 

@@ -104,6 +104,13 @@ step with what is actually built. Read the current list with:
 ```
 
 **Currently published:**
+- **4.0.x:** 4.0.0, 4.0.1, 4.0.3, 4.0.4, 4.0.5, 4.0.6, 4.0.7, 4.0.8, 4.0.9, 4.0.10,
+  4.0.11, 4.0.12, 4.0.13, 4.0.14, 4.0.15, 4.0.17, 4.0.18, 4.0.19, 4.0.20, 4.0.21
+  (20 versions). The newest is 4.0.21, so `4.0-latest` resolves to it. 4.0.2 and 4.0.16
+  are absent because k8ssandra publishes no `cass-management-api` base image for them.
+- **4.1.x:** 4.1.0, 4.1.1, 4.1.2, 4.1.3, 4.1.4, 4.1.5, 4.1.6, 4.1.7, 4.1.8, 4.1.9,
+  4.1.10, 4.1.11, 4.1.12 (13 versions). The newest is 4.1.12, so `4.1-latest` resolves
+  to it.
 - **5.0.x:** 5.0.1, 5.0.2, 5.0.3, 5.0.4, 5.0.5, 5.0.6, 5.0.7, 5.0.8, 5.0.9 (9 versions).
   The newest is 5.0.9, so `latest` and `5.0-latest` resolve to it.
 
@@ -116,12 +123,10 @@ appears; older patches keep being built and scanned so an existing deployment ca
 on its pinned version and still receive rebuilds. A line is dropped only when it is
 end-of-life upstream, and that is recorded in `versions.yaml` with a reason.
 
-**Not built:**
-- **4.0.x and 4.1.x:** Dockerfiles are maintained in `k8ssandra/4.0/` and
-  `k8ssandra/4.1/`, but no image is published — the AxonOps agent is not yet compatible
-  with the JDK 11 based 4.x base images. Both lines are declared `published: false` in
-  `versions.yaml` with that reason, and every workflow skips them. Reach out if you need
-  them.
+The 4.0 and 4.1 lines run on the JDK 11 base image and take the `axon-cassandra4.0-agent`
+and `axon-cassandra4.1-agent` RPMs, which carry no `axonops-jvm.options` file of their
+own — the Dockerfiles write one. `latest` still resolves to the newest 5.0 patch, not to
+the newest version overall.
 
 Browse all available tags: [GitHub Container Registry](https://github.com/axonops/axonops-containers/pkgs/container/k8ssandra%2Fcassandra)
 

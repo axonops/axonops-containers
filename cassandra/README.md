@@ -158,7 +158,7 @@ The agent is started only once Cassandra is up, so it is normally absent for the
 
 ## Supported versions
 
-Apache Cassandra 5.0.1 through 5.0.9. The matrix is bounded by the `K8SSANDRA_VERSIONS` repository variable, which pins a base image digest per Cassandra version — a version can only be built here once it has an entry there.
+Apache Cassandra 4.0.0 through 4.0.21, 4.1.0 through 4.1.12, and 5.0.1 through 5.0.9 — 42 versions in all (4.0.2 and 4.0.16 have no base image and are skipped). The matrix is bounded by the `K8SSANDRA_VERSIONS` repository variable, which pins a base image digest per Cassandra version — a version can only be built here once it has an entry there.
 
 ## Building locally
 
