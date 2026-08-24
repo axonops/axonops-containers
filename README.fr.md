@@ -147,8 +147,6 @@ Cassandra.
   base `cass-management-api` correspondante. Les deux images Cassandra d'ici sont
   construites `FROM` cette base, la seconde condition n'est donc pas négociable : une
   version ajoutée avant l'existence de sa base fait échouer tous ses jobs de build.
-  Cassandra 5.0.9 est exactement dans ce cas aujourd'hui — publiée en amont, pas d'image
-  de base, donc pas construite.
 - **Conservation** une fois ajoutée. Un correctif plus récent n'en retire pas un plus
   ancien : chaque version de la matrice continue d'être reconstruite et analysée pour
   les CVE, si bien qu'un déploiement épinglé sur un correctif ancien reçoit toujours les
@@ -161,8 +159,8 @@ Cassandra.
   pas encore compatible avec leurs images de base JDK 11. Contactez-nous si vous en avez
   besoin.
 
-Actuellement publiées : **Cassandra 5.0.1 à 5.0.8**, `latest` et `5.0-latest` désignant
-la 5.0.8. Voir [k8ssandra/README.fr.md](k8ssandra/README.fr.md#versions-de-cassandra-prises-en-charge)
+Actuellement publiées : **Cassandra 5.0.1 à 5.0.9**, `latest` et `5.0-latest` désignant
+la 5.0.9. Voir [k8ssandra/README.fr.md](k8ssandra/README.fr.md#versions-de-cassandra-prises-en-charge)
 pour le détail par ligne et [VERSIONS.md](VERSIONS.md) pour le tag et le digest actuels
 de chaque image publiée.
 

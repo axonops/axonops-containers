@@ -158,19 +158,19 @@ L'agent n'est démarré qu'une fois Cassandra opérationnel : il est donc normal
 
 ## Versions prises en charge
 
-Apache Cassandra 5.0.1 à 5.0.8. La matrice est bornée par la variable de dépôt `K8SSANDRA_VERSIONS`, qui épingle un digest d'image de base par version de Cassandra — une version ne peut être construite ici que si elle y possède une entrée.
+Apache Cassandra 5.0.1 à 5.0.9. La matrice est bornée par la variable de dépôt `K8SSANDRA_VERSIONS`, qui épingle un digest d'image de base par version de Cassandra — une version ne peut être construite ici que si elle y possède une entrée.
 
 ## Construire en local
 
 ```bash
 DIGEST=$(gh api /repos/axonops/axonops-containers/actions/variables/K8SSANDRA_VERSIONS \
-  --jq '.value | fromjson | ."5.0.8+0.1.120"')
+  --jq '.value | fromjson | ."5.0.9+0.1.125"')
 
 docker build -t axonops-cassandra:local \
-  --build-arg CASSANDRA_VERSION=5.0.8 \
+  --build-arg CASSANDRA_VERSION=5.0.9 \
   --build-arg MAJOR_VERSION=5.0 \
   --build-arg K8SSANDRA_BASE_DIGEST="$DIGEST" \
-  --build-arg K8SSANDRA_API_VERSION=0.1.120 \
+  --build-arg K8SSANDRA_API_VERSION=0.1.125 \
   --build-arg INCLUDE_MGMT_API=false \
   --build-arg CQLAI_VERSION=0.1.7 \
   k8ssandra/5.0

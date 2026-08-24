@@ -145,8 +145,7 @@ file names a Cassandra version.
 - **Added** when Apache has released the patch *and* k8ssandra has published a matching
   `cass-management-api` base image. Both Cassandra images here are built `FROM` that
   base, so the second condition is not negotiable: a version added before its base
-  exists fails every build job for it. Cassandra 5.0.9 is in exactly that position
-  today — released upstream, no base image, therefore not built.
+  exists fails every build job for it.
 - **Kept** once added. A newer patch does not retire an older one: every version in the
   matrix keeps being rebuilt and CVE-scanned, so a deployment pinned to an older patch
   still receives fixes.
@@ -157,8 +156,8 @@ file names a Cassandra version.
   not shipped. Cassandra 4.0 and 4.1 are in this state: the AxonOps agent is not yet
   compatible with their JDK 11 base images. Get in touch if you need them.
 
-Currently published: **Cassandra 5.0.1 – 5.0.8**, with `latest` and `5.0-latest`
-resolving to 5.0.8. See [k8ssandra/README.md](k8ssandra/README.md#supported-cassandra-versions)
+Currently published: **Cassandra 5.0.1 – 5.0.9**, with `latest` and `5.0-latest`
+resolving to 5.0.9. See [k8ssandra/README.md](k8ssandra/README.md#supported-cassandra-versions)
 for the per-line detail and [VERSIONS.md](VERSIONS.md) for the current tag and digest of
 every published image.
 
