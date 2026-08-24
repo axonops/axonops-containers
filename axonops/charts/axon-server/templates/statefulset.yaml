@@ -45,8 +45,8 @@ spec:
         runAsNonRoot: {{ .Values.podSecurityContext.runAsNonRoot }}
         {{- end }}
       {{- end }}
-      initContainers:
 {{- if and .Values.persistence.enabled .Values.persistence.enableInitChown }}
+      initContainers:
       - name: fsgroup-volume
         image: "{{ template "axon-server.dockerRegistry" . }}{{ .Values.persistence.image | default "busybox" }}:{{ .Values.persistence.imageTag | default "latest" }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy | default "IfNotPresent" }}"
@@ -60,8 +60,8 @@ spec:
         volumeMounts:
           - name: "data"
             mountPath: /var/lib/axonops
-      containers:
 {{- end }}
+      containers:
       - name: {{ .Chart.Name }}
         {{- with .Values.securityContext }}
         securityContext:
