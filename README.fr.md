@@ -155,12 +155,11 @@ Cassandra.
   dépendance la rend inconstructible. Dans les deux cas la ligne reste dans
   `versions.yaml` avec `published: false` et la raison, plutôt que d'être supprimée.
 - **Maintenue mais non publiée** lorsque les Dockerfiles sont entretenus sans que les
-  images soient livrées. Cassandra 4.0 et 4.1 sont dans cet état : l'agent AxonOps n'est
-  pas encore compatible avec leurs images de base JDK 11. Contactez-nous si vous en avez
-  besoin.
+  images soient livrées. Aucune ligne n'est dans cet état aujourd'hui.
 
-Actuellement publiées : **Cassandra 5.0.1 à 5.0.9**, `latest` et `5.0-latest` désignant
-la 5.0.9. Voir [k8ssandra/README.fr.md](k8ssandra/README.fr.md#versions-de-cassandra-prises-en-charge)
+Actuellement publiées : **Cassandra 4.0.0 à 4.0.21, 4.1.0 à 4.1.12 et 5.0.1 à 5.0.9**,
+`4.0-latest`, `4.1-latest` et `5.0-latest` désignant le dernier correctif de chaque ligne
+et `latest` désignant la 5.0.9. Voir [k8ssandra/README.fr.md](k8ssandra/README.fr.md#versions-de-cassandra-prises-en-charge)
 pour le détail par ligne et [VERSIONS.md](VERSIONS.md) pour le tag et le digest actuels
 de chaque image publiée.
 

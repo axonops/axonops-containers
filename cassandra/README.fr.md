@@ -158,7 +158,7 @@ L'agent n'est démarré qu'une fois Cassandra opérationnel : il est donc normal
 
 ## Versions prises en charge
 
-Apache Cassandra 5.0.1 à 5.0.9. La matrice est bornée par la variable de dépôt `K8SSANDRA_VERSIONS`, qui épingle un digest d'image de base par version de Cassandra — une version ne peut être construite ici que si elle y possède une entrée.
+Apache Cassandra 4.0.0 à 4.0.21, 4.1.0 à 4.1.12 et 5.0.1 à 5.0.9 — 42 versions au total (4.0.2 et 4.0.16 n'ont pas d'image de base et sont ignorées). La matrice est bornée par la variable de dépôt `K8SSANDRA_VERSIONS`, qui épingle un digest d'image de base par version de Cassandra — une version ne peut être construite ici que si elle y possède une entrée.
 
 ## Construire en local
 
