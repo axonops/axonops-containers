@@ -138,7 +138,7 @@ components:
       - "5.0.8-v0.1.120-1.5.3"
       - "5.0.8-v0.1.120-1.5.2"
     notes: >-
-      Each release publishes one tag per Cassandra version. Build 1.5.6 covers 5.0.1, 5.0.2, 5.0.3, 5.0.5, 5.0.6, 5.0.7 and 5.0.8 — 5.0.4 was last built at 1.5.5 and 5.0.9 is not built here — upstream k8ssandra publishes no 5.0.9 `cass-management-api` base image, so 5.0.8 is the newest supported line. `current.digest` is the digest of the 5.0.8 variant only; every other Cassandra version has its own digest.
+      Each release publishes one tag per Cassandra version. Build 1.5.6 covers 5.0.1, 5.0.2, 5.0.3, 5.0.5, 5.0.6, 5.0.7 and 5.0.8 — 5.0.4 was last built at 1.5.5. It was built against k8ssandra Management API v0.1.120; 5.0.9 and API v0.1.125 enter the matrix with the next build. `current.digest` is the digest of the 5.0.8 variant only; every other Cassandra version has its own digest.
   - name: cassandra
     kind: image
     description: Standalone Apache Cassandra with the AxonOps agent, built from the K8ssandra Dockerfile
@@ -152,7 +152,7 @@ components:
     previous:
       - "5.0.8-2.0.31-1.0.0"
     notes: >-
-      Build 1.1.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. It adds `CASSANDRA_AUTHENTICATOR`, `CASSANDRA_AUTHORIZER`, `CASSANDRA_ROLE_MANAGER` and `CASSANDRA_NATIVE_TRANSPORT_PORT` support to the entrypoint, and the healthcheck now also verifies the AxonOps agent — 1.0.0 ignores all of these. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is not built here — upstream k8ssandra publishes no 5.0.9 base image.
+      Build 1.1.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. It adds `CASSANDRA_AUTHENTICATOR`, `CASSANDRA_AUTHORIZER`, `CASSANDRA_ROLE_MANAGER` and `CASSANDRA_NATIVE_TRANSPORT_PORT` support to the entrypoint, and the healthcheck now also verifies the AxonOps agent — 1.0.0 ignores all of these. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is in the build matrix but not yet published here — the next build adds it, and the floating tags then resolve to it.
   - name: strimzi-kafka
     kind: image
     description: Strimzi Kafka with the AxonOps agent
@@ -278,9 +278,7 @@ build_matrix:
         - "5.0.6"
         - "5.0.7"
         - "5.0.8"
-      notes: >-
-        Cassandra 5.0.9 is released upstream but k8ssandra publishes no 5.0.9
-        `cass-management-api` image, so it cannot be built here yet.
+        - "5.0.9"
     - line: "4.1"
       published: false
       versions: []
