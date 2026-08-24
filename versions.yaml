@@ -89,9 +89,10 @@ components:
     repository: axonops-public/axonops-docker/axon-server
     tag_pattern: "{version}"
     current:
-      tag: "2.0.35"
-      digest: "sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7"
+      tag: "2.0.36"
+      digest: "sha256:dc0a2c58e5d89c28d6fe7df91ade825f5fb2c00a0d32be4fce921b9711207b6c"
     previous:
+      - "2.0.35"
       - "2.0.34"
     notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
   - name: axon-dash
@@ -171,31 +172,33 @@ components:
   - name: chart-axonops
     kind: chart
     description: Umbrella chart deploying the full AxonOps stack
-    git_tag: helm-1.1.21
+    git_tag: helm-1.1.23
     registry: ghcr.io
     repository: axonops/charts/axonops
     tag_pattern: "{chart_version}"
     current:
-      tag: "1.1.21"
+      tag: "1.1.23"
       digest: null
-    previous: []
+    previous:
+      - "1.1.21"
     notes: "Chart version comes from axonops/charts/axonops/Chart.yaml."
   - name: chart-axon-server
     kind: chart
     description: axon-server chart
-    git_tag: helm-1.1.21
+    git_tag: helm-1.1.23
     registry: ghcr.io
     repository: axonops/charts/axon-server
     tag_pattern: "{chart_version}"
     current:
-      tag: "2.1.14"
+      tag: "2.1.16"
       digest: null
-    previous: []
+    previous:
+      - "2.1.14"
     notes: null
   - name: chart-axon-dash
     kind: chart
     description: axon-dash chart
-    git_tag: helm-1.1.21
+    git_tag: helm-1.1.23
     registry: ghcr.io
     repository: axonops/charts/axon-dash
     tag_pattern: "{chart_version}"
@@ -207,26 +210,28 @@ components:
   - name: chart-axondb-timeseries
     kind: chart
     description: axondb-timeseries chart
-    git_tag: helm-1.1.21
+    git_tag: helm-1.1.23
     registry: ghcr.io
     repository: axonops/charts/axondb-timeseries
     tag_pattern: "{chart_version}"
     current:
-      tag: "0.1.7"
+      tag: "0.2.0"
       digest: null
-    previous: []
+    previous:
+      - "0.1.7"
     notes: null
   - name: chart-axondb-search
     kind: chart
     description: axondb-search chart
-    git_tag: helm-1.1.21
+    git_tag: helm-1.1.23
     registry: ghcr.io
     repository: axonops/charts/axondb-search
     tag_pattern: "{chart_version}"
     current:
-      tag: "0.2.9"
+      tag: "0.3.0"
       digest: null
-    previous: []
+    previous:
+      - "0.2.9"
     notes: null
 
 # ---------------------------------------------------------------------------
