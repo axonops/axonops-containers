@@ -2,7 +2,7 @@
 
 **English** | [Français](README.fr.md)
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.3.2-1.1.0](https://img.shields.io/badge/AppVersion-3.3.2--1.1.0-informational?style=flat-square)
+![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.7.0-1.6.1](https://img.shields.io/badge/AppVersion-3.7.0--1.6.1-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Search DB on Kubernetes. This search database powers the AxonOps platform's indexing and search capabilities for logs, events, and operational data.
 
@@ -26,6 +26,7 @@ A Helm chart for deploying the AxonOps Search DB on Kubernetes. This search data
 - [External Secret Management (vals-operator)](#external-secret-management-vals-operator)
 - [Configuration](#configuration)
 - [Upgrading](#upgrading)
+  - [Upgrading to chart 0.3.0 (OpenSearch 3.3.2 to 3.7.0)](#upgrading-to-chart-030-opensearch-332-to-370)
 - [Uninstalling](#uninstalling)
 - [Troubleshooting](#troubleshooting)
 
@@ -971,6 +972,31 @@ kubectl rollout status statefulset/axondb-search-cluster-master
 ```
 
 **Important:** For multi-node clusters, upgrades are performed using a rolling update strategy. Ensure you have sufficient capacity to handle traffic during the upgrade.
+
+### Upgrading to chart 0.3.0 (OpenSearch 3.3.2 to 3.7.0)
+
+Chart 0.3.0 moves `appVersion` from `3.3.2-1.5.0` to `3.7.0-1.6.1`. Because `image.tag` is empty by default, the chart takes its image tag from `appVersion`, so a `helm upgrade` to 0.3.0 moves OpenSearch across a version line rather than applying a patch. This is not reversible by rolling the chart back: once a node has started on 3.7.0 it has upgraded its on-disk Lucene index, and 3.3.2 will not read it.
+
+Before upgrading:
+
+```bash
+# 1. Take a snapshot. The chart's backup support is documented under "Backup Configuration" above.
+#    Verify the snapshot completed before going any further.
+kubectl exec -it axondb-search-cluster-master-0 -- \
+  curl -s -k -u admin:"$OPENSEARCH_PASSWORD" \
+  "https://localhost:9200/_snapshot/<repository>/<snapshot>?pretty"
+
+# 2. Confirm the cluster is green — never upgrade a yellow or red cluster.
+kubectl exec -it axondb-search-cluster-master-0 -- \
+  curl -s -k -u admin:"$OPENSEARCH_PASSWORD" "https://localhost:9200/_cluster/health?pretty"
+```
+
+The rolling update takes each node down in turn, so query latency rises and single-node installs are unavailable for the duration. To stay on OpenSearch 3.3.2 while still picking up the chart's template changes, pin the old image explicitly:
+
+```yaml
+image:
+  tag: "3.3.2-1.5.0"
+```
 
 ## Uninstalling
 

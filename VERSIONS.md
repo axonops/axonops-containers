@@ -24,7 +24,7 @@ for the full rationale and the verification steps.
 | `ghcr.io/axonops/axondb-timeseries` | `5.0.8-1.4.0` | `sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c` | `axondb-timeseries-1.4.0` |
 | `ghcr.io/axonops/axondb-search` | `3.7.0-1.6.1` | `sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565` | `axondb-search-1.6.1` |
 | `ghcr.io/axonops/axondb-search-backups` | `1.2.0` | `sha256:8f6cb72748ad243a1083d9323e5170cd2b881e5bff8d12280a855faded5b439a` | `—` |
-| `registry.axonops.com/axonops-public/axonops-docker/axon-server` | `2.0.35` | `sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7` | `—` |
+| `registry.axonops.com/axonops-public/axonops-docker/axon-server` | `2.0.36` | `sha256:dc0a2c58e5d89c28d6fe7df91ade825f5fb2c00a0d32be4fce921b9711207b6c` | `—` |
 | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | `2.0.37` | `sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362` | `—` |
 | `ghcr.io/axonops/axonops-schema-registry` | `0.2.1` | `sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164` | `axonops-schema-registry-0.2.0-0.0.1` |
 | `ghcr.io/axonops/k8ssandra/cassandra` | `5.0.8-v0.1.120-1.5.6` | `sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c` | `k8ssandra-1.5.6` |
@@ -35,11 +35,11 @@ for the full rationale and the verification steps.
 
 | Chart | Version | Git tag |
 |-------|---------|---------|
-| `oci://ghcr.io/axonops/charts/axonops` | `1.1.21` | `helm-1.1.21` |
-| `oci://ghcr.io/axonops/charts/axon-server` | `2.1.14` | `helm-1.1.21` |
-| `oci://ghcr.io/axonops/charts/axon-dash` | `0.1.10` | `helm-1.1.21` |
-| `oci://ghcr.io/axonops/charts/axondb-timeseries` | `0.1.7` | `helm-1.1.21` |
-| `oci://ghcr.io/axonops/charts/axondb-search` | `0.2.9` | `helm-1.1.21` |
+| `oci://ghcr.io/axonops/charts/axonops` | `1.1.23` | `helm-1.1.23` |
+| `oci://ghcr.io/axonops/charts/axon-server` | `2.1.16` | `helm-1.1.23` |
+| `oci://ghcr.io/axonops/charts/axon-dash` | `0.1.10` | `helm-1.1.23` |
+| `oci://ghcr.io/axonops/charts/axondb-timeseries` | `0.2.0` | `helm-1.1.23` |
+| `oci://ghcr.io/axonops/charts/axondb-search` | `0.3.0` | `helm-1.1.23` |
 
 ## Pinned references
 
@@ -49,7 +49,7 @@ Copy these straight into a compose file, manifest or Helm values file.
 ghcr.io/axonops/axondb-timeseries@sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c
 ghcr.io/axonops/axondb-search@sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565
 ghcr.io/axonops/axondb-search-backups@sha256:8f6cb72748ad243a1083d9323e5170cd2b881e5bff8d12280a855faded5b439a
-registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
+registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:dc0a2c58e5d89c28d6fe7df91ade825f5fb2c00a0d32be4fce921b9711207b6c
 registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
 ghcr.io/axonops/axonops-schema-registry@sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164
 ghcr.io/axonops/k8ssandra/cassandra@sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c
@@ -77,9 +77,13 @@ Newest-first, per component. Full git-tag-to-image history lives in
 
 - **axondb-timeseries**: `5.0.6-1.2.0`, `5.0.6-1.1.0`, `5.0.6-1.0.0`
 - **axondb-search**: `3.7.0-1.6.0`, `3.3.2-1.5.0`, `3.3.2-1.4.0`, `3.3.2-1.3.0`, `3.3.2-1.2.0`
-- **axon-server**: `2.0.34`
+- **axon-server**: `2.0.35`, `2.0.34`
 - **axon-dash**: `2.0.36`
 - **axonops-schema-registry**: `0.2.0`, `0.1.0`, `0.0.1`
 - **k8ssandra-cassandra**: `5.0.8-v0.1.120-1.5.5`, `5.0.8-v0.1.120-1.5.3`, `5.0.8-v0.1.120-1.5.2`
 - **cassandra**: `5.0.8-2.0.31-1.0.0`
 - **strimzi-kafka**: `1.1.0-4.3.0-2.0.20-0.1.25`, `1.1.0-4.3.0-2.0.20-0.1.24`
+- **chart-axonops**: `1.1.21`
+- **chart-axon-server**: `2.1.14`
+- **chart-axondb-timeseries**: `0.1.7`
+- **chart-axondb-search**: `0.2.9`

@@ -2,7 +2,7 @@
 
 [English](README.md) | **Français**
 
-![Version: 2.1.3](https://img.shields.io/badge/Version-2.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
+![Version: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
 
 Un chart Helm pour déployer AxonOps Server — la plateforme d'observabilité unifiée d'Apache Cassandra. AxonOps Server est le composant central : il collecte les métriques et les logs des clusters Cassandra, les stocke dans les bases time-series et de recherche, et expose les API du dashboard AxonOps.
 
