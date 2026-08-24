@@ -2,7 +2,7 @@
 
 [English](README.md) | **Français**
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.3.2-1.1.0](https://img.shields.io/badge/AppVersion-3.3.2--1.1.0-informational?style=flat-square)
+![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.7.0-1.6.1](https://img.shields.io/badge/AppVersion-3.7.0--1.6.1-informational?style=flat-square)
 
 Un chart Helm pour déployer la base de recherche AxonOps sur Kubernetes. Cette base assure l'indexation et la recherche des logs, des événements et des données d'exploitation de la plateforme AxonOps.
 
@@ -26,6 +26,7 @@ Un chart Helm pour déployer la base de recherche AxonOps sur Kubernetes. Cette 
 - [Gestion externe des secrets (vals-operator)](#gestion-externe-des-secrets-vals-operator)
 - [Configuration](#configuration)
 - [Mise à jour](#mise-à-jour)
+  - [Mise à jour vers le chart 0.3.0 (OpenSearch 3.3.2 vers 3.7.0)](#mise-à-jour-vers-le-chart-030-opensearch-332-vers-370)
 - [Désinstallation](#désinstallation)
 - [Dépannage](#dépannage)
 
@@ -971,6 +972,31 @@ kubectl rollout status statefulset/axondb-search-cluster-master
 ```
 
 **Important :** sur un cluster multi-nœuds, la mise à jour se fait en rolling update. Assurez-vous d'avoir la capacité d'absorber le trafic pendant l'opération.
+
+### Mise à jour vers le chart 0.3.0 (OpenSearch 3.3.2 vers 3.7.0)
+
+Le chart 0.3.0 fait passer `appVersion` de `3.3.2-1.5.0` à `3.7.0-1.6.1`. Comme `image.tag` est vide par défaut, le chart prend son tag d'image depuis `appVersion` : un `helm upgrade` vers 0.3.0 fait donc franchir à OpenSearch une ligne de version, et non un simple correctif. L'opération n'est pas réversible en revenant en arrière sur le chart : dès qu'un nœud a démarré en 3.7.0, il a mis à jour son index Lucene sur disque, et 3.3.2 ne saura plus le lire.
+
+Avant la mise à jour :
+
+```bash
+# 1. Take a snapshot. The chart's backup support is documented under "Backup Configuration" above.
+#    Verify the snapshot completed before going any further.
+kubectl exec -it axondb-search-cluster-master-0 -- \
+  curl -s -k -u admin:"$OPENSEARCH_PASSWORD" \
+  "https://localhost:9200/_snapshot/<repository>/<snapshot>?pretty"
+
+# 2. Confirm the cluster is green — never upgrade a yellow or red cluster.
+kubectl exec -it axondb-search-cluster-master-0 -- \
+  curl -s -k -u admin:"$OPENSEARCH_PASSWORD" "https://localhost:9200/_cluster/health?pretty"
+```
+
+Le rolling update arrête chaque nœud à tour de rôle : la latence des requêtes augmente, et une installation mono-nœud est indisponible pendant toute l'opération. Pour rester sur OpenSearch 3.3.2 tout en récupérant les changements de templates du chart, épinglez explicitement l'ancienne image :
+
+```yaml
+image:
+  tag: "3.3.2-1.5.0"
+```
 
 ## Désinstallation
 

@@ -2,7 +2,7 @@ heapSize: 2048M
 
 authentication:
   db_user: "axonops"
-  db_password: "MySecureP4sswordHere@"
+  db_password: "173P/T2QLYdgPKop"
 
 tls:
   enabled: true
