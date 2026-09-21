@@ -149,12 +149,13 @@ Every workflow must include:
 
 ### Translated Documentation
 
-User-facing documentation is translated to French. A translation lives next to
-its English source as `<name>.fr.md` (for example `README.fr.md` beside
-`README.md`), not in a separate `docs/fr/` tree, so it is impossible to edit the
-source without seeing that a translation exists.
+User-facing documentation is translated to French, Spanish and Galician. A
+translation lives next to its English source as `<name>.fr.md`, `<name>.es.md`
+or `<name>.gl.md` (for example `README.es.md` beside `README.md`), not in a
+separate `docs/<lang>/` tree, so it is impossible to edit the source without
+seeing that translations exist.
 
-**In scope (must have a `.fr.md` counterpart):**
+**In scope (must have a `.fr.md`, `.es.md` and `.gl.md` counterpart):**
 - `README.md`
 - `cassandra/README.md`, `k8ssandra/README.md`
 - `axonops/axondb-search/README.md`, `axonops/axondb-timeseries/README.md`
@@ -166,10 +167,11 @@ source without seeing that a translation exists.
   `examples/K8SSANDRA_DEPLOYMENT.md`, `examples/STRIMZI_DEPLOYMENT.md`,
   `examples/NODE_SELECTOR_GUIDE.md`
 
-Every file on that list is translated, and all of them are enforced by
-`.github/workflows/docs-translations.yml`. A new in-scope document is added to
-that workflow's list once its translation lands — a file is only enforced when
-it has actually been translated.
+Every file on that list is translated into all three languages, and all of them
+are enforced by `.github/workflows/docs-translations.yml`, whose `LANGS` list is
+`fr es gl`. A new in-scope document is added to that workflow's list once its
+translations land — a file is only enforced when it has actually been
+translated.
 
 **Deliberately English-only:**
 - `DEVELOPMENT.md`, `RELEASE.md`, `PIPELINES.md` — contributor-facing, and they
@@ -179,8 +181,9 @@ it has actually been translated.
 - component `tests/README.md` files
 
 **Rules:**
-- Both files carry a language switcher line under the title
-  (`**English** | [Français](README.fr.md)` and its mirror).
+- Every file carries the same language switcher line under the title, with the
+  current language in bold and unlinked:
+  `**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)`.
 - Translate prose only. Code blocks, commands, image tags, environment variable
   names, YAML keys, file paths, log messages and CLI output stay verbatim —
   including the English comments inside code blocks, so a block can be diffed
@@ -251,8 +254,8 @@ pre-commit install
 - `CHANGELOG.md` and `TAG_CHANGELOG.md` — release history, not guidance.
 - `VERSIONS.md` — generated, and it churns on every release. `llms.txt` links
   it so the current tags and digests are still one hop away.
-- `*.fr.md` translations — the bundle would otherwise carry the same guidance
-  twice. `llms.txt` links both languages.
+- `*.fr.md`, `*.es.md` and `*.gl.md` translations — the bundle would otherwise
+  carry the same guidance four times. `llms.txt` links every language.
 - Per-version `tests/README.md` files — contributor scratch material.
 
 Compose files, Kubernetes manifests, Helm values, Dockerfiles and scripts are

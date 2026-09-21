@@ -1,6 +1,6 @@
 # AxonOps Server
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
 

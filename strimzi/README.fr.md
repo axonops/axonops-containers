@@ -1,6 +1,6 @@
 # AxonOps Strimzi Kafka
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 Ce dépôt fournit des images de conteneurs Strimzi Kafka personnalisées, intégrant les composants de supervision et d'observabilité AxonOps.
 

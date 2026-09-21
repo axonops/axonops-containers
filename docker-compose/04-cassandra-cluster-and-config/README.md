@@ -1,6 +1,6 @@
 # Example 04 — Self-hosted AxonOps with alerts configured as code
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>

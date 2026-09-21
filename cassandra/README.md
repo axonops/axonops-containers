@@ -1,6 +1,6 @@
 # AxonOps Apache Cassandra Container
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/cassandra%2Fcassandra)
 

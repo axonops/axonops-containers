@@ -1,6 +1,6 @@
 # Strimzi Node Selector Configuration Guide
 
-**English** | [Français](NODE_SELECTOR_GUIDE.fr.md)
+**English** | [Français](NODE_SELECTOR_GUIDE.fr.md) | [Español](NODE_SELECTOR_GUIDE.es.md) | [Galego](NODE_SELECTOR_GUIDE.gl.md)
 
 ## Overview
 

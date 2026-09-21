@@ -1,6 +1,6 @@
 # Meta-chart AxonOps
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 ## Vue d'ensemble
 
