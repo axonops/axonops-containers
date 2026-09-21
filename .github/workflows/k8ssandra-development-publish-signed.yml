@@ -84,14 +84,27 @@ jobs:
 
       - name: Resolve CQLAI version
         id: cqlai
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           CQLAI_INPUT="${{ inputs.cqlai_version }}"
           if [ -z "$CQLAI_INPUT" ] || [ "$CQLAI_INPUT" = "latest" ]; then
             echo "Discovering latest cqlai release from GitHub..."
-            CQLAI_RESOLVED=$(curl -sL -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/axonops/cqlai/releases/latest | jq -r '.tag_name' | sed 's/^v//')
-            if [ -z "$CQLAI_RESOLVED" ] || [ "$CQLAI_RESOLVED" = "null" ]; then
+            # Authenticated, because the anonymous API budget is 60 requests an
+            # hour per runner IP and this matrix is 42 jobs. Exhausting it
+            # returned a rate-limit document whose .tag_name is null, which
+            # surfaced only as "Failed to discover latest cqlai version".
+            if ! CQLAI_JSON=$(curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              https://api.github.com/repos/axonops/cqlai/releases/latest); then
+              echo "ERROR: the request for the latest cqlai release failed"
+              exit 1
+            fi
+            CQLAI_RESOLVED=$(printf '%s' "$CQLAI_JSON" | jq -r '.tag_name // empty' | sed 's/^v//')
+            if [ -z "$CQLAI_RESOLVED" ]; then
               echo "ERROR: Failed to discover latest cqlai version from GitHub"
+              printf '%s\n' "$CQLAI_JSON" | head -20
               exit 1
             fi
             echo "✓ Resolved latest cqlai version: $CQLAI_RESOLVED"
@@ -265,14 +278,27 @@ jobs:
 
       - name: Resolve CQLAI version
         id: cqlai
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           CQLAI_INPUT="${{ inputs.cqlai_version }}"
           if [ -z "$CQLAI_INPUT" ] || [ "$CQLAI_INPUT" = "latest" ]; then
             echo "Discovering latest cqlai release from GitHub..."
-            CQLAI_RESOLVED=$(curl -sL -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/axonops/cqlai/releases/latest | jq -r '.tag_name' | sed 's/^v//')
-            if [ -z "$CQLAI_RESOLVED" ] || [ "$CQLAI_RESOLVED" = "null" ]; then
+            # Authenticated, because the anonymous API budget is 60 requests an
+            # hour per runner IP and this matrix is 42 jobs. Exhausting it
+            # returned a rate-limit document whose .tag_name is null, which
+            # surfaced only as "Failed to discover latest cqlai version".
+            if ! CQLAI_JSON=$(curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              https://api.github.com/repos/axonops/cqlai/releases/latest); then
+              echo "ERROR: the request for the latest cqlai release failed"
+              exit 1
+            fi
+            CQLAI_RESOLVED=$(printf '%s' "$CQLAI_JSON" | jq -r '.tag_name // empty' | sed 's/^v//')
+            if [ -z "$CQLAI_RESOLVED" ]; then
               echo "ERROR: Failed to discover latest cqlai version from GitHub"
+              printf '%s\n' "$CQLAI_JSON" | head -20
               exit 1
             fi
             echo "✓ Resolved latest cqlai version: $CQLAI_RESOLVED"
