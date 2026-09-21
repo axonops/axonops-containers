@@ -43,7 +43,7 @@ optimizado para cargas de base de datos de series temporales y se despliega como
 parte de la pila completa de AxonOps con los charts de Helm de AxonOps.
 
 **Prestaciones del contenedor:**
-- **Shell de CQL moderna**: [cqlai](https://github.com/axonops/cqlai) v0.1.2, para una interacción mejorada con la base de datos
+- **Shell de CQL moderna**: [cqlai](https://github.com/axonops/cqlai) v0.2.0, para una interacción mejorada con la base de datos
 - **Optimización de memoria**: jemalloc, para una mejor gestión de la memoria
 - **Configuración automatizada**: inicialización de los keyspaces de sistema y creación de un usuario propio
 - **Base empresarial**: construido sobre Red Hat UBI 9 minimal, para estabilidad en producción
@@ -165,7 +165,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Minimal build (required args only)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 
@@ -173,7 +173,7 @@ docker build \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 ```
@@ -506,7 +506,7 @@ Built by: GitHub Actions
 Component Versions:
   Cassandra:          5.0.6
   Java:               OpenJDK Runtime Environment (Red_Hat-17.0.17.0.10-1)
-  cqlai:              v0.1.2
+  cqlai:              v0.2.0
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)
   Platform:           x86_64

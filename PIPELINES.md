@@ -84,7 +84,7 @@ gh workflow run "Cassandra Publish Signed to GHCR" \
   --ref main \
   -f main_git_tag=cassandra-1.0.0 \
   -f container_version=1.0.0 \
-  -f axon_agent_version=2.0.31
+  -f axon_agent_version=2.0.32
 ```
 
 ### Strimzi
@@ -176,7 +176,7 @@ gh workflow run "K8ssandra Development Publish Signed to GHCR" \
   --ref development \
   -f dev_git_tag=dev-k8ssandra-1.5.0 \
   -f container_version=v0.1.114 \
-  -f cqlai_version=1.2.0
+  -f cqlai_version=0.2.0
 ```
 
 ### Cassandra (Dev)

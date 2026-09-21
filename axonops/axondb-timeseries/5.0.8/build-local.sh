@@ -33,7 +33,7 @@ echo ""
 podman build \
     --platform "$PLATFORM" \
     --build-arg TARGETARCH="$TARGETARCH" \
-    --build-arg CQLAI_VERSION=0.1.4 \
+    --build-arg CQLAI_VERSION=0.2.0 \
     -t $IMAGE_NAME
     "$@" \
     .

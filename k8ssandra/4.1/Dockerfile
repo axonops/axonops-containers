@@ -124,8 +124,8 @@ RUN if [ -z "$CQLAI_VERSION" ]; then \
     CQLAI_RPM="cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm" && \
     CQLAI_URL="https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}" && \
     # Download checksums file and RPM
-    curl -sL -o SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" && \
-    curl -sL -o "${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
+    curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors -o SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" && \
+    curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors -o "${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
     # Verify checksum
     grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - && \
     # Install RPM
