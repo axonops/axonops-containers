@@ -1086,7 +1086,7 @@ Component Versions:
   k8ssandra API:      0.1.110
   Java:               OpenJDK Runtime Environment (Red_Hat-17.0.17.0.10-1) (build 17.0.17+10-LTS)
   AxonOps Agent:      2.0.11
-  AxonOps Java Agent: axon-cassandra5.0-agent-jdk17-1.0.12-1.noarch
+  AxonOps Java Agent: axon-cassandra5.0-agent-jdk17-1.1.0-1.noarch
   cqlai:              v0.2.0
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)

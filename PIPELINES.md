@@ -84,7 +84,7 @@ gh workflow run "Cassandra Publish Signed to GHCR" \
   --ref main \
   -f main_git_tag=cassandra-1.0.0 \
   -f container_version=1.0.0 \
-  -f axon_agent_version=2.0.31
+  -f axon_agent_version=2.0.32
 ```
 
 ### Strimzi
