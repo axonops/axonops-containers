@@ -186,8 +186,8 @@ RUN if [ -z "$CQLAI_VERSION" ]; then \
     echo "Detected architecture: $RPM_ARCH" && \
     CQLAI_RPM="cqlai-${CQLAI_VERSION}-1.${RPM_ARCH}.rpm" && \
     CQLAI_URL="https://github.com/axonops/cqlai/releases/download/v${CQLAI_VERSION}" && \
-    curl -sL -o "/tmp/${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
-    if curl -sL -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" 2>/dev/null && [ -s /tmp/SHA256SUMS.txt ]; then \
+    curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors -o "/tmp/${CQLAI_RPM}" "${CQLAI_URL}/${CQLAI_RPM}" && \
+    if curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors -o /tmp/SHA256SUMS.txt "${CQLAI_URL}/SHA256SUMS.txt" 2>/dev/null && [ -s /tmp/SHA256SUMS.txt ]; then \
       echo "Verifying checksum..." && \
       (cd /tmp && grep "${CQLAI_RPM}" SHA256SUMS.txt | sha256sum -c - || echo "WARNING: Checksum verification failed, continuing anyway"); \
     else \

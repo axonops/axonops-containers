@@ -1,6 +1,6 @@
 # Base de données time-series AxonDB
 
-[English](README.md) | **Français**
+[English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![Paquet GHCR](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-timeseries)
 
@@ -39,7 +39,7 @@ Conteneur Apache Cassandra 5.0.6 prêt pour la production, optimisé pour les ch
 AxonDB Time-Series est un conteneur Apache Cassandra prêt pour la production, conçu spécifiquement pour les déploiements AxonOps auto-hébergés. Il est optimisé pour les charges de base de données time-series et se déploie dans le cadre de la stack AxonOps complète, via les charts Helm AxonOps.
 
 **Fonctionnalités du conteneur :**
-- **Shell CQL moderne** : [cqlai](https://github.com/axonops/cqlai) v0.1.2, pour une interaction facilitée avec la base
+- **Shell CQL moderne** : [cqlai](https://github.com/axonops/cqlai) v0.2.0, pour une interaction facilitée avec la base
 - **Optimisation mémoire** : jemalloc, pour une meilleure gestion de la mémoire
 - **Mise en place automatisée** : initialisation des keyspaces système et création d'un utilisateur personnalisé
 - **Base entreprise** : construit sur Red Hat UBI 9 minimal, pour la stabilité en production
@@ -96,7 +96,7 @@ Lorsque `5.0.6-1.0.0` est construit (et qu'il est le plus récent) :
    ```
    - immuable à 100 %, garanti cryptographiquement
    - requis dans les environnements réglementés
-   - vérifiez la signature avec Cosign (voir [Sécurité](#security))
+   - vérifiez la signature avec Cosign (voir la note de sécurité ci-dessous)
 
 2. **🥈 Tag immuable** (standard de production)
    ```bash
@@ -147,7 +147,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Minimal build (required args only)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 
@@ -155,7 +155,7 @@ docker build \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 ```
@@ -465,7 +465,7 @@ Built by: GitHub Actions
 Component Versions:
   Cassandra:          5.0.6
   Java:               OpenJDK Runtime Environment (Red_Hat-17.0.17.0.10-1)
-  cqlai:              v0.1.2
+  cqlai:              v0.2.0
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)
   Platform:           x86_64

@@ -1,6 +1,6 @@
 # On-Premises Deployment Guide
 
-**English** | [Français](DEPLOYMENT_GUIDE.fr.md)
+**English** | [Français](DEPLOYMENT_GUIDE.fr.md) | [Español](DEPLOYMENT_GUIDE.es.md) | [Galego](DEPLOYMENT_GUIDE.gl.md)
 
 Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
 
@@ -25,7 +25,6 @@ Ready-to-use Kubernetes manifests are available in the following directories:
 | [axonops/](axonops/) | AxonOps server, dashboard, and database components |
 | [strimzi/cloud/](strimzi/cloud/) | Production Strimzi Kafka for cloud environments |
 | [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka with local persistent volumes |
-| [strimzi/single/](strimzi/single/) | Single-node Strimzi Kafka for development |
 | [k8ssandra/](k8ssandra/) | K8ssandra Cassandra cluster examples |
 
 ## Prerequisites

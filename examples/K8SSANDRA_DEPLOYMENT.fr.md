@@ -1,6 +1,6 @@
 # Guide de déploiement K8ssandra
 
-[English](K8SSANDRA_DEPLOYMENT.md) | **Français**
+[English](K8SSANDRA_DEPLOYMENT.md) | **Français** | [Español](K8SSANDRA_DEPLOYMENT.es.md) | [Galego](K8SSANDRA_DEPLOYMENT.gl.md)
 
 Ce guide traite du déploiement d'Apache Cassandra avec l'opérateur K8ssandra sur Kubernetes, avec l'intégration de la supervision AxonOps en option.
 

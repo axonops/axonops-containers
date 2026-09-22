@@ -24,7 +24,7 @@ indexing, model training, licensing or attribution.
 
 # AxonOps Container Images
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub Issues](https://img.shields.io/github/issues/axonops/axonops-containers)](https://github.com/axonops/axonops-containers/issues)
@@ -869,12 +869,13 @@ Every workflow must include:
 
 ### Translated Documentation
 
-User-facing documentation is translated to French. A translation lives next to
-its English source as `<name>.fr.md` (for example `README.fr.md` beside
-`README.md`), not in a separate `docs/fr/` tree, so it is impossible to edit the
-source without seeing that a translation exists.
+User-facing documentation is translated to French, Spanish and Galician. A
+translation lives next to its English source as `<name>.fr.md`, `<name>.es.md`
+or `<name>.gl.md` (for example `README.es.md` beside `README.md`), not in a
+separate `docs/<lang>/` tree, so it is impossible to edit the source without
+seeing that translations exist.
 
-**In scope (must have a `.fr.md` counterpart):**
+**In scope (must have a `.fr.md`, `.es.md` and `.gl.md` counterpart):**
 - `README.md`
 - `cassandra/README.md`, `k8ssandra/README.md`
 - `axonops/axondb-search/README.md`, `axonops/axondb-timeseries/README.md`
@@ -886,10 +887,11 @@ source without seeing that a translation exists.
   `examples/K8SSANDRA_DEPLOYMENT.md`, `examples/STRIMZI_DEPLOYMENT.md`,
   `examples/NODE_SELECTOR_GUIDE.md`
 
-Every file on that list is translated, and all of them are enforced by
-`.github/workflows/docs-translations.yml`. A new in-scope document is added to
-that workflow's list once its translation lands — a file is only enforced when
-it has actually been translated.
+Every file on that list is translated into all three languages, and all of them
+are enforced by `.github/workflows/docs-translations.yml`, whose `LANGS` list is
+`fr es gl`. A new in-scope document is added to that workflow's list once its
+translations land — a file is only enforced when it has actually been
+translated.
 
 **Deliberately English-only:**
 - `DEVELOPMENT.md`, `RELEASE.md`, `PIPELINES.md` — contributor-facing, and they
@@ -899,8 +901,9 @@ it has actually been translated.
 - component `tests/README.md` files
 
 **Rules:**
-- Both files carry a language switcher line under the title
-  (`**English** | [Français](README.fr.md)` and its mirror).
+- Every file carries the same language switcher line under the title, with the
+  current language in bold and unlinked:
+  `**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)`.
 - Translate prose only. Code blocks, commands, image tags, environment variable
   names, YAML keys, file paths, log messages and CLI output stay verbatim —
   including the English comments inside code blocks, so a block can be diffed
@@ -971,8 +974,8 @@ pre-commit install
 - `CHANGELOG.md` and `TAG_CHANGELOG.md` — release history, not guidance.
 - `VERSIONS.md` — generated, and it churns on every release. `llms.txt` links
   it so the current tags and digests are still one hop away.
-- `*.fr.md` translations — the bundle would otherwise carry the same guidance
-  twice. `llms.txt` links both languages.
+- `*.fr.md`, `*.es.md` and `*.gl.md` translations — the bundle would otherwise
+  carry the same guidance four times. `llms.txt` links every language.
 - Per-version `tests/README.md` files — contributor scratch material.
 
 Compose files, Kubernetes manifests, Helm values, Dockerfiles and scripts are
@@ -1351,7 +1354,7 @@ gh workflow run "Cassandra Publish Signed to GHCR" \
   --ref main \
   -f main_git_tag=cassandra-1.0.0 \
   -f container_version=1.0.0 \
-  -f axon_agent_version=2.0.31
+  -f axon_agent_version=2.0.32
 ```
 
 ### Strimzi
@@ -1443,7 +1446,7 @@ gh workflow run "K8ssandra Development Publish Signed to GHCR" \
   --ref development \
   -f dev_git_tag=dev-k8ssandra-1.5.0 \
   -f container_version=v0.1.114 \
-  -f cqlai_version=1.2.0
+  -f cqlai_version=0.2.0
 ```
 
 ### Cassandra (Dev)
@@ -1637,7 +1640,7 @@ See component-specific RELEASE.md files for detailed instructions.
 
 # AxonDB Time-Series Database
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-timeseries)
 
@@ -1676,7 +1679,7 @@ Production-ready Apache Cassandra 5.0.6 container optimized for time-series work
 AxonDB Time-Series is a production-ready Apache Cassandra container specifically designed for AxonOps self-hosted deployments. This container is optimized for time-series database workloads and is deployed as part of the complete AxonOps stack using AxonOps Helm charts.
 
 **Container Features:**
-- **Modern CQL Shell**: [cqlai](https://github.com/axonops/cqlai) v0.1.2 for enhanced database interaction
+- **Modern CQL Shell**: [cqlai](https://github.com/axonops/cqlai) v0.2.0 for enhanced database interaction
 - **Memory Optimization**: jemalloc for improved memory management
 - **Automated Setup**: System keyspace initialization and custom user creation
 - **Enterprise Base**: Built on Red Hat UBI 9 minimal for production stability
@@ -1733,7 +1736,7 @@ When `5.0.6-1.0.0` is built (and it's the latest):
    ```
    - 100% immutable, cryptographically guaranteed
    - Required for regulated environments
-   - Verify signature with Cosign (see [Security](#security))
+   - Verify signature with Cosign (see the security note below)
 
 2. **🥈 Immutable Tag** (Production Standard)
    ```bash
@@ -1784,7 +1787,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Minimal build (required args only)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 
@@ -1792,7 +1795,7 @@ docker build \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t axondb-timeseries:5.0.6-1.0.0 \
   .
 ```
@@ -2102,7 +2105,7 @@ Built by: GitHub Actions
 Component Versions:
   Cassandra:          5.0.6
   Java:               OpenJDK Runtime Environment (Red_Hat-17.0.17.0.10-1)
-  cqlai:              v0.1.2
+  cqlai:              v0.2.0
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)
   Platform:           x86_64
@@ -2943,7 +2946,7 @@ IS_PRODUCTION_RELEASE="true"
 CASSANDRA_VERSION="5.0.6"
 UBI9_BASE_DIGEST="sha256:80f3902b..."
 JAVA_VERSION="OpenJDK Runtime Environment..."
-CQLAI_VERSION="v0.1.2"
+CQLAI_VERSION="v0.2.0"
 JEMALLOC_VERSION="jemalloc-5.2.1-2.el9.x86_64"
 OS_VERSION="Red Hat Enterprise Linux 9.7 (Plow) (UBI)"
 PLATFORM="x86_64"
@@ -3049,7 +3052,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Basic build (local testing)
 docker build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
   --build-arg VCS_REF=$(git rev-parse --short HEAD) \
   --build-arg VERSION=local-test \
@@ -3067,7 +3070,7 @@ cd axonops/axondb-timeseries/5.0.6
 # Podman build (same args as Docker)
 podman build \
   --build-arg CASSANDRA_VERSION=5.0.6 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t axondb-timeseries:local \
   .
 ```
@@ -3163,13 +3166,13 @@ echo $?  # Should be 0 if accessible
 **Issue: cqlai download fails**
 ```bash
 # Check cqlai release exists
-curl -I https://github.com/axonops/cqlai/releases/download/v0.1.2/cqlai-0.1.2-1.x86_64.rpm
+curl -I https://github.com/axonops/cqlai/releases/download/v0.2.0/cqlai-0.2.0-1.x86_64.rpm
 ```
 
 **Issue: Build args not passed correctly**
 ```bash
 # Verify build args in image
-docker build --build-arg CASSANDRA_VERSION=5.0.6 --build-arg CQLAI_VERSION=0.1.4 -t test .
+docker build --build-arg CASSANDRA_VERSION=5.0.6 --build-arg CQLAI_VERSION=0.2.0 -t test .
 docker run --rm test cat /etc/axonops/build-info.txt
 ```
 
@@ -3279,7 +3282,7 @@ When Cassandra releases new versions (e.g., 5.0.7 or 5.1.0):
 5. **Test:**
    ```bash
    cd axonops/axondb-timeseries/5.0.7  # or appropriate dir
-   docker build --build-arg CASSANDRA_VERSION=5.0.7 --build-arg CQLAI_VERSION=0.1.4 -t test .
+   docker build --build-arg CASSANDRA_VERSION=5.0.7 --build-arg CQLAI_VERSION=0.2.0 -t test .
    docker run -d --name test -p 9042:9042 test
    docker logs -f test
    docker exec test nodetool version
@@ -3325,7 +3328,7 @@ axonops/axondb-timeseries/
 
 Repository variables (`.github` → Settings → Secrets and variables → Actions):
 
-- `AXONDB_TIMESERIES_CQLAI_VERSION` - cqlai version to install (e.g., `0.1.2`)
+- `AXONDB_TIMESERIES_CQLAI_VERSION` - cqlai version to install (e.g., `0.2.0`)
 
 ### Key Files
 
@@ -3901,7 +3904,7 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonDB Search Database
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axondb-search)
 
@@ -3998,7 +4001,7 @@ When `3.3.2-1.0.0` is built (and it's the latest):
    ```
    - 100% immutable, cryptographically guaranteed
    - Required for regulated environments
-   - Verify signature with Cosign (see [Security](#security))
+   - Verify signature with Cosign (see the security note below)
 
 2. **🥈 Immutable Tag** (Production Standard)
    ```bash
@@ -6839,7 +6842,7 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonOps Schema Registry
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/axonops-schema-registry)
 
@@ -8344,7 +8347,7 @@ For general usage and features, see [README.md](./README.md).
 
 # AxonOps Apache Cassandra Container
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/cassandra%2Fcassandra)
 
@@ -8516,7 +8519,7 @@ docker build -t axonops-cassandra:local \
   --build-arg K8SSANDRA_BASE_DIGEST="$DIGEST" \
   --build-arg K8SSANDRA_API_VERSION=0.1.125 \
   --build-arg INCLUDE_MGMT_API=false \
-  --build-arg CQLAI_VERSION=0.1.7 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   k8ssandra/5.0
 ```
 
@@ -8551,7 +8554,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at [axonop
 
 # AxonOps K8ssandra Containers
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/k8ssandra%2Fcassandra)
 
@@ -8861,7 +8864,7 @@ docker build \
   --build-arg MAJOR_VERSION=5.0 \
   --build-arg K8SSANDRA_BASE_DIGEST=sha256:aa2de19866f3487abe0dff65e6b74f5a68c6c5a7d211b5b7a3e0b961603ba5af \
   --build-arg K8SSANDRA_API_VERSION=0.1.110 \
-  --build-arg CQLAI_VERSION=0.1.4 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t your-registry/axonops-cassandra:5.0.6-v0.1.110-1.0.0 \
   .
 
@@ -8897,7 +8900,7 @@ docker build \
   --build-arg K8SSANDRA_BASE_DIGEST=sha256:... \
   --build-arg K8SSANDRA_API_VERSION=0.1.120 \
   --build-arg INCLUDE_MGMT_API=false \
-  --build-arg CQLAI_VERSION=0.1.7 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   -t your-registry/axonops-cassandra:5.0.8-standalone \
   .
 ```
@@ -9544,8 +9547,8 @@ Component Versions:
   k8ssandra API:      0.1.110
   Java:               OpenJDK Runtime Environment (Red_Hat-17.0.17.0.10-1) (build 17.0.17+10-LTS)
   AxonOps Agent:      2.0.11
-  AxonOps Java Agent: axon-cassandra5.0-agent-jdk17-1.0.12-1.noarch
-  cqlai:              v0.1.2
+  AxonOps Java Agent: axon-cassandra5.0-agent-jdk17-1.1.0-1.noarch
+  cqlai:              v0.2.0
   jemalloc:           jemalloc-5.2.1-2.el9.x86_64
   OS:                 Red Hat Enterprise Linux 9.7 (Plow) (UBI - Universal Base Image, freely redistributable)
   Platform:           x86_64
@@ -10964,7 +10967,7 @@ After publishing:
 
 # AxonOps Strimzi Kafka
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 This repository provides custom Strimzi Kafka container images with integrated AxonOps monitoring and observability components.
 
@@ -11621,7 +11624,7 @@ For the latest compatibility information, check individual chart documentation.
 
 # AxonOps Meta-Chart
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ## Overview
 
@@ -12172,7 +12175,7 @@ Copyright AxonOps. All rights reserved.
 
 # AxonOps Server
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
 
@@ -13465,7 +13468,7 @@ For additional support:
 
 # AxonOps Dashboard
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
@@ -14399,7 +14402,7 @@ For additional support:
 
 # AxonOps Timeseries Database
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 5.0.8-1.4.0](https://img.shields.io/badge/AppVersion-5.0.8--1.4.0-informational?style=flat-square)
 
@@ -15534,7 +15537,7 @@ Remember that hostPath is best suited for single-node deployments and testing sc
 
 # AxonOps Search DB
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 ![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.7.0-1.6.1](https://img.shields.io/badge/AppVersion-3.7.0--1.6.1-informational?style=flat-square)
 
@@ -16950,7 +16953,7 @@ The IAM user or role needs the following minimum permissions:
 
 # Docker Compose Examples
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17203,7 +17206,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 00 — The AxonOps platform on its own
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17425,7 +17428,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 01 — Self-hosted AxonOps monitoring a 3-node Cassandra cluster
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17665,7 +17668,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 02 — AxonOps SaaS monitoring a 3-node Cassandra cluster
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -17869,7 +17872,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 03 — A secured 3-rack cluster, monitored by AxonOps
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -18392,7 +18395,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Example 04 — Self-hosted AxonOps with alerts configured as code
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 <p align="center">
   <a href="https://axonops.com"><img src="https://digitalis-marketplace-assets.s3.us-east-1.amazonaws.com/axonops-small-logo.png" alt="AxonOps" height="60"></a>
@@ -18572,7 +18575,7 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # On-Premises Deployment Guide
 
-**English** | [Français](DEPLOYMENT_GUIDE.fr.md)
+**English** | [Français](DEPLOYMENT_GUIDE.fr.md) | [Español](DEPLOYMENT_GUIDE.es.md) | [Galego](DEPLOYMENT_GUIDE.gl.md)
 
 Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
 
@@ -18597,7 +18600,6 @@ Ready-to-use Kubernetes manifests are available in the following directories:
 | [axonops/](axonops/) | AxonOps server, dashboard, and database components |
 | [strimzi/cloud/](strimzi/cloud/) | Production Strimzi Kafka for cloud environments |
 | [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka with local persistent volumes |
-| [strimzi/single/](strimzi/single/) | Single-node Strimzi Kafka for development |
 | [k8ssandra/](k8ssandra/) | K8ssandra Cassandra cluster examples |
 
 ## Prerequisites
@@ -18847,7 +18849,7 @@ kubectl get pods -n k8ssandra-operator
 
 # AxonOps Deployment Guide
 
-**English** | [Français](AXONOPS_DEPLOYMENT.fr.md)
+**English** | [Français](AXONOPS_DEPLOYMENT.fr.md) | [Español](AXONOPS_DEPLOYMENT.es.md) | [Galego](AXONOPS_DEPLOYMENT.gl.md)
 
 This guide covers deploying AxonOps monitoring and management services on Kubernetes.
 
@@ -19330,7 +19332,7 @@ Ready-to-use configurations are available in the [axonops/](axonops/) directory:
 
 # K8ssandra Deployment Guide
 
-**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md)
+**English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md) | [Español](K8SSANDRA_DEPLOYMENT.es.md) | [Galego](K8SSANDRA_DEPLOYMENT.gl.md)
 
 This guide covers deploying Apache Cassandra using the K8ssandra operator on Kubernetes, with optional AxonOps monitoring integration.
 
@@ -19717,7 +19719,7 @@ kubectl delete namespace k8ssandra-operator
 
 # Strimzi Kafka Deployment Guide
 
-**English** | [Français](STRIMZI_DEPLOYMENT.fr.md)
+**English** | [Français](STRIMZI_DEPLOYMENT.fr.md) | [Español](STRIMZI_DEPLOYMENT.es.md) | [Galego](STRIMZI_DEPLOYMENT.gl.md)
 
 This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
 
@@ -19762,7 +19764,6 @@ Choose one of the deployment examples based on your use case. Each example inclu
 | --- | --- | --- |
 | [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, cloud storage |
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
-| [strimzi/single/](strimzi/single/) | Development | Single dual-role node |
 
 Each example directory contains:
 
@@ -19804,7 +19805,7 @@ Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before 
 
 # Strimzi Node Selector Configuration Guide
 
-**English** | [Français](NODE_SELECTOR_GUIDE.fr.md)
+**English** | [Français](NODE_SELECTOR_GUIDE.fr.md) | [Español](NODE_SELECTOR_GUIDE.es.md) | [Galego](NODE_SELECTOR_GUIDE.gl.md)
 
 ## Overview
 

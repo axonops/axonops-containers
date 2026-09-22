@@ -1,6 +1,6 @@
 # Strimzi Kafka Deployment Guide
 
-**English** | [Français](STRIMZI_DEPLOYMENT.fr.md)
+**English** | [Français](STRIMZI_DEPLOYMENT.fr.md) | [Español](STRIMZI_DEPLOYMENT.es.md) | [Galego](STRIMZI_DEPLOYMENT.gl.md)
 
 This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
 
@@ -45,7 +45,6 @@ Choose one of the deployment examples based on your use case. Each example inclu
 | --- | --- | --- |
 | [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, cloud storage |
 | [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
-| [strimzi/single/](strimzi/single/) | Development | Single dual-role node |
 
 Each example directory contains:
 

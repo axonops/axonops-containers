@@ -1,6 +1,6 @@
 # AxonOps Apache Cassandra Container
 
-**English** | [Français](README.fr.md)
+**English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
 [![GHCR Package](https://img.shields.io/badge/GHCR-Package-blue?logo=docker)](https://github.com/axonops/axonops-containers/pkgs/container/cassandra%2Fcassandra)
 
@@ -172,7 +172,7 @@ docker build -t axonops-cassandra:local \
   --build-arg K8SSANDRA_BASE_DIGEST="$DIGEST" \
   --build-arg K8SSANDRA_API_VERSION=0.1.125 \
   --build-arg INCLUDE_MGMT_API=false \
-  --build-arg CQLAI_VERSION=0.1.7 \
+  --build-arg CQLAI_VERSION=0.2.0 \
   k8ssandra/5.0
 ```
 
