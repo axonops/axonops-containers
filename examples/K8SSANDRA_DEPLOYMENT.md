@@ -95,12 +95,12 @@ Create or edit `k8ssandra/k8ssandra-config.env`:
 # K8ssandra Cluster Configuration
 K8SSANDRA_CLUSTER_NAME=axonops-k8ssandra
 K8SSANDRA_NAMESPACE=k8ssandra-operator
-CASSANDRA_VERSION=5.0.6
+CASSANDRA_VERSION=5.0.9
 CASSANDRA_DC_NAME=dc1
 CASSANDRA_DC_SIZE=3
 
 # AxonOps Container Image
-IMAGE_NAME=ghcr.io/axonops/cassandra:5.0.6
+IMAGE_NAME=ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Storage Configuration
 STORAGE_CLASS=local-path
@@ -126,8 +126,8 @@ AXON_AGENT_SERVER_PORT=443
 | --- | --- | --- |
 | `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra` | Name of the Cassandra cluster |
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
-| `CASSANDRA_VERSION` | `5.0.6` | Cassandra version |
-| `IMAGE_NAME` | `ghcr.io/axonops/cassandra:5.0.6` | AxonOps Cassandra image |
+| `CASSANDRA_VERSION` | `5.0.9` | Cassandra version |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2` | AxonOps Cassandra image |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
 | `CASSANDRA_DC_SIZE` | `3` | Number of Cassandra nodes |
 | `STORAGE_CLASS` | `local-path` | Kubernetes StorageClass |

@@ -133,7 +133,7 @@ valores por defecto.
 |---|---|---|
 | `AXONOPS_ORG_NAME` | `example` | Organización. O axente, axon-server e o contedor de configuración deben coincidir |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Clúster ao que se asocian as regras de alerta |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Imaxe do nodo monitorizado |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Imaxe do nodo monitorizado |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Valor de desenvolvemento |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Cámbiea. O valor por defecto é público |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | Cámbiea. A imaxe aplica unha política de contrasinais |

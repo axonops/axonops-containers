@@ -38,9 +38,9 @@ clúster que no reporta a ninguna parte.
 
 | Servicio | Imagen | Propósito | Puerto publicado |
 |---------|-------|---------|----------------|
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Nodo seed, `rack0` | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack1` | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack2` | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Nodo seed, `rack0` | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack1` | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack2` | — |
 
 Un único datacenter, `dc1`, con un rack por nodo. Sólo `cassandra-0` publica CQL
 al host; los demás son accesibles dentro de la red de Compose y a través de
@@ -73,7 +73,7 @@ Todo se define en `.env`. Lista completa con los valores por defecto:
 | `AXONOPS_AGENT_KEY` | — | Clave de agente de la consola. Obligatoria. |
 | `CASSANDRA_CLUSTER_NAME` | `saas-demo-cluster` | Nombre del clúster mostrado en AxonOps |
 | `CASSANDRA_DC` | `dc1` | Nombre del datacenter |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Imagen de los nodos |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Imagen de los nodos |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap por nodo |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Generación joven por nodo |
 | `CQL_PORT` | `9042` | Puerto del host para CQL en `cassandra-0` |
@@ -122,7 +122,7 @@ ausente durante parte del periodo de arranque de 90 s.
 
 La comprobación del agente llegó a `axonops-healthcheck.sh` después de publicarse
 la imagen fijada actualmente, así que en
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` el script verifica sólo
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` el script verifica sólo
 Cassandra y `HEALTHCHECK_REQUIRE_AGENT` no tiene efecto. Ambos entran en vigor
 con la siguiente release de la imagen de Cassandra.
 

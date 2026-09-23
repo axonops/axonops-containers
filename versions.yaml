@@ -33,7 +33,7 @@
 #   notes            Anything a consumer needs to know before pinning.
 
 schema_version: 1
-last_verified: "2026-08-13"
+last_verified: "2026-09-23"
 components:
   - name: axondb-timeseries
     kind: image
@@ -89,11 +89,13 @@ components:
     repository: axonops-public/axonops-docker/axon-server
     tag_pattern: "{version}"
     current:
-      tag: "2.0.36"
-      digest: "sha256:dc0a2c58e5d89c28d6fe7df91ade825f5fb2c00a0d32be4fce921b9711207b6c"
+      tag: "2.0.39"
+      digest: "sha256:b7c41009929155942c34df77b262812fe1c39a32cdf7e132ef3437654a4bc4c1"
     previous:
+      - "2.0.38"
+      - "2.0.37"
+      - "2.0.36"
       - "2.0.35"
-      - "2.0.34"
     notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
   - name: axon-dash
     kind: image
@@ -103,9 +105,11 @@ components:
     repository: axonops-public/axonops-docker/axon-dash
     tag_pattern: "{version}"
     current:
-      tag: "2.0.37"
-      digest: "sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362"
+      tag: "2.0.39"
+      digest: "sha256:4cffd1d1e724a479c8ec489299972a43e0da0eef797e7aa27aa3acf6ae28423d"
     previous:
+      - "2.0.38"
+      - "2.0.37"
       - "2.0.36"
     notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
   - name: axonops-schema-registry
@@ -127,33 +131,38 @@ components:
   - name: k8ssandra-cassandra
     kind: image
     description: Apache Cassandra with the AxonOps agent, for the K8ssandra operator
-    git_tag: k8ssandra-1.5.6
+    git_tag: k8ssandra-1.6.2
     registry: ghcr.io
     repository: axonops/k8ssandra/cassandra
     tag_pattern: "{cassandra_version}-v{k8ssandra_api_version}-{container_version}"
     current:
-      tag: "5.0.8-v0.1.120-1.5.6"
-      digest: "sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c"
+      tag: "5.0.9-v0.1.125-1.6.2"
+      digest: "sha256:a45e8b26f64a65c61e5ec1d84f096c9cf8c97f645117ab3a0d9e8372d670dd83"
     previous:
+      - "5.0.9-v0.1.125-1.6.1"
+      - "5.0.9-v0.1.125-1.6.0"
+      - "5.0.8-v0.1.120-1.5.6"
       - "5.0.8-v0.1.120-1.5.5"
       - "5.0.8-v0.1.120-1.5.3"
-      - "5.0.8-v0.1.120-1.5.2"
     notes: >-
-      Each release publishes one tag per Cassandra version. Build 1.5.6 covers 5.0.1, 5.0.2, 5.0.3, 5.0.5, 5.0.6, 5.0.7 and 5.0.8 — 5.0.4 was last built at 1.5.5. It was built against k8ssandra Management API v0.1.120; 5.0.9 and API v0.1.125 enter the matrix with the next build. `current.digest` is the digest of the 5.0.8 variant only; every other Cassandra version has its own digest.
+      Each release publishes one tag per Cassandra version. Build 1.6.2 covers the 4.0, 4.1 and 5.0 lines listed in build_matrix, built against k8ssandra Management API v0.1.125. `current.digest` is the digest of the 5.0.9 variant only; every other Cassandra version has its own digest.
   - name: cassandra
     kind: image
     description: Standalone Apache Cassandra with the AxonOps agent, built from the K8ssandra Dockerfile
-    git_tag: cassandra-1.1.0
+    git_tag: cassandra-1.2.2
     registry: ghcr.io
     repository: axonops/cassandra/cassandra
     tag_pattern: "{cassandra_version}-{agent_version}-{container_version}"
     current:
-      tag: "5.0.8-2.0.31-1.1.0"
-      digest: "sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d"
+      tag: "5.0.9-2.0.32-1.2.2"
+      digest: "sha256:1711a7e0f85a6eb7e8cee97335ecf2c99019280723f9e76881df64fca67ba911"
     previous:
+      - "5.0.9-2.0.32-1.2.1"
+      - "5.0.9-2.0.31-1.2.0"
+      - "5.0.8-2.0.31-1.1.0"
       - "5.0.8-2.0.31-1.0.0"
     notes: >-
-      Build 1.1.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. It adds `CASSANDRA_AUTHENTICATOR`, `CASSANDRA_AUTHORIZER`, `CASSANDRA_ROLE_MANAGER` and `CASSANDRA_NATIVE_TRANSPORT_PORT` support to the entrypoint, and the healthcheck now also verifies the AxonOps agent — 1.0.0 ignores all of these. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is in the build matrix but not yet published here — the next build adds it, and the floating tags then resolve to it.
+      Build 1.2.2 publishes every Cassandra version listed in build_matrix, each with AxonOps agent 2.0.32, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. `current.digest` is the digest of the 5.0.9 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest.
   - name: strimzi-kafka
     kind: image
     description: Strimzi Kafka with the AxonOps agent
@@ -172,45 +181,52 @@ components:
   - name: chart-axonops
     kind: chart
     description: Umbrella chart deploying the full AxonOps stack
-    git_tag: helm-1.1.23
+    git_tag: helm-1.1.28
     registry: ghcr.io
     repository: axonops/charts/axonops
     tag_pattern: "{chart_version}"
     current:
-      tag: "1.1.23"
+      tag: "1.1.28"
       digest: null
     previous:
+      - "1.1.27"
+      - "1.1.23"
       - "1.1.21"
     notes: "Chart version comes from axonops/charts/axonops/Chart.yaml."
   - name: chart-axon-server
     kind: chart
     description: axon-server chart
-    git_tag: helm-1.1.23
+    git_tag: helm-1.1.28
     registry: ghcr.io
     repository: axonops/charts/axon-server
     tag_pattern: "{chart_version}"
     current:
-      tag: "2.1.16"
+      tag: "2.1.19"
       digest: null
     previous:
+      - "2.1.18"
+      - "2.1.17"
+      - "2.1.16"
       - "2.1.14"
     notes: null
   - name: chart-axon-dash
     kind: chart
     description: axon-dash chart
-    git_tag: helm-1.1.23
+    git_tag: helm-1.1.28
     registry: ghcr.io
     repository: axonops/charts/axon-dash
     tag_pattern: "{chart_version}"
     current:
-      tag: "0.1.10"
+      tag: "0.1.12"
       digest: null
-    previous: []
+    previous:
+      - "0.1.11"
+      - "0.1.10"
     notes: null
   - name: chart-axondb-timeseries
     kind: chart
     description: axondb-timeseries chart
-    git_tag: helm-1.1.23
+    git_tag: helm-1.1.28
     registry: ghcr.io
     repository: axonops/charts/axondb-timeseries
     tag_pattern: "{chart_version}"
@@ -223,7 +239,7 @@ components:
   - name: chart-axondb-search
     kind: chart
     description: axondb-search chart
-    git_tag: helm-1.1.23
+    git_tag: helm-1.1.28
     registry: ghcr.io
     repository: axonops/charts/axondb-search
     tag_pattern: "{chart_version}"
@@ -233,7 +249,6 @@ components:
     previous:
       - "0.2.9"
     notes: null
-
 # ---------------------------------------------------------------------------
 # build_matrix
 #

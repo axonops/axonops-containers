@@ -98,7 +98,7 @@ services:
   # =============================================================================
   axon-server:
     # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
     container_name: axon-server
     hostname: axon-server
     networks:
@@ -151,7 +151,7 @@ services:
   # =============================================================================
   axon-dash:
     # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39
     container_name: axon-dash
     hostname: axon-dash
     networks:

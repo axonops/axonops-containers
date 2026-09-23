@@ -4,7 +4,7 @@ This directory contains example manifests to deploy Apache Cassandra using K8ssa
 
 ## Overview
 
-- **Cassandra Version**: 5.0.6
+- **Cassandra Version**: 5.0.9
 - **Operator**: K8ssandra
 - **Nodes**: 3 replicas (configurable)
 - **Storage**: 2Gi per node (configurable)
@@ -50,7 +50,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_NAME` | `ghcr.io/axonops/cassandra:5.0.6` | AxonOps Cassandra image |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2` | AxonOps Cassandra image |
 | `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra-5` | Cluster name |
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |

@@ -38,9 +38,9 @@ que non reporta a ningures.
 
 | Servizo | Imaxe | Propósito | Porto publicado |
 |---------|-------|---------|----------------|
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Nodo seed, `rack0` | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack1` | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack2` | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Nodo seed, `rack0` | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack1` | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack2` | — |
 
 Un único datacenter, `dc1`, cun rack por nodo. Só `cassandra-0` publica CQL ao
 host; os demais son accesibles dentro da rede de Compose e a través de
@@ -73,7 +73,7 @@ Todo se define no `.env`. Lista completa cos valores por defecto:
 | `AXONOPS_AGENT_KEY` | — | Chave de axente da consola. Obrigatoria. |
 | `CASSANDRA_CLUSTER_NAME` | `saas-demo-cluster` | Nome do clúster amosado en AxonOps |
 | `CASSANDRA_DC` | `dc1` | Nome do datacenter |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Imaxe dos nodos |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Imaxe dos nodos |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap por nodo |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Xeración nova por nodo |
 | `CQL_PORT` | `9042` | Porto do host para CQL en `cassandra-0` |
@@ -121,7 +121,7 @@ ausente durante parte do período de arranque de 90 s.
 
 A comprobación do axente chegou a `axonops-healthcheck.sh` despois de publicarse
 a imaxe fixada actualmente, así que en
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` o script verifica só
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` o script verifica só
 Cassandra e `HEALTHCHECK_REQUIRE_AGENT` non ten efecto. Ambos entran en vigor coa
 seguinte release da imaxe de Cassandra.
 
