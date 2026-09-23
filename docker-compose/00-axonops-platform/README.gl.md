@@ -33,8 +33,8 @@ almacéns de datos, e detrás deles soben `axon-server` e o panel.
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de rexistros e eventos (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend e endpoint dos axentes | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Panel web | `3000` |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend e endpoint dos axentes | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
 
 As etiquetas e digests actuais de cada imaxe: [VERSIONS.md](../../VERSIONS.md).
 

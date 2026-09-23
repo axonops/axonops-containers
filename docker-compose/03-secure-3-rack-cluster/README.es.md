@@ -27,7 +27,7 @@ diferencias.
 ## Antes de empezar
 
 Los tres nodos están fijados a la etiqueta de versión completa
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`, no a la flotante
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`, no a la flotante
 `5.0.8`. Aquí eso importa más que en los demás ejemplos.
 
 La autenticación se define con `CASSANDRA_AUTHENTICATOR` y
@@ -83,13 +83,13 @@ keyspace `system_auth` que no sobrevive a la pérdida de un nodo.
 
 | Servicio | Dirección | Imagen | Propósito | Puerto publicado |
 |---------|---------|-------|---------|----------------|
-| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Nodo del clúster, rack1 | `9142` CQL, `7199` JMX¹ |
+| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Nodo del clúster, rack1 | `9142` CQL, `7199` JMX¹ |
 | `cassandra02` | 10.17.64.6 | la misma | Nodo del clúster, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | la misma | Nodo del clúster, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra de un solo nodo) | — |
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de registros y eventos (OpenSearch) | — |
-| `axon-server` | 10.17.64.22 | `axon-server:2.0.35` | Backend y endpoint de los agentes | `1888` |
-| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.37` | Panel web | `3000` |
+| `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend y endpoint de los agentes | `1888` |
+| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Panel web | `3000` |
 
 ¹ Ligados únicamente a `127.0.0.1`: véase [JMX remoto](#jmx-remoto).
 
@@ -178,7 +178,7 @@ sólo `--force` sobrescribe, y sólo la configuración.
 3. **Resuelve la imagen.** Busca con grep `CASSANDRA_IMAGE=` en `./.env` (gana la
    última aparición, quitando las comillas circundantes) y recurre al valor por
    defecto compilado en el script,
-   `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`, que debe coincidir
+   `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`, que debe coincidir
    con el valor por defecto de `docker-compose.yaml`. No analiza el fichero de
    Compose.
 4. **Descarga la imagen si no está presente en local**, para que el paso de
@@ -328,7 +328,7 @@ Todo se define en `.env`. Lista completa con los valores por defecto:
 | `AXONOPS_CASSANDRA_SSL` | `false` | TLS de `axon-server` a `axondb-timeseries` |
 | `CASSANDRA_CLUSTER_NAME` | `secure-cluster` | Nombre del clúster mostrado en AxonOps |
 | `CASSANDRA_DC` | `dc1` | Nombre del datacenter |
-| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Imagen de los tres nodos: 1.1.0 o posterior, véase [Antes de empezar](#antes-de-empezar) |
+| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Imagen de los tres nodos: 1.1.0 o posterior, véase [Antes de empezar](#antes-de-empezar) |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap por nodo del clúster |
 | `CASSANDRA_MEM_LIMIT` | `2g` | Límite de memoria del contenedor por nodo |
 | `CASSANDRA_CPUS` | `2.0` | Límite de CPU por nodo |
@@ -413,7 +413,7 @@ para lo que está. En un nodo lento con `HEALTHCHECK_REQUIRE_AGENT=true`, suba
 `start_period` en lugar de bajar `retries`.
 
 Tanto la comprobación del agente como `HEALTHCHECK_REQUIRE_AGENT` están en la
-imagen fijada, `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. En
+imagen fijada, `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`. En
 cualquier imagen anterior el script verifica sólo Cassandra y la variable no
 tiene efecto.
 
@@ -444,7 +444,7 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 | Original | Aquí | Por qué |
 |----------|------|-----|
 | Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | El sentido del port. Métricas, registros, alertas y planificación de reparaciones en una sola plataforma, y ningún sidecar de exportador JMX que configurar |
-| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | La misma Cassandra, con el agente de AxonOps y el agente Java ya instalados |
+| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | La misma Cassandra, con el agente de AxonOps y el agente Java ya instalados |
 | Bind mounts bajo `${PWD}/docker/` | Se mantienen | Reproduce el entorno del cliente. `setup.sh` los crea y los puebla: véase [Almacenamiento](#almacenamiento) |
 | Volúmenes `conf` montados por bind | Se mantienen | La misma razón. La imagen puede gobernarse enteramente con variables de entorno, pero así la configuración es editable en el host |
 | `7000` y `7001` publicados por nodo | No se publican | Son puertos internodo; nada fuera de la red de Compose los usa |

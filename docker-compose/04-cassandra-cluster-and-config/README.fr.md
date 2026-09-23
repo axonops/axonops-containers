@@ -135,7 +135,7 @@ avec les valeurs par défaut.
 |---|---|---|
 | `AXONOPS_ORG_NAME` | `example` | Organisation. L'agent, axon-server et le conteneur config doivent être d'accord |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Cluster auquel les règles d'alerte sont rattachées |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image du nœud supervisé |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Image du nœud supervisé |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Valeur de développement |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Changez-le. La valeur par défaut est publique |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | Changez-le. L'image impose une politique de mot de passe |

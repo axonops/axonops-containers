@@ -37,11 +37,11 @@ s'initialisent d'abord, puis les nœuds Cassandra démarrent un à un.
 |---------|-------|------|-------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Stockage des métriques (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Stockage des logs et événements (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend AxonOps et point de connexion des agents | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Tableau de bord web | `3000` |
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Cluster supervisé, nœud seed | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Cluster supervisé, rack1 | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Cluster supervisé, rack2 | — |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend AxonOps et point de connexion des agents | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Tableau de bord web | `3000` |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Cluster supervisé, nœud seed | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Cluster supervisé, rack1 | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Cluster supervisé, rack2 | — |
 
 `cassandra-0` à `cassandra-2` forment un seul datacentre, `dc1`, avec un rack
 chacun. Seul `cassandra-0` publie CQL vers l'hôte ; les deux autres sont
@@ -58,7 +58,7 @@ Tout se règle dans `.env`. Liste complète avec les valeurs par défaut :
 |----------|--------|-------------|
 | `AXONOPS_ORG_NAME` | `example` | Nom de l'organisation. Partagé par `axon-server` et les agents — les valeurs doivent concorder. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Nom du cluster supervisé dans AxonOps |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image des nœuds supervisés |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Image des nœuds supervisés |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap par nœud supervisé |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Génération jeune par nœud supervisé |
 | `AXONOPS_LICENSE_KEY` | (vide) | Clé de licence ; vide, l'exécution se fait en mode d'évaluation |
@@ -124,7 +124,7 @@ L'agent ne démarre qu'une fois Cassandra opérationnel, il est donc normalement
 absent pendant une partie de la période de démarrage de 90 s.
 
 Le contrôle de l'agent et `HEALTHCHECK_REQUIRE_AGENT` sont tous deux présents
-dans l'image figée, `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`.
+dans l'image figée, `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`.
 Sur toute image antérieure, le script ne vérifie que Cassandra et la variable
 n'a aucun effet.
 

@@ -129,7 +129,7 @@ See [`env.example`](env.example) for the full list with defaults.
 |---|---|---|
 | `AXONOPS_ORG_NAME` | `example` | Organisation. The agent, axon-server and the config container must agree |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Cluster the alert rules attach to |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored node image |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Monitored node image |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Development value |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Change it. The default is public |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | Change it. The image enforces a password policy |

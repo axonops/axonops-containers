@@ -113,7 +113,7 @@ combinaison à éviter.
 ```yaml
   axon-server:
     # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Changez le tag et le commentaire de digest ensemble — un commentaire périmé à
@@ -136,13 +136,13 @@ dès que le serveur est de retour.
 
 **L'agent.** Il est embarqué dans l'image Cassandra plutôt que dans son propre
 conteneur, et c'est le composant central du tag —
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` correspond à Cassandra
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` correspond à Cassandra
 5.0.8 avec l'agent 2.0.31 issu du build 1.1.0. Mettre à niveau l'agent revient
 donc à passer à un nouveau tag d'image, ce qui, dans les exemples 01, 02 et 03,
 se fait via `CASSANDRA_IMAGE` dans `.env` :
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2
 ```
 
 Recréez les nœuds **un à la fois**, en attendant que chacun revienne en bonne

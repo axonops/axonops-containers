@@ -236,10 +236,10 @@ Instead of using tags (which can be mutable), deploy using the image's SHA256 di
 
 ```yaml
 # Tag-based (good)
-image: ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+image: ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Digest-based (best)
-image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+image: ghcr.io/axonops/k8ssandra/cassandra@sha256:a45e8b26f...
 ```
 
 #### Benefits
@@ -264,13 +264,13 @@ image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
 **Method 2: Using Docker/Podman**
 ```bash
 # Pull the image first
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Get digest
-docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2 \
   --format='{{index .RepoDigests 0}}'
 
-# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:a45e8b26f...
 ```
 
 **Method 3: During Workflow**
@@ -287,9 +287,9 @@ metadata:
   name: production-cluster
 spec:
   cassandra:
-    serverVersion: "5.0.6"
+    serverVersion: "5.0.9"
     # Use digest instead of tag
-    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:412c852252ec4ebcb8d377a505881828a7f6a5f9dc725cc4f20fda2a1bcb3494"
+    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:a45e8b26f64a65c61e5ec1d84f096c9cf8c97f645117ab3a0d9e8372d670dd83"
     datacenters:
       - metadata:
           name: dc1
@@ -311,10 +311,10 @@ brew install sigstore/tap/cosign  # macOS
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 ```
 
 **Troubleshooting (macOS Issues):**
@@ -326,13 +326,13 @@ If you encounter issues with local cosign on macOS, use the official Cosign cont
 docker run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Using Podman
 podman run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 ```
 
 This uses the [official Cosign container](https://github.com/sigstore/cosign) and works reliably across all platforms.
@@ -422,10 +422,10 @@ For detailed setup, see your Kubernetes distribution's documentation on admissio
 **Updating Digests:**
 ```bash
 # 1. Pull new version
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # 2. Get new digest
-NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2 \
   --format='{{index .RepoDigests 0}}' | cut -d@ -f2)
 
 # 3. Update manifest
@@ -499,7 +499,7 @@ git add . && git commit -S -m "Add feature" && git push origin development
 
 **Registry:** `ghcr.io/axonops/development/<component>/<image-name>`
 
-**Example:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0`
+**Example:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.9-v0.1.125-dev-k8ssandra-1.4.7`
 
 **Characteristics:**
 - All images are Cosign signed (same as production)
@@ -643,16 +643,16 @@ The signed publish workflow will:
 gh release view k8ssandra-signed-1.0.0
 
 # Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Verify signature
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 ```
 
 All production images are cryptographically signed. Signature verification proves the image was built by official workflows and has not been tampered with. See [Gold Standard Security Deployment](#gold-standard-security-deployment) for more details.
@@ -17056,7 +17056,7 @@ a newer dash against an older server is the combination to avoid.
 ```yaml
   axon-server:
     # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Change the tag and the digest comment together — a stale comment beside a new
@@ -17078,12 +17078,12 @@ recreate loses no data. Agents reconnect on their own once the server is back.
 
 **The agent.** It ships inside the Cassandra image rather than as its own
 container, and it is the middle component of the tag —
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` is Cassandra 5.0.8 with
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` is Cassandra 5.0.8 with
 agent 2.0.31 from build 1.1.0. Upgrading the agent therefore means moving to a
 new image tag, which in examples 01, 02 and 03 is `CASSANDRA_IMAGE` in `.env`:
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2
 ```
 
 Recreate the nodes **one at a time**, waiting for each to come back healthy
@@ -17239,8 +17239,8 @@ A cold start takes 2–3 minutes: the two data stores initialise first, then
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend and agent endpoint | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend and agent endpoint | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 
@@ -17463,11 +17463,11 @@ the Cassandra nodes bootstrap one at a time.
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | AxonOps backend and agent endpoint | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, seed node | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack1 | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack2 | — |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | AxonOps backend and agent endpoint | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Monitored cluster, seed node | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Monitored cluster, rack1 | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Monitored cluster, rack2 | — |
 
 `cassandra-0` through `cassandra-2` are one datacentre, `dc1`, with one rack
 each. Only `cassandra-0` publishes CQL to the host; the other two are reachable
@@ -17483,7 +17483,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 |----------|---------|-------------|
 | `AXONOPS_ORG_NAME` | `example` | Organisation name. Shared by `axon-server` and the agents — they must match. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Name of the monitored cluster in AxonOps |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the monitored nodes |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Image for the monitored nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per monitored node |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Young generation per monitored node |
 | `AXONOPS_LICENSE_KEY` | (empty) | License key; empty runs in trial mode |
@@ -17547,7 +17547,7 @@ The agent starts only once Cassandra is up, so it is normally absent for part of
 the 90s start period.
 
 Both the agent check and `HEALTHCHECK_REQUIRE_AGENT` are in the pinned image,
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. On any earlier image
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`. On any earlier image
 the script verifies Cassandra only and the variable has no effect.
 
 ## Using the cluster
@@ -17706,9 +17706,9 @@ nowhere.
 
 | Service | Image | Purpose | Published port |
 |---------|-------|---------|----------------|
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Seed node, `rack0` | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack1` | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack2` | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Seed node, `rack0` | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack1` | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack2` | — |
 
 One datacentre, `dc1`, with one rack per node. Only `cassandra-0` publishes CQL
 to the host; the others are reachable inside the compose network and through
@@ -17740,7 +17740,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_AGENT_KEY` | — | Agent key from the console. Required. |
 | `CASSANDRA_CLUSTER_NAME` | `saas-demo-cluster` | Cluster name shown in AxonOps |
 | `CASSANDRA_DC` | `dc1` | Datacentre name |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the nodes |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Image for the nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per node |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Young generation per node |
 | `CQL_PORT` | `9042` | Host port for CQL on `cassandra-0` |
@@ -17787,7 +17787,7 @@ The agent starts only once Cassandra is up, so it is normally absent for part of
 the 90s start period.
 
 The agent check reached `axonops-healthcheck.sh` after the currently pinned
-image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` the
+image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` the
 script verifies Cassandra only and `HEALTHCHECK_REQUIRE_AGENT` has no effect.
 Both take effect with the next Cassandra image release.
 
@@ -17898,7 +17898,7 @@ lists every difference.
 ## Before you start
 
 The three nodes are pinned to the full version tag
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`, not to the floating
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`, not to the floating
 `5.0.8`. That matters here more than in the other examples.
 
 Authentication is set with `CASSANDRA_AUTHENTICATOR` and `CASSANDRA_AUTHORIZER`,
@@ -17951,13 +17951,13 @@ that does not survive losing a node.
 
 | Service | Address | Image | Purpose | Published port |
 |---------|---------|-------|---------|----------------|
-| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
+| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
 | `cassandra02` | 10.17.64.6 | same | Cluster node, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | same | Cluster node, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (single-node Cassandra) | — |
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
-| `axon-server` | 10.17.64.22 | `axon-server:2.0.35` | Backend and agent endpoint | `1888` |
-| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.37` | Web dashboard | `3000` |
+| `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend and agent endpoint | `1888` |
+| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Web dashboard | `3000` |
 
 ¹ Bound to `127.0.0.1` only — see [Remote JMX](#remote-jmx).
 
@@ -18042,7 +18042,7 @@ overwrites, and only the configuration.
 3. **Resolves the image.** It greps `CASSANDRA_IMAGE=` out of `./.env` (last
    occurrence wins, surrounding quotes stripped) and falls back to the default
    compiled into the script,
-   `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` — which must match
+   `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` — which must match
    the default in `docker-compose.yaml`. It does not parse the compose file.
 4. **Pulls the image if it is not present locally**, so the seeding step below
    cannot fail on a missing image.
@@ -18184,7 +18184,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_CASSANDRA_SSL` | `false` | TLS from `axon-server` to `axondb-timeseries` |
 | `CASSANDRA_CLUSTER_NAME` | `secure-cluster` | Cluster name shown in AxonOps |
 | `CASSANDRA_DC` | `dc1` | Datacentre name |
-| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the three nodes — 1.1.0 or later, see [Before you start](#before-you-start) |
+| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Image for the three nodes — 1.1.0 or later, see [Before you start](#before-you-start) |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per cluster node |
 | `CASSANDRA_MEM_LIMIT` | `2g` | Container memory limit per node |
 | `CASSANDRA_CPUS` | `2.0` | CPU limit per node |
@@ -18264,7 +18264,7 @@ node with `HEALTHCHECK_REQUIRE_AGENT=true`, raise `start_period` rather than
 lowering `retries`.
 
 Both the agent check and `HEALTHCHECK_REQUIRE_AGENT` are in the pinned image,
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. On any earlier image
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`. On any earlier image
 the script verifies Cassandra only and the variable has no effect.
 
 Cluster data and configuration live under `./docker/` on the host — see
@@ -18293,7 +18293,7 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 | Original | Here | Why |
 |----------|------|-----|
 | Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | The point of the port. Metrics, logs, alerting and repair scheduling in one platform, and no JMX exporter sidecars to configure |
-| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Same Cassandra, with the AxonOps agent and Java agent already installed |
+| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Same Cassandra, with the AxonOps agent and Java agent already installed |
 | Bind mounts under `${PWD}/docker/` | Kept | Reproduces the customer environment. `setup.sh` creates and seeds them — see [Storage](#storage) |
 | Bind-mounted `conf` volumes | Kept | Same reason. The image can be driven entirely by environment variables, but this way the configuration is editable on the host |
 | `7000`, `7001` published per node | Not published | Internode ports; nothing outside the compose network uses them |
@@ -18524,7 +18524,7 @@ See [`env.example`](env.example) for the full list with defaults.
 |---|---|---|
 | `AXONOPS_ORG_NAME` | `example` | Organisation. The agent, axon-server and the config container must agree |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Cluster the alert rules attach to |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored node image |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Monitored node image |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Development value |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Change it. The default is public |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | Change it. The image enforces a password policy |
@@ -19427,12 +19427,12 @@ Create or edit `k8ssandra/k8ssandra-config.env`:
 # K8ssandra Cluster Configuration
 K8SSANDRA_CLUSTER_NAME=axonops-k8ssandra
 K8SSANDRA_NAMESPACE=k8ssandra-operator
-CASSANDRA_VERSION=5.0.6
+CASSANDRA_VERSION=5.0.9
 CASSANDRA_DC_NAME=dc1
 CASSANDRA_DC_SIZE=3
 
 # AxonOps Container Image
-IMAGE_NAME=ghcr.io/axonops/cassandra:5.0.6
+IMAGE_NAME=ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2
 
 # Storage Configuration
 STORAGE_CLASS=local-path
@@ -19458,8 +19458,8 @@ AXON_AGENT_SERVER_PORT=443
 | --- | --- | --- |
 | `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra` | Name of the Cassandra cluster |
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
-| `CASSANDRA_VERSION` | `5.0.6` | Cassandra version |
-| `IMAGE_NAME` | `ghcr.io/axonops/cassandra:5.0.6` | AxonOps Cassandra image |
+| `CASSANDRA_VERSION` | `5.0.9` | Cassandra version |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2` | AxonOps Cassandra image |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
 | `CASSANDRA_DC_SIZE` | `3` | Number of Cassandra nodes |
 | `STORAGE_CLASS` | `local-path` | Kubernetes StorageClass |
@@ -20580,7 +20580,7 @@ This directory contains example manifests to deploy Apache Cassandra using K8ssa
 
 ## Overview
 
-- **Cassandra Version**: 5.0.6
+- **Cassandra Version**: 5.0.9
 - **Operator**: K8ssandra
 - **Nodes**: 3 replicas (configurable)
 - **Storage**: 2Gi per node (configurable)
@@ -20626,7 +20626,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_NAME` | `ghcr.io/axonops/cassandra:5.0.6` | AxonOps Cassandra image |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.2` | AxonOps Cassandra image |
 | `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra-5` | Cluster name |
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |

@@ -108,7 +108,7 @@ que evitar.
 ```yaml
   axon-server:
     # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Cambie la etiqueta y el comentario del digest a la vez —un comentario obsoleto
@@ -130,13 +130,13 @@ pierde datos. Los agentes se reconectan solos en cuanto el servidor vuelve.
 
 **El agente.** Viaja dentro de la imagen de Cassandra en lugar de como su propio
 contenedor, y es el componente central de la etiqueta:
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` es Cassandra 5.0.8 con
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` es Cassandra 5.0.8 con
 el agente 2.0.31 de la build 1.1.0. Actualizar el agente significa, por tanto,
 pasar a una nueva etiqueta de imagen, que en los ejemplos 01, 02 y 03 es
 `CASSANDRA_IMAGE` en `.env`:
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2
 ```
 
 Recree los nodos **de uno en uno**, esperando a que cada uno vuelva a estar

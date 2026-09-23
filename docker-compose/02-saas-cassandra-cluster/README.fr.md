@@ -39,9 +39,9 @@ démarrer un cluster qui ne remonterait nulle part.
 
 | Service | Image | Rôle | Port publié |
 |---------|-------|------|-------------|
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Nœud seed, `rack0` | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack1` | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack2` | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Nœud seed, `rack0` | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack1` | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | `rack2` | — |
 
 Un seul datacentre, `dc1`, avec un rack par nœud. Seul `cassandra-0` publie CQL
 vers l'hôte ; les autres sont joignables à l'intérieur du réseau Compose et via
@@ -77,7 +77,7 @@ Tout se règle dans `.env`. Liste complète avec les valeurs par défaut :
 | `AXONOPS_AGENT_KEY` | — | Clé d'agent issue de la console. Obligatoire. |
 | `CASSANDRA_CLUSTER_NAME` | `saas-demo-cluster` | Nom du cluster affiché dans AxonOps |
 | `CASSANDRA_DC` | `dc1` | Nom du datacentre |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image des nœuds |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` | Image des nœuds |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap par nœud |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Génération jeune par nœud |
 | `CQL_PORT` | `9042` | Port hôte pour CQL sur `cassandra-0` |
@@ -128,7 +128,7 @@ absent pendant une partie de la période de démarrage de 90 s.
 
 Le contrôle de l'agent est arrivé dans `axonops-healthcheck.sh` après la
 publication de l'image actuellement figée : sur
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`, le script ne vérifie
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2`, le script ne vérifie
 donc que Cassandra et `HEALTHCHECK_REQUIRE_AGENT` n'a aucun effet. Les deux
 prendront effet à la prochaine publication de l'image Cassandra.
 

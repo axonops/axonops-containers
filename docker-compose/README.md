@@ -103,7 +103,7 @@ a newer dash against an older server is the combination to avoid.
 ```yaml
   axon-server:
     # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Change the tag and the digest comment together — a stale comment beside a new
@@ -125,12 +125,12 @@ recreate loses no data. Agents reconnect on their own once the server is back.
 
 **The agent.** It ships inside the Cassandra image rather than as its own
 container, and it is the middle component of the tag —
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` is Cassandra 5.0.8 with
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2` is Cassandra 5.0.8 with
 agent 2.0.31 from build 1.1.0. Upgrading the agent therefore means moving to a
 new image tag, which in examples 01, 02 and 03 is `CASSANDRA_IMAGE` in `.env`:
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2
 ```
 
 Recreate the nodes **one at a time**, waiting for each to come back healthy

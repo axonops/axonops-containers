@@ -89,7 +89,7 @@ services:
 
   axon-server:
     # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
     container_name: axon-server
     hostname: axon-server
     networks: [axonops]
@@ -144,7 +144,7 @@ services:
 
   axon-dash:
     # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39
     container_name: axon-dash
     hostname: axon-dash
     networks: [axonops]
@@ -179,7 +179,7 @@ services:
 
   cassandra-0:
     # Preferred (immutable): ghcr.io/axonops/cassandra/cassandra@sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2}
     container_name: cassandra-0
     hostname: cassandra-0
     networks: [axonops]
@@ -215,7 +215,7 @@ services:
     restart: unless-stopped
 
   cassandra-1:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2}
     container_name: cassandra-1
     hostname: cassandra-1
     networks: [axonops]
@@ -249,7 +249,7 @@ services:
     restart: unless-stopped
 
   cassandra-2:
-    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0}
+    image: ${CASSANDRA_IMAGE:-ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.32-1.2.2}
     container_name: cassandra-2
     hostname: cassandra-2
     networks: [axonops]
