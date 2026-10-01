@@ -179,3 +179,56 @@ config:
     #   level: info
     # metrics:
     #   enabled: true
+
+# Reports v2: optional axon-reporting sidecar container.
+# When enabled, every axon-dash replica gets its own axon-reporting container in the same Pod.
+# axon-dash talks to its local sidecar over localhost (reporting_url in axon-dash.yml), while
+# axon-server reaches it through the named `reporting` port on this chart's Service,
+# i.e. http://<fullname>-svc:<port>. Set that URL as `reportingUrl` in the axon-server chart
+# (requires axon-server >= 2.0.39).
+# Running more than one axon-dash replica (replicaCount > 1 or autoscaling) is only safe if
+# axon-reporting is stateless, which is not yet confirmed.
+reporting:
+  # Deploy the axon-reporting sidecar.
+  enabled: false
+  # This sets the sidecar container image.
+  image:
+    repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+    # Image tag. There is no default: it is required when reporting.enabled is true.
+    tag: ""
+    pullPolicy: IfNotPresent
+  # Port the axon-reporting container listens on. Also exposed as the `reporting` Service port.
+  port: 8081
+  # Override the reporting_url written to axon-dash.yml.
+  # When empty it defaults to http://127.0.0.1:<reporting.port>.
+  url: ""
+  # Extra environment variables for the sidecar container.
+  env: []
+    # - name: FOO
+    #   value: bar
+  # CPU/Memory resource requests and limits for the sidecar container.
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+  # Container security context for the sidecar.
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # runAsNonRoot: true
+  # Liveness and readiness probes for the sidecar. Empty by default.
+  # A TCP probe on the reporting port is a reasonable start, for example:
+  livenessProbe: {}
+    # tcpSocket:
+    #   port: reporting
+  readinessProbe: {}
+    # tcpSocket:
+    #   port: reporting
+  # Additional volumeMounts for the sidecar. Declare the volumes in the top-level `volumes` list.
+  volumeMounts: []
+    # - name: reporting-tmp
+    #   mountPath: /tmp

@@ -11741,7 +11741,11 @@ helm install axonops . \
 | `axondb-search.opensearchHeapSize` | JVM heap size for OpenSearch | `8g` |
 | `axon-server.config.org_name` | Your organization name | `example` |
 | `axon-server.config.license_key` | AxonOps license key | `""` |
-| `axon-server.dashboardUrl` | Public URL for dashboard | `https://axonops.example.com` |
+| `axon-server.dashboardUrl` | Public URL for dashboard (only used when `axon-server.reportingUrl` is empty) | `https://axonops.example.com` |
+| `axon-server.reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `""` |
+| `axon-dash.reporting.enabled` | Deploy the axon-reporting sidecar beside axon-dash (Reports v2) | `false` |
+| `axon-dash.reporting.image.tag` | axon-reporting image tag (required when enabled) | `""` |
+| `axon-dash.reporting.port` | axon-reporting port (container and Service port `reporting`) | `8081` |
 
 ### Resource Configuration
 
@@ -11805,6 +11809,41 @@ axondb-search:
     size: 100Gi  # Default for production
     # storageClass: "fast-ssd"  # Optional: specify storage class
 ```
+
+### Reports v2 (axon-reporting)
+
+Reports v2 is off by default. Turning it on needs both sub-charts configured together, because the meta-chart does not wire them up for you:
+
+- `axon-dash.reporting.enabled: true` adds an `axon-reporting` sidecar container to the axon-dash Pod and exposes it on the dashboard Service as port `reporting` (`8081` by default).
+- `axon-server.reportingUrl` tells axon-server where to reach that sidecar. When it is set, axon-server receives `axon_reporting_url` and `axon-server.dashboardUrl` is ignored.
+
+**Requirements:**
+- axon-server >= 2.0.39. Older servers do not read `axon_reporting_url`; leave `reportingUrl` empty for them.
+- `axon-dash.reporting.image.tag` must be set explicitly. It has no default because no axon-reporting image tag has been published yet, and rendering fails while it is empty.
+
+```yaml
+# values-reporting.yaml
+axon-server:
+  # Release name "axonops" -> Service "axonops-axon-dash-svc"
+  reportingUrl: http://axonops-axon-dash-svc:8081
+
+axon-dash:
+  reporting:
+    enabled: true
+    image:
+      repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+      # Required: set a published axon-reporting tag
+      tag: "<axon-reporting-tag>"
+    port: 8081
+```
+
+```bash
+helm install axonops . -n axonops --create-namespace -f values-reporting.yaml
+```
+
+The URL above assumes the release is named `axonops`. The dashboard Service is named `<release>-axon-dash-svc`, so with any other release name change `reportingUrl` to match, in the same way as `axon-dash.config.axonServerUrl`. Keep the port in `reportingUrl` equal to `axon-dash.reporting.port`.
+
+See the sub-chart READMEs for the full set of options: [axon-dash: Reports v2 (axon-reporting sidecar)](../axon-dash/README.md#reports-v2-axon-reporting-sidecar) and [axon-server: Important Notes](../axon-server/README.md#important-notes).
 
 ## Security
 
@@ -13139,7 +13178,8 @@ curl http://localhost:8080/api/v1/healthz
 | `searchDb.hosts` | Search database hosts | `[]` |
 | `searchDb.username` | Search database username | `""` |
 | `searchDb.search_secret` | Kubernetes secret name containing OpenSearch credentials | `""` |
-| `dashboardUrl` | Public URL for AxonOps Dashboard | `""` |
+| `dashboardUrl` | Public URL for AxonOps Dashboard (only used when `reportingUrl` is empty) | `""` |
+| `reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `""` |
 | `apiIngress.enabled` | Enable API ingress | `false` |
 | `agentIngress.enabled` | Enable agent ingress | `false` |
 | `persistence.enabled` | Enable persistent storage | `true` |
@@ -13169,6 +13209,12 @@ curl http://localhost:8080/api/v1/healthz
 - `disabled`: No TLS (development only)
 - `TLS`: Server-side TLS encryption
 - `mTLS`: Mutual TLS (requires client certificates on agents)
+
+**Reports v2 (`reportingUrl`):**
+- axon-server >= 2.0.39 reads `axon_reporting_url`, which replaces `axon_dash_url`
+- When `reportingUrl` is set, the chart renders `axon_reporting_url` and omits `axon_dash_url`; `dashboardUrl` is ignored
+- When `reportingUrl` is empty (the default), `axon_dash_url` is rendered from `dashboardUrl` as before, for servers < 2.0.39
+- In-cluster example when the axon-dash chart's reporting sidecar is enabled: `http://<release>-axon-dash-svc:8081`
 
 ### Complete Values Reference
 
@@ -13206,7 +13252,7 @@ curl http://localhost:8080/api/v1/healthz
 | config.org_name | string | `"example"` | Organization name |
 | config.sslSecretName | string | `""` | Secret name containing SSL certificates |
 | config.tls.mode | string | `"disabled"` | TLS mode (disabled, TLS, mTLS) |
-| dashboardUrl | string | `""` | Public dashboard URL |
+| dashboardUrl | string | `""` | Public dashboard URL (only used when `reportingUrl` is empty) |
 | deployment.annotations | object | `{}` | Deployment annotations |
 | deployment.env | object | `{}` | Additional environment variables |
 | deployment.secretEnv | string | `""` | Secret containing environment variables |
@@ -13233,6 +13279,7 @@ curl http://localhost:8080/api/v1/healthz
 | podSecurityContext.runAsNonRoot | bool | `true` | Run as non-root |
 | podSecurityContext.runAsUser | int | `9988` | User ID to run pod |
 | readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Readiness probe configuration |
+| reportingUrl | string | `""` | Reports v2 service URL (axon-server >= 2.0.39); renders `axon_reporting_url` instead of `axon_dash_url` |
 | resources | object | `{}` | Resource limits and requests |
 | searchDb.hosts | list | `[]` | Search database hosts |
 | searchDb.password | string | `""` | Search database password |
@@ -13488,6 +13535,7 @@ A Helm chart for deploying the AxonOps Dashboard - the web-based user interface 
   - [Installation with Subpath (Context Path)](#installation-with-subpath-context-path)
   - [Installation with Autoscaling](#installation-with-autoscaling)
   - [Production-Ready Installation](#production-ready-installation)
+  - [Reports v2 (axon-reporting sidecar)](#reports-v2-axon-reporting-sidecar)
 - [Configuration](#configuration)
 - [Upgrading](#upgrading)
 - [Uninstalling](#uninstalling)
@@ -14047,6 +14095,65 @@ kubectl get hpa -n production
 curl -I https://axonops.production.example.com
 ```
 
+### Reports v2 (axon-reporting sidecar)
+
+Reports v2 needs the `axon-reporting` service running beside the dashboard. With `reporting.enabled: true` the chart adds an `axon-reporting` sidecar container to every axon-dash Pod:
+
+- axon-dash reaches its own sidecar over localhost. The chart writes `reporting_url` into `axon-dash.yml`, set to `reporting.url` or, when that is empty, `http://127.0.0.1:<reporting.port>`.
+- axon-server reaches the sidecar through the named `reporting` port on the dashboard Service: `http://<fullname>-svc:<reporting.port>`.
+- The sidecar uses the Pod's `imagePullSecrets`.
+
+**Requirements:**
+- axon-server >= 2.0.39 with `reportingUrl` set in the axon-server chart, pointing at the dashboard Service's `reporting` port (for example `http://axon-dash-svc:8081`).
+- `reporting.image.tag` must be set. It has no default, and rendering fails with `reporting.image.tag is required when reporting.enabled is true` when it is empty.
+
+**Things to know:**
+- Each axon-dash replica gets its own sidecar. Running more than one replica (`replicaCount > 1` or autoscaling) is only safe if axon-reporting is stateless, which is not yet confirmed. Keep `replicaCount: 1` with autoscaling disabled until it is.
+- The sidecar's health endpoint, runtime user and writable paths are not documented yet, so probes, `securityContext` and `volumeMounts` default to empty. A TCP probe on the `reporting` port is a reasonable start.
+
+```yaml
+# values-reporting.yaml
+replicaCount: 1
+
+config:
+  axonServerUrl: "http://axon-server-api:8080"
+
+reporting:
+  enabled: true
+  image:
+    repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+    # Required: a published axon-reporting tag
+    tag: "1.0.0"
+  port: 8081
+  # A TCP probe on the reporting port is a reasonable start
+  livenessProbe:
+    tcpSocket:
+      port: reporting
+  readinessProbe:
+    tcpSocket:
+      port: reporting
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+```
+
+Install:
+
+```bash
+helm install axon-dash ./axon-dash -f values-reporting.yaml
+```
+
+Check that the dashboard config and Service carry the reporting settings:
+
+```bash
+kubectl get configmap axon-dash -o yaml | grep reporting_url
+kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].port}'
+```
+
 ## Configuration
 
 ### Key Configuration Options
@@ -14068,6 +14175,9 @@ curl -I https://axonops.production.example.com
 | `autoscaling.maxReplicas` | Maximum replicas for HPA | `100` |
 | `resources.requests.cpu` | CPU request | `nil` |
 | `resources.requests.memory` | Memory request | `nil` |
+| `reporting.enabled` | Deploy the axon-reporting sidecar (Reports v2) | `false` |
+| `reporting.image.tag` | axon-reporting image tag (required when enabled) | `""` |
+| `reporting.port` | axon-reporting port (container and Service) | `8081` |
 
 ### Important Notes
 
@@ -14137,6 +14247,18 @@ curl -I https://axonops.production.example.com
 | readinessProbe.httpGet.path | string | `"/"` | Readiness probe HTTP path |
 | readinessProbe.httpGet.port | string | `"http"` | Readiness probe HTTP port |
 | replicaCount | int | `1` | Number of replicas |
+| reporting.enabled | bool | `false` | Deploy the axon-reporting sidecar container |
+| reporting.env | list | `[]` | Extra environment variables for the sidecar |
+| reporting.image.pullPolicy | string | `"IfNotPresent"` | Sidecar image pull policy |
+| reporting.image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-reporting"` | Sidecar container image repository |
+| reporting.image.tag | string | `""` | Sidecar image tag (required when `reporting.enabled` is true) |
+| reporting.livenessProbe | object | `{}` | Sidecar liveness probe |
+| reporting.port | int | `8081` | Sidecar port, also exposed as the `reporting` Service port |
+| reporting.readinessProbe | object | `{}` | Sidecar readiness probe |
+| reporting.resources | object | `{}` | Sidecar CPU/Memory resource requests and limits |
+| reporting.securityContext | object | `{}` | Sidecar container security context |
+| reporting.url | string | `""` | Override for `reporting_url` in axon-dash.yml (defaults to `http://127.0.0.1:<reporting.port>`) |
+| reporting.volumeMounts | list | `[]` | Additional volume mounts for the sidecar |
 | resources | object | `{}` | CPU/Memory resource requests and limits |
 | securityContext | object | `{}` | Container security context |
 | service.port | int | `3000` | Service port |

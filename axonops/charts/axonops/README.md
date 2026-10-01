@@ -117,7 +117,11 @@ helm install axonops . \
 | `axondb-search.opensearchHeapSize` | JVM heap size for OpenSearch | `8g` |
 | `axon-server.config.org_name` | Your organization name | `example` |
 | `axon-server.config.license_key` | AxonOps license key | `""` |
-| `axon-server.dashboardUrl` | Public URL for dashboard | `https://axonops.example.com` |
+| `axon-server.dashboardUrl` | Public URL for dashboard (only used when `axon-server.reportingUrl` is empty) | `https://axonops.example.com` |
+| `axon-server.reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `""` |
+| `axon-dash.reporting.enabled` | Deploy the axon-reporting sidecar beside axon-dash (Reports v2) | `false` |
+| `axon-dash.reporting.image.tag` | axon-reporting image tag (required when enabled) | `""` |
+| `axon-dash.reporting.port` | axon-reporting port (container and Service port `reporting`) | `8081` |
 
 ### Resource Configuration
 
@@ -181,6 +185,41 @@ axondb-search:
     size: 100Gi  # Default for production
     # storageClass: "fast-ssd"  # Optional: specify storage class
 ```
+
+### Reports v2 (axon-reporting)
+
+Reports v2 is off by default. Turning it on needs both sub-charts configured together, because the meta-chart does not wire them up for you:
+
+- `axon-dash.reporting.enabled: true` adds an `axon-reporting` sidecar container to the axon-dash Pod and exposes it on the dashboard Service as port `reporting` (`8081` by default).
+- `axon-server.reportingUrl` tells axon-server where to reach that sidecar. When it is set, axon-server receives `axon_reporting_url` and `axon-server.dashboardUrl` is ignored.
+
+**Requirements:**
+- axon-server >= 2.0.39. Older servers do not read `axon_reporting_url`; leave `reportingUrl` empty for them.
+- `axon-dash.reporting.image.tag` must be set explicitly. It has no default because no axon-reporting image tag has been published yet, and rendering fails while it is empty.
+
+```yaml
+# values-reporting.yaml
+axon-server:
+  # Release name "axonops" -> Service "axonops-axon-dash-svc"
+  reportingUrl: http://axonops-axon-dash-svc:8081
+
+axon-dash:
+  reporting:
+    enabled: true
+    image:
+      repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+      # Required: set a published axon-reporting tag
+      tag: "<axon-reporting-tag>"
+    port: 8081
+```
+
+```bash
+helm install axonops . -n axonops --create-namespace -f values-reporting.yaml
+```
+
+The URL above assumes the release is named `axonops`. The dashboard Service is named `<release>-axon-dash-svc`, so with any other release name change `reportingUrl` to match, in the same way as `axon-dash.config.axonServerUrl`. Keep the port in `reportingUrl` equal to `axon-dash.reporting.port`.
+
+See the sub-chart READMEs for the full set of options: [axon-dash: Reports v2 (axon-reporting sidecar)](../axon-dash/README.md#reports-v2-axon-reporting-sidecar) and [axon-server: Important Notes](../axon-server/README.md#important-notes).
 
 ## Security
 

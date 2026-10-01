@@ -973,7 +973,8 @@ curl http://localhost:8080/api/v1/healthz
 | `searchDb.hosts` | Los hosts de la base de datos de búsqueda | `[]` |
 | `searchDb.username` | El usuario de la base de datos de búsqueda | `""` |
 | `searchDb.search_secret` | El nombre del secreto de Kubernetes con las credenciales de OpenSearch | `""` |
-| `dashboardUrl` | La URL pública del panel de AxonOps | `""` |
+| `dashboardUrl` | La URL pública del panel de AxonOps (sólo se usa si `reportingUrl` está vacía) | `""` |
+| `reportingUrl` | La URL del servicio Reports v2 (axon-server >= 2.0.39); tiene prioridad sobre `dashboardUrl` | `""` |
 | `apiIngress.enabled` | Activa el ingress de la API | `false` |
 | `agentIngress.enabled` | Activa el ingress de los agentes | `false` |
 | `persistence.enabled` | Activa el almacenamiento persistente | `true` |
@@ -1003,6 +1004,12 @@ curl http://localhost:8080/api/v1/healthz
 - `disabled`: sin TLS (sólo desarrollo)
 - `TLS`: cifrado TLS del lado del servidor
 - `mTLS`: TLS mutuo (requiere certificados de cliente en los agentes)
+
+**Reports v2 (`reportingUrl`):**
+- axon-server >= 2.0.39 lee `axon_reporting_url`, que sustituye a `axon_dash_url`
+- Si `reportingUrl` está definida, el chart genera `axon_reporting_url` y omite `axon_dash_url`; `dashboardUrl` se ignora
+- Si `reportingUrl` está vacía (el valor por defecto), `axon_dash_url` se genera a partir de `dashboardUrl` como hasta ahora, para servidores < 2.0.39
+- Ejemplo dentro del cluster, con el sidecar de reporting del chart axon-dash activado: `http://<release>-axon-dash-svc:8081`
 
 ### Referencia completa de values
 
@@ -1040,7 +1047,7 @@ curl http://localhost:8080/api/v1/healthz
 | config.org_name | string | `"example"` | El nombre de la organización |
 | config.sslSecretName | string | `""` | El nombre del secreto con los certificados SSL |
 | config.tls.mode | string | `"disabled"` | El modo TLS (disabled, TLS, mTLS) |
-| dashboardUrl | string | `""` | La URL pública del panel |
+| dashboardUrl | string | `""` | La URL pública del panel (sólo se usa si `reportingUrl` está vacía) |
 | deployment.annotations | object | `{}` | Anotaciones del deployment |
 | deployment.env | object | `{}` | Variables de entorno adicionales |
 | deployment.secretEnv | string | `""` | El secreto que contiene las variables de entorno |
@@ -1067,6 +1074,7 @@ curl http://localhost:8080/api/v1/healthz
 | podSecurityContext.runAsNonRoot | bool | `true` | Ejecuta como usuario no root |
 | podSecurityContext.runAsUser | int | `9988` | El ID de usuario con el que se ejecuta el pod |
 | readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Configuración de la sonda de disponibilidad |
+| reportingUrl | string | `""` | La URL del servicio Reports v2 (axon-server >= 2.0.39); genera `axon_reporting_url` en lugar de `axon_dash_url` |
 | resources | object | `{}` | Peticiones y límites de recursos |
 | searchDb.hosts | list | `[]` | Los hosts de la base de datos de búsqueda |
 | searchDb.password | string | `""` | La contraseña de la base de datos de búsqueda |

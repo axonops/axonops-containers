@@ -16,3 +16,6 @@ data:
 {{- if .Values.config.extraConfig }}
 {{ toYaml .Values.config.extraConfig | indent 6 }}
 {{- end }}
+{{- if .Values.reporting.enabled }}
+      reporting_url: {{ .Values.reporting.url | default (printf "http://127.0.0.1:%v" .Values.reporting.port) }}
+{{- end }}

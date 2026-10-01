@@ -306,8 +306,15 @@ axon-server:
     skip_verify: true
     search_secret: ""
 
-  # Public dashboard URL (update this for your environment)
+  # Public dashboard URL (update this for your environment).
+  # Only used when reportingUrl is empty (axon-server < 2.0.39).
   dashboardUrl: https://axonops.example.com
+
+  # Reports v2 service URL (axon-server >= 2.0.39). When set, it replaces
+  # dashboardUrl. Point it at the axon-dash reporting sidecar when
+  # axon-dash.reporting.enabled is true (internal cluster DNS):
+  # reportingUrl: http://axonops-axon-dash-svc:8081
+  reportingUrl: ""
 
   # AxonOps configuration
   config:
@@ -414,6 +421,17 @@ axon-dash:
 
     # Additional environment variables
     env: {}
+
+  # Reports v2: axon-reporting sidecar in the axon-dash pod.
+  # Also set axon-server.reportingUrl to http://axonops-axon-dash-svc:8081
+  reporting:
+    enabled: false
+    image:
+      repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+      # Required when enabled; no default tag is published yet
+      tag: ""
+      pullPolicy: IfNotPresent
+    port: 8081
 
   # Ingress configuration (uncomment to enable)
   ingress:

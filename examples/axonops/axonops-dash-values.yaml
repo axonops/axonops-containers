@@ -15,3 +15,11 @@ ingress:
         - path: /
           pathType: ImplementationSpecific
   tls: []
+
+# Reports v2: run axon-reporting as a sidecar. Requires a published image tag,
+# and the axon-server chart's reportingUrl pointing at this Service's
+# reporting port, e.g. http://axon-dash-svc.axonops.svc.cluster.local:8081
+# reporting:
+#   enabled: true
+#   image:
+#     tag: ""
