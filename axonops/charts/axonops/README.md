@@ -120,7 +120,7 @@ helm install axonops . \
 | `axon-server.dashboardUrl` | Public URL for dashboard (only used when `axon-server.reportingUrl` is empty) | `https://axonops.example.com` |
 | `axon-server.reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `""` |
 | `axon-dash.reporting.enabled` | Deploy the axon-reporting sidecar beside axon-dash (Reports v2) | `false` |
-| `axon-dash.reporting.image.tag` | axon-reporting image tag (required when enabled) | `""` |
+| `axon-dash.reporting.image.tag` | axon-reporting image tag (required when enabled) | `"latest"` |
 | `axon-dash.reporting.port` | axon-reporting port (container and Service port `reporting`) | `8081` |
 
 ### Resource Configuration
@@ -195,7 +195,7 @@ Reports v2 is off by default. Turning it on needs both sub-charts configured tog
 
 **Requirements:**
 - axon-server >= 2.0.39. Older servers do not read `axon_reporting_url`; leave `reportingUrl` empty for them.
-- `axon-dash.reporting.image.tag` must be set explicitly. It has no default because no axon-reporting image tag has been published yet, and rendering fails while it is empty.
+- `axon-dash.reporting.image` defaults to the development image `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) until axon-reporting is published to `registry.axonops.com`, when the defaults will switch. The tag is still required but defaults to `latest`, so enabling the sidecar is enough.
 
 ```yaml
 # values-reporting.yaml
@@ -206,10 +206,6 @@ axon-server:
 axon-dash:
   reporting:
     enabled: true
-    image:
-      repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
-      # Required: set a published axon-reporting tag
-      tag: "<axon-reporting-tag>"
     port: 8081
 ```
 

@@ -427,10 +427,10 @@ axon-dash:
   reporting:
     enabled: false
     image:
-      repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
-      # Required when enabled; no default tag is published yet
-      tag: ""
-      pullPolicy: IfNotPresent
+      # Development image until axon-reporting is published to registry.axonops.com
+      repository: europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting
+      tag: "latest"
+      pullPolicy: Always
     port: 8081
 
   # Ingress configuration (uncomment to enable)

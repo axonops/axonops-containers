@@ -79,8 +79,15 @@ spec:
             - name: reporting
               containerPort: {{ .Values.reporting.port }}
               protocol: TCP
-          {{- with .Values.reporting.env }}
           env:
+            # Point axon-reporting at the axon-dash container in this pod
+            - name: AXONDASH_URL_TEMPLATE
+              value: {{ printf "%s://127.0.0.1:%v" (ternary "https" "http" (default false .Values.config.listener.ssl.enabled)) .Values.config.listener.port | quote }}
+            - name: AXONDASH_PATH_PREFIX
+              value: {{ default "" .Values.config.contextPath | quote }}
+            - name: AXONREPORTING_PORT
+              value: {{ .Values.reporting.port | quote }}
+          {{- with .Values.reporting.env }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- with .Values.reporting.livenessProbe }}

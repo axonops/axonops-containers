@@ -586,15 +586,21 @@ Reports v2 needs the `axon-reporting` service running beside the dashboard. With
 
 - axon-dash reaches its own sidecar over localhost. The chart writes `reporting_url` into `axon-dash.yml`, set to `reporting.url` or, when that is empty, `http://127.0.0.1:<reporting.port>`.
 - axon-server reaches the sidecar through the named `reporting` port on the dashboard Service: `http://<fullname>-svc:<reporting.port>`.
+- The chart points the sidecar at the axon-dash container in the same Pod by setting these environment variables:
+  - `AXONDASH_URL_TEMPLATE`: `http://127.0.0.1:<config.listener.port>`, or `https://` when `config.listener.ssl.enabled` is true.
+  - `AXONDASH_PATH_PREFIX`: `config.contextPath`.
+  - `AXONREPORTING_PORT`: `reporting.port`.
 - The sidecar uses the Pod's `imagePullSecrets`.
 
 **Requirements:**
 - axon-server >= 2.0.39 with `reportingUrl` set in the axon-server chart, pointing at the dashboard Service's `reporting` port (for example `http://axon-dash-svc:8081`).
-- `reporting.image.tag` must be set. It has no default, and rendering fails with `reporting.image.tag is required when reporting.enabled is true` when it is empty.
 
 **Things to know:**
 - Each axon-dash replica gets its own sidecar. Running more than one replica (`replicaCount > 1` or autoscaling) is only safe if axon-reporting is stateless, which is not yet confirmed. Keep `replicaCount: 1` with autoscaling disabled until it is.
-- The sidecar's health endpoint, runtime user and writable paths are not documented yet, so probes, `securityContext` and `volumeMounts` default to empty. A TCP probe on the `reporting` port is a reasonable start.
+- Until axon-reporting is published to `registry.axonops.com`, the image defaults to the development build `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` with `pullPolicy: Always`. The defaults will switch to the published image once it exists. `reporting.image.tag` is still required, but it defaults to `latest`, so enabling the sidecar is enough. Set a specific tag for repeatable installs.
+- Liveness and readiness probes default to an HTTP GET on `/healthz` at the `reporting` port.
+- The image runs as a non-root user and works with a read-only root filesystem, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
+- Optional settings go in `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` or `false`; default `auto`) and `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (seconds to wait for axon-dash; default `60`).
 
 ```yaml
 # values-reporting.yaml
@@ -605,18 +611,20 @@ config:
 
 reporting:
   enabled: true
-  image:
-    repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
-    # Required: a published axon-reporting tag
-    tag: "1.0.0"
   port: 8081
-  # A TCP probe on the reporting port is a reasonable start
-  livenessProbe:
-    tcpSocket:
-      port: reporting
-  readinessProbe:
-    tcpSocket:
-      port: reporting
+  # Optional axon-reporting settings
+  env:
+    - name: AXONREPORTING_METRICS_CLIENT_TIMEOUT
+      value: "120"
+  # The image runs as non-root with a read-only root filesystem
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 9988
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
   resources:
     requests:
       cpu: 100m
@@ -661,7 +669,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | `resources.requests.cpu` | CPU request | `nil` |
 | `resources.requests.memory` | Memory request | `nil` |
 | `reporting.enabled` | Deploy the axon-reporting sidecar (Reports v2) | `false` |
-| `reporting.image.tag` | axon-reporting image tag (required when enabled) | `""` |
+| `reporting.image.tag` | axon-reporting image tag (required when enabled) | `"latest"` |
 | `reporting.port` | axon-reporting port (container and Service) | `8081` |
 
 ### Important Notes
@@ -733,13 +741,13 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | readinessProbe.httpGet.port | string | `"http"` | Readiness probe HTTP port |
 | replicaCount | int | `1` | Number of replicas |
 | reporting.enabled | bool | `false` | Deploy the axon-reporting sidecar container |
-| reporting.env | list | `[]` | Extra environment variables for the sidecar |
-| reporting.image.pullPolicy | string | `"IfNotPresent"` | Sidecar image pull policy |
-| reporting.image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-reporting"` | Sidecar container image repository |
-| reporting.image.tag | string | `""` | Sidecar image tag (required when `reporting.enabled` is true) |
-| reporting.livenessProbe | object | `{}` | Sidecar liveness probe |
+| reporting.env | list | `[]` | Extra environment variables for the sidecar (the chart already sets `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` and `AXONREPORTING_PORT`) |
+| reporting.image.pullPolicy | string | `"Always"` | Sidecar image pull policy |
+| reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | Sidecar container image repository (development image until axon-reporting is published to registry.axonops.com) |
+| reporting.image.tag | string | `"latest"` | Sidecar image tag (required when `reporting.enabled` is true) |
+| reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar liveness probe |
 | reporting.port | int | `8081` | Sidecar port, also exposed as the `reporting` Service port |
-| reporting.readinessProbe | object | `{}` | Sidecar readiness probe |
+| reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar readiness probe |
 | reporting.resources | object | `{}` | Sidecar CPU/Memory resource requests and limits |
 | reporting.securityContext | object | `{}` | Sidecar container security context |
 | reporting.url | string | `""` | Override for `reporting_url` in axon-dash.yml (defaults to `http://127.0.0.1:<reporting.port>`) |

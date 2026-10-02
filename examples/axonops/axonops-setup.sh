@@ -144,6 +144,21 @@ AXON_DASH_INGRESS_CERT_ISSUER_ANNOTATION="${AXON_DASH_INGRESS_CERT_ISSUER_ANNOTA
 
 AXON_DASH_HELM_EXTRA_ARGS="${AXON_DASH_HELM_EXTRA_ARGS:-}"
 
+# Reports v2: axon-reporting sidecar in the axon-dash pod (needs axon-server >= 2.0.39).
+# When enabled, axon-server is configured with axon_reporting_url instead of axon_dash_url.
+AXON_DASH_REPORTING_ENABLED="${AXON_DASH_REPORTING_ENABLED:-false}"
+AXON_DASH_REPORTING_IMAGE_REPOSITORY="${AXON_DASH_REPORTING_IMAGE_REPOSITORY:-europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting}"
+AXON_DASH_REPORTING_IMAGE_TAG="${AXON_DASH_REPORTING_IMAGE_TAG:-latest}"
+AXON_DASH_REPORTING_PORT="${AXON_DASH_REPORTING_PORT:-8081}"
+# The axon-dash chart names its Service <fullname>-svc; fullname is the release name
+# when it already contains "axon-dash", otherwise <release>-axon-dash.
+if [[ "$AXON_DASH_RELEASE_NAME" == *axon-dash* ]]; then
+  _axon_dash_fullname="$AXON_DASH_RELEASE_NAME"
+else
+  _axon_dash_fullname="${AXON_DASH_RELEASE_NAME}-axon-dash"
+fi
+AXON_SERVER_REPORTING_URL="${AXON_SERVER_REPORTING_URL:-http://${_axon_dash_fullname}-svc.${NS_AXONOPS}.svc.cluster.local:${AXON_DASH_REPORTING_PORT}}"
+
 ############################################
 # Helper functions
 ############################################
@@ -365,7 +380,7 @@ stringData:
     org_name: ${AXON_SERVER_ORG_NAME}
     license_key: "${AXON_SERVER_LICENSE_KEY}"
 
-    axon_dash_url: ${AXON_SERVER_DASH_URL}
+    $(if [[ "$AXON_DASH_REPORTING_ENABLED" == "true" ]]; then echo "axon_reporting_url: ${AXON_SERVER_REPORTING_URL}"; else echo "axon_dash_url: ${AXON_SERVER_DASH_URL}"; fi)
 
     log_file: /dev/stdout
     tls:
@@ -574,6 +589,25 @@ EOS
 )
   fi
 
+  # Reports v2 sidecar
+  if [[ "$AXON_DASH_REPORTING_ENABLED" == "true" ]]; then
+    REPORTING_BLOCK=$(cat <<EOS
+reporting:
+  enabled: true
+  image:
+    repository: ${AXON_DASH_REPORTING_IMAGE_REPOSITORY}
+    tag: "${AXON_DASH_REPORTING_IMAGE_TAG}"
+  port: ${AXON_DASH_REPORTING_PORT}
+EOS
+)
+  else
+    REPORTING_BLOCK=$(cat <<'EOS'
+reporting:
+  enabled: false
+EOS
+)
+  fi
+
   cat > "$AXON_DASH_VALUES_FILE" <<EOF
 config:
   axonServerUrl: "${AXON_DASH_AXON_SERVER_URL}"
@@ -581,6 +615,8 @@ config:
 ${SERVICE_BLOCK}
 
 ${INGRESS_BLOCK}
+
+${REPORTING_BLOCK}
 EOF
 }
 

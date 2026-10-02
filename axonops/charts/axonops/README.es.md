@@ -125,7 +125,7 @@ helm install axonops . \
 | `axon-server.dashboardUrl` | La URL pública del panel (sólo se usa si `axon-server.reportingUrl` está vacía) | `https://axonops.example.com` |
 | `axon-server.reportingUrl` | La URL del servicio Reports v2 (axon-server >= 2.0.39); tiene prioridad sobre `dashboardUrl` | `""` |
 | `axon-dash.reporting.enabled` | Desplegar el sidecar axon-reporting junto a axon-dash (Reports v2) | `false` |
-| `axon-dash.reporting.image.tag` | El tag de la imagen de axon-reporting (obligatorio si se activa) | `""` |
+| `axon-dash.reporting.image.tag` | El tag de la imagen de axon-reporting (obligatorio si se activa) | `"latest"` |
 | `axon-dash.reporting.port` | El puerto de axon-reporting (contenedor y puerto `reporting` del Service) | `8081` |
 
 ### Configuración de recursos
@@ -200,7 +200,7 @@ Reports v2 está desactivado por defecto. Para activarlo hay que configurar los 
 
 **Requisitos:**
 - axon-server >= 2.0.39. Los servidores anteriores no leen `axon_reporting_url`; deje `reportingUrl` vacía para ellos.
-- `axon-dash.reporting.image.tag` debe definirse explícitamente. No tiene valor por defecto porque todavía no se ha publicado ningún tag de imagen de axon-reporting, y el renderizado falla mientras esté vacío.
+- `axon-dash.reporting.image` usa por defecto la imagen de desarrollo `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) hasta que axon-reporting se publique en `registry.axonops.com`; entonces cambiarán los valores por defecto. El tag sigue siendo obligatorio pero por defecto vale `latest`, así que basta con activar el sidecar.
 
 ```yaml
 # values-reporting.yaml
@@ -211,10 +211,6 @@ axon-server:
 axon-dash:
   reporting:
     enabled: true
-    image:
-      repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
-      # Required: set a published axon-reporting tag
-      tag: "<axon-reporting-tag>"
     port: 8081
 ```
 
