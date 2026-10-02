@@ -365,8 +365,8 @@ stringData:
     org_name: my-organization
     license_key: YOUR_LICENSE_KEY_HERE
 
-    # Dashboard URL
-    axon_dash_url: https://axonops.example.com
+    # Reports v2 service (axon-reporting sidecar in the axon-dash pod)
+    axon_reporting_url: http://axon-dash-svc:8081
 
     # Log to stdout for Kubernetes
     log_file: /dev/stdout
@@ -974,7 +974,7 @@ curl http://localhost:8080/api/v1/healthz
 | `searchDb.username` | El usuario de la base de datos de búsqueda | `""` |
 | `searchDb.search_secret` | El nombre del secreto de Kubernetes con las credenciales de OpenSearch | `""` |
 | `dashboardUrl` | La URL pública del panel de AxonOps (sólo se usa si `reportingUrl` está vacía) | `""` |
-| `reportingUrl` | La URL del servicio Reports v2 (axon-server >= 2.0.39); tiene prioridad sobre `dashboardUrl` | `""` |
+| `reportingUrl` | La URL del servicio Reports v2 (axon-server >= 2.0.39); tiene prioridad sobre `dashboardUrl` | `"http://axon-dash-svc:8081"` |
 | `apiIngress.enabled` | Activa el ingress de la API | `false` |
 | `agentIngress.enabled` | Activa el ingress de los agentes | `false` |
 | `persistence.enabled` | Activa el almacenamiento persistente | `true` |
@@ -1008,7 +1008,7 @@ curl http://localhost:8080/api/v1/healthz
 **Reports v2 (`reportingUrl`):**
 - axon-server >= 2.0.39 lee `axon_reporting_url`, que sustituye a `axon_dash_url`
 - Si `reportingUrl` está definida, el chart genera `axon_reporting_url` y omite `axon_dash_url`; `dashboardUrl` se ignora
-- Si `reportingUrl` está vacía (el valor por defecto), `axon_dash_url` se genera a partir de `dashboardUrl` como hasta ahora, para servidores < 2.0.39
+- Si `reportingUrl` está vacía, `axon_dash_url` se genera a partir de `dashboardUrl` como hasta ahora, para servidores < 2.0.39
 - Ejemplo dentro del cluster, apuntando al sidecar de reporting del chart axon-dash: `http://<release>-axon-dash-svc:8081`
 
 ### Referencia completa de values
@@ -1074,7 +1074,7 @@ curl http://localhost:8080/api/v1/healthz
 | podSecurityContext.runAsNonRoot | bool | `true` | Ejecuta como usuario no root |
 | podSecurityContext.runAsUser | int | `9988` | El ID de usuario con el que se ejecuta el pod |
 | readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Configuración de la sonda de disponibilidad |
-| reportingUrl | string | `""` | La URL del servicio Reports v2 (axon-server >= 2.0.39); genera `axon_reporting_url` en lugar de `axon_dash_url` |
+| reportingUrl | string | `"http://axon-dash-svc:8081"` | La URL del servicio Reports v2 (axon-server >= 2.0.39); genera `axon_reporting_url` en lugar de `axon_dash_url` |
 | resources | object | `{}` | Peticiones y límites de recursos |
 | searchDb.hosts | list | `[]` | Los hosts de la base de datos de búsqueda |
 | searchDb.password | string | `""` | La contraseña de la base de datos de búsqueda |

@@ -356,8 +356,8 @@ stringData:
     org_name: my-organization
     license_key: YOUR_LICENSE_KEY_HERE
 
-    # Dashboard URL
-    axon_dash_url: https://axonops.example.com
+    # Reports v2 service (axon-reporting sidecar in the axon-dash pod)
+    axon_reporting_url: http://axon-dash-svc:8081
 
     # Log to stdout for Kubernetes
     log_file: /dev/stdout
@@ -965,7 +965,7 @@ curl http://localhost:8080/api/v1/healthz
 | `searchDb.username` | Search database username | `""` |
 | `searchDb.search_secret` | Kubernetes secret name containing OpenSearch credentials | `""` |
 | `dashboardUrl` | Public URL for AxonOps Dashboard (only used when `reportingUrl` is empty) | `""` |
-| `reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `""` |
+| `reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `"http://axon-dash-svc:8081"` |
 | `apiIngress.enabled` | Enable API ingress | `false` |
 | `agentIngress.enabled` | Enable agent ingress | `false` |
 | `persistence.enabled` | Enable persistent storage | `true` |
@@ -999,7 +999,7 @@ curl http://localhost:8080/api/v1/healthz
 **Reports v2 (`reportingUrl`):**
 - axon-server >= 2.0.39 reads `axon_reporting_url`, which replaces `axon_dash_url`
 - When `reportingUrl` is set, the chart renders `axon_reporting_url` and omits `axon_dash_url`; `dashboardUrl` is ignored
-- When `reportingUrl` is empty (the default), `axon_dash_url` is rendered from `dashboardUrl` as before, for servers < 2.0.39
+- When `reportingUrl` is empty, `axon_dash_url` is rendered from `dashboardUrl` as before, for servers < 2.0.39
 - In-cluster example pointing at the axon-dash chart's reporting sidecar: `http://<release>-axon-dash-svc:8081`
 
 ### Complete Values Reference
@@ -1065,7 +1065,7 @@ curl http://localhost:8080/api/v1/healthz
 | podSecurityContext.runAsNonRoot | bool | `true` | Run as non-root |
 | podSecurityContext.runAsUser | int | `9988` | User ID to run pod |
 | readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Readiness probe configuration |
-| reportingUrl | string | `""` | Reports v2 service URL (axon-server >= 2.0.39); renders `axon_reporting_url` instead of `axon_dash_url` |
+| reportingUrl | string | `"http://axon-dash-svc:8081"` | Reports v2 service URL (axon-server >= 2.0.39); renders `axon_reporting_url` instead of `axon_dash_url` |
 | resources | object | `{}` | Resource limits and requests |
 | searchDb.hosts | list | `[]` | Search database hosts |
 | searchDb.password | string | `""` | Search database password |

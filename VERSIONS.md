@@ -7,7 +7,7 @@
 # Current Versions
 
 The current release of every container image and Helm chart published from this
-repository. Registry data last verified **2026-08-13**.
+repository. Registry data last verified **2026-10-02**.
 
 Components are listed in deployment order: data stores, then the AxonOps
 services that depend on them, then the operator images, then the Helm charts.
@@ -24,8 +24,8 @@ for the full rationale and the verification steps.
 | `ghcr.io/axonops/axondb-timeseries` | `5.0.8-1.4.0` | `sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c` | `axondb-timeseries-1.4.0` |
 | `ghcr.io/axonops/axondb-search` | `3.7.0-1.6.1` | `sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565` | `axondb-search-1.6.1` |
 | `ghcr.io/axonops/axondb-search-backups` | `1.2.0` | `sha256:8f6cb72748ad243a1083d9323e5170cd2b881e5bff8d12280a855faded5b439a` | `—` |
-| `registry.axonops.com/axonops-public/axonops-docker/axon-server` | `2.0.36` | `sha256:dc0a2c58e5d89c28d6fe7df91ade825f5fb2c00a0d32be4fce921b9711207b6c` | `—` |
-| `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | `2.0.37` | `sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362` | `—` |
+| `registry.axonops.com/axonops-public/axonops-docker/axon-server` | `2.0.39` | `sha256:b7c41009929155942c34df77b262812fe1c39a32cdf7e132ef3437654a4bc4c1` | `—` |
+| `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | `2.0.39` | `sha256:4cffd1d1e724a479c8ec489299972a43e0da0eef797e7aa27aa3acf6ae28423d` | `—` |
 | `ghcr.io/axonops/axonops-schema-registry` | `0.2.1` | `sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164` | `axonops-schema-registry-0.2.0-0.0.1` |
 | `ghcr.io/axonops/k8ssandra/cassandra` | `5.0.8-v0.1.120-1.5.6` | `sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c` | `k8ssandra-1.5.6` |
 | `ghcr.io/axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` | `sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d` | `cassandra-1.1.0` |
@@ -49,8 +49,8 @@ Copy these straight into a compose file, manifest or Helm values file.
 ghcr.io/axonops/axondb-timeseries@sha256:1ae990a737d36b7c6f8eb92d6d3baf5234e5eae2a4e37fa208acd1108cad934c
 ghcr.io/axonops/axondb-search@sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565
 ghcr.io/axonops/axondb-search-backups@sha256:8f6cb72748ad243a1083d9323e5170cd2b881e5bff8d12280a855faded5b439a
-registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:dc0a2c58e5d89c28d6fe7df91ade825f5fb2c00a0d32be4fce921b9711207b6c
-registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
+registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:b7c41009929155942c34df77b262812fe1c39a32cdf7e132ef3437654a4bc4c1
+registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:4cffd1d1e724a479c8ec489299972a43e0da0eef797e7aa27aa3acf6ae28423d
 ghcr.io/axonops/axonops-schema-registry@sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164
 ghcr.io/axonops/k8ssandra/cassandra@sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c
 ghcr.io/axonops/cassandra/cassandra@sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d
@@ -77,8 +77,8 @@ Newest-first, per component. Full git-tag-to-image history lives in
 
 - **axondb-timeseries**: `5.0.6-1.2.0`, `5.0.6-1.1.0`, `5.0.6-1.0.0`
 - **axondb-search**: `3.7.0-1.6.0`, `3.3.2-1.5.0`, `3.3.2-1.4.0`, `3.3.2-1.3.0`, `3.3.2-1.2.0`
-- **axon-server**: `2.0.35`, `2.0.34`
-- **axon-dash**: `2.0.36`
+- **axon-server**: `2.0.36`, `2.0.35`, `2.0.34`
+- **axon-dash**: `2.0.37`, `2.0.36`
 - **axonops-schema-registry**: `0.2.0`, `0.1.0`, `0.0.1`
 - **k8ssandra-cassandra**: `5.0.8-v0.1.120-1.5.5`, `5.0.8-v0.1.120-1.5.3`, `5.0.8-v0.1.120-1.5.2`
 - **cassandra**: `5.0.8-2.0.31-1.0.0`

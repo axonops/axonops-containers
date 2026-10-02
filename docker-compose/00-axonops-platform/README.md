@@ -19,7 +19,7 @@ your own hosts at it, or use it as the base for the other examples.
 ```bash
 cp env.example .env          # set AXONOPS_ORG_NAME
 docker compose up -d
-docker compose ps            # wait for all four services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 Then open <http://localhost:3000>.
@@ -33,10 +33,44 @@ A cold start takes 2–3 minutes: the two data stores initialise first, then
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend and agent endpoint | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend and agent endpoint | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
+| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` | Reports v2, see [below](#reports-v2) | — |
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
+
+### Reports v2
+
+`axon-reporting` serves Reports v2. It runs beside `axon-dash` and shares its
+network namespace (`network_mode: "service:axon-dash"`), so the two reach each
+other on `127.0.0.1` and `axon-server` reaches it as `axon-dash:8081`. It
+publishes no port and has no healthcheck — the image ships neither `curl` nor
+`wget`.
+
+| Setting | Service | Value |
+|---------|---------|-------|
+| `AXON_REPORTING_URL` | `axon-server` | `http://axon-dash:8081` |
+| `AXONDASH_REPORTING_URL` (`axon-dash.reporting_url`) | `axon-dash` | `http://127.0.0.1:8081` |
+| `AXONDASH_URL_TEMPLATE` | `axon-reporting` | `http://127.0.0.1:3000` |
+| `AXONDASH_PATH_PREFIX` | `axon-reporting` | (empty) |
+
+From 2.0.39, `AXON_REPORTING_URL` replaces `AXONDASH_HOST`, `AXONDASH_PORT` and
+`AXONDASH_HTTPS` on `axon-server`, which no longer reads them.
+`AXONDASH_URL_TEMPLATE` and `AXONDASH_PATH_PREFIX` are set explicitly because
+the image's built-in defaults point at a hosted dashboard.
+
+The image is a development build
+(`europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest`)
+until it is published to `registry.axonops.com`. It is built for `linux/amd64`
+only; on Apple Silicon, Docker runs it under emulation.
+
+Recreating `axon-dash` on its own leaves `axon-reporting` attached to the old
+container's network namespace, where nothing can reach it. Recreate it straight
+after:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
 
 ## Configuration
 
@@ -199,6 +233,18 @@ TLS and the other is not — 22 is `0x16`, the first byte of a TLS ClientHello r
 as a CQL protocol version. Set `AXONOPS_CASSANDRA_SSL=false` unless you have
 mounted a keystore, as explained under
 [TLS between the services](#tls-between-the-services).
+
+**Reports do not generate.** Check each hop to `axon-reporting`; both print
+`{"data":"OK"}`:
+
+```bash
+docker exec axon-dash curl -s http://127.0.0.1:8081/healthz     # axon-dash -> axon-reporting
+docker exec axon-server curl -s http://axon-dash:8081/healthz   # axon-server -> axon-reporting
+docker compose logs axon-reporting
+```
+
+Its first log line names the dashboard it renders from:
+`"axon_dash": "http://127.0.0.1:3000"`.
 
 **Other settings that look right but are ignored.** Three of these images take
 configuration under names that differ from the ones their own READMEs suggest,
