@@ -10997,7 +10997,7 @@ The AxonOps Strimzi integration allows you to build Kafka clusters running on Ku
 ```bash
 helm repo add strimzi https://strimzi.io/charts/
 helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 0.46.0 \
+  --version 1.2.0 \
   --set watchAnyNamespace=true
 ```
 
@@ -11165,7 +11165,7 @@ To build a custom image locally for testing:
 ```bash
 # For Kafka 3.x versions
 docker build \
-  --build-arg STRIMZI_VERSION=0.46.0 \
+  --build-arg STRIMZI_VERSION=0.46.1 \
   --build-arg KAFKA_VERSION=3.9.0 \
   --build-arg KAFKA_AGENT_PACKAGE=axon-kafka3-agent \
   --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
@@ -11372,8 +11372,8 @@ Key files:
 
 | Component | Version | Notes |
 | --------- | ------- | ----- |
-| Strimzi | 1.1.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
-| Kafka | 4.3.0 (latest) | Version 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0 |
+| Strimzi | 1.2.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
+| Kafka | 4.3.1 (latest) | Version 1.2.0 supports Kafka 4.2.0, 4.2.1, 4.3.0, 4.3.1 |
 | Kubernetes | 1.24+ | Any CNCF-compliant distribution |
 | AxonOps Agent | Latest | Auto-installed from repository |
 
@@ -11381,8 +11381,10 @@ Key files:
 
 | Strimzi Version | Supported Kafka Versions | Release Date |
 | --------------- | ------------------------ | ------------ |
+| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | Aug 2026 |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | Jun 2026 |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Jun 2026 |
+| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Apr 2026 |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | Mar 2026 |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Feb 2025 |
 | 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Dec 2024 |
@@ -19744,10 +19746,10 @@ kubectl create namespace kafka
 helm search repo strimzi --versions
 
 # Install the operator (specify version based on support matrix)
-# Example: Strimzi 0.50.0 supports Kafka 4.1.1
+# Example: Strimzi 1.2.0 supports Kafka 4.2.0, 4.2.1, 4.3.0, 4.3.1
 helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
   -n strimzi \
-  --version 0.50.0 \
+  --version 1.2.0 \
   --set watchNamespaces="{kafka}" \
   --wait
 
@@ -20744,7 +20746,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.1.1
+- **Kafka Version**: 4.3.1
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 6 replicas, 20Gi storage
 - **Controllers**: 3 replicas, 5Gi storage
@@ -20772,7 +20774,7 @@ source strimzi-config.env
 | --- | --- | --- |
 | `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
 | `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `axonops-kafka` |
-| `KAFKA_VERSION` | Kafka version | `4.1.1` |
+| `KAFKA_VERSION` | Kafka version | `4.3.1` |
 | `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
 | `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
 | `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
@@ -20901,7 +20903,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.1.1
+- **Kafka Version**: 4.3.1
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 3 replicas (configurable), 10Gi storage
 - **Controllers**: 3 replicas (configurable), 5Gi storage
@@ -21116,7 +21118,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.1.1
+- **Kafka Version**: 4.3.1
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 6 replicas, 20Gi storage
 - **Controllers**: 3 replicas, 10Gi storage
@@ -21147,7 +21149,7 @@ source strimzi-config.env
 | --- | --- | --- |
 | `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
 | `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `example` |
-| `KAFKA_VERSION` | Kafka version | `4.1.1` |
+| `KAFKA_VERSION` | Kafka version | `4.3.1` |
 | `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
 | `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
 | `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
