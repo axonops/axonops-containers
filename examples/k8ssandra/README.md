@@ -62,6 +62,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 | `AXON_AGENT_ORG` | - | AxonOps organization |
 | `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server |
 | `AXON_AGENT_SERVER_PORT` | `443` | AxonOps port |
+| `AXON_AGENT_TLS_MODE` | `TLS` | Agent TLS mode; set to `disabled` for a self-hosted server without TLS |
 
 ## Manifests
 
@@ -139,6 +140,8 @@ For on-premises AxonOps, update the connection details:
 ```bash
 AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
 AXON_AGENT_SERVER_PORT=1888
+# Only when the AxonOps server agents port has TLS disabled
+AXON_AGENT_TLS_MODE=disabled
 ```
 
 ## Cleanup
