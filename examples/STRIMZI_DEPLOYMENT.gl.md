@@ -25,10 +25,10 @@ kubectl create namespace kafka
 helm search repo strimzi --versions
 
 # Install the operator (specify version based on support matrix)
-# Example: Strimzi 0.50.0 supports Kafka 4.1.1
+# Example: Strimzi 1.2.0 supports Kafka 4.2.0, 4.2.1, 4.3.0, 4.3.1
 helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
   -n strimzi \
-  --version 0.50.0 \
+  --version 1.2.0 \
   --set watchNamespaces="{kafka}" \
   --wait
 
