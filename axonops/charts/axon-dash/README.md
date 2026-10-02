@@ -1,4 +1,4 @@
-# AxonOps Dashboard
+ AxonOps Dashboard
 
 **English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
@@ -20,6 +20,7 @@ A Helm chart for deploying the AxonOps Dashboard - the web-based user interface 
   - [Installation with Subpath (Context Path)](#installation-with-subpath-context-path)
   - [Installation with Autoscaling](#installation-with-autoscaling)
   - [Production-Ready Installation](#production-ready-installation)
+  - [Reports v2 (axon-reporting sidecar)](#reports-v2-axon-reporting-sidecar)
 - [Configuration](#configuration)
 - [Upgrading](#upgrading)
 - [Uninstalling](#uninstalling)
@@ -579,6 +580,70 @@ kubectl get hpa -n production
 curl -I https://axonops.production.example.com
 ```
 
+### Reports v2 (axon-reporting sidecar)
+
+Reports v2 needs the `axon-reporting` service running beside the dashboard. The chart always adds an `axon-reporting` sidecar container to every axon-dash Pod:
+
+- axon-dash reaches its own sidecar over localhost. The chart writes `reporting_url` into `axon-dash.yml`, set to `reporting.url` or, when that is empty, `http://127.0.0.1:<reporting.port>`.
+- axon-server reaches the sidecar through the named `reporting` port on the dashboard Service: `http://<fullname>-svc:<reporting.port>`.
+- The chart points the sidecar at the axon-dash container in the same Pod by setting these environment variables:
+  - `AXONDASH_URL_TEMPLATE`: `http://127.0.0.1:<config.listener.port>`, or `https://` when `config.listener.ssl.enabled` is true.
+  - `AXONDASH_PATH_PREFIX`: `config.contextPath`.
+  - `AXONREPORTING_PORT`: `reporting.port`.
+- The sidecar uses the Pod's `imagePullSecrets`.
+
+**Requirements:**
+- axon-server >= 2.0.39 with `reportingUrl` set in the axon-server chart, pointing at the dashboard Service's `reporting` port (for example `http://axon-dash-svc:8081`).
+
+**Things to know:**
+- Liveness and readiness probes default to an HTTP GET on `/healthz` at the `reporting` port.
+- The image runs as a non-root user and works with a read-only root filesystem, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
+- Optional settings go in `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` or `false`; default `auto`) and `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (seconds to wait for axon-dash; default `60`).
+
+```yaml
+# values-reporting.yaml
+replicaCount: 1
+
+config:
+  axonServerUrl: "http://axon-server-api:8080"
+
+reporting:
+  port: 8081
+  # Optional axon-reporting settings
+  env:
+    - name: AXONREPORTING_METRICS_CLIENT_TIMEOUT
+      value: "120"
+  # The image runs as non-root with a read-only root filesystem
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 9988
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+```
+
+Install:
+
+```bash
+helm install axon-dash ./axon-dash -f values-reporting.yaml
+```
+
+Check that the dashboard config and Service carry the reporting settings:
+
+```bash
+kubectl get configmap axon-dash -o yaml | grep reporting_url
+kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].port}'
+```
+
 ## Configuration
 
 ### Key Configuration Options
@@ -600,6 +665,8 @@ curl -I https://axonops.production.example.com
 | `autoscaling.maxReplicas` | Maximum replicas for HPA | `100` |
 | `resources.requests.cpu` | CPU request | `nil` |
 | `resources.requests.memory` | Memory request | `nil` |
+| `reporting.image.tag` | axon-reporting image tag (required) | `"latest"` |
+| `reporting.port` | axon-reporting port (container and Service) | `8081` |
 
 ### Important Notes
 
@@ -669,6 +736,17 @@ curl -I https://axonops.production.example.com
 | readinessProbe.httpGet.path | string | `"/"` | Readiness probe HTTP path |
 | readinessProbe.httpGet.port | string | `"http"` | Readiness probe HTTP port |
 | replicaCount | int | `1` | Number of replicas |
+| reporting.env | list | `[]` | Extra environment variables for the sidecar (the chart already sets `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` and `AXONREPORTING_PORT`) |
+| reporting.image.pullPolicy | string | `"Always"` | Sidecar image pull policy |
+| reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | Sidecar container image repository (development image until axon-reporting is published to registry.axonops.com) |
+| reporting.image.tag | string | `"latest"` | Sidecar image tag (required) |
+| reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar liveness probe |
+| reporting.port | int | `8081` | Sidecar port, also exposed as the `reporting` Service port |
+| reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar readiness probe |
+| reporting.resources | object | `{}` | Sidecar CPU/Memory resource requests and limits |
+| reporting.securityContext | object | `{}` | Sidecar container security context |
+| reporting.url | string | `""` | Override for `reporting_url` in axon-dash.yml (defaults to `http://127.0.0.1:<reporting.port>`) |
+| reporting.volumeMounts | list | `[]` | Additional volume mounts for the sidecar |
 | resources | object | `{}` | CPU/Memory resource requests and limits |
 | securityContext | object | `{}` | Container security context |
 | service.port | int | `3000` | Service port |

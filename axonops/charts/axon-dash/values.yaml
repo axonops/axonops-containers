@@ -179,3 +179,54 @@ config:
     #   level: info
     # metrics:
     #   enabled: true
+
+# Reports v2: axon-reporting sidecar container.
+# Every axon-dash replica gets its own axon-reporting container in the same Pod.
+reporting:
+  # This sets the sidecar container image.
+  image:
+    # Development image until axon-reporting is published to registry.axonops.com
+    repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+    # Image tag. Required.
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  # Port the axon-reporting container listens on. Also exposed as the `reporting` Service port.
+  port: 8081
+  # Override the reporting_url written to axon-dash.yml.
+  # When empty it defaults to http://127.0.0.1:<reporting.port>.
+  url: ""
+  # Extra environment variables for the sidecar container. The chart already sets
+  # AXONDASH_URL_TEMPLATE and AXONDASH_PATH_PREFIX (from config.listener and
+  # config.contextPath) and AXONREPORTING_PORT. Other options, for example:
+  #   AXONREPORTING_AUTH_ENABLED: auto | true | false (default auto)
+  #   AXONREPORTING_METRICS_CLIENT_TIMEOUT: seconds to wait for axon-dash (default 60)
+  env: []
+    # - name: FOO
+    #   value: bar
+  # CPU/Memory resource requests and limits for the sidecar container.
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+  # Container security context for the sidecar.
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # runAsNonRoot: true
+  # Liveness and readiness probes for the sidecar.
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: reporting
+  readinessProbe:
+    httpGet:
+      path: /healthz
+      port: reporting
+  # Additional volumeMounts for the sidecar. Declare the volumes in the top-level `volumes` list.
+  volumeMounts: []
+    # - name: reporting-tmp
+    #   mountPath: /tmp

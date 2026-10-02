@@ -2,7 +2,7 @@
 
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | **Galego**
 
-![Versión: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
+![Versión: 2.1.17](https://img.shields.io/badge/Version-2.1.17-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.39](https://img.shields.io/badge/AppVersion-2.0.39-informational?style=flat-square)
 
 Un chart de Helm para despregar o servidor de AxonOps, a plataforma de
 observabilidade unificada para Apache Cassandra. O servidor de AxonOps é o
@@ -365,8 +365,8 @@ stringData:
     org_name: my-organization
     license_key: YOUR_LICENSE_KEY_HERE
 
-    # Dashboard URL
-    axon_dash_url: https://axonops.example.com
+    # Reports v2 service (axon-reporting sidecar in the axon-dash pod)
+    axon_reporting_url: http://axon-dash-svc:8081
 
     # Log to stdout for Kubernetes
     log_file: /dev/stdout
@@ -973,7 +973,8 @@ curl http://localhost:8080/api/v1/healthz
 | `searchDb.hosts` | Os hosts da base de datos de busca | `[]` |
 | `searchDb.username` | O usuario da base de datos de busca | `""` |
 | `searchDb.search_secret` | O nome do segredo de Kubernetes coas credenciais de OpenSearch | `""` |
-| `dashboardUrl` | A URL pública do panel de AxonOps | `""` |
+| `dashboardUrl` | A URL pública do panel de AxonOps (só se usa se `reportingUrl` está baleira) | `""` |
+| `reportingUrl` | A URL do servizo Reports v2 (axon-server >= 2.0.39); ten prioridade sobre `dashboardUrl` | `"http://axon-dash-svc:8081"` |
 | `apiIngress.enabled` | Activa o ingress da API | `false` |
 | `agentIngress.enabled` | Activa o ingress dos axentes | `false` |
 | `persistence.enabled` | Activa o almacenamento persistente | `true` |
@@ -1003,6 +1004,12 @@ curl http://localhost:8080/api/v1/healthz
 - `disabled`: sen TLS (só desenvolvemento)
 - `TLS`: cifrado TLS do lado do servidor
 - `mTLS`: TLS mutuo (require certificados de cliente nos axentes)
+
+**Reports v2 (`reportingUrl`):**
+- axon-server >= 2.0.39 le `axon_reporting_url`, que substitúe a `axon_dash_url`
+- Se `reportingUrl` está definida, o chart xera `axon_reporting_url` e omite `axon_dash_url`; `dashboardUrl` ignórase
+- Se `reportingUrl` está baleira, `axon_dash_url` xérase a partir de `dashboardUrl` coma ata agora, para servidores < 2.0.39
+- Exemplo dentro do cluster, apuntando ao sidecar de reporting do chart axon-dash: `http://<release>-axon-dash-svc:8081`
 
 ### Referencia completa de values
 
@@ -1040,7 +1047,7 @@ curl http://localhost:8080/api/v1/healthz
 | config.org_name | string | `"example"` | O nome da organización |
 | config.sslSecretName | string | `""` | O nome do segredo cos certificados SSL |
 | config.tls.mode | string | `"disabled"` | O modo TLS (disabled, TLS, mTLS) |
-| dashboardUrl | string | `""` | A URL pública do panel |
+| dashboardUrl | string | `""` | A URL pública do panel (só se usa se `reportingUrl` está baleira) |
 | deployment.annotations | object | `{}` | Anotacións do deployment |
 | deployment.env | object | `{}` | Variables de entorno adicionais |
 | deployment.secretEnv | string | `""` | O segredo que contén as variables de entorno |
@@ -1067,6 +1074,7 @@ curl http://localhost:8080/api/v1/healthz
 | podSecurityContext.runAsNonRoot | bool | `true` | Executa como usuario non root |
 | podSecurityContext.runAsUser | int | `9988` | O ID de usuario co que se executa o pod |
 | readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Configuración da sonda de dispoñibilidade |
+| reportingUrl | string | `"http://axon-dash-svc:8081"` | A URL do servizo Reports v2 (axon-server >= 2.0.39); xera `axon_reporting_url` en lugar de `axon_dash_url` |
 | resources | object | `{}` | Peticións e límites de recursos |
 | searchDb.hosts | list | `[]` | Os hosts da base de datos de busca |
 | searchDb.password | string | `""` | O contrasinal da base de datos de busca |

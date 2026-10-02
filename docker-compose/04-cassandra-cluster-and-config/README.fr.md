@@ -30,7 +30,7 @@ Le conteneur `config` démarre en dernier, applique
 service. Dans le tableau de bord, les règles apparaissent sous
 **Alerts → Rules** pour votre cluster.
 
-Environ 6 Go de RAM aux valeurs par défaut. Cinq conteneurs de longue durée.
+Environ 6 Go de RAM aux valeurs par défaut. Six conteneurs de longue durée.
 
 ## Ce qui est exécuté
 
@@ -40,6 +40,7 @@ Environ 6 Go de RAM aux valeurs par défaut. Cinq conteneurs de longue durée.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, stockage des logs et événements |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | Backend AxonOps, point d'entrée des agents sur 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Tableau de bord sur 3000, sert aussi de proxy à l'API |
+| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Reports v2, dans l'espace de noms réseau d'`axon-dash` |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | Le nœud supervisé, Cassandra + agent |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | Ponctuel. Applique `config.yaml`, puis s'arrête |
 
@@ -48,6 +49,11 @@ contient déjà Ansible et la collection
 [`axonops.axonops`](https://galaxy.ansible.com/ui/repo/published/axonops/axonops/),
 donc rien n'est installé à l'exécution et le conteneur n'a besoin d'aucun volume
 en dehors du playbook lui-même.
+
+`axon-reporting` fournit Reports v2. Il partage l'espace de noms réseau
+d'`axon-dash`, et `axon-server` l'atteint donc via `axon-dash:8081`. L'image est
+une build de développement pour `linux/amd64` uniquement, émulée sur Apple
+Silicon. Détails : [exemple 00](../00-axonops-platform/README.fr.md#reports-v2).
 
 ## Modifier les alertes
 

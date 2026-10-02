@@ -33,7 +33,7 @@
 #   notes            Anything a consumer needs to know before pinning.
 
 schema_version: 1
-last_verified: "2026-08-13"
+last_verified: "2026-10-02"
 components:
   - name: axondb-timeseries
     kind: image
@@ -89,9 +89,10 @@ components:
     repository: axonops-public/axonops-docker/axon-server
     tag_pattern: "{version}"
     current:
-      tag: "2.0.36"
-      digest: "sha256:dc0a2c58e5d89c28d6fe7df91ade825f5fb2c00a0d32be4fce921b9711207b6c"
+      tag: "2.0.39"
+      digest: "sha256:b7c41009929155942c34df77b262812fe1c39a32cdf7e132ef3437654a4bc4c1"
     previous:
+      - "2.0.36"
       - "2.0.35"
       - "2.0.34"
     notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
@@ -103,9 +104,10 @@ components:
     repository: axonops-public/axonops-docker/axon-dash
     tag_pattern: "{version}"
     current:
-      tag: "2.0.37"
-      digest: "sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362"
+      tag: "2.0.39"
+      digest: "sha256:4cffd1d1e724a479c8ec489299972a43e0da0eef797e7aa27aa3acf6ae28423d"
     previous:
+      - "2.0.37"
       - "2.0.36"
     notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
   - name: axonops-schema-registry
@@ -233,7 +235,6 @@ components:
     previous:
       - "0.2.9"
     notes: null
-
 # ---------------------------------------------------------------------------
 # build_matrix
 #

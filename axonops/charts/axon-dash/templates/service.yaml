@@ -11,5 +11,9 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.reporting.port }}
+      targetPort: reporting
+      protocol: TCP
+      name: reporting
   selector:
     {{- include "axon-dash.selectorLabels" . | nindent 4 }}

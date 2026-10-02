@@ -49,8 +49,16 @@ searchDb:
   search_secret: ""
 
 
-# dashboardUrl should be set to the publicly-accessible URL for the AxonOps Dashboard
+# dashboardUrl should be set to the publicly-accessible URL for the AxonOps Dashboard.
+# Only used when reportingUrl is empty (axon-server < 2.0.39).
 dashboardUrl: https://axonops.example.com
+
+# reportingUrl is the URL of the Reports v2 service. axon-server >= 2.0.39 reads
+# axon_reporting_url, which replaces axon_dash_url; when set, axon_dash_url is not
+# rendered. The default is the axon-reporting sidecar of the axon-dash chart
+# installed as release "axon-dash" in the same namespace
+# (http://<axon-dash fullname>-svc:8081). Set it to "" for axon-server < 2.0.39.
+reportingUrl: http://axon-dash-svc:8081
 
 # Configure additional annotations and environment variables to set on the server pod
 deployment:

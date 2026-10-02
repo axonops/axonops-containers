@@ -36,7 +36,7 @@ Passwords live in `.env`, which is gitignored. Never commit one.
 | AxonOps | self-hosted | self-hosted | SaaS | self-hosted | self-hosted |
 | Cassandra | none — bring your own | 3 nodes, monitored | 3 nodes, monitored | 3 nodes, 3 racks, monitored | 1 node, monitored |
 | Cluster auth | — | off | off | `PasswordAuthenticator` | off |
-| Containers | 4 | 7 | 3 | 7 | 5, plus a one-shot config job |
+| Containers | 5 | 8 | 3 | 8 | 6, plus a one-shot config job |
 | RAM at defaults | ~10 GB | ~10 GB | ~5 GB | ~12 GB | ~6 GB |
 | Dashboard | `localhost:3000` | `localhost:3000` | AxonOps console | `localhost:3000` | `localhost:3000` |
 | You need | nothing | nothing | a SaaS org and agent key | nothing | nothing |
@@ -102,8 +102,8 @@ a newer dash against an older server is the combination to avoid.
 
 ```yaml
   axon-server:
-    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:b7c41009…
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Change the tag and the digest comment together — a stale comment beside a new
@@ -122,6 +122,18 @@ Cloud runs and upgrades both for you, so there the agent is the only thing you
 update. Both are stateless: everything lives
 in `axondb-timeseries` and `axondb-search`, which you are not touching, so a
 recreate loses no data. Agents reconnect on their own once the server is back.
+
+**`axon-reporting`** (every example except 02) shares `axon-dash`'s network
+namespace. Recreating `axon-dash` leaves it attached to the old container's
+namespace, where nothing can reach it, so recreate it straight after:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
+
+It tracks the development tag `latest` until it is published to
+`registry.axonops.com`; `docker compose pull axon-reporting` fetches the newest
+build.
 
 **The agent.** It ships inside the Cassandra image rather than as its own
 container, and it is the middle component of the tag —

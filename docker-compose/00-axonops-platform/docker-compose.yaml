@@ -97,8 +97,8 @@ services:
   # axon-server: AxonOps backend API and agent endpoint
   # =============================================================================
   axon-server:
-    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:c75f66727d158bcc3fc033f097f998b05fa1e8f45e3fef600c53fc8c107472e7
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:b7c41009929155942c34df77b262812fe1c39a32cdf7e132ef3437654a4bc4c1
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
     container_name: axon-server
     hostname: axon-server
     networks:
@@ -110,9 +110,9 @@ services:
       - LICENSE_KEY=${AXONOPS_LICENSE_KEY:-}
       - AXON_LOG_FILE=/dev/stdout
       - TLS_MODE=disabled
-      - AXONDASH_HOST=axon-dash
-      - AXONDASH_PORT=3000
-      - AXONDASH_HTTPS=false
+      # Reports v2: axon-server reaches axon-reporting through axon-dash's
+      # network namespace (see the axon-reporting service below).
+      - AXON_REPORTING_URL=http://axon-dash:8081
       # Metrics store (axondb-timeseries). CQL_SSL must match the note above.
       - CQL_HOSTS=axondb-timeseries
       - CQL_USERNAME=axonops
@@ -150,8 +150,8 @@ services:
   # axon-dash: AxonOps web dashboard
   # =============================================================================
   axon-dash:
-    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:7db6b2590b3e65bcf39c2d8a5b76b098c57ef161333b80a488dc32d676dc4362
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:4cffd1d1e724a479c8ec489299972a43e0da0eef797e7aa27aa3acf6ae28423d
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39
     container_name: axon-dash
     hostname: axon-dash
     networks:
@@ -162,6 +162,9 @@ services:
       # its file default of http://127.0.0.1:8080 the dash calls itself and
       # crash-loops with "findHost | no reachable endpoints".
       - AXONSERVER_PRIVATE_ENDPOINTS=http://axon-server:8080
+      # axon-dash.reporting_url: axon-reporting shares this container's network
+      # namespace, so the dash reaches it on localhost.
+      - AXONDASH_REPORTING_URL=http://127.0.0.1:8081
     ports:
       # Dashboard web interface
       - "3000:3000"
@@ -174,6 +177,32 @@ services:
     depends_on:
       axon-server:
         condition: service_healthy
+    restart: unless-stopped
+
+  # =============================================================================
+  # axon-reporting: Reports v2 rendering service, runs beside axon-dash
+  # =============================================================================
+  axon-reporting:
+    # Development image until axon-reporting is published to registry.axonops.com
+    image: europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest
+    # The image is published for linux/amd64 only; Apple Silicon runs it emulated.
+    platform: linux/amd64
+    container_name: axon-reporting
+    # Share axon-dash's network namespace: each reaches the other on 127.0.0.1,
+    # and axon-server reaches axon-reporting as axon-dash:8081. No networks,
+    # ports or hostname here - they belong to axon-dash. Recreate this service
+    # whenever axon-dash is recreated, or it stays in the old namespace.
+    network_mode: "service:axon-dash"
+    environment:
+      # Render reports from the axon-dash beside it. Its built-in defaults
+      # target a hosted dashboard, so both are set explicitly.
+      - AXONDASH_URL_TEMPLATE=http://127.0.0.1:3000
+      - AXONDASH_PATH_PREFIX=
+    # No healthcheck: the image ships no curl or wget. From the axon-dash
+    # container: curl -s http://127.0.0.1:8081/healthz
+    depends_on:
+      axon-dash:
+        condition: service_started
     restart: unless-stopped
 
 # =============================================================================
