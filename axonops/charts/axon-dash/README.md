@@ -1,4 +1,4 @@
-# AxonOps Dashboard
+ AxonOps Dashboard
 
 **English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
@@ -596,8 +596,6 @@ Reports v2 needs the `axon-reporting` service running beside the dashboard. The 
 - axon-server >= 2.0.39 with `reportingUrl` set in the axon-server chart, pointing at the dashboard Service's `reporting` port (for example `http://axon-dash-svc:8081`).
 
 **Things to know:**
-- Each axon-dash replica gets its own sidecar. Running more than one replica (`replicaCount > 1` or autoscaling) is only safe if axon-reporting is stateless, which is not yet confirmed. Keep `replicaCount: 1` with autoscaling disabled until it is.
-- Until axon-reporting is published to `registry.axonops.com`, the image defaults to the development build `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` with `pullPolicy: Always`. The defaults will switch to the published image once it exists. `reporting.image.tag` is still required, but it defaults to `latest`, so no extra values are needed. Set a specific tag for repeatable installs.
 - Liveness and readiness probes default to an HTTP GET on `/healthz` at the `reporting` port.
 - The image runs as a non-root user and works with a read-only root filesystem, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
 - Optional settings go in `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` or `false`; default `auto`) and `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (seconds to wait for axon-dash; default `60`).

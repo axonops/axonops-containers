@@ -182,20 +182,14 @@ config:
 
 # Reports v2: axon-reporting sidecar container.
 # Every axon-dash replica gets its own axon-reporting container in the same Pod.
-# axon-dash talks to its local sidecar over localhost (reporting_url in axon-dash.yml), while
-# axon-server reaches it through the named `reporting` port on this chart's Service,
-# i.e. http://<fullname>-svc:<port>. Set that URL as `reportingUrl` in the axon-server chart
-# (requires axon-server >= 2.0.39).
-# Running more than one axon-dash replica (replicaCount > 1 or autoscaling) is only safe if
-# axon-reporting is stateless, which is not yet confirmed.
 reporting:
   # This sets the sidecar container image.
   image:
     # Development image until axon-reporting is published to registry.axonops.com
-    repository: europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting
+    repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
     # Image tag. Required.
     tag: "latest"
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   # Port the axon-reporting container listens on. Also exposed as the `reporting` Service port.
   port: 8081
   # Override the reporting_url written to axon-dash.yml.
