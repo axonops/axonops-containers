@@ -2,7 +2,7 @@
 
 **English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
-![Version: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
+![Version: 2.1.17](https://img.shields.io/badge/Version-2.1.17-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.39](https://img.shields.io/badge/AppVersion-2.0.39-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Server - the unified observability platform for Apache Cassandra. The AxonOps Server is the central component that collects metrics and logs from Cassandra clusters, stores them in the timeseries and search databases, and provides APIs for the AxonOps Dashboard.
 
@@ -1000,7 +1000,7 @@ curl http://localhost:8080/api/v1/healthz
 - axon-server >= 2.0.39 reads `axon_reporting_url`, which replaces `axon_dash_url`
 - When `reportingUrl` is set, the chart renders `axon_reporting_url` and omits `axon_dash_url`; `dashboardUrl` is ignored
 - When `reportingUrl` is empty (the default), `axon_dash_url` is rendered from `dashboardUrl` as before, for servers < 2.0.39
-- In-cluster example when the axon-dash chart's reporting sidecar is enabled: `http://<release>-axon-dash-svc:8081`
+- In-cluster example pointing at the axon-dash chart's reporting sidecar: `http://<release>-axon-dash-svc:8081`
 
 ### Complete Values Reference
 

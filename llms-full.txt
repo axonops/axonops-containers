@@ -11742,9 +11742,8 @@ helm install axonops . \
 | `axon-server.config.org_name` | Your organization name | `example` |
 | `axon-server.config.license_key` | AxonOps license key | `""` |
 | `axon-server.dashboardUrl` | Public URL for dashboard (only used when `axon-server.reportingUrl` is empty) | `https://axonops.example.com` |
-| `axon-server.reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `""` |
-| `axon-dash.reporting.enabled` | Deploy the axon-reporting sidecar beside axon-dash (Reports v2) | `false` |
-| `axon-dash.reporting.image.tag` | axon-reporting image tag (required when enabled) | `"latest"` |
+| `axon-server.reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `http://axonops-axon-dash-svc:8081` |
+| `axon-dash.reporting.image.tag` | axon-reporting image tag (required) | `"latest"` |
 | `axon-dash.reporting.port` | axon-reporting port (container and Service port `reporting`) | `8081` |
 
 ### Resource Configuration
@@ -11812,32 +11811,33 @@ axondb-search:
 
 ### Reports v2 (axon-reporting)
 
-Reports v2 is off by default. Turning it on needs both sub-charts configured together, because the meta-chart does not wire them up for you:
+Reports v2 is always on. There is nothing to enable:
 
-- `axon-dash.reporting.enabled: true` adds an `axon-reporting` sidecar container to the axon-dash Pod and exposes it on the dashboard Service as port `reporting` (`8081` by default).
-- `axon-server.reportingUrl` tells axon-server where to reach that sidecar. When it is set, axon-server receives `axon_reporting_url` and `axon-server.dashboardUrl` is ignored.
+- The axon-dash Pod always runs an `axon-reporting` sidecar container, exposed on the dashboard Service as port `reporting` (`8081` by default).
+- `axon-server.reportingUrl` tells axon-server where to reach that sidecar. It defaults to `http://axonops-axon-dash-svc:8081`, so axon-server receives `axon_reporting_url` and `axon-server.dashboardUrl` is ignored.
 
 **Requirements:**
 - axon-server >= 2.0.39. Older servers do not read `axon_reporting_url`; leave `reportingUrl` empty for them.
-- `axon-dash.reporting.image` defaults to the development image `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) until axon-reporting is published to `registry.axonops.com`, when the defaults will switch. The tag is still required but defaults to `latest`, so enabling the sidecar is enough.
+- `axon-dash.reporting.image` defaults to the development image `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) until axon-reporting is published to `registry.axonops.com`, when the defaults will switch. The tag is still required but defaults to `latest`, so no extra values are needed.
+
+To change the port or install under a different release name, override both sides together:
 
 ```yaml
 # values-reporting.yaml
 axon-server:
-  # Release name "axonops" -> Service "axonops-axon-dash-svc"
-  reportingUrl: http://axonops-axon-dash-svc:8081
+  # Release name "my-axonops" -> Service "my-axonops-axon-dash-svc"
+  reportingUrl: http://my-axonops-axon-dash-svc:9081
 
 axon-dash:
   reporting:
-    enabled: true
-    port: 8081
+    port: 9081
 ```
 
 ```bash
-helm install axonops . -n axonops --create-namespace -f values-reporting.yaml
+helm install my-axonops . -n axonops --create-namespace -f values-reporting.yaml
 ```
 
-The URL above assumes the release is named `axonops`. The dashboard Service is named `<release>-axon-dash-svc`, so with any other release name change `reportingUrl` to match, in the same way as `axon-dash.config.axonServerUrl`. Keep the port in `reportingUrl` equal to `axon-dash.reporting.port`.
+The default `reportingUrl` assumes the release is named `axonops`. The dashboard Service is named `<release>-axon-dash-svc`, so with any other release name change `reportingUrl` to match, in the same way as `axon-dash.config.axonServerUrl`. Keep the port in `reportingUrl` equal to `axon-dash.reporting.port`.
 
 See the sub-chart READMEs for the full set of options: [axon-dash: Reports v2 (axon-reporting sidecar)](../axon-dash/README.md#reports-v2-axon-reporting-sidecar) and [axon-server: Important Notes](../axon-server/README.md#important-notes).
 
@@ -12212,7 +12212,7 @@ Copyright AxonOps. All rights reserved.
 
 **English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
-![Version: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
+![Version: 2.1.17](https://img.shields.io/badge/Version-2.1.17-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.39](https://img.shields.io/badge/AppVersion-2.0.39-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Server - the unified observability platform for Apache Cassandra. The AxonOps Server is the central component that collects metrics and logs from Cassandra clusters, stores them in the timeseries and search databases, and provides APIs for the AxonOps Dashboard.
 
@@ -13210,7 +13210,7 @@ curl http://localhost:8080/api/v1/healthz
 - axon-server >= 2.0.39 reads `axon_reporting_url`, which replaces `axon_dash_url`
 - When `reportingUrl` is set, the chart renders `axon_reporting_url` and omits `axon_dash_url`; `dashboardUrl` is ignored
 - When `reportingUrl` is empty (the default), `axon_dash_url` is rendered from `dashboardUrl` as before, for servers < 2.0.39
-- In-cluster example when the axon-dash chart's reporting sidecar is enabled: `http://<release>-axon-dash-svc:8081`
+- In-cluster example pointing at the axon-dash chart's reporting sidecar: `http://<release>-axon-dash-svc:8081`
 
 ### Complete Values Reference
 
@@ -14093,7 +14093,7 @@ curl -I https://axonops.production.example.com
 
 ### Reports v2 (axon-reporting sidecar)
 
-Reports v2 needs the `axon-reporting` service running beside the dashboard. With `reporting.enabled: true` the chart adds an `axon-reporting` sidecar container to every axon-dash Pod:
+Reports v2 needs the `axon-reporting` service running beside the dashboard. The chart always adds an `axon-reporting` sidecar container to every axon-dash Pod:
 
 - axon-dash reaches its own sidecar over localhost. The chart writes `reporting_url` into `axon-dash.yml`, set to `reporting.url` or, when that is empty, `http://127.0.0.1:<reporting.port>`.
 - axon-server reaches the sidecar through the named `reporting` port on the dashboard Service: `http://<fullname>-svc:<reporting.port>`.
@@ -14108,7 +14108,7 @@ Reports v2 needs the `axon-reporting` service running beside the dashboard. With
 
 **Things to know:**
 - Each axon-dash replica gets its own sidecar. Running more than one replica (`replicaCount > 1` or autoscaling) is only safe if axon-reporting is stateless, which is not yet confirmed. Keep `replicaCount: 1` with autoscaling disabled until it is.
-- Until axon-reporting is published to `registry.axonops.com`, the image defaults to the development build `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` with `pullPolicy: Always`. The defaults will switch to the published image once it exists. `reporting.image.tag` is still required, but it defaults to `latest`, so enabling the sidecar is enough. Set a specific tag for repeatable installs.
+- Until axon-reporting is published to `registry.axonops.com`, the image defaults to the development build `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` with `pullPolicy: Always`. The defaults will switch to the published image once it exists. `reporting.image.tag` is still required, but it defaults to `latest`, so no extra values are needed. Set a specific tag for repeatable installs.
 - Liveness and readiness probes default to an HTTP GET on `/healthz` at the `reporting` port.
 - The image runs as a non-root user and works with a read-only root filesystem, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
 - Optional settings go in `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` or `false`; default `auto`) and `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (seconds to wait for axon-dash; default `60`).
@@ -14121,7 +14121,6 @@ config:
   axonServerUrl: "http://axon-server-api:8080"
 
 reporting:
-  enabled: true
   port: 8081
   # Optional axon-reporting settings
   env:
@@ -14179,8 +14178,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | `autoscaling.maxReplicas` | Maximum replicas for HPA | `100` |
 | `resources.requests.cpu` | CPU request | `nil` |
 | `resources.requests.memory` | Memory request | `nil` |
-| `reporting.enabled` | Deploy the axon-reporting sidecar (Reports v2) | `false` |
-| `reporting.image.tag` | axon-reporting image tag (required when enabled) | `"latest"` |
+| `reporting.image.tag` | axon-reporting image tag (required) | `"latest"` |
 | `reporting.port` | axon-reporting port (container and Service) | `8081` |
 
 ### Important Notes
@@ -14251,11 +14249,10 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | readinessProbe.httpGet.path | string | `"/"` | Readiness probe HTTP path |
 | readinessProbe.httpGet.port | string | `"http"` | Readiness probe HTTP port |
 | replicaCount | int | `1` | Number of replicas |
-| reporting.enabled | bool | `false` | Deploy the axon-reporting sidecar container |
 | reporting.env | list | `[]` | Extra environment variables for the sidecar (the chart already sets `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` and `AXONREPORTING_PORT`) |
 | reporting.image.pullPolicy | string | `"Always"` | Sidecar image pull policy |
 | reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | Sidecar container image repository (development image until axon-reporting is published to registry.axonops.com) |
-| reporting.image.tag | string | `"latest"` | Sidecar image tag (required when `reporting.enabled` is true) |
+| reporting.image.tag | string | `"latest"` | Sidecar image tag (required) |
 | reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar liveness probe |
 | reporting.port | int | `8081` | Sidecar port, also exposed as the `reporting` Service port |
 | reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar readiness probe |
@@ -20614,12 +20611,10 @@ export AXON_DASH_INGRESS_HOST=axonops.yourdomain.com
 
 Reports v2 runs `axon-reporting` as a sidecar in the axon-dash pod, and axon-server
 reaches it through the axon-dash Service. It needs axon-server 2.0.39 or newer.
-With `AXON_DASH_REPORTING_ENABLED=true` the setup script enables the sidecar in the
-axon-dash values and writes `axon_reporting_url` into the server Secret in place of
-`axon_dash_url`.
+The setup script always adds the sidecar to the axon-dash values and writes
+`axon_reporting_url` into the server Secret. There is nothing to enable.
 
 ```bash
-export AXON_DASH_REPORTING_ENABLED=true
 # Optional overrides (defaults shown)
 export AXON_DASH_REPORTING_IMAGE_REPOSITORY=europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting
 export AXON_DASH_REPORTING_IMAGE_TAG=latest
@@ -20629,7 +20624,6 @@ export AXON_DASH_REPORTING_PORT=8081
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `AXON_DASH_REPORTING_ENABLED` | `false` | Run the axon-reporting sidecar and point axon-server at it |
 | `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Sidecar image (development image until axon-reporting is published) |
 | `AXON_DASH_REPORTING_IMAGE_TAG` | `latest` | Sidecar image tag |
 | `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |

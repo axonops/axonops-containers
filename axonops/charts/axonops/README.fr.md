@@ -118,9 +118,8 @@ helm install axonops . \
 | `axon-server.config.org_name` | Le nom de votre organisation | `example` |
 | `axon-server.config.license_key` | Clé de licence AxonOps | `""` |
 | `axon-server.dashboardUrl` | URL publique du dashboard (utilisée uniquement si `axon-server.reportingUrl` est vide) | `https://axonops.example.com` |
-| `axon-server.reportingUrl` | URL du service Reports v2 (axon-server >= 2.0.39) ; prioritaire sur `dashboardUrl` | `""` |
-| `axon-dash.reporting.enabled` | Déployer le sidecar axon-reporting à côté d'axon-dash (Reports v2) | `false` |
-| `axon-dash.reporting.image.tag` | Tag de l'image axon-reporting (obligatoire si activé) | `"latest"` |
+| `axon-server.reportingUrl` | URL du service Reports v2 (axon-server >= 2.0.39) ; prioritaire sur `dashboardUrl` | `http://axonops-axon-dash-svc:8081` |
+| `axon-dash.reporting.image.tag` | Tag de l'image axon-reporting (obligatoire) | `"latest"` |
 | `axon-dash.reporting.port` | Port d'axon-reporting (conteneur et port `reporting` du Service) | `8081` |
 
 ### Configuration des ressources
@@ -188,32 +187,33 @@ axondb-search:
 
 ### Reports v2 (axon-reporting)
 
-Reports v2 est désactivé par défaut. Pour l'activer, il faut configurer les deux sous-charts ensemble, car le meta-chart ne les relie pas automatiquement :
+Reports v2 est toujours actif. Il n'y a rien à activer :
 
-- `axon-dash.reporting.enabled: true` ajoute un conteneur sidecar `axon-reporting` au Pod axon-dash et l'expose sur le Service du dashboard comme port `reporting` (`8081` par défaut).
-- `axon-server.reportingUrl` indique à axon-server où joindre ce sidecar. Lorsqu'elle est renseignée, axon-server reçoit `axon_reporting_url` et `axon-server.dashboardUrl` est ignorée.
+- Le Pod axon-dash exécute toujours un conteneur sidecar `axon-reporting`, exposé sur le Service du dashboard comme port `reporting` (`8081` par défaut).
+- `axon-server.reportingUrl` indique à axon-server où joindre ce sidecar. Elle vaut par défaut `http://axonops-axon-dash-svc:8081` : axon-server reçoit donc `axon_reporting_url` et `axon-server.dashboardUrl` est ignorée.
 
 **Prérequis :**
 - axon-server >= 2.0.39. Les serveurs plus anciens ne lisent pas `axon_reporting_url` ; laissez `reportingUrl` vide pour eux.
-- `axon-dash.reporting.image` utilise par défaut l'image de développement `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) tant qu'axon-reporting n'est pas publié sur `registry.axonops.com` ; les valeurs par défaut changeront alors. Le tag reste obligatoire mais vaut `latest` par défaut : activer le sidecar suffit.
+- `axon-dash.reporting.image` utilise par défaut l'image de développement `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) tant qu'axon-reporting n'est pas publié sur `registry.axonops.com` ; les valeurs par défaut changeront alors. Le tag reste obligatoire mais vaut `latest` par défaut : aucune valeur supplémentaire n'est nécessaire.
+
+Pour changer le port ou installer sous un autre nom de release, surchargez les deux côtés ensemble :
 
 ```yaml
 # values-reporting.yaml
 axon-server:
-  # Release name "axonops" -> Service "axonops-axon-dash-svc"
-  reportingUrl: http://axonops-axon-dash-svc:8081
+  # Release name "my-axonops" -> Service "my-axonops-axon-dash-svc"
+  reportingUrl: http://my-axonops-axon-dash-svc:9081
 
 axon-dash:
   reporting:
-    enabled: true
-    port: 8081
+    port: 9081
 ```
 
 ```bash
-helm install axonops . -n axonops --create-namespace -f values-reporting.yaml
+helm install my-axonops . -n axonops --create-namespace -f values-reporting.yaml
 ```
 
-L'URL ci-dessus suppose que la release s'appelle `axonops`. Le Service du dashboard s'appelle `<release>-axon-dash-svc` : avec un autre nom de release, adaptez `reportingUrl` en conséquence, comme pour `axon-dash.config.axonServerUrl`. Gardez le port de `reportingUrl` égal à `axon-dash.reporting.port`.
+La valeur par défaut de `reportingUrl` suppose que la release s'appelle `axonops`. Le Service du dashboard s'appelle `<release>-axon-dash-svc` : avec un autre nom de release, adaptez `reportingUrl` en conséquence, comme pour `axon-dash.config.axonServerUrl`. Gardez le port de `reportingUrl` égal à `axon-dash.reporting.port`.
 
 Consultez les README des sous-charts pour l'ensemble des options : [axon-dash : Reports v2 (sidecar axon-reporting)](../axon-dash/README.fr.md#reports-v2-sidecar-axon-reporting) et [axon-server : Points importants](../axon-server/README.fr.md#points-importants).
 

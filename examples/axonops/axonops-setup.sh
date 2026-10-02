@@ -88,9 +88,8 @@ AXON_SERVER_HOST="${AXON_SERVER_HOST:-0.0.0.0}"
 AXON_SERVER_SEARCH_DB_HOST_URL="${AXON_SERVER_SEARCH_DB_HOST_URL:-https://axondb-search-cluster-master.$NS_AXONOPS.svc.cluster.local:9200}"
 AXON_SERVER_SEARCH_DB_SKIP_VERIFY="${AXON_SERVER_SEARCH_DB_SKIP_VERIFY:-true}"
 
-# AxonOps org and dashboard URL
+# AxonOps org
 AXON_SERVER_ORG_NAME="${AXON_SERVER_ORG_NAME:-example}"
-AXON_SERVER_DASH_URL="${AXON_SERVER_DASH_URL:-https://axonops.example.com}"
 
 # CQL / Cassandra configuration
 AXON_SERVER_CQL_HOSTS="${AXON_SERVER_CQL_HOSTS:-axondb-timeseries-headless.$NS_AXONOPS.svc.cluster.local}"
@@ -145,8 +144,7 @@ AXON_DASH_INGRESS_CERT_ISSUER_ANNOTATION="${AXON_DASH_INGRESS_CERT_ISSUER_ANNOTA
 AXON_DASH_HELM_EXTRA_ARGS="${AXON_DASH_HELM_EXTRA_ARGS:-}"
 
 # Reports v2: axon-reporting sidecar in the axon-dash pod (needs axon-server >= 2.0.39).
-# When enabled, axon-server is configured with axon_reporting_url instead of axon_dash_url.
-AXON_DASH_REPORTING_ENABLED="${AXON_DASH_REPORTING_ENABLED:-false}"
+# axon-server reaches it through axon_reporting_url.
 AXON_DASH_REPORTING_IMAGE_REPOSITORY="${AXON_DASH_REPORTING_IMAGE_REPOSITORY:-europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting}"
 AXON_DASH_REPORTING_IMAGE_TAG="${AXON_DASH_REPORTING_IMAGE_TAG:-latest}"
 AXON_DASH_REPORTING_PORT="${AXON_DASH_REPORTING_PORT:-8081}"
@@ -380,7 +378,7 @@ stringData:
     org_name: ${AXON_SERVER_ORG_NAME}
     license_key: "${AXON_SERVER_LICENSE_KEY}"
 
-    $(if [[ "$AXON_DASH_REPORTING_ENABLED" == "true" ]]; then echo "axon_reporting_url: ${AXON_SERVER_REPORTING_URL}"; else echo "axon_dash_url: ${AXON_SERVER_DASH_URL}"; fi)
+    axon_reporting_url: ${AXON_SERVER_REPORTING_URL}
 
     log_file: /dev/stdout
     tls:
@@ -590,23 +588,14 @@ EOS
   fi
 
   # Reports v2 sidecar
-  if [[ "$AXON_DASH_REPORTING_ENABLED" == "true" ]]; then
-    REPORTING_BLOCK=$(cat <<EOS
+  REPORTING_BLOCK=$(cat <<EOS
 reporting:
-  enabled: true
   image:
     repository: ${AXON_DASH_REPORTING_IMAGE_REPOSITORY}
     tag: "${AXON_DASH_REPORTING_IMAGE_TAG}"
   port: ${AXON_DASH_REPORTING_PORT}
 EOS
 )
-  else
-    REPORTING_BLOCK=$(cat <<'EOS'
-reporting:
-  enabled: false
-EOS
-)
-  fi
 
   cat > "$AXON_DASH_VALUES_FILE" <<EOF
 config:

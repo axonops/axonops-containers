@@ -585,7 +585,7 @@ curl -I https://axonops.production.example.com
 
 ### Reports v2 (sidecar axon-reporting)
 
-Reports v2 necesita o servizo `axon-reporting` xunto ao panel. Con `reporting.enabled: true`, o chart engade un contedor sidecar `axon-reporting` a cada Pod de axon-dash:
+Reports v2 necesita o servizo `axon-reporting` xunto ao panel. O chart sempre engade un contedor sidecar `axon-reporting` a cada Pod de axon-dash:
 
 - axon-dash chega ao seu propio sidecar por localhost. O chart escribe `reporting_url` en `axon-dash.yml`, co valor de `reporting.url` ou, se está baleiro, `http://127.0.0.1:<reporting.port>`.
 - axon-server chega ao sidecar a través do porto con nome `reporting` do Service do panel: `http://<fullname>-svc:<reporting.port>`.
@@ -600,7 +600,7 @@ Reports v2 necesita o servizo `axon-reporting` xunto ao panel. Con `reporting.en
 
 **A ter en conta:**
 - Cada réplica de axon-dash recibe o seu propio sidecar. Executar máis dunha réplica (`replicaCount > 1` ou autoescalado) só é seguro se axon-reporting non ten estado, algo que aínda non está confirmado. Manteña `replicaCount: 1` sen autoescalado ata entón.
-- Mentres axon-reporting non estea publicado en `registry.axonops.com`, a imaxe por defecto é a compilación de desenvolvemento `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` con `pullPolicy: Always`. Os valores por defecto cambiarán á imaxe publicada cando exista. `reporting.image.tag` segue sendo obrigatorio, pero por defecto vale `latest`, así que abonda con activar o sidecar. Defina un tag concreto para instalacións reproducibles.
+- Mentres axon-reporting non estea publicado en `registry.axonops.com`, a imaxe por defecto é a compilación de desenvolvemento `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` con `pullPolicy: Always`. Os valores por defecto cambiarán á imaxe publicada cando exista. `reporting.image.tag` segue sendo obrigatorio, pero por defecto vale `latest`, así que non fan falla valores adicionais. Defina un tag concreto para instalacións reproducibles.
 - As sondas de actividade e de dispoñibilidade fan por defecto un HTTP GET a `/healthz` no porto `reporting`.
 - A imaxe execútase cun usuario que non é root e funciona co sistema de ficheiros raíz en só lectura, polo que un `securityContext` restritivo coma o do exemplo é seguro. `securityContext` e `volumeMounts` seguen baleiros por defecto.
 - Os axustes opcionais van en `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` ou `false`; por defecto `auto`) e `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (segundos de espera a axon-dash; por defecto `60`).
@@ -613,7 +613,6 @@ config:
   axonServerUrl: "http://axon-server-api:8080"
 
 reporting:
-  enabled: true
   port: 8081
   # Optional axon-reporting settings
   env:
@@ -671,8 +670,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | `autoscaling.maxReplicas` | Réplicas máximas do HPA | `100` |
 | `resources.requests.cpu` | Petición de CPU | `nil` |
 | `resources.requests.memory` | Petición de memoria | `nil` |
-| `reporting.enabled` | Desprega o sidecar axon-reporting (Reports v2) | `false` |
-| `reporting.image.tag` | A etiqueta da imaxe de axon-reporting (obrigatoria se está activado) | `"latest"` |
+| `reporting.image.tag` | A etiqueta da imaxe de axon-reporting (obrigatoria) | `"latest"` |
 | `reporting.port` | O porto de axon-reporting (contedor e Service) | `8081` |
 
 ### Notas importantes
@@ -743,11 +741,10 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | readinessProbe.httpGet.path | string | `"/"` | A ruta HTTP da sonda de dispoñibilidade |
 | readinessProbe.httpGet.port | string | `"http"` | O porto HTTP da sonda de dispoñibilidade |
 | replicaCount | int | `1` | Número de réplicas |
-| reporting.enabled | bool | `false` | Desprega o contedor sidecar axon-reporting |
 | reporting.env | list | `[]` | Variables de contorno adicionais do sidecar (o chart xa define `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` e `AXONREPORTING_PORT`) |
 | reporting.image.pullPolicy | string | `"Always"` | A política de descarga da imaxe do sidecar |
 | reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | O repositorio da imaxe do contedor sidecar (imaxe de desenvolvemento ata que axon-reporting se publique en registry.axonops.com) |
-| reporting.image.tag | string | `"latest"` | A etiqueta da imaxe do sidecar (obrigatoria se `reporting.enabled` é true) |
+| reporting.image.tag | string | `"latest"` | A etiqueta da imaxe do sidecar (obrigatoria) |
 | reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | A sonda de actividade do sidecar |
 | reporting.port | int | `8081` | O porto do sidecar, exposto tamén como porto `reporting` do Service |
 | reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | A sonda de dispoñibilidade do sidecar |

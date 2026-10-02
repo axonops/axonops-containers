@@ -67,13 +67,12 @@ spec:
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
-        {{- if .Values.reporting.enabled }}
         - name: axon-reporting
           {{- with .Values.reporting.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "{{ .Values.reporting.image.repository }}:{{ required "reporting.image.tag is required when reporting.enabled is true" .Values.reporting.image.tag }}"
+          image: "{{ .Values.reporting.image.repository }}:{{ required "reporting.image.tag is required" .Values.reporting.image.tag }}"
           imagePullPolicy: {{ .Values.reporting.image.pullPolicy }}
           ports:
             - name: reporting
@@ -106,7 +105,6 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-        {{- end }}
       volumes:
         - name: config
           configMap:

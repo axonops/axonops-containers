@@ -154,12 +154,10 @@ export AXON_DASH_INGRESS_HOST=axonops.yourdomain.com
 
 Reports v2 runs `axon-reporting` as a sidecar in the axon-dash pod, and axon-server
 reaches it through the axon-dash Service. It needs axon-server 2.0.39 or newer.
-With `AXON_DASH_REPORTING_ENABLED=true` the setup script enables the sidecar in the
-axon-dash values and writes `axon_reporting_url` into the server Secret in place of
-`axon_dash_url`.
+The setup script always adds the sidecar to the axon-dash values and writes
+`axon_reporting_url` into the server Secret. There is nothing to enable.
 
 ```bash
-export AXON_DASH_REPORTING_ENABLED=true
 # Optional overrides (defaults shown)
 export AXON_DASH_REPORTING_IMAGE_REPOSITORY=europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting
 export AXON_DASH_REPORTING_IMAGE_TAG=latest
@@ -169,7 +167,6 @@ export AXON_DASH_REPORTING_PORT=8081
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `AXON_DASH_REPORTING_ENABLED` | `false` | Run the axon-reporting sidecar and point axon-server at it |
 | `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Sidecar image (development image until axon-reporting is published) |
 | `AXON_DASH_REPORTING_IMAGE_TAG` | `latest` | Sidecar image tag |
 | `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |
