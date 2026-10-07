@@ -181,18 +181,19 @@ components:
   - name: strimzi-kafka
     kind: image
     description: Strimzi Kafka with the AxonOps agent
-    git_tag: strimzi-0.1.26
+    git_tag: strimzi-0.1.28
     registry: ghcr.io
     repository: axonops/strimzi/kafka
     tag_pattern: "{operator_version}-{kafka_version}-{agent_version}-{container_version}"
     current:
-      tag: "1.1.0-4.3.0-2.0.20-0.1.26"
-      digest: "sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124eb38672e5e964f51d5d87"
+      tag: "1.1.0-4.3.0-2.0.32-0.1.28"
+      digest: "sha256:15bb304e4d97e9de0ecc837dbc826d956048d045c012291ac9bd384b4ad0f700"
     previous:
+      - "1.1.0-4.3.0-2.0.20-0.1.27"
+      - "1.1.0-4.3.0-2.0.20-0.1.26"
       - "1.1.0-4.3.0-2.0.20-0.1.25"
-      - "1.1.0-4.3.0-2.0.20-0.1.24"
     notes: >-
-      Build 0.1.26 publishes one tag per supported operator/Kafka combination (operators 0.46.1 through 1.1.0, AxonOps agent 2.0.20). `current.tag` is the newest combination; see the VERSION_MATRIX in .github/workflows/strimzi-publish-signed.yml for the full set.
+      Build 0.1.28 publishes one tag per supported operator/Kafka combination (operators 0.46.0 through 1.1.0, AxonOps agent 2.0.32). `current.tag` is the newest combination; see the VERSION_MATRIX in .github/workflows/strimzi-publish-signed.yml for the full set.
   - name: chart-axonops
     kind: chart
     description: Umbrella chart deploying the full AxonOps stack
