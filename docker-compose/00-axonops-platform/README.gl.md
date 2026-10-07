@@ -35,7 +35,7 @@ almacéns de datos, e detrás deles soben `axon-server` e o panel.
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de rexistros e eventos (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend e endpoint dos axentes | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` | Reports v2: véxase [máis abaixo](#reports-v2) | — |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2: véxase [máis abaixo](#reports-v2) | — |
 
 As etiquetas e digests actuais de cada imaxe: [VERSIONS.md](../../VERSIONS.md).
 
@@ -58,11 +58,6 @@ Desde 2.0.39, `AXON_REPORTING_URL` substitúe a `AXONDASH_HOST`, `AXONDASH_PORT`
 e `AXONDASH_HTTPS` en `axon-server`, que xa non as le. `AXONDASH_URL_TEMPLATE`
 e `AXONDASH_PATH_PREFIX` defínense explicitamente porque os valores por defecto
 integrados na imaxe apuntan a un panel aloxado.
-
-A imaxe é unha build de desenvolvemento
-(`europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest`)
-ata que se publique en `registry.axonops.com`. Só está construída para
-`linux/amd64`; en Apple Silicon, Docker execútaa mediante emulación.
 
 Recrear `axon-dash` por separado deixa `axon-reporting` enganchado ao espazo de
 nomes de rede do contedor antigo, onde nada pode alcanzalo. Recréeo xusto

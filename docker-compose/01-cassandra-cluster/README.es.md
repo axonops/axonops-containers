@@ -38,7 +38,7 @@ de datos de AxonOps, y después los nodos de Cassandra arrancan de uno en uno.
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de registros y eventos (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend de AxonOps y endpoint de los agentes | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` | Reports v2: véase [más abajo](#reports-v2) | — |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2: véase [más abajo](#reports-v2) | — |
 | `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, nodo seed | `9042` |
 | `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, rack1 | — |
 | `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, rack2 | — |
@@ -68,11 +68,6 @@ Desde 2.0.39, `AXON_REPORTING_URL` sustituye a `AXONDASH_HOST`, `AXONDASH_PORT`
 y `AXONDASH_HTTPS` en `axon-server`, que ya no las lee. `AXONDASH_URL_TEMPLATE`
 y `AXONDASH_PATH_PREFIX` se definen explícitamente porque los valores por
 defecto integrados en la imagen apuntan a un panel alojado.
-
-La imagen es una build de desarrollo
-(`europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest`)
-hasta que se publique en `registry.axonops.com`. Solo está construida para
-`linux/amd64`; en Apple Silicon, Docker la ejecuta mediante emulación.
 
 Recrear `axon-dash` por separado deja `axon-reporting` enganchado al espacio de
 nombres de red del contenedor antiguo, donde nada puede alcanzarlo. Recréelo

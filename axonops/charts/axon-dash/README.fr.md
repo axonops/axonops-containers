@@ -597,9 +597,8 @@ Reports v2 a besoin du service `axon-reporting` à côté du dashboard. Le chart
 
 **À savoir :**
 - Chaque réplica axon-dash reçoit son propre sidecar. Exécuter plus d'un réplica (`replicaCount > 1` ou autoscaling) n'est sûr que si axon-reporting est sans état, ce qui n'est pas encore confirmé. Gardez `replicaCount: 1` sans autoscaling d'ici là.
-- Tant qu'axon-reporting n'est pas publié sur `registry.axonops.com`, l'image par défaut est la build de développement `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` avec `pullPolicy: Always`. Les valeurs par défaut passeront à l'image publiée dès qu'elle existera. `reporting.image.tag` reste obligatoire, mais vaut `latest` par défaut : aucune valeur supplémentaire n'est nécessaire. Définissez un tag précis pour des installations reproductibles.
 - Les sondes de liveness et de readiness font par défaut un HTTP GET sur `/healthz` au port `reporting`.
-- L'image s'exécute avec un utilisateur non root et fonctionne avec un système de fichiers racine en lecture seule : un `securityContext` restrictif comme celui ci-dessous est donc sûr. `securityContext` et `volumeMounts` restent vides par défaut.
+- L'image s'exécute par défaut en root, mais elle accepte n'importe quel UID et n'a besoin d'aucun chemin inscriptible : un `securityContext` restrictif comme celui ci-dessous est donc sûr. `securityContext` et `volumeMounts` restent vides par défaut.
 - Les paramètres optionnels vont dans `reporting.env` : `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` ou `false` ; `auto` par défaut) et `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (secondes d'attente d'axon-dash ; `60` par défaut).
 
 ```yaml
@@ -615,7 +614,7 @@ reporting:
   env:
     - name: AXONREPORTING_METRICS_CLIENT_TIMEOUT
       value: "120"
-  # The image runs as non-root with a read-only root filesystem
+  # Facultatif, testé avec 1.0.3 : l'image accepte n'importe quel UID
   securityContext:
     runAsNonRoot: true
     runAsUser: 9988
@@ -667,7 +666,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | `autoscaling.maxReplicas` | Nombre maximal de réplicas du HPA | `100` |
 | `resources.requests.cpu` | Requête CPU | `nil` |
 | `resources.requests.memory` | Requête mémoire | `nil` |
-| `reporting.image.tag` | Tag de l'image axon-reporting (obligatoire) | `"latest"` |
+| `reporting.image.tag` | Tag de l'image axon-reporting (obligatoire) | `"1.0.3"` |
 | `reporting.port` | Port d'axon-reporting (conteneur et Service) | `8081` |
 
 ### Points importants
@@ -739,9 +738,9 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | readinessProbe.httpGet.port | string | `"http"` | Port HTTP de la sonde de readiness |
 | replicaCount | int | `1` | Nombre de réplicas |
 | reporting.env | list | `[]` | Variables d'environnement supplémentaires du sidecar (le chart définit déjà `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` et `AXONREPORTING_PORT`) |
-| reporting.image.pullPolicy | string | `"Always"` | Politique de pull de l'image du sidecar |
-| reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | Dépôt de l'image du conteneur sidecar (image de développement tant qu'axon-reporting n'est pas publié sur registry.axonops.com) |
-| reporting.image.tag | string | `"latest"` | Tag de l'image du sidecar (obligatoire) |
+| reporting.image.pullPolicy | string | `"IfNotPresent"` | Politique de pull de l'image du sidecar |
+| reporting.image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-reporting"` | Dépôt de l'image du conteneur sidecar |
+| reporting.image.tag | string | `"1.0.3"` | Tag de l'image du sidecar (obligatoire) |
 | reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sonde de liveness du sidecar |
 | reporting.port | int | `8081` | Port du sidecar, également exposé comme port `reporting` du Service |
 | reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sonde de readiness du sidecar |

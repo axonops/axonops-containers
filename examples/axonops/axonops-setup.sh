@@ -145,8 +145,8 @@ AXON_DASH_HELM_EXTRA_ARGS="${AXON_DASH_HELM_EXTRA_ARGS:-}"
 
 # Reports v2: axon-reporting sidecar in the axon-dash pod (needs axon-server >= 2.0.39).
 # axon-server reaches it through axon_reporting_url.
-AXON_DASH_REPORTING_IMAGE_REPOSITORY="${AXON_DASH_REPORTING_IMAGE_REPOSITORY:-europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting}"
-AXON_DASH_REPORTING_IMAGE_TAG="${AXON_DASH_REPORTING_IMAGE_TAG:-latest}"
+AXON_DASH_REPORTING_IMAGE_REPOSITORY="${AXON_DASH_REPORTING_IMAGE_REPOSITORY:-registry.axonops.com/axonops-public/axonops-docker/axon-reporting}"
+AXON_DASH_REPORTING_IMAGE_TAG="${AXON_DASH_REPORTING_IMAGE_TAG:-1.0.3}"
 AXON_DASH_REPORTING_PORT="${AXON_DASH_REPORTING_PORT:-8081}"
 # The axon-dash chart names its Service <fullname>-svc; fullname is the release name
 # when it already contains "axon-dash", otherwise <release>-axon-dash.

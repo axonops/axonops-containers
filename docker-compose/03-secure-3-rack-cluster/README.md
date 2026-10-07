@@ -86,7 +86,7 @@ that does not survive losing a node.
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend and agent endpoint | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Web dashboard | `3000` |
-| `axon-reporting` | shares `axon-dash`'s | `axon-reporting:latest` | Reports v2 | — |
+| `axon-reporting` | shares `axon-dash`'s | `axon-reporting:1.0.3` | Reports v2 | — |
 
 ¹ Bound to `127.0.0.1` only — see [Remote JMX](#remote-jmx).
 
@@ -94,8 +94,7 @@ Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 
 `axon-reporting` serves Reports v2. It has no address of its own: it shares
 `axon-dash`'s network namespace, so `axon-server` reaches it as
-`axon-dash:8081`. The image is a development build for `linux/amd64` only,
-emulated on Apple Silicon. Details: [example
+`axon-dash:8081`. Details: [example
 00](../00-axonops-platform/README.md#reports-v2).
 
 ## The cluster

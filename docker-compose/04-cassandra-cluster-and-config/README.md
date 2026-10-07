@@ -39,7 +39,7 @@ Roughly 6 GB of RAM at the defaults. Six long-running containers.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, log and event store |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | AxonOps backend, agent endpoint on 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Dashboard on 3000, also proxies the API |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Reports v2, inside `axon-dash`'s network namespace |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Reports v2, inside `axon-dash`'s network namespace |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | The monitored node, Cassandra + agent |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | One-shot. Applies `config.yaml`, then exits |
 
@@ -49,8 +49,7 @@ collection, so nothing is installed at run time and the container needs no
 volumes beyond the playbook itself.
 
 `axon-reporting` serves Reports v2. It shares `axon-dash`'s network namespace,
-so `axon-server` reaches it as `axon-dash:8081`. The image is a development
-build for `linux/amd64` only, emulated on Apple Silicon. Details: [example
+so `axon-server` reaches it as `axon-dash:8081`. Details: [example
 00](../00-axonops-platform/README.md#reports-v2).
 
 ## Editing the alerts

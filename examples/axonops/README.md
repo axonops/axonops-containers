@@ -159,16 +159,16 @@ The setup script always adds the sidecar to the axon-dash values and writes
 
 ```bash
 # Optional overrides (defaults shown)
-export AXON_DASH_REPORTING_IMAGE_REPOSITORY=europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting
-export AXON_DASH_REPORTING_IMAGE_TAG=latest
+export AXON_DASH_REPORTING_IMAGE_REPOSITORY=registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+export AXON_DASH_REPORTING_IMAGE_TAG=1.0.3
 export AXON_DASH_REPORTING_PORT=8081
 ./axonops-setup.sh
 ```
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Sidecar image (development image until axon-reporting is published) |
-| `AXON_DASH_REPORTING_IMAGE_TAG` | `latest` | Sidecar image tag |
+| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Sidecar image |
+| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | Sidecar image tag |
 | `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |
 | `AXON_SERVER_REPORTING_URL` | `http://<axon-dash fullname>-svc.<namespace>.svc.cluster.local:<port>` | URL axon-server uses to reach the sidecar |
 

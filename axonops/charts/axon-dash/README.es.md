@@ -600,9 +600,8 @@ Reports v2 necesita el servicio `axon-reporting` junto al panel. El chart siempr
 
 **A tener en cuenta:**
 - Cada réplica de axon-dash recibe su propio sidecar. Ejecutar más de una réplica (`replicaCount > 1` o autoescalado) solo es seguro si axon-reporting no tiene estado, algo que aún no está confirmado. Mantenga `replicaCount: 1` sin autoescalado hasta entonces.
-- Mientras axon-reporting no esté publicado en `registry.axonops.com`, la imagen por defecto es la compilación de desarrollo `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` con `pullPolicy: Always`. Los valores por defecto cambiarán a la imagen publicada cuando exista. `reporting.image.tag` sigue siendo obligatorio, pero por defecto vale `latest`, así que no hacen falta valores adicionales. Defina un tag concreto para instalaciones reproducibles.
 - Las sondas de actividad y de disponibilidad hacen por defecto un HTTP GET a `/healthz` en el puerto `reporting`.
-- La imagen se ejecuta con un usuario que no es root y funciona con el sistema de archivos raíz en solo lectura, por lo que un `securityContext` restrictivo como el del ejemplo es seguro. `securityContext` y `volumeMounts` siguen vacíos por defecto.
+- La imagen se ejecuta como root por defecto, pero acepta cualquier UID y no necesita rutas escribibles, por lo que un `securityContext` restrictivo como el del ejemplo es seguro. `securityContext` y `volumeMounts` siguen vacíos por defecto.
 - Los ajustes opcionales van en `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` o `false`; por defecto `auto`) y `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (segundos de espera a axon-dash; por defecto `60`).
 
 ```yaml
@@ -618,7 +617,7 @@ reporting:
   env:
     - name: AXONREPORTING_METRICS_CLIENT_TIMEOUT
       value: "120"
-  # The image runs as non-root with a read-only root filesystem
+  # Opcional, probado con 1.0.3: la imagen acepta cualquier UID
   securityContext:
     runAsNonRoot: true
     runAsUser: 9988
@@ -670,7 +669,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | `autoscaling.maxReplicas` | Réplicas máximas del HPA | `100` |
 | `resources.requests.cpu` | Petición de CPU | `nil` |
 | `resources.requests.memory` | Petición de memoria | `nil` |
-| `reporting.image.tag` | La etiqueta de la imagen de axon-reporting (obligatoria) | `"latest"` |
+| `reporting.image.tag` | La etiqueta de la imagen de axon-reporting (obligatoria) | `"1.0.3"` |
 | `reporting.port` | El puerto de axon-reporting (contenedor y Service) | `8081` |
 
 ### Notas importantes
@@ -742,9 +741,9 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | readinessProbe.httpGet.port | string | `"http"` | El puerto HTTP de la sonda de disponibilidad |
 | replicaCount | int | `1` | Número de réplicas |
 | reporting.env | list | `[]` | Variables de entorno adicionales del sidecar (el chart ya define `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` y `AXONREPORTING_PORT`) |
-| reporting.image.pullPolicy | string | `"Always"` | La política de descarga de la imagen del sidecar |
-| reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | El repositorio de la imagen del contenedor sidecar (imagen de desarrollo hasta que axon-reporting se publique en registry.axonops.com) |
-| reporting.image.tag | string | `"latest"` | La etiqueta de la imagen del sidecar (obligatoria) |
+| reporting.image.pullPolicy | string | `"IfNotPresent"` | La política de descarga de la imagen del sidecar |
+| reporting.image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-reporting"` | El repositorio de la imagen del contenedor sidecar |
+| reporting.image.tag | string | `"1.0.3"` | La etiqueta de la imagen del sidecar (obligatoria) |
 | reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | La sonda de actividad del sidecar |
 | reporting.port | int | `8081` | El puerto del sidecar, expuesto también como puerto `reporting` del Service |
 | reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | La sonda de disponibilidad del sidecar |

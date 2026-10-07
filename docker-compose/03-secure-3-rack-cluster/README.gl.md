@@ -88,7 +88,7 @@ Cassandra vén cun superusuario por defecto de sobra coñecido e cun keyspace
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de rexistros e eventos (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend e endpoint dos axentes | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Panel web | `3000` |
-| `axon-reporting` | a de `axon-dash` | `axon-reporting:latest` | Reports v2 | — |
+| `axon-reporting` | a de `axon-dash` | `axon-reporting:1.0.3` | Reports v2 | — |
 
 ¹ Ligados unicamente a `127.0.0.1`: véxase [JMX remoto](#jmx-remoto).
 
@@ -96,8 +96,7 @@ As etiquetas e digests actuais de cada imaxe: [VERSIONS.md](../../VERSIONS.md).
 
 `axon-reporting` serve Reports v2. Non ten enderezo propio: comparte o espazo de
 nomes de rede de `axon-dash`, así que `axon-server` alcánzao como
-`axon-dash:8081`. A imaxe é unha build de desenvolvemento só para `linux/amd64`,
-emulada en Apple Silicon. Detalles: [exemplo
+`axon-dash:8081`. Detalles: [exemplo
 00](../00-axonops-platform/README.gl.md#reports-v2).
 
 ## O clúster

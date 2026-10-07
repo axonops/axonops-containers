@@ -92,7 +92,7 @@ keyspace `system_auth` qui ne survit pas à la perte d'un nœud.
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Stockage des logs et événements (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend et point de connexion des agents | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Tableau de bord web | `3000` |
-| `axon-reporting` | celle d'`axon-dash` | `axon-reporting:latest` | Reports v2 | — |
+| `axon-reporting` | celle d'`axon-dash` | `axon-reporting:1.0.3` | Reports v2 | — |
 
 ¹ Liés à `127.0.0.1` uniquement — voir [JMX distant](#jmx-distant).
 
@@ -100,8 +100,7 @@ Tags et digests actuels de chaque image : [VERSIONS.md](../../VERSIONS.md).
 
 `axon-reporting` fournit Reports v2. Il n'a pas d'adresse propre : il partage
 l'espace de noms réseau d'`axon-dash`, et `axon-server` l'atteint donc via
-`axon-dash:8081`. L'image est une build de développement pour `linux/amd64`
-uniquement, émulée sur Apple Silicon. Détails : [exemple
+`axon-dash:8081`. Détails : [exemple
 00](../00-axonops-platform/README.fr.md#reports-v2).
 
 ## Le cluster

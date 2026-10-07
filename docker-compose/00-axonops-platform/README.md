@@ -35,7 +35,7 @@ A cold start takes 2–3 minutes: the two data stores initialise first, then
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend and agent endpoint | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` | Reports v2, see [below](#reports-v2) | — |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, see [below](#reports-v2) | — |
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 
@@ -58,11 +58,6 @@ From 2.0.39, `AXON_REPORTING_URL` replaces `AXONDASH_HOST`, `AXONDASH_PORT` and
 `AXONDASH_HTTPS` on `axon-server`, which no longer reads them.
 `AXONDASH_URL_TEMPLATE` and `AXONDASH_PATH_PREFIX` are set explicitly because
 the image's built-in defaults point at a hosted dashboard.
-
-The image is a development build
-(`europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest`)
-until it is published to `registry.axonops.com`. It is built for `linux/amd64`
-only; on Apple Silicon, Docker runs it under emulation.
 
 Recreating `axon-dash` on its own leaves `axon-reporting` attached to the old
 container's network namespace, where nothing can reach it. Recreate it straight

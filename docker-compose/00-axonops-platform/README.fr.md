@@ -39,7 +39,7 @@ derrière eux.
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Stockage des logs et événements (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend et point de connexion des agents | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Tableau de bord web | `3000` |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` | Reports v2, voir [ci-dessous](#reports-v2) | — |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, voir [ci-dessous](#reports-v2) | — |
 
 Tags et digests actuels de chaque image : [VERSIONS.md](../../VERSIONS.md).
 
@@ -63,11 +63,6 @@ contient ni `curl` ni `wget`.
 `AXONDASH_URL_TEMPLATE` et `AXONDASH_PATH_PREFIX` sont définies explicitement,
 car les valeurs par défaut intégrées à l'image pointent vers un tableau de bord
 hébergé.
-
-L'image est une build de développement
-(`europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest`)
-en attendant sa publication sur `registry.axonops.com`. Elle n'est construite
-que pour `linux/amd64` ; sur Apple Silicon, Docker l'exécute en émulation.
 
 Recréer `axon-dash` seul laisse `axon-reporting` attaché à l'espace de noms
 réseau de l'ancien conteneur, où plus rien ne peut l'atteindre. Recréez-le juste

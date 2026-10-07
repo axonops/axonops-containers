@@ -1,4 +1,4 @@
- AxonOps Dashboard
+# AxonOps Dashboard
 
 **English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
@@ -596,8 +596,9 @@ Reports v2 needs the `axon-reporting` service running beside the dashboard. The 
 - axon-server >= 2.0.39 with `reportingUrl` set in the axon-server chart, pointing at the dashboard Service's `reporting` port (for example `http://axon-dash-svc:8081`).
 
 **Things to know:**
+- Each axon-dash replica gets its own sidecar. Running more than one replica (`replicaCount > 1` or autoscaling) is only safe if axon-reporting is stateless, which is not yet confirmed. Keep `replicaCount: 1` with autoscaling disabled until it is.
 - Liveness and readiness probes default to an HTTP GET on `/healthz` at the `reporting` port.
-- The image runs as a non-root user and works with a read-only root filesystem, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
+- The image defaults to root, but it runs as any UID and needs no writable paths, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
 - Optional settings go in `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` or `false`; default `auto`) and `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (seconds to wait for axon-dash; default `60`).
 
 ```yaml
@@ -613,7 +614,7 @@ reporting:
   env:
     - name: AXONREPORTING_METRICS_CLIENT_TIMEOUT
       value: "120"
-  # The image runs as non-root with a read-only root filesystem
+  # Optional, and tested against 1.0.3: the image accepts any UID
   securityContext:
     runAsNonRoot: true
     runAsUser: 9988
@@ -665,7 +666,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | `autoscaling.maxReplicas` | Maximum replicas for HPA | `100` |
 | `resources.requests.cpu` | CPU request | `nil` |
 | `resources.requests.memory` | Memory request | `nil` |
-| `reporting.image.tag` | axon-reporting image tag (required) | `"latest"` |
+| `reporting.image.tag` | axon-reporting image tag (required) | `"1.0.3"` |
 | `reporting.port` | axon-reporting port (container and Service) | `8081` |
 
 ### Important Notes
@@ -737,9 +738,9 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | readinessProbe.httpGet.port | string | `"http"` | Readiness probe HTTP port |
 | replicaCount | int | `1` | Number of replicas |
 | reporting.env | list | `[]` | Extra environment variables for the sidecar (the chart already sets `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` and `AXONREPORTING_PORT`) |
-| reporting.image.pullPolicy | string | `"Always"` | Sidecar image pull policy |
-| reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | Sidecar container image repository (development image until axon-reporting is published to registry.axonops.com) |
-| reporting.image.tag | string | `"latest"` | Sidecar image tag (required) |
+| reporting.image.pullPolicy | string | `"IfNotPresent"` | Sidecar image pull policy |
+| reporting.image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-reporting"` | Sidecar container image repository |
+| reporting.image.tag | string | `"1.0.3"` | Sidecar image tag (required) |
 | reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar liveness probe |
 | reporting.port | int | `8081` | Sidecar port, also exposed as the `reporting` Service port |
 | reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar readiness probe |

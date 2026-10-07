@@ -190,10 +190,8 @@ services:
     restart: unless-stopped
 
   axon-reporting:
-    # Development image until axon-reporting is published to registry.axonops.com
-    image: europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest
-    # The image is published for linux/amd64 only; Apple Silicon runs it emulated.
-    platform: linux/amd64
+    # Preferred (immutable): registry.axonops.com/axonops-public/axonops-docker/axon-reporting@sha256:78dcd0bc74f900e3317db52cce3ba342d6d9d6c9224cf1ea35e1dc218195cf59
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3
     container_name: axon-reporting
     # Share axon-dash's network namespace: each reaches the other on 127.0.0.1,
     # and axon-server reaches axon-reporting as axon-dash:8081. No networks,

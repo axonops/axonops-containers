@@ -33,7 +33,7 @@
 #   notes            Anything a consumer needs to know before pinning.
 
 schema_version: 1
-last_verified: "2026-10-02"
+last_verified: "2026-10-07"
 components:
   - name: axondb-timeseries
     kind: image
@@ -110,6 +110,19 @@ components:
       - "2.0.37"
       - "2.0.36"
     notes: "Built and published outside this repository; consumed by the compose stack and the Helm charts."
+  - name: axon-reporting
+    kind: image
+    description: AxonOps Reports v2 rendering service, runs beside axon-dash
+    git_tag: null
+    registry: registry.axonops.com
+    repository: axonops-public/axonops-docker/axon-reporting
+    tag_pattern: "{version}"
+    current:
+      tag: "1.0.3"
+      digest: "sha256:78dcd0bc74f900e3317db52cce3ba342d6d9d6c9224cf1ea35e1dc218195cf59"
+    previous: []
+    notes: >-
+      Built and published outside this repository. Reports v2 only, so it needs axon-server and axon-dash 2.0.39 or newer. It has to run beside axon-dash: the Helm chart runs it as a sidecar in the axon-dash Pod, and the compose stacks share axon-dash's network namespace.
   - name: axonops-schema-registry
     kind: image
     description: AxonOps schema registry

@@ -425,10 +425,9 @@ axon-dash:
   # axon-server.reportingUrl points at its Service port.
   reporting:
     image:
-      # Development image until axon-reporting is published to registry.axonops.com
-      repository: europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting
-      tag: "latest"
-      pullPolicy: Always
+      repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+      tag: "1.0.3"
+      pullPolicy: IfNotPresent
     port: 8081
 
   # Ingress configuration (uncomment to enable)

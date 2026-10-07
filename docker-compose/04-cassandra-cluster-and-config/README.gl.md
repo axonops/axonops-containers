@@ -40,7 +40,7 @@ duración.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, almacén de rexistros e eventos |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | Backend de AxonOps, endpoint dos axentes no 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Panel no 3000, que ademais fai de proxy da API |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Reports v2, no espazo de nomes de rede de `axon-dash` |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Reports v2, no espazo de nomes de rede de `axon-dash` |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | O nodo monitorizado, Cassandra + axente |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | Dun só uso. Aplica `config.yaml` e remata |
 
@@ -51,8 +51,7 @@ así que non se instala nada en tempo de execución e o contedor non precisa má
 volumes ca o propio playbook.
 
 `axon-reporting` serve Reports v2. Comparte o espazo de nomes de rede de
-`axon-dash`, así que `axon-server` alcánzao como `axon-dash:8081`. A imaxe é
-unha build de desenvolvemento só para `linux/amd64`, emulada en Apple Silicon.
+`axon-dash`, así que `axon-server` alcánzao como `axon-dash:8081`.
 Detalles: [exemplo 00](../00-axonops-platform/README.gl.md#reports-v2).
 
 ## Editar as alertas

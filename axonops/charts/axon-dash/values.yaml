@@ -185,10 +185,9 @@ config:
 reporting:
   # This sets the sidecar container image.
   image:
-    # Development image until axon-reporting is published to registry.axonops.com
     repository: registry.axonops.com/axonops-public/axonops-docker/axon-reporting
     # Image tag. Required.
-    tag: "latest"
+    tag: "1.0.3"
     pullPolicy: IfNotPresent
   # Port the axon-reporting container listens on. Also exposed as the `reporting` Service port.
   port: 8081

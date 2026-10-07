@@ -124,7 +124,7 @@ helm install axonops . \
 | `axon-server.config.license_key` | La clave de licencia de AxonOps | `""` |
 | `axon-server.dashboardUrl` | La URL pública del panel (sólo se usa si `axon-server.reportingUrl` está vacía) | `https://axonops.example.com` |
 | `axon-server.reportingUrl` | La URL del servicio Reports v2 (axon-server >= 2.0.39); tiene prioridad sobre `dashboardUrl` | `http://axonops-axon-dash-svc:8081` |
-| `axon-dash.reporting.image.tag` | El tag de la imagen de axon-reporting (obligatorio) | `"latest"` |
+| `axon-dash.reporting.image.tag` | El tag de la imagen de axon-reporting (obligatorio) | `"1.0.3"` |
 | `axon-dash.reporting.port` | El puerto de axon-reporting (contenedor y puerto `reporting` del Service) | `8081` |
 
 ### Configuración de recursos
@@ -199,7 +199,6 @@ Reports v2 está siempre activo. No hay nada que activar:
 
 **Requisitos:**
 - axon-server >= 2.0.39. Los servidores anteriores no leen `axon_reporting_url`; deje `reportingUrl` vacía para ellos.
-- `axon-dash.reporting.image` usa por defecto la imagen de desarrollo `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) hasta que axon-reporting se publique en `registry.axonops.com`; entonces cambiarán los valores por defecto. El tag sigue siendo obligatorio pero por defecto vale `latest`, así que no hacen falta valores adicionales.
 
 Para cambiar el puerto o instalar con otro nombre de release, sobrescriba los dos lados a la vez:
 

@@ -11743,7 +11743,7 @@ helm install axonops . \
 | `axon-server.config.license_key` | AxonOps license key | `""` |
 | `axon-server.dashboardUrl` | Public URL for dashboard (only used when `axon-server.reportingUrl` is empty) | `https://axonops.example.com` |
 | `axon-server.reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `http://axonops-axon-dash-svc:8081` |
-| `axon-dash.reporting.image.tag` | axon-reporting image tag (required) | `"latest"` |
+| `axon-dash.reporting.image.tag` | axon-reporting image tag (required) | `"1.0.3"` |
 | `axon-dash.reporting.port` | axon-reporting port (container and Service port `reporting`) | `8081` |
 
 ### Resource Configuration
@@ -11818,7 +11818,6 @@ Reports v2 is always on. There is nothing to enable:
 
 **Requirements:**
 - axon-server >= 2.0.39. Older servers do not read `axon_reporting_url`; leave `reportingUrl` empty for them.
-- `axon-dash.reporting.image` defaults to the development image `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` (`pullPolicy: Always`) until axon-reporting is published to `registry.axonops.com`, when the defaults will switch. The tag is still required but defaults to `latest`, so no extra values are needed.
 
 To change the port or install under a different release name, override both sides together:
 
@@ -14108,9 +14107,8 @@ Reports v2 needs the `axon-reporting` service running beside the dashboard. The 
 
 **Things to know:**
 - Each axon-dash replica gets its own sidecar. Running more than one replica (`replicaCount > 1` or autoscaling) is only safe if axon-reporting is stateless, which is not yet confirmed. Keep `replicaCount: 1` with autoscaling disabled until it is.
-- Until axon-reporting is published to `registry.axonops.com`, the image defaults to the development build `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` with `pullPolicy: Always`. The defaults will switch to the published image once it exists. `reporting.image.tag` is still required, but it defaults to `latest`, so no extra values are needed. Set a specific tag for repeatable installs.
 - Liveness and readiness probes default to an HTTP GET on `/healthz` at the `reporting` port.
-- The image runs as a non-root user and works with a read-only root filesystem, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
+- The image defaults to root, but it runs as any UID and needs no writable paths, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
 - Optional settings go in `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` or `false`; default `auto`) and `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (seconds to wait for axon-dash; default `60`).
 
 ```yaml
@@ -14126,7 +14124,7 @@ reporting:
   env:
     - name: AXONREPORTING_METRICS_CLIENT_TIMEOUT
       value: "120"
-  # The image runs as non-root with a read-only root filesystem
+  # Optional, and tested against 1.0.3: the image accepts any UID
   securityContext:
     runAsNonRoot: true
     runAsUser: 9988
@@ -14178,7 +14176,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | `autoscaling.maxReplicas` | Maximum replicas for HPA | `100` |
 | `resources.requests.cpu` | CPU request | `nil` |
 | `resources.requests.memory` | Memory request | `nil` |
-| `reporting.image.tag` | axon-reporting image tag (required) | `"latest"` |
+| `reporting.image.tag` | axon-reporting image tag (required) | `"1.0.3"` |
 | `reporting.port` | axon-reporting port (container and Service) | `8081` |
 
 ### Important Notes
@@ -14250,9 +14248,9 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | readinessProbe.httpGet.port | string | `"http"` | Readiness probe HTTP port |
 | replicaCount | int | `1` | Number of replicas |
 | reporting.env | list | `[]` | Extra environment variables for the sidecar (the chart already sets `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` and `AXONREPORTING_PORT`) |
-| reporting.image.pullPolicy | string | `"Always"` | Sidecar image pull policy |
-| reporting.image.repository | string | `"europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting"` | Sidecar container image repository (development image until axon-reporting is published to registry.axonops.com) |
-| reporting.image.tag | string | `"latest"` | Sidecar image tag (required) |
+| reporting.image.pullPolicy | string | `"IfNotPresent"` | Sidecar image pull policy |
+| reporting.image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-reporting"` | Sidecar container image repository |
+| reporting.image.tag | string | `"1.0.3"` | Sidecar image tag (required) |
 | reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar liveness probe |
 | reporting.port | int | `8081` | Sidecar port, also exposed as the `reporting` Service port |
 | reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar readiness probe |
@@ -17376,7 +17374,7 @@ A cold start takes 2–3 minutes: the two data stores initialise first, then
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend and agent endpoint | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` | Reports v2, see [below](#reports-v2) | — |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, see [below](#reports-v2) | — |
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 
@@ -17399,11 +17397,6 @@ From 2.0.39, `AXON_REPORTING_URL` replaces `AXONDASH_HOST`, `AXONDASH_PORT` and
 `AXONDASH_HTTPS` on `axon-server`, which no longer reads them.
 `AXONDASH_URL_TEMPLATE` and `AXONDASH_PATH_PREFIX` are set explicitly because
 the image's built-in defaults point at a hosted dashboard.
-
-The image is a development build
-(`europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest`)
-until it is published to `registry.axonops.com`. It is built for `linux/amd64`
-only; on Apple Silicon, Docker runs it under emulation.
 
 Recreating `axon-dash` on its own leaves `axon-reporting` attached to the old
 container's network namespace, where nothing can reach it. Recreate it straight
@@ -17646,7 +17639,7 @@ the Cassandra nodes bootstrap one at a time.
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | AxonOps backend and agent endpoint | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest` | Reports v2, see [below](#reports-v2) | — |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, see [below](#reports-v2) | — |
 | `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, seed node | `9042` |
 | `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack1 | — |
 | `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack2 | — |
@@ -17676,11 +17669,6 @@ From 2.0.39, `AXON_REPORTING_URL` replaces `AXONDASH_HOST`, `AXONDASH_PORT` and
 `AXONDASH_HTTPS` on `axon-server`, which no longer reads them.
 `AXONDASH_URL_TEMPLATE` and `AXONDASH_PATH_PREFIX` are set explicitly because
 the image's built-in defaults point at a hosted dashboard.
-
-The image is a development build
-(`europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting:latest`)
-until it is published to `registry.axonops.com`. It is built for `linux/amd64`
-only; on Apple Silicon, Docker runs it under emulation.
 
 Recreating `axon-dash` on its own leaves `axon-reporting` attached to the old
 container's network namespace, where nothing can reach it. Recreate it straight
@@ -18186,7 +18174,7 @@ that does not survive losing a node.
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend and agent endpoint | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Web dashboard | `3000` |
-| `axon-reporting` | shares `axon-dash`'s | `axon-reporting:latest` | Reports v2 | — |
+| `axon-reporting` | shares `axon-dash`'s | `axon-reporting:1.0.3` | Reports v2 | — |
 
 ¹ Bound to `127.0.0.1` only — see [Remote JMX](#remote-jmx).
 
@@ -18194,8 +18182,7 @@ Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
 
 `axon-reporting` serves Reports v2. It has no address of its own: it shares
 `axon-dash`'s network namespace, so `axon-server` reaches it as
-`axon-dash:8081`. The image is a development build for `linux/amd64` only,
-emulated on Apple Silicon. Details: [example
+`axon-dash:8081`. Details: [example
 00](../00-axonops-platform/README.md#reports-v2).
 
 ## The cluster
@@ -18669,7 +18656,7 @@ Roughly 6 GB of RAM at the defaults. Six long-running containers.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, log and event store |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | AxonOps backend, agent endpoint on 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Dashboard on 3000, also proxies the API |
-| `axon-reporting` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Reports v2, inside `axon-dash`'s network namespace |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Reports v2, inside `axon-dash`'s network namespace |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | The monitored node, Cassandra + agent |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | One-shot. Applies `config.yaml`, then exits |
 
@@ -18679,8 +18666,7 @@ collection, so nothing is installed at run time and the container needs no
 volumes beyond the playbook itself.
 
 `axon-reporting` serves Reports v2. It shares `axon-dash`'s network namespace,
-so `axon-server` reaches it as `axon-dash:8081`. The image is a development
-build for `linux/amd64` only, emulated on Apple Silicon. Details: [example
+so `axon-server` reaches it as `axon-dash:8081`. Details: [example
 00](../00-axonops-platform/README.md#reports-v2).
 
 ## Editing the alerts
@@ -20734,16 +20720,16 @@ The setup script always adds the sidecar to the axon-dash values and writes
 
 ```bash
 # Optional overrides (defaults shown)
-export AXON_DASH_REPORTING_IMAGE_REPOSITORY=europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting
-export AXON_DASH_REPORTING_IMAGE_TAG=latest
+export AXON_DASH_REPORTING_IMAGE_REPOSITORY=registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+export AXON_DASH_REPORTING_IMAGE_TAG=1.0.3
 export AXON_DASH_REPORTING_PORT=8081
 ./axonops-setup.sh
 ```
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `europe-docker.pkg.dev/axonops-public/axonops-docker-dev/axon-reporting` | Sidecar image (development image until axon-reporting is published) |
-| `AXON_DASH_REPORTING_IMAGE_TAG` | `latest` | Sidecar image tag |
+| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Sidecar image |
+| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | Sidecar image tag |
 | `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |
 | `AXON_SERVER_REPORTING_URL` | `http://<axon-dash fullname>-svc.<namespace>.svc.cluster.local:<port>` | URL axon-server uses to reach the sidecar |
 
