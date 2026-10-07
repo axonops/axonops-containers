@@ -28,19 +28,19 @@ for the full rationale and the verification steps.
 | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | `2.0.39` | `sha256:4cffd1d1e724a479c8ec489299972a43e0da0eef797e7aa27aa3acf6ae28423d` | `—` |
 | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | `1.0.3` | `sha256:78dcd0bc74f900e3317db52cce3ba342d6d9d6c9224cf1ea35e1dc218195cf59` | `—` |
 | `ghcr.io/axonops/axonops-schema-registry` | `0.2.1` | `sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164` | `axonops-schema-registry-0.2.0-0.0.1` |
-| `ghcr.io/axonops/k8ssandra/cassandra` | `5.0.8-v0.1.120-1.5.6` | `sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c` | `k8ssandra-1.5.6` |
-| `ghcr.io/axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` | `sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d` | `cassandra-1.1.0` |
+| `ghcr.io/axonops/k8ssandra/cassandra` | `5.0.9-v0.1.125-1.6.3` | `sha256:c9022f147efbca348fa78f8daf8d5afb5c611c07a86a42b7edbb42ac1ea30c15` | `k8ssandra-1.6.3` |
+| `ghcr.io/axonops/cassandra/cassandra` | `5.0.9-2.0.33-1.2.3` | `sha256:2dee69a327430dcfc54a5f47cfe1e3e361ccda4635e41e7992b128b4d1826d5f` | `cassandra-1.2.3` |
 | `ghcr.io/axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` | `sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124eb38672e5e964f51d5d87` | `strimzi-0.1.26` |
 
 ## Helm charts
 
 | Chart | Version | Git tag |
 |-------|---------|---------|
-| `oci://ghcr.io/axonops/charts/axonops` | `1.1.23` | `helm-1.1.23` |
-| `oci://ghcr.io/axonops/charts/axon-server` | `2.1.16` | `helm-1.1.23` |
-| `oci://ghcr.io/axonops/charts/axon-dash` | `0.1.10` | `helm-1.1.23` |
-| `oci://ghcr.io/axonops/charts/axondb-timeseries` | `0.2.0` | `helm-1.1.23` |
-| `oci://ghcr.io/axonops/charts/axondb-search` | `0.3.0` | `helm-1.1.23` |
+| `oci://ghcr.io/axonops/charts/axonops` | `1.1.28` | `helm-1.1.28` |
+| `oci://ghcr.io/axonops/charts/axon-server` | `2.1.19` | `helm-1.1.28` |
+| `oci://ghcr.io/axonops/charts/axon-dash` | `0.1.12` | `helm-1.1.28` |
+| `oci://ghcr.io/axonops/charts/axondb-timeseries` | `0.2.0` | `helm-1.1.28` |
+| `oci://ghcr.io/axonops/charts/axondb-search` | `0.3.0` | `helm-1.1.28` |
 
 ## Pinned references
 
@@ -54,8 +54,8 @@ registry.axonops.com/axonops-public/axonops-docker/axon-server@sha256:b7c4100992
 registry.axonops.com/axonops-public/axonops-docker/axon-dash@sha256:4cffd1d1e724a479c8ec489299972a43e0da0eef797e7aa27aa3acf6ae28423d
 registry.axonops.com/axonops-public/axonops-docker/axon-reporting@sha256:78dcd0bc74f900e3317db52cce3ba342d6d9d6c9224cf1ea35e1dc218195cf59
 ghcr.io/axonops/axonops-schema-registry@sha256:352a644f75c9f6ddedbbdb8c0f9c897573edc148cea1c1b1230640681b9b9164
-ghcr.io/axonops/k8ssandra/cassandra@sha256:9c50b1b0ed49a3badffedaf7f171e4405e8c48440b76b0c79b18ead0e418478c
-ghcr.io/axonops/cassandra/cassandra@sha256:98fbf8106234dedadcc8f979a2a879a84b1a48b61118cb90cf22cf6f0e40c77d
+ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147efbca348fa78f8daf8d5afb5c611c07a86a42b7edbb42ac1ea30c15
+ghcr.io/axonops/cassandra/cassandra@sha256:2dee69a327430dcfc54a5f47cfe1e3e361ccda4635e41e7992b128b4d1826d5f
 ghcr.io/axonops/strimzi/kafka@sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124eb38672e5e964f51d5d87
 ```
 
@@ -68,8 +68,8 @@ ghcr.io/axonops/strimzi/kafka@sha256:f71af17b1a42bc9fe86837db0d584e9a534067a7124
 - **axon-dash** — Built and published outside this repository; consumed by the compose stack and the Helm charts.
 - **axon-reporting** — Built and published outside this repository. Reports v2 only, so it needs axon-server and axon-dash 2.0.39 or newer. It has to run beside axon-dash: the Helm chart runs it as a sidecar in the axon-dash Pod, and the compose stacks share axon-dash's network namespace.
 - **axonops-schema-registry** — Pre-release. The published tags do not yet follow the documented `{SR_VERSION}-{CONTAINER_VERSION}` pattern, and the newest tags in the registry are feature builds (`0.4.0-mcp-phase7`), not releases.
-- **k8ssandra-cassandra** — Each release publishes one tag per Cassandra version. Build 1.5.6 covers 5.0.1, 5.0.2, 5.0.3, 5.0.5, 5.0.6, 5.0.7 and 5.0.8 — 5.0.4 was last built at 1.5.5. It was built against k8ssandra Management API v0.1.120; 5.0.9 and API v0.1.125 enter the matrix with the next build. `current.digest` is the digest of the 5.0.8 variant only; every other Cassandra version has its own digest.
-- **cassandra** — Build 1.1.0 publishes Cassandra 5.0.1 through 5.0.8, each with AxonOps agent 2.0.31, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. It adds `CASSANDRA_AUTHENTICATOR`, `CASSANDRA_AUTHORIZER`, `CASSANDRA_ROLE_MANAGER` and `CASSANDRA_NATIVE_TRANSPORT_PORT` support to the entrypoint, and the healthcheck now also verifies the AxonOps agent — 1.0.0 ignores all of these. `current.digest` is the digest of the 5.0.8 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest. 5.0.9 is in the build matrix but not yet published here — the next build adds it, and the floating tags then resolve to it.
+- **k8ssandra-cassandra** — Each release publishes one tag per Cassandra version. Build 1.6.3 covers the 4.0, 4.1 and 5.0 lines listed in build_matrix, built against k8ssandra Management API v0.1.125. `current.digest` is the digest of the 5.0.9 variant only; every other Cassandra version has its own digest.
+- **cassandra** — Build 1.2.3 publishes every Cassandra version listed in build_matrix, each with AxonOps agent 2.0.33, plus the floating `{cassandra}-{agent}`, `{cassandra}`, `5.0-latest` and `latest` tags. `current.digest` is the digest of the 5.0.9 variant, which `latest` and `5.0-latest` also resolve to; every other Cassandra version has its own digest.
 - **strimzi-kafka** — Build 0.1.26 publishes one tag per supported operator/Kafka combination (operators 0.46.1 through 1.1.0, AxonOps agent 2.0.20). `current.tag` is the newest combination; see the VERSION_MATRIX in .github/workflows/strimzi-publish-signed.yml for the full set.
 - **chart-axonops** — Chart version comes from axonops/charts/axonops/Chart.yaml.
 
@@ -80,13 +80,14 @@ Newest-first, per component. Full git-tag-to-image history lives in
 
 - **axondb-timeseries**: `5.0.6-1.2.0`, `5.0.6-1.1.0`, `5.0.6-1.0.0`
 - **axondb-search**: `3.7.0-1.6.0`, `3.3.2-1.5.0`, `3.3.2-1.4.0`, `3.3.2-1.3.0`, `3.3.2-1.2.0`
-- **axon-server**: `2.0.36`, `2.0.35`, `2.0.34`
-- **axon-dash**: `2.0.37`, `2.0.36`
+- **axon-server**: `2.0.38`, `2.0.37`, `2.0.36`, `2.0.35`
+- **axon-dash**: `2.0.38`, `2.0.37`, `2.0.36`
 - **axonops-schema-registry**: `0.2.0`, `0.1.0`, `0.0.1`
-- **k8ssandra-cassandra**: `5.0.8-v0.1.120-1.5.5`, `5.0.8-v0.1.120-1.5.3`, `5.0.8-v0.1.120-1.5.2`
-- **cassandra**: `5.0.8-2.0.31-1.0.0`
+- **k8ssandra-cassandra**: `5.0.9-v0.1.125-1.6.2`, `5.0.9-v0.1.125-1.6.1`, `5.0.9-v0.1.125-1.6.0`, `5.0.8-v0.1.120-1.5.6`, `5.0.8-v0.1.120-1.5.5`, `5.0.8-v0.1.120-1.5.3`
+- **cassandra**: `5.0.9-2.0.32-1.2.2`, `5.0.9-2.0.32-1.2.1`, `5.0.9-2.0.31-1.2.0`, `5.0.8-2.0.31-1.1.0`, `5.0.8-2.0.31-1.0.0`
 - **strimzi-kafka**: `1.1.0-4.3.0-2.0.20-0.1.25`, `1.1.0-4.3.0-2.0.20-0.1.24`
-- **chart-axonops**: `1.1.21`
-- **chart-axon-server**: `2.1.14`
+- **chart-axonops**: `1.1.27`, `1.1.23`, `1.1.21`
+- **chart-axon-server**: `2.1.18`, `2.1.17`, `2.1.16`, `2.1.14`
+- **chart-axon-dash**: `0.1.11`, `0.1.10`
 - **chart-axondb-timeseries**: `0.1.7`
 - **chart-axondb-search**: `0.2.9`

@@ -137,12 +137,12 @@ build.
 
 **The agent.** It ships inside the Cassandra image rather than as its own
 container, and it is the middle component of the tag —
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` is Cassandra 5.0.8 with
-agent 2.0.31 from build 1.1.0. Upgrading the agent therefore means moving to a
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` is Cassandra 5.0.9 with
+agent 2.0.33 from build 1.2.3. Upgrading the agent therefore means moving to a
 new image tag, which in examples 01, 02 and 03 is `CASSANDRA_IMAGE` in `.env`:
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3
 ```
 
 Recreate the nodes **one at a time**, waiting for each to come back healthy
