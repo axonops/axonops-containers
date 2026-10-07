@@ -29,12 +29,12 @@ on:
         description: 'Strimzi version to build'
         required: false
         type: string
-        default: '0.47.0'
+        default: '1.2.0'
       kafka_version:
         description: 'Kafka version to build'
         required: false
         type: string
-        default: '3.9.0'
+        default: '4.3.1'
       axon_version:
         description: 'AxonOps version to include'
         required: false
@@ -47,23 +47,7 @@ env:
   # Format: "strimzi_version+kafka_version": "sha256:digest"
   STRIMZI_DIGESTS: |
     {
-      "0.43.0+3.7.0": "sha256:d27cf5bf3624e18ba705246b14f92d12b8a15eb8551b13abf027cf71b549baf0",
-      "0.43.0+3.7.1": "sha256:ad06ead5125bce87498b1582a76e78143a6d21408ac4b12bb7e6007aa4cabd84",
-      "0.43.0+3.8.0": "sha256:b2f4e8895e9ed66228512ce14aec685101fa75dc329128d47cb1c15e3aef3c9c",
-      "0.44.0+3.7.0": "sha256:238bb080825b7ecebaa819be09788bc3d056ae8162ebcd41444076dc22f85740",
-      "0.44.0+3.7.1": "sha256:98d332b7fa5c9e48f60b516e00ed5812bd9268e014fd2337284e7cc3e664f1eb",
-      "0.44.0+3.8.0": "sha256:9a4224635e09ece2c1d3ffe9d715813cf63037461c9f06c1b5f53554aed5ecdc",
-      "0.45.0+3.8.0": "sha256:1fb0cac58be6798c07e850102b86f97d9b6e829dc8ce7846fcd13bcc25a115ed",
-      "0.45.0+3.8.1": "sha256:b2b5f2ee4e4e6fcf99592e830561c39af4b29a2b5eec8943861afa30a7cf5309",
-      "0.45.0+3.9.0": "sha256:e73e191d671cab3fe93dce6f1e151efcb9381bc60697472fef999ca3e208b784",
-      "0.45.1+3.8.0": "sha256:efd0ffeb947120fd65d458a40d20025bbea8b06cd16e3adbf0782afd8e79c17e",
-      "0.45.1+3.8.1": "sha256:beb52e066ec8c5c33ca65075309b3158236a8dca917ddd9074df1e935db98cf1",
-      "0.45.1+3.9.0": "sha256:53cffb2cd769b77442a0a57673439c9917bebe5267583c4d32af343c15a9006b",
-      "0.45.1+3.9.1": "sha256:d5b01dab055b67a778a148a0ca71a164522fd1e618f6585050fc6d0c0549041a",
-      "0.46.0+3.9.0": "sha256:3c976468f590b464bd224fdf0adb45556fccfba6025bc6b770e3fa69f7398b04",
       "0.46.1+3.9.0": "sha256:f3837f8cb2a60e906e84486128c41c398424f4085df2348e9e0486bfc12089fd",
-      "0.47.0+3.9.0": "sha256:1bb6ad2cfdee6158e445af962cfb4b48da6cdaf3dc800c7f55a164c674b99823",
-      "0.47.0+3.9.1": "sha256:7942736f66e3379e2b14623c78b4c24174ffb560ebf0134d9704568e94b6a250",
       "0.47.0+3.9.0": "sha256:1bb6ad2cfdee6158e445af962cfb4b48da6cdaf3dc800c7f55a164c674b99823",
       "0.47.0+3.9.1": "sha256:7942736f66e3379e2b14623c78b4c24174ffb560ebf0134d9704568e94b6a250",
       "0.48.0+4.0.0": "sha256:48db05ad2e9fa39eb388089e7e25654bcbf4da1ddc3a5635d675056c28bbcb96",
@@ -87,13 +71,21 @@ env:
       "0.51.0+4.1.0": "sha256:28741c73503a63d74da3cdb482ec2b8b3a07e570ffdcad94bbcf568856c6ef4b",
       "0.51.0+4.1.1": "sha256:b8826823abe035973631c939a45f060203d5b73aefee6b20eea777fbf1a4a08f",
       "0.51.0+4.2.0": "sha256:bb6a6020c44b7fc7910ac79f76e87e42aef1e9423e2bc9372f73834c5e5c8b22",
+      "1.0.0+4.1.0": "sha256:70a7368438d1c5e0d5272848d588c812c53e3b853c68424c017b548039c23596",
+      "1.0.0+4.1.1": "sha256:d48bbc220e28246c76342f6b77f9be53b07ac4909240ebfa4a6139d61a951bd4",
+      "1.0.0+4.1.2": "sha256:6a52c514833a91ac08ee6cf10609b60961580170661caadec0a6992a7208c2a2",
+      "1.0.0+4.2.0": "sha256:87c6b1c1081bfc25f88a0490d580f5696f5e419482d686df612cdfdf04711059",
       "1.0.1+4.1.0": "sha256:b7da827ad38b199877387893a6cdf381d4eddae92854141eefe4a7a3b31c3b8f",
       "1.0.1+4.1.1": "sha256:1c4811ff5ac8368a44327e24431775602fe9e008c20a45814858776c348658c8",
       "1.0.1+4.1.2": "sha256:39bce6f044fe43c62b1355b4e855866899685f316db15cd25a27f7f37fffa99f",
       "1.0.1+4.2.0": "sha256:8cbd25d7bb132cc64fde7ac8460a5e4198fc67deadfd1bef5430866a7befbe47",
       "1.1.0+4.2.0": "sha256:79d91d6a9dc9dc08ea1e75cb8b5cf1a73069a1db265b67335f444b4043f72f5b",
       "1.1.0+4.2.1": "sha256:4cdf885bba8b67a637f8565058a8a26ed7115e1c7bdf76d6f32df3cd1aa38503",
-      "1.1.0+4.3.0": "sha256:b6848a53c01eec98b37866450a1227c3a41707785ec65b37063d2733a105bf36"
+      "1.1.0+4.3.0": "sha256:b6848a53c01eec98b37866450a1227c3a41707785ec65b37063d2733a105bf36",
+      "1.2.0+4.2.0": "sha256:57a8fc7f50d37a62c7dc1afbf8300bb7b18b74c6979dd42992e9b8bf93b21d66",
+      "1.2.0+4.2.1": "sha256:47ea0bd5cd416a92cbcfa248ae4b4b01a1e5d6b87aeafa67a691abdc29e20d0d",
+      "1.2.0+4.3.0": "sha256:e90a1a74af4226f3ca4d1ebef3ab13bdb09754ae17ca4c1444f7fcbb0ca8ea9a",
+      "1.2.0+4.3.1": "sha256:fef34b5438e8556cc08c01f3e254e47346f061b53a4e38d4289853777e0ea7f1"
     }
 
 jobs:
@@ -106,8 +98,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - strimzi_version: ${{ inputs.strimzi_version || '0.47.0' }}
-            kafka_version: ${{ inputs.kafka_version || '3.9.0' }}
+          - strimzi_version: ${{ inputs.strimzi_version || '1.2.0' }}
+            kafka_version: ${{ inputs.kafka_version || '4.3.1' }}
             axon_version: ${{ inputs.axon_version || '2.0.15' }}
     steps:
       - name: Checkout code

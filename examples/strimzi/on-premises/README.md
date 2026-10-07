@@ -4,7 +4,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.1.1
+- **Kafka Version**: 4.3.1
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 6 replicas, 20Gi storage
 - **Controllers**: 3 replicas, 10Gi storage
@@ -35,7 +35,7 @@ source strimzi-config.env
 | --- | --- | --- |
 | `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
 | `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `example` |
-| `KAFKA_VERSION` | Kafka version | `4.1.1` |
+| `KAFKA_VERSION` | Kafka version | `4.3.1` |
 | `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
 | `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
 | `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |

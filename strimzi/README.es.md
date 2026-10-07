@@ -34,7 +34,7 @@ imágenes estándar de Strimzi Kafka con los componentes del agente de AxonOps.
 ```bash
 helm repo add strimzi https://strimzi.io/charts/
 helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 0.46.0 \
+  --version 1.2.0 \
   --set watchAnyNamespace=true
 ```
 
@@ -217,7 +217,7 @@ Para construir una imagen personalizada en local, para pruebas:
 ```bash
 # For Kafka 3.x versions
 docker build \
-  --build-arg STRIMZI_VERSION=0.46.0 \
+  --build-arg STRIMZI_VERSION=0.46.1 \
   --build-arg KAFKA_VERSION=3.9.0 \
   --build-arg KAFKA_AGENT_PACKAGE=axon-kafka3-agent \
   --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
@@ -428,8 +428,8 @@ Ficheros clave:
 
 | Componente | Versión | Notas |
 | --------- | ------- | ----- |
-| Strimzi | 1.1.0 (última) | El soporte de ConfigMap requiere 0.44+, y el modo KRaft es obligatorio |
-| Kafka | 4.3.0 (última) | La versión 1.1.0 admite Kafka 4.2.0, 4.2.1 y 4.3.0 |
+| Strimzi | 1.2.0 (última) | El soporte de ConfigMap requiere 0.44+, y el modo KRaft es obligatorio |
+| Kafka | 4.3.1 (última) | La versión 1.2.0 admite Kafka 4.2.0, 4.2.1, 4.3.0 y 4.3.1 |
 | Kubernetes | 1.24+ | Cualquier distribución conforme a la CNCF |
 | Agente de AxonOps | Última | Se instala automáticamente desde el repositorio |
 
@@ -437,8 +437,10 @@ Ficheros clave:
 
 | Versión de Strimzi | Versiones de Kafka admitidas | Fecha de publicación |
 | --------------- | ------------------------ | ------------ |
+| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | ago. 2026 |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | jun. 2026 |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | jun. 2026 |
+| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | abr. 2026 |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | mar. 2026 |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | feb. 2025 |
 | 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | dic. 2024 |
