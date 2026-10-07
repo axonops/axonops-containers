@@ -140,13 +140,13 @@ máis recente.
 
 **O axente.** Viaxa dentro da imaxe de Cassandra no canto de como o seu propio
 contedor, e é o compoñente central da etiqueta:
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` é Cassandra 5.0.8 co
-axente 2.0.31 da build 1.1.0. Actualizar o axente significa, polo tanto, pasar a
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` é Cassandra 5.0.9 co
+axente 2.0.33 da build 1.2.3. Actualizar o axente significa, polo tanto, pasar a
 unha nova etiqueta de imaxe, que nos exemplos 01, 02 e 03 é `CASSANDRA_IMAGE` no
 `.env`:
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3
 ```
 
 Recree os nodos **dun en un**, agardando a que cada un volva estar healthy antes

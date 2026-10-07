@@ -149,13 +149,13 @@ la plus récente.
 
 **L'agent.** Il est embarqué dans l'image Cassandra plutôt que dans son propre
 conteneur, et c'est le composant central du tag —
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` correspond à Cassandra
-5.0.8 avec l'agent 2.0.31 issu du build 1.1.0. Mettre à niveau l'agent revient
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` correspond à Cassandra
+5.0.9 avec l'agent 2.0.33 issu du build 1.2.3. Mettre à niveau l'agent revient
 donc à passer à un nouveau tag d'image, ce qui, dans les exemples 01, 02 et 03,
 se fait via `CASSANDRA_IMAGE` dans `.env` :
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3
 ```
 
 Recréez les nœuds **un à la fois**, en attendant que chacun revienne en bonne

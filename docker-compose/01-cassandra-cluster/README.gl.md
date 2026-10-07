@@ -39,9 +39,9 @@ de datos de AxonOps, e despois os nodos de Cassandra arrancan dun en un.
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend de AxonOps e endpoint dos axentes | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
 | `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2: véxase [máis abaixo](#reports-v2) | — |
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, nodo seed | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, rack1 | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, rack2 | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Clúster monitorizado, nodo seed | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Clúster monitorizado, rack1 | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Clúster monitorizado, rack2 | — |
 
 De `cassandra-0` a `cassandra-2` forman un único datacenter, `dc1`, cun rack cada
 un. Só `cassandra-0` publica CQL ao host; os outros dous son accesibles dentro da
@@ -86,7 +86,7 @@ Todo se define no `.env`. Lista completa cos valores por defecto:
 |----------|---------|-------------|
 | `AXONOPS_ORG_NAME` | `example` | Nome da organización. Compartido por `axon-server` e os axentes: deben coincidir. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Nome do clúster monitorizado en AxonOps |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Imaxe dos nodos monitorizados |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Imaxe dos nodos monitorizados |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap por nodo monitorizado |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Xeración nova por nodo monitorizado |
 | `AXONOPS_LICENSE_KEY` | (baleiro) | Chave de licenza; baleiro executa en modo de proba |
@@ -151,7 +151,7 @@ O axente só arranca unha vez Cassandra está levantada, así que normalmente es
 ausente durante parte do período de arranque de 90 s.
 
 Tanto a comprobación do axente como `HEALTHCHECK_REQUIRE_AGENT` están na imaxe
-fixada, `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. En calquera
+fixada, `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`. En calquera
 imaxe anterior o script verifica só Cassandra e a variable non ten efecto.
 
 ## Usar o clúster

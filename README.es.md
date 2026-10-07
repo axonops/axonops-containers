@@ -226,10 +226,10 @@ SHA256 de la imagen:
 
 ```yaml
 # Tag-based (good)
-image: ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+image: ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Digest-based (best)
-image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+image: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 #### Ventajas
@@ -254,13 +254,13 @@ image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
 **Método 2: con Docker o Podman**
 ```bash
 # Pull the image first
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Get digest
-docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}'
 
-# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 **Método 3: durante el workflow**
@@ -277,9 +277,9 @@ metadata:
   name: production-cluster
 spec:
   cassandra:
-    serverVersion: "5.0.6"
+    serverVersion: "5.0.9"
     # Use digest instead of tag
-    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:412c852252ec4ebcb8d377a505881828a7f6a5f9dc725cc4f20fda2a1bcb3494"
+    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147efbca348fa78f8daf8d5afb5c611c07a86a42b7edbb42ac1ea30c15"
     datacenters:
       - metadata:
           name: dc1
@@ -302,10 +302,10 @@ brew install sigstore/tap/cosign  # macOS
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 **Resolución de problemas (en macOS):**
@@ -318,13 +318,13 @@ de Cosign:
 docker run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Using Podman
 podman run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 Esto usa el [contenedor oficial de Cosign](https://github.com/sigstore/cosign) y
@@ -416,10 +416,10 @@ Kubernetes sobre controladores de admisión y aplicación de políticas de image
 **Actualizar los digests:**
 ```bash
 # 1. Pull new version
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # 2. Get new digest
-NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}' | cut -d@ -f2)
 
 # 3. Update manifest
@@ -495,7 +495,7 @@ probarlas antes de una release de producción.
 
 **Registro:** `ghcr.io/axonops/development/<component>/<image-name>`
 
-**Ejemplo:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0`
+**Ejemplo:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.9-v0.1.125-dev-k8ssandra-1.4.7`
 
 **Características:**
 - Todas las imágenes están firmadas con Cosign (igual que en producción)
@@ -650,16 +650,16 @@ transparencia. Las firmas pueden verificarse con `cosign verify` (véase
 gh release view k8ssandra-signed-1.0.0
 
 # Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Verify signature
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 Todas las imágenes de producción están firmadas criptográficamente. La

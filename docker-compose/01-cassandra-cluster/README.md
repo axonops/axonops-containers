@@ -38,9 +38,9 @@ the Cassandra nodes bootstrap one at a time.
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | AxonOps backend and agent endpoint | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
 | `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, see [below](#reports-v2) | — |
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, seed node | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack1 | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack2 | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Monitored cluster, seed node | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Monitored cluster, rack1 | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Monitored cluster, rack2 | — |
 
 `cassandra-0` through `cassandra-2` are one datacentre, `dc1`, with one rack
 each. Only `cassandra-0` publishes CQL to the host; the other two are reachable
@@ -84,7 +84,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 |----------|---------|-------------|
 | `AXONOPS_ORG_NAME` | `example` | Organisation name. Shared by `axon-server` and the agents — they must match. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Name of the monitored cluster in AxonOps |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the monitored nodes |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Image for the monitored nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per monitored node |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Young generation per monitored node |
 | `AXONOPS_LICENSE_KEY` | (empty) | License key; empty runs in trial mode |
@@ -148,7 +148,7 @@ The agent starts only once Cassandra is up, so it is normally absent for part of
 the 90s start period.
 
 Both the agent check and `HEALTHCHECK_REQUIRE_AGENT` are in the pinned image,
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. On any earlier image
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`. On any earlier image
 the script verifies Cassandra only and the variable has no effect.
 
 ## Using the cluster
