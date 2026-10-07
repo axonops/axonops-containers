@@ -29,7 +29,7 @@ exits. `docker compose ps` showing it as `Exited (0)` is success — it is a
 one-shot job, not a service. In the dashboard the rules appear under
 **Alerts → Rules** for your cluster.
 
-Roughly 6 GB of RAM at the defaults. Five long-running containers.
+Roughly 6 GB of RAM at the defaults. Six long-running containers.
 
 ## What it runs
 
@@ -39,6 +39,7 @@ Roughly 6 GB of RAM at the defaults. Five long-running containers.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, log and event store |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | AxonOps backend, agent endpoint on 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Dashboard on 3000, also proxies the API |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Reports v2, inside `axon-dash`'s network namespace |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | The monitored node, Cassandra + agent |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | One-shot. Applies `config.yaml`, then exits |
 
@@ -46,6 +47,10 @@ The `config` image is the AxonOps Ansible execution environment. It already
 contains Ansible and the [`axonops.axonops`](https://galaxy.ansible.com/ui/repo/published/axonops/axonops/)
 collection, so nothing is installed at run time and the container needs no
 volumes beyond the playbook itself.
+
+`axon-reporting` serves Reports v2. It shares `axon-dash`'s network namespace,
+so `axon-server` reaches it as `axon-dash:8081`. Details: [example
+00](../00-axonops-platform/README.md#reports-v2).
 
 ## Editing the alerts
 

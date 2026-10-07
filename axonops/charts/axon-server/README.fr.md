@@ -2,7 +2,7 @@
 
 [English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
-![Version: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
+![Version: 2.1.17](https://img.shields.io/badge/Version-2.1.17-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.39](https://img.shields.io/badge/AppVersion-2.0.39-informational?style=flat-square)
 
 Un chart Helm pour déployer AxonOps Server — la plateforme d'observabilité unifiée d'Apache Cassandra. AxonOps Server est le composant central : il collecte les métriques et les logs des clusters Cassandra, les stocke dans les bases time-series et de recherche, et expose les API du dashboard AxonOps.
 
@@ -356,8 +356,8 @@ stringData:
     org_name: my-organization
     license_key: YOUR_LICENSE_KEY_HERE
 
-    # Dashboard URL
-    axon_dash_url: https://axonops.example.com
+    # Reports v2 service (axon-reporting sidecar in the axon-dash pod)
+    axon_reporting_url: http://axon-dash-svc:8081
 
     # Log to stdout for Kubernetes
     log_file: /dev/stdout
@@ -964,7 +964,8 @@ curl http://localhost:8080/api/v1/healthz
 | `searchDb.hosts` | Hôtes de la base de recherche | `[]` |
 | `searchDb.username` | Nom d'utilisateur de la base de recherche | `""` |
 | `searchDb.search_secret` | Nom du secret Kubernetes portant les identifiants OpenSearch | `""` |
-| `dashboardUrl` | URL publique du dashboard AxonOps | `""` |
+| `dashboardUrl` | URL publique du dashboard AxonOps (utilisée uniquement si `reportingUrl` est vide) | `""` |
+| `reportingUrl` | URL du service Reports v2 (axon-server >= 2.0.39) ; prioritaire sur `dashboardUrl` | `"http://axon-dash-svc:8081"` |
 | `apiIngress.enabled` | Activer l'ingress de l'API | `false` |
 | `agentIngress.enabled` | Activer l'ingress des agents | `false` |
 | `persistence.enabled` | Activer le stockage persistant | `true` |
@@ -994,6 +995,12 @@ curl http://localhost:8080/api/v1/healthz
 - `disabled` : pas de TLS (développement uniquement)
 - `TLS` : chiffrement TLS côté serveur
 - `mTLS` : TLS mutuel (exige des certificats client sur les agents)
+
+**Reports v2 (`reportingUrl`) :**
+- axon-server >= 2.0.39 lit `axon_reporting_url`, qui remplace `axon_dash_url`
+- si `reportingUrl` est renseignée, le chart génère `axon_reporting_url` et omet `axon_dash_url` ; `dashboardUrl` est ignorée
+- si `reportingUrl` est vide, `axon_dash_url` est généré à partir de `dashboardUrl` comme auparavant, pour les serveurs < 2.0.39
+- exemple dans le cluster, pointant vers le sidecar de reporting du chart axon-dash : `http://<release>-axon-dash-svc:8081`
 
 ### Référence complète des values
 
@@ -1031,7 +1038,7 @@ curl http://localhost:8080/api/v1/healthz
 | config.org_name | string | `"example"` | Nom de l'organisation |
 | config.sslSecretName | string | `""` | Nom du secret contenant les certificats SSL |
 | config.tls.mode | string | `"disabled"` | Mode TLS (disabled, TLS, mTLS) |
-| dashboardUrl | string | `""` | URL publique du dashboard |
+| dashboardUrl | string | `""` | URL publique du dashboard (utilisée uniquement si `reportingUrl` est vide) |
 | deployment.annotations | object | `{}` | Annotations du déploiement |
 | deployment.env | object | `{}` | Variables d'environnement supplémentaires |
 | deployment.secretEnv | string | `""` | Secret contenant des variables d'environnement |
@@ -1058,6 +1065,7 @@ curl http://localhost:8080/api/v1/healthz
 | podSecurityContext.runAsNonRoot | bool | `true` | Exécuter sous un utilisateur non root |
 | podSecurityContext.runAsUser | int | `9988` | UID d'exécution du pod |
 | readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Configuration de la sonde de readiness |
+| reportingUrl | string | `"http://axon-dash-svc:8081"` | URL du service Reports v2 (axon-server >= 2.0.39) ; génère `axon_reporting_url` au lieu de `axon_dash_url` |
 | resources | object | `{}` | Limites et requêtes de ressources |
 | searchDb.hosts | list | `[]` | Hôtes de la base de recherche |
 | searchDb.password | string | `""` | Mot de passe de la base de recherche |

@@ -36,7 +36,7 @@ Las contraseñas viven en `.env`, que está en el gitignore. Nunca suba ninguna.
 | AxonOps | autoalojado | autoalojado | SaaS | autoalojado | autoalojado |
 | Cassandra | ninguna: traiga la suya | 3 nodos, monitorizados | 3 nodos, monitorizados | 3 nodos, 3 racks, monitorizados | 1 nodo, monitorizado |
 | Autenticación del clúster | — | desactivada | desactivada | `PasswordAuthenticator` | desactivada |
-| Contenedores | 4 | 7 | 3 | 7 | 5, más un job de configuración de un solo uso |
+| Contenedores | 5 | 8 | 3 | 8 | 6, más un job de configuración de un solo uso |
 | RAM con los valores por defecto | ~10 GB | ~10 GB | ~5 GB | ~12 GB | ~6 GB |
 | Panel | `localhost:3000` | `localhost:3000` | consola de AxonOps | `localhost:3000` | `localhost:3000` |
 | Necesita | nada | nada | una organización SaaS y una clave de agente | nada | nada |
@@ -107,8 +107,8 @@ que evitar.
 
 ```yaml
   axon-server:
-    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:b7c41009…
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Cambie la etiqueta y el comentario del digest a la vez —un comentario obsoleto
@@ -127,6 +127,19 @@ ninguno de los dos: AxonOps Cloud los ejecuta y los actualiza por usted, así qu
 ahí el agente es lo único que actualiza. Ambos son sin estado: todo vive en
 `axondb-timeseries` y `axondb-search`, que no está tocando, así que recrearlos no
 pierde datos. Los agentes se reconectan solos en cuanto el servidor vuelve.
+
+**`axon-reporting`** (todos los ejemplos salvo el 02) comparte el espacio de
+nombres de red de `axon-dash`. Recrear `axon-dash` lo deja enganchado al espacio
+de nombres del contenedor antiguo, donde nada puede alcanzarlo, así que recréelo
+justo después:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
+
+Sigue la etiqueta de desarrollo `latest` hasta que se publique en
+`registry.axonops.com`; `docker compose pull axon-reporting` descarga la build
+más reciente.
 
 **El agente.** Viaja dentro de la imagen de Cassandra en lugar de como su propio
 contenedor, y es el componente central de la etiqueta:

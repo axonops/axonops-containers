@@ -38,7 +38,7 @@ jamais un.
 | AxonOps | auto-hébergé | auto-hébergé | SaaS | auto-hébergé | auto-hébergé |
 | Cassandra | aucun — apportez le vôtre | 3 nœuds, supervisés | 3 nœuds, supervisés | 3 nœuds, 3 racks, supervisés | 1 nœud, supervisé |
 | Authentification du cluster | — | désactivée | désactivée | `PasswordAuthenticator` | désactivée |
-| Conteneurs | 4 | 7 | 3 | 7 | 5, plus une tâche de configuration ponctuelle |
+| Conteneurs | 5 | 8 | 3 | 8 | 6, plus une tâche de configuration ponctuelle |
 | RAM aux valeurs par défaut | ~10 Go | ~10 Go | ~5 Go | ~12 Go | ~6 Go |
 | Tableau de bord | `localhost:3000` | `localhost:3000` | console AxonOps | `localhost:3000` | `localhost:3000` |
 | Prérequis | rien | rien | une organisation SaaS et une clé d'agent | rien | rien |
@@ -112,8 +112,8 @@ combinaison à éviter.
 
 ```yaml
   axon-server:
-    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:b7c41009…
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Changez le tag et le commentaire de digest ensemble — un commentaire périmé à
@@ -133,6 +133,19 @@ donc la seule chose à mettre à jour. Les deux sont sans état : tout réside d
 `axondb-timeseries` et `axondb-search`, auxquels vous ne touchez pas, une
 recréation ne perd donc aucune donnée. Les agents se reconnectent d'eux-mêmes
 dès que le serveur est de retour.
+
+**`axon-reporting`** (tous les exemples sauf 02) partage l'espace de noms réseau
+d'`axon-dash`. Recréer `axon-dash` le laisse attaché à l'espace de noms de
+l'ancien conteneur, où plus rien ne peut l'atteindre ; recréez-le donc juste
+après :
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
+
+Il suit le tag de développement `latest` en attendant sa publication sur
+`registry.axonops.com` ; `docker compose pull axon-reporting` récupère la build
+la plus récente.
 
 **L'agent.** Il est embarqué dans l'image Cassandra plutôt que dans son propre
 conteneur, et c'est le composant central du tag —

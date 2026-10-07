@@ -88,9 +88,8 @@ AXON_SERVER_HOST="${AXON_SERVER_HOST:-0.0.0.0}"
 AXON_SERVER_SEARCH_DB_HOST_URL="${AXON_SERVER_SEARCH_DB_HOST_URL:-https://axondb-search-cluster-master.$NS_AXONOPS.svc.cluster.local:9200}"
 AXON_SERVER_SEARCH_DB_SKIP_VERIFY="${AXON_SERVER_SEARCH_DB_SKIP_VERIFY:-true}"
 
-# AxonOps org and dashboard URL
+# AxonOps org
 AXON_SERVER_ORG_NAME="${AXON_SERVER_ORG_NAME:-example}"
-AXON_SERVER_DASH_URL="${AXON_SERVER_DASH_URL:-https://axonops.example.com}"
 
 # CQL / Cassandra configuration
 AXON_SERVER_CQL_HOSTS="${AXON_SERVER_CQL_HOSTS:-axondb-timeseries-headless.$NS_AXONOPS.svc.cluster.local}"
@@ -143,6 +142,20 @@ AXON_DASH_INGRESS_TLS_SECRET_NAME="${AXON_DASH_INGRESS_TLS_SECRET_NAME:-axon-das
 AXON_DASH_INGRESS_CERT_ISSUER_ANNOTATION="${AXON_DASH_INGRESS_CERT_ISSUER_ANNOTATION:-$CLUSTER_ISSUER_NAME}"
 
 AXON_DASH_HELM_EXTRA_ARGS="${AXON_DASH_HELM_EXTRA_ARGS:-}"
+
+# Reports v2: axon-reporting sidecar in the axon-dash pod (needs axon-server >= 2.0.39).
+# axon-server reaches it through axon_reporting_url.
+AXON_DASH_REPORTING_IMAGE_REPOSITORY="${AXON_DASH_REPORTING_IMAGE_REPOSITORY:-registry.axonops.com/axonops-public/axonops-docker/axon-reporting}"
+AXON_DASH_REPORTING_IMAGE_TAG="${AXON_DASH_REPORTING_IMAGE_TAG:-1.0.3}"
+AXON_DASH_REPORTING_PORT="${AXON_DASH_REPORTING_PORT:-8081}"
+# The axon-dash chart names its Service <fullname>-svc; fullname is the release name
+# when it already contains "axon-dash", otherwise <release>-axon-dash.
+if [[ "$AXON_DASH_RELEASE_NAME" == *axon-dash* ]]; then
+  _axon_dash_fullname="$AXON_DASH_RELEASE_NAME"
+else
+  _axon_dash_fullname="${AXON_DASH_RELEASE_NAME}-axon-dash"
+fi
+AXON_SERVER_REPORTING_URL="${AXON_SERVER_REPORTING_URL:-http://${_axon_dash_fullname}-svc.${NS_AXONOPS}.svc.cluster.local:${AXON_DASH_REPORTING_PORT}}"
 
 ############################################
 # Helper functions
@@ -365,7 +378,7 @@ stringData:
     org_name: ${AXON_SERVER_ORG_NAME}
     license_key: "${AXON_SERVER_LICENSE_KEY}"
 
-    axon_dash_url: ${AXON_SERVER_DASH_URL}
+    axon_reporting_url: ${AXON_SERVER_REPORTING_URL}
 
     log_file: /dev/stdout
     tls:
@@ -574,6 +587,16 @@ EOS
 )
   fi
 
+  # Reports v2 sidecar
+  REPORTING_BLOCK=$(cat <<EOS
+reporting:
+  image:
+    repository: ${AXON_DASH_REPORTING_IMAGE_REPOSITORY}
+    tag: "${AXON_DASH_REPORTING_IMAGE_TAG}"
+  port: ${AXON_DASH_REPORTING_PORT}
+EOS
+)
+
   cat > "$AXON_DASH_VALUES_FILE" <<EOF
 config:
   axonServerUrl: "${AXON_DASH_AXON_SERVER_URL}"
@@ -581,6 +604,8 @@ config:
 ${SERVICE_BLOCK}
 
 ${INGRESS_BLOCK}
+
+${REPORTING_BLOCK}
 EOF
 }
 

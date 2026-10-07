@@ -60,7 +60,7 @@ su nodo menos asegurado.
 cp env.example .env          # set AXONOPS_ORG_NAME
 ./setup.sh                   # create and seed ./docker/, once
 docker compose up -d
-docker compose ps            # wait for all seven services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 `setup.sh` no es opcional: los tres nodos leen su configuración de directorios
@@ -88,12 +88,18 @@ keyspace `system_auth` que no sobrevive a la pérdida de un nodo.
 | `cassandra03` | 10.17.64.7 | la misma | Nodo del clúster, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra de un solo nodo) | — |
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de registros y eventos (OpenSearch) | — |
-| `axon-server` | 10.17.64.22 | `axon-server:2.0.35` | Backend y endpoint de los agentes | `1888` |
-| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.37` | Panel web | `3000` |
+| `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend y endpoint de los agentes | `1888` |
+| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Panel web | `3000` |
+| `axon-reporting` | la de `axon-dash` | `axon-reporting:1.0.3` | Reports v2 | — |
 
 ¹ Ligados únicamente a `127.0.0.1`: véase [JMX remoto](#jmx-remoto).
 
 Las etiquetas y digests actuales de cada imagen: [VERSIONS.md](../../VERSIONS.md).
+
+`axon-reporting` sirve Reports v2. No tiene dirección propia: comparte el
+espacio de nombres de red de `axon-dash`, así que `axon-server` lo alcanza como
+`axon-dash:8081`. Detalles: [ejemplo
+00](../00-axonops-platform/README.es.md#reports-v2).
 
 ## El clúster
 
@@ -443,7 +449,7 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 
 | Original | Aquí | Por qué |
 |----------|------|-----|
-| Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | El sentido del port. Métricas, registros, alertas y planificación de reparaciones en una sola plataforma, y ningún sidecar de exportador JMX que configurar |
+| Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash`, `axon-reporting` | El sentido del port. Métricas, registros, alertas y planificación de reparaciones en una sola plataforma, y ningún sidecar de exportador JMX que configurar |
 | `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | La misma Cassandra, con el agente de AxonOps y el agente Java ya instalados |
 | Bind mounts bajo `${PWD}/docker/` | Se mantienen | Reproduce el entorno del cliente. `setup.sh` los crea y los puebla: véase [Almacenamiento](#almacenamiento) |
 | Volúmenes `conf` montados por bind | Se mantienen | La misma razón. La imagen puede gobernarse enteramente con variables de entorno, pero así la configuración es editable en el host |

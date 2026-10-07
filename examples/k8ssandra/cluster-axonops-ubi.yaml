@@ -30,6 +30,8 @@ spec:
                 value: "${AXON_AGENT_SERVER_HOST}"
               - name: AXON_AGENT_SERVER_PORT
                 value: "${AXON_AGENT_SERVER_PORT}"
+              - name: AXON_AGENT_TLS_MODE
+                value: "${AXON_AGENT_TLS_MODE}"
         config:
           jvmOptions:
             heap_initial_size: ${HEAP_SIZE}
