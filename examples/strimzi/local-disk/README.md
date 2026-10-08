@@ -4,7 +4,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.3.1
+- **Kafka Version**: 4.3.0
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 3 replicas (configurable), 10Gi storage
 - **Controllers**: 3 replicas (configurable), 5Gi storage
