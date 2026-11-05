@@ -64,9 +64,12 @@ Comprobe sempre a [matriz de compatibilidade de Strimzi](https://strimzi.io/down
 
 | Versión de Strimzi | Versións de Kafka admitidas | Versións de Kubernetes |
 | --- | --- | --- |
-| 0.45.0 | 3.8.x, 3.9.x | 1.25+ |
-| 0.44.0 | 3.7.x, 3.8.x | 1.25+ |
-| 0.43.0 | 3.7.x, 3.8.x | 1.23+ |
+| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | 1.27+ |
+| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | 1.27+ |
+| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | 1.26+ |
+| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
+| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
+| 0.47.0 | 3.9.0, 3.9.1 | 1.25+ |
 
 *Nota: esta táboa é unicamente orientativa. Verifique sempre a compatibilidade actual en [strimzi.io/downloads](https://strimzi.io/downloads/).*
 
