@@ -31,6 +31,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - [Acknowledgements](#acknowledgements)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [License](#license)
 - [Legal Notices](#legal-notices)
@@ -46,6 +47,9 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 ### AxonOps Self-Hosted
 - **[axonops/](./axonops/)** - AxonOps self-hosted stack (complete platform components)
+
+### Message Brokers
+- **[strimzi/](./strimzi/)** - Apache Kafka on Kubernetes using the Strimzi operator, with integrated AxonOps monitoring (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Integrations
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Confluent-compatible Schema Registry with multi-backend storage support
@@ -104,6 +108,7 @@ operates it.
 | **Use for** | evaluation, demos, development, small single-host deployments | production, HA, anything that has to survive a host |
 | **AxonOps platform** | [`docker-compose/`](./docker-compose/) stacks | Helm charts `oci://ghcr.io/axonops/charts/*` — see [VERSIONS.md](VERSIONS.md#helm-charts) and [examples/AXONOPS_DEPLOYMENT.md](./examples/AXONOPS_DEPLOYMENT.md) |
 | **Cassandra** | [`cassandra/`](./cassandra/) image, run directly | [`k8ssandra/`](./k8ssandra/) image via the K8ssandra operator — see [examples/K8SSANDRA_DEPLOYMENT.md](./examples/K8SSANDRA_DEPLOYMENT.md) |
+| **Kafka** | — | [`strimzi/`](./strimzi/) image via the Strimzi operator — see [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Scaling and failover** | manual | operator and scheduler |
 
 Agents report to `axon-server` the same way in both, so a cluster monitored by a
@@ -160,6 +165,13 @@ with `4.0-latest`, `4.1-latest` and `5.0-latest` resolving to the newest patch o
 line and `latest` resolving to 5.0.9. See [k8ssandra/README.md](k8ssandra/README.md#supported-cassandra-versions)
 for the per-line detail and [VERSIONS.md](VERSIONS.md) for the current tag and digest of
 every published image.
+
+### Strimzi Kafka versions
+
+Strimzi images are versioned by the combination of Strimzi operator version, Kafka version, AxonOps
+agent version and build number: `<strimzi>-<kafka>-<agent>-<build>`. Each build publishes one tag
+per supported operator/Kafka combination. See [strimzi/README.md](strimzi/README.md#version-compatibility)
+for the full support matrix and [VERSIONS.md](VERSIONS.md) for the current tag and digest.
 
 ## Repository Conventions
 
@@ -657,6 +669,14 @@ For more information:
 - [K8ssandra GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [K8ssandra Documentation](https://docs.k8ssandra.io/)
 
+### Strimzi
+We acknowledge [Strimzi](https://strimzi.io/) for providing the Kubernetes operator that makes running Apache Kafka on Kubernetes production-ready. Strimzi simplifies the deployment, configuration, and management of Kafka clusters through Kubernetes-native custom resources, and the AxonOps Strimzi images extend the official Strimzi Kafka base images with integrated monitoring.
+
+For more information:
+- [Strimzi Website](https://strimzi.io/)
+- [Strimzi GitHub](https://github.com/strimzi/strimzi-kafka-operator)
+- [Strimzi Documentation](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 We acknowledge [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry) for providing a Confluent-compatible Schema Registry with support for multiple storage backends including PostgreSQL, MySQL, and Apache Cassandra.
 
@@ -676,6 +696,7 @@ This project may contain trademarks or logos for projects, products, or services
 - **AxonOps** is a registered trademark of AxonOps Limited
 - **Apache**, **Apache Cassandra**, and **Cassandra** are trademarks of the Apache Software Foundation or its subsidiaries in Canada, the United States and/or other countries
 - **Apache Kafka** and **Kafka** are trademarks of the Apache Software Foundation
+- **Strimzi** is a trademark of the Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** is a trademark of the Apache Software Foundation
 - **Docker** is a trademark or registered trademark of Docker, Inc. in the United States and/or other countries
 - **Podman** is a trademark of Red Hat, Inc.
