@@ -631,22 +631,35 @@ Le workflow de publication signée va :
 
 **Étape 4 : vérifier la release**
 
+Remplacez `<composant>`, `<chemin-image>` et `<tag>` par les valeurs du composant publié. Les chemins et tags actuels se trouvent dans [VERSIONS.md](VERSIONS.md).
+
 ```bash
-# View GitHub Release
-gh release view k8ssandra-signed-1.0.0
+# Voir la GitHub Release
+gh release view <composant>-signed-1.0.0
 
-# Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+# Télécharger et tester l'image
+docker pull ghcr.io/<chemin-image>:<tag>
 
-# Verify signature
+# Vérifier la signature
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+  ghcr.io/<chemin-image>:<tag>
 
-# Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+# Ou vérifier que la signature existe
+cosign tree ghcr.io/<chemin-image>:<tag>
 ```
+
+**Exemples par composant :**
+
+| Composant | `<chemin-image>` | Exemple de `<tag>` |
+|-----------|------------------|--------------------|
+| K8ssandra Cassandra | `axonops/k8ssandra/cassandra` | `5.0.9-v0.1.125-1.6.3` |
+| Cassandra (standalone) | `axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` |
+| Strimzi Kafka | `axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` |
+| AxonOps axondb-timeseries | `axonops/axondb-timeseries` | `5.0.8-1.4.0` |
+| AxonOps axondb-search | `axonops/axondb-search` | `3.7.0-1.6.1` |
+| Schema Registry | `axonops/axonops-schema-registry` | `0.2.1` |
 
 Toutes les images de production sont signées cryptographiquement. La vérification de signature prouve que l'image a été construite par les workflows officiels et qu'elle n'a pas été altérée. Voir [Déploiement sécurisé de référence](#déploiement-sécurisé-de-référence) pour plus de détails.
 
@@ -654,6 +667,8 @@ Toutes les images de production sont signées cryptographiquement. La vérificat
 
 Chaque composant dispose d'une documentation de release détaillée :
 - [Processus de release K8ssandra](./k8ssandra/RELEASE.md)
+- [Processus de release axondb-timeseries](./axonops/axondb-timeseries/RELEASE.md)
+- [Processus de release axondb-search](./axonops/axondb-search/RELEASE.md)
 - [Processus de release Schema Registry](./axonops-schema-registry/RELEASE.md)
 
 ## Remerciements

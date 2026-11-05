@@ -656,22 +656,35 @@ transparencia. As sinaturas poden verificarse con `cosign verify` (véxase
 
 **Paso 4: verificar a release**
 
+Substitúa `<compoñente>`, `<ruta-imaxe>` e `<etiqueta>` polos valores do compoñente publicado. As rutas e etiquetas actuais están en [VERSIONS.md](VERSIONS.md).
+
 ```bash
-# View GitHub Release
-gh release view k8ssandra-signed-1.0.0
+# Ver a GitHub Release
+gh release view <compoñente>-signed-1.0.0
 
-# Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+# Descargar e probar a imaxe
+docker pull ghcr.io/<ruta-imaxe>:<etiqueta>
 
-# Verify signature
+# Verificar a sinatura
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+  ghcr.io/<ruta-imaxe>:<etiqueta>
 
-# Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+# Ou comprobar que a sinatura existe
+cosign tree ghcr.io/<ruta-imaxe>:<etiqueta>
 ```
+
+**Exemplos por compoñente:**
+
+| Compoñente | `<ruta-imaxe>` | Exemplo de `<etiqueta>` |
+|------------|----------------|-------------------------|
+| K8ssandra Cassandra | `axonops/k8ssandra/cassandra` | `5.0.9-v0.1.125-1.6.3` |
+| Cassandra (standalone) | `axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` |
+| Strimzi Kafka | `axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` |
+| AxonOps axondb-timeseries | `axonops/axondb-timeseries` | `5.0.8-1.4.0` |
+| AxonOps axondb-search | `axonops/axondb-search` | `3.7.0-1.6.1` |
+| Schema Registry | `axonops/axonops-schema-registry` | `0.2.1` |
 
 Todas as imaxes de produción están asinadas criptograficamente. A verificación da
 sinatura demostra que a imaxe a construíron os workflows oficiais e que non se
@@ -683,6 +696,8 @@ para máis detalles.
 
 Cada compoñente ten a súa documentación de release detallada:
 - [Proceso de release de K8ssandra](./k8ssandra/RELEASE.md)
+- [Proceso de release de axondb-timeseries](./axonops/axondb-timeseries/RELEASE.md)
+- [Proceso de release de axondb-search](./axonops/axondb-search/RELEASE.md)
 - [Proceso de release do Schema Registry](./axonops-schema-registry/RELEASE.md)
 
 ## Agradecementos

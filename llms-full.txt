@@ -55,6 +55,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - [Acknowledgements](#acknowledgements)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [License](#license)
 - [Legal Notices](#legal-notices)
@@ -70,6 +71,9 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 ### AxonOps Self-Hosted
 - **[axonops/](./axonops/)** - AxonOps self-hosted stack (complete platform components)
+
+### Message Brokers
+- **[strimzi/](./strimzi/)** - Apache Kafka on Kubernetes using the Strimzi operator, with integrated AxonOps monitoring (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Integrations
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Confluent-compatible Schema Registry with multi-backend storage support
@@ -128,6 +132,7 @@ operates it.
 | **Use for** | evaluation, demos, development, small single-host deployments | production, HA, anything that has to survive a host |
 | **AxonOps platform** | [`docker-compose/`](./docker-compose/) stacks | Helm charts `oci://ghcr.io/axonops/charts/*` — see [VERSIONS.md](VERSIONS.md#helm-charts) and [examples/AXONOPS_DEPLOYMENT.md](./examples/AXONOPS_DEPLOYMENT.md) |
 | **Cassandra** | [`cassandra/`](./cassandra/) image, run directly | [`k8ssandra/`](./k8ssandra/) image via the K8ssandra operator — see [examples/K8SSANDRA_DEPLOYMENT.md](./examples/K8SSANDRA_DEPLOYMENT.md) |
+| **Kafka** | — | [`strimzi/`](./strimzi/) image via the Strimzi operator — see [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Scaling and failover** | manual | operator and scheduler |
 
 Agents report to `axon-server` the same way in both, so a cluster monitored by a
@@ -184,6 +189,13 @@ with `4.0-latest`, `4.1-latest` and `5.0-latest` resolving to the newest patch o
 line and `latest` resolving to 5.0.9. See [k8ssandra/README.md](k8ssandra/README.md#supported-cassandra-versions)
 for the per-line detail and [VERSIONS.md](VERSIONS.md) for the current tag and digest of
 every published image.
+
+### Strimzi Kafka versions
+
+Strimzi images are versioned by the combination of Strimzi operator version, Kafka version, AxonOps
+agent version and build number: `<strimzi>-<kafka>-<agent>-<build>`. Each build publishes one tag
+per supported operator/Kafka combination. See [strimzi/README.md](strimzi/README.md#version-compatibility)
+for the full support matrix and [VERSIONS.md](VERSIONS.md) for the current tag and digest.
 
 ## Repository Conventions
 
@@ -638,22 +650,35 @@ The signed publish workflow will:
 
 **Step 4: Verify Release**
 
+Replace `<component>`, `<image-path>` and `<tag>` with the values for the component you released. Current image paths and tags are listed in [VERSIONS.md](VERSIONS.md).
+
 ```bash
 # View GitHub Release
-gh release view k8ssandra-signed-1.0.0
+gh release view <component>-signed-1.0.0
 
 # Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+docker pull ghcr.io/<image-path>:<tag>
 
 # Verify signature
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+  ghcr.io/<image-path>:<tag>
 
 # Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
+cosign tree ghcr.io/<image-path>:<tag>
 ```
+
+**Examples by component:**
+
+| Component | `<image-path>` | `<tag>` example |
+|-----------|----------------|-----------------|
+| K8ssandra Cassandra | `axonops/k8ssandra/cassandra` | `5.0.9-v0.1.125-1.6.3` |
+| Cassandra (standalone) | `axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` |
+| Strimzi Kafka | `axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` |
+| AxonOps axondb-timeseries | `axonops/axondb-timeseries` | `5.0.8-1.4.0` |
+| AxonOps axondb-search | `axonops/axondb-search` | `3.7.0-1.6.1` |
+| Schema Registry | `axonops/axonops-schema-registry` | `0.2.1` |
 
 All production images are cryptographically signed. Signature verification proves the image was built by official workflows and has not been tampered with. See [Gold Standard Security Deployment](#gold-standard-security-deployment) for more details.
 
@@ -661,6 +686,8 @@ All production images are cryptographically signed. Signature verification prove
 
 Each component has detailed release documentation:
 - [K8ssandra Release Process](./k8ssandra/RELEASE.md)
+- [AxonOps axondb-timeseries Release Process](./axonops/axondb-timeseries/RELEASE.md)
+- [AxonOps axondb-search Release Process](./axonops/axondb-search/RELEASE.md)
 - [Schema Registry Release Process](./axonops-schema-registry/RELEASE.md)
 
 ## Acknowledgements
@@ -681,6 +708,14 @@ For more information:
 - [K8ssandra GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [K8ssandra Documentation](https://docs.k8ssandra.io/)
 
+### Strimzi
+We acknowledge [Strimzi](https://strimzi.io/) for providing the Kubernetes operator that makes running Apache Kafka on Kubernetes production-ready. Strimzi simplifies the deployment, configuration, and management of Kafka clusters through Kubernetes-native custom resources, and the AxonOps Strimzi images extend the official Strimzi Kafka base images with integrated monitoring.
+
+For more information:
+- [Strimzi Website](https://strimzi.io/)
+- [Strimzi GitHub](https://github.com/strimzi/strimzi-kafka-operator)
+- [Strimzi Documentation](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 We acknowledge [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry) for providing a Confluent-compatible Schema Registry with support for multiple storage backends including PostgreSQL, MySQL, and Apache Cassandra.
 
@@ -700,6 +735,7 @@ This project may contain trademarks or logos for projects, products, or services
 - **AxonOps** is a registered trademark of AxonOps Limited
 - **Apache**, **Apache Cassandra**, and **Cassandra** are trademarks of the Apache Software Foundation or its subsidiaries in Canada, the United States and/or other countries
 - **Apache Kafka** and **Kafka** are trademarks of the Apache Software Foundation
+- **Strimzi** is a trademark of the Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** is a trademark of the Apache Software Foundation
 - **Docker** is a trademark or registered trademark of Docker, Inc. in the United States and/or other countries
 - **Podman** is a trademark of Red Hat, Inc.
@@ -11041,17 +11077,21 @@ kubectl get pod -n kafka --watch
 
 For development or testing, you can deploy a single-node Kafka cluster with combined controller and broker roles.
 
-See the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
+The required manifests are in the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
 
 - `kafka-single-node.yaml`: Single-node Kafka cluster
 - `axonops-agent-config.yaml`: AxonOps agent configuration
 - `axonops-kafka-logging.yaml`: Logging configuration
 - `axonops-kafka-nodepool.yaml`: Node pool configuration
 
-**Update the values** and apply:
+**Update the values** and apply only the single-node files:
 
 ```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
+              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
+              -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -20012,9 +20052,12 @@ Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before 
 
 | Strimzi Version | Supported Kafka Versions | Kubernetes Versions |
 | --- | --- | --- |
-| 0.45.0 | 3.8.x, 3.9.x | 1.25+ |
-| 0.44.0 | 3.7.x, 3.8.x | 1.25+ |
-| 0.43.0 | 3.7.x, 3.8.x | 1.23+ |
+| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | 1.27+ |
+| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | 1.27+ |
+| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | 1.26+ |
+| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
+| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
+| 0.47.0 | 3.9.0, 3.9.1 | 1.25+ |
 
 *Note: This table is for reference only. Always verify current compatibility at [strimzi.io/downloads](https://strimzi.io/downloads/).*
 
