@@ -32,6 +32,7 @@ AxonOps.
 - [Agradecementos](#agradecementos)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [Licenza](#licenza)
 - [Avisos legais](#avisos-legais)
@@ -47,6 +48,9 @@ AxonOps.
 
 ### AxonOps autoaloxado
 - **[axonops/](./axonops/)**: a pila autoaloxada de AxonOps (todos os compoñentes da plataforma)
+
+### Corredores de mensaxes
+- **[strimzi/](./strimzi/)**: Apache Kafka en Kubernetes mediante o operador Strimzi, con monitorización integrada de AxonOps (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Integracións
 - **[axonops-schema-registry/](./axonops-schema-registry/)**: Schema Registry compatible con Confluent, con soporte de varios backends de almacenamento
@@ -105,6 +109,7 @@ e en que a opera.
 | **Para que** | avaliación, demos, desenvolvemento, despregamentos pequenos nun só host | produción, alta dispoñibilidade, calquera cousa que deba sobrevivir a un host |
 | **Plataforma AxonOps** | as pilas de [`docker-compose/`](./docker-compose/) | os charts de Helm `oci://ghcr.io/axonops/charts/*`: véxase [VERSIONS.md](VERSIONS.md#helm-charts) e [examples/AXONOPS_DEPLOYMENT.gl.md](./examples/AXONOPS_DEPLOYMENT.gl.md) |
 | **Cassandra** | a imaxe [`cassandra/`](./cassandra/), executada directamente | a imaxe [`k8ssandra/`](./k8ssandra/) mediante o operador K8ssandra: véxase [examples/K8SSANDRA_DEPLOYMENT.gl.md](./examples/K8SSANDRA_DEPLOYMENT.gl.md) |
+| **Kafka** | — | a imaxe [`strimzi/`](./strimzi/) mediante o operador Strimzi: véxase [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Escalado e conmutación por erro** | manuais | operador e planificador |
 
 Os axentes reportan a `axon-server` igual nas dúas, así que un clúster
@@ -167,6 +172,16 @@ cada liña, e `latest` resolvendo a 5.0.9. Véxase
 [k8ssandra/README.gl.md](k8ssandra/README.gl.md#versións-de-cassandra-admitidas)
 para o detalle por liña, e [VERSIONS.md](VERSIONS.md) para a etiqueta e o digest
 actuais de cada imaxe publicada.
+
+### Versións de Strimzi Kafka
+
+As imaxes de Strimzi versión­anse pola combinación da versión do operador
+Strimzi, a versión de Kafka, a versión do axente de AxonOps e o número de
+build: `<strimzi>-<kafka>-<axente>-<build>`. Cada build publica unha
+etiqueta por cada combinación de operador/Kafka soportada. Véxase
+[strimzi/README.md](strimzi/README.md#version-compatibility) para a matriz de
+compatibilidade completa e [VERSIONS.md](VERSIONS.md) para a etiqueta e o
+digest actuais.
 
 ## Convencións do repositorio
 
@@ -698,6 +713,19 @@ Máis información:
 - [K8ssandra en GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [Documentación de K8ssandra](https://docs.k8ssandra.io/)
 
+### Strimzi
+Recoñecemos o traballo de [Strimzi](https://strimzi.io/) por proporcionar o
+operador de Kubernetes que fai que executar Apache Kafka en Kubernetes sexa
+apto para produción. Strimzi simplifica o despregamento, a configuración e a
+xestión de clústeres de Kafka mediante recursos personalizados nativos de
+Kubernetes, e as imaxes de AxonOps para Strimzi estenden as imaxes base
+oficiais de Strimzi Kafka con monitorización integrada.
+
+Máis información:
+- [Web de Strimzi](https://strimzi.io/)
+- [Strimzi en GitHub](https://github.com/strimzi/strimzi-kafka-operator)
+- [Documentación de Strimzi](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 Recoñecemos o traballo de
 [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry),
@@ -723,6 +751,7 @@ terceiros.
 - **AxonOps** é unha marca rexistrada de AxonOps Limited
 - **Apache**, **Apache Cassandra** e **Cassandra** son marcas da Apache Software Foundation ou das súas filiais en Canadá, Estados Unidos e outros países
 - **Apache Kafka** e **Kafka** son marcas da Apache Software Foundation
+- **Strimzi** é unha marca da Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** é unha marca da Apache Software Foundation
 - **Docker** é unha marca ou marca rexistrada de Docker, Inc. en Estados Unidos e outros países
 - **Podman** é unha marca de Red Hat, Inc.

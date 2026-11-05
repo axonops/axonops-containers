@@ -31,6 +31,7 @@ Définitions de build de conteneurs et pipelines CI/CD des images de conteneurs 
 - [Remerciements](#remerciements)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [Licence](#licence)
 - [Mentions légales](#mentions-légales)
@@ -46,6 +47,9 @@ Définitions de build de conteneurs et pipelines CI/CD des images de conteneurs 
 
 ### AxonOps auto-hébergé
 - **[axonops/](./axonops/)** - Stack AxonOps auto-hébergée (tous les composants de la plateforme)
+
+### Courtiers de messages
+- **[strimzi/](./strimzi/)** - Apache Kafka sur Kubernetes via l'opérateur Strimzi, avec supervision AxonOps intégrée (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Intégrations
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Schema Registry compatible Confluent avec prise en charge de plusieurs backends de stockage
@@ -104,6 +108,7 @@ s'exécute et par ce qui l'exploite.
 | **Pour** | évaluation, démonstrations, développement, petits déploiements mono-hôte | production, haute disponibilité, tout ce qui doit survivre à la perte d'un hôte |
 | **Plateforme AxonOps** | les stacks [`docker-compose/`](./docker-compose/) | charts Helm `oci://ghcr.io/axonops/charts/*` — voir [VERSIONS.md](VERSIONS.md#helm-charts) et [examples/AXONOPS_DEPLOYMENT.fr.md](./examples/AXONOPS_DEPLOYMENT.fr.md) |
 | **Cassandra** | image [`cassandra/`](./cassandra/), exécutée directement | image [`k8ssandra/`](./k8ssandra/) via l'opérateur K8ssandra — voir [examples/K8SSANDRA_DEPLOYMENT.fr.md](./examples/K8SSANDRA_DEPLOYMENT.fr.md) |
+| **Kafka** | — | image [`strimzi/`](./strimzi/) via l'opérateur Strimzi — voir [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Scaling et bascule** | manuels | opérateur et ordonnanceur |
 
 Les agents reportent à `axon-server` de la même manière dans les deux cas : un
@@ -162,6 +167,16 @@ Actuellement publiées : **Cassandra 4.0.0 à 4.0.21, 4.1.0 à 4.1.12 et 5.0.1 �
 et `latest` désignant la 5.0.9. Voir [k8ssandra/README.fr.md](k8ssandra/README.fr.md#versions-de-cassandra-prises-en-charge)
 pour le détail par ligne et [VERSIONS.md](VERSIONS.md) pour le tag et le digest actuels
 de chaque image publiée.
+
+### Versions Strimzi Kafka
+
+Les images Strimzi sont versionnées par la combinaison de la version de
+l'opérateur Strimzi, de la version de Kafka, de la version de l'agent AxonOps
+et du numéro de build : `<strimzi>-<kafka>-<agent>-<build>`. Chaque build
+publie un tag par combinaison opérateur/Kafka prise en charge. Voir
+[strimzi/README.md](strimzi/README.md#version-compatibility) pour la matrice
+de compatibilité complète et [VERSIONS.md](VERSIONS.md) pour le tag et le
+digest actuels.
 
 ## Conventions du dépôt
 
@@ -659,6 +674,19 @@ Pour en savoir plus :
 - [GitHub K8ssandra](https://github.com/k8ssandra/k8ssandra-operator)
 - [Documentation K8ssandra](https://docs.k8ssandra.io/)
 
+### Strimzi
+Nous saluons [Strimzi](https://strimzi.io/) pour l'opérateur Kubernetes qui rend
+l'exécution d'Apache Kafka sur Kubernetes adaptée à la production. Strimzi
+simplifie le déploiement, la configuration et la gestion des clusters Kafka via
+des ressources personnalisées natives Kubernetes, et les images AxonOps pour
+Strimzi étendent les images de base officielles Strimzi Kafka avec une
+supervision intégrée.
+
+Pour en savoir plus :
+- [Site Strimzi](https://strimzi.io/)
+- [GitHub Strimzi](https://github.com/strimzi/strimzi-kafka-operator)
+- [Documentation Strimzi](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 Nous saluons [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry), qui fournit un Schema Registry compatible Confluent prenant en charge plusieurs backends de stockage, dont PostgreSQL, MySQL et Apache Cassandra.
 
@@ -678,6 +706,7 @@ Ce projet peut contenir des marques ou des logos de projets, produits ou service
 - **AxonOps** est une marque déposée d'AxonOps Limited
 - **Apache**, **Apache Cassandra** et **Cassandra** sont des marques de l'Apache Software Foundation ou de ses filiales au Canada, aux États-Unis et/ou dans d'autres pays
 - **Apache Kafka** et **Kafka** sont des marques de l'Apache Software Foundation
+- **Strimzi** est une marque de la Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** est une marque de l'Apache Software Foundation
 - **Docker** est une marque ou une marque déposée de Docker, Inc. aux États-Unis et/ou dans d'autres pays
 - **Podman** est une marque de Red Hat, Inc.

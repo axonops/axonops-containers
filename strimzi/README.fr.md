@@ -81,10 +81,14 @@ Voir le répertoire [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) :
 - `axonops-kafka-logging.yaml` : configuration des logs
 - `axonops-kafka-nodepool.yaml` : configuration du pool de nœuds
 
-**Renseignez les valeurs** puis appliquez :
+**Renseignez les valeurs** puis appliquez uniquement les fichiers nœud unique :
 
 ```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
+              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
+              -n kafka
 kubectl get pod -n kafka --watch
 ```
 

@@ -32,6 +32,7 @@ contenedor de AxonOps.
 - [Agradecimientos](#agradecimientos)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [Licencia](#licencia)
 - [Avisos legales](#avisos-legales)
@@ -47,6 +48,9 @@ contenedor de AxonOps.
 
 ### AxonOps autoalojado
 - **[axonops/](./axonops/)**: la pila autoalojada de AxonOps (todos los componentes de la plataforma)
+
+### Corredores de mensajes
+- **[strimzi/](./strimzi/)**: Apache Kafka en Kubernetes mediante el operador Strimzi, con monitorización integrada de AxonOps (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Integraciones
 - **[axonops-schema-registry/](./axonops-schema-registry/)**: Schema Registry compatible con Confluent, con soporte de varios backends de almacenamiento
@@ -106,6 +110,7 @@ pila y en qué la opera.
 | **Para qué** | evaluación, demos, desarrollo, despliegues pequeños en un solo host | producción, alta disponibilidad, cualquier cosa que deba sobrevivir a un host |
 | **Plataforma AxonOps** | las pilas de [`docker-compose/`](./docker-compose/) | los charts de Helm `oci://ghcr.io/axonops/charts/*`: véase [VERSIONS.md](VERSIONS.md#helm-charts) y [examples/AXONOPS_DEPLOYMENT.es.md](./examples/AXONOPS_DEPLOYMENT.es.md) |
 | **Cassandra** | la imagen [`cassandra/`](./cassandra/), ejecutada directamente | la imagen [`k8ssandra/`](./k8ssandra/) mediante el operador K8ssandra: véase [examples/K8SSANDRA_DEPLOYMENT.es.md](./examples/K8SSANDRA_DEPLOYMENT.es.md) |
+| **Kafka** | — | la imagen [`strimzi/`](./strimzi/) mediante el operador Strimzi: véase [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Escalado y conmutación por error** | manuales | operador y planificador |
 
 Los agentes reportan a `axon-server` igual en ambas, así que un clúster
@@ -169,6 +174,16 @@ cada línea, y `latest` resolviendo a 5.0.9. Véase
 [k8ssandra/README.es.md](k8ssandra/README.es.md#versiones-de-cassandra-admitidas)
 para el detalle por línea, y [VERSIONS.md](VERSIONS.md) para la etiqueta y el
 digest actuales de cada imagen publicada.
+
+### Versiones de Strimzi Kafka
+
+Las imágenes de Strimzi se versionan por la combinación de la versión del
+operador Strimzi, la versión de Kafka, la versión del agente de AxonOps y
+el número de build: `<strimzi>-<kafka>-<agente>-<build>`. Cada build publica
+una etiqueta por cada combinación de operador/Kafka soportada. Véase
+[strimzi/README.md](strimzi/README.md#version-compatibility) para la matriz
+de compatibilidad completa y [VERSIONS.md](VERSIONS.md) para la etiqueta y
+el digest actuales.
 
 ## Convenciones del repositorio
 
@@ -702,6 +717,19 @@ Más información:
 - [K8ssandra en GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [Documentación de K8ssandra](https://docs.k8ssandra.io/)
 
+### Strimzi
+Reconocemos el trabajo de [Strimzi](https://strimzi.io/) por proporcionar el
+operador de Kubernetes que hace que ejecutar Apache Kafka en Kubernetes sea
+apto para producción. Strimzi simplifica el despliegue, la configuración y la
+gestión de clústeres de Kafka mediante recursos personalizados nativos de
+Kubernetes, y las imágenes de AxonOps para Strimzi extienden las imágenes base
+oficiales de Strimzi Kafka con monitorización integrada.
+
+Más información:
+- [Web de Strimzi](https://strimzi.io/)
+- [Strimzi en GitHub](https://github.com/strimzi/strimzi-kafka-operator)
+- [Documentación de Strimzi](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 Reconocemos el trabajo de
 [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry),
@@ -727,6 +755,7 @@ de esos terceros.
 - **AxonOps** es una marca registrada de AxonOps Limited
 - **Apache**, **Apache Cassandra** y **Cassandra** son marcas de la Apache Software Foundation o de sus filiales en Canadá, Estados Unidos y otros países
 - **Apache Kafka** y **Kafka** son marcas de la Apache Software Foundation
+- **Strimzi** es una marca de la Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** es una marca de la Apache Software Foundation
 - **Docker** es una marca o marca registrada de Docker, Inc. en Estados Unidos y otros países
 - **Podman** es una marca de Red Hat, Inc.

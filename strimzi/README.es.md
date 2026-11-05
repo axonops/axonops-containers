@@ -89,10 +89,14 @@ Consulte el directorio [`examples/strimzi/cloud/`](../examples/strimzi/cloud/):
 - `axonops-kafka-logging.yaml`: la configuración de registro
 - `axonops-kafka-nodepool.yaml`: la configuración del pool de nodos
 
-**Actualice los valores** y aplique:
+**Actualice los valores** y aplique solo los ficheros de un solo nodo:
 
 ```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
+              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
+              -n kafka
 kubectl get pod -n kafka --watch
 ```
 
