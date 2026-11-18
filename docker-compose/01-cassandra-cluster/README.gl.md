@@ -35,7 +35,7 @@ de datos de AxonOps, e despois os nodos de Cassandra arrancan dun en un.
 | Servizo | Imaxe | Propósito | Porto publicado |
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra) | — |
-| `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de rexistros e eventos (OpenSearch) | — |
+| `axondb-search` | `ghcr.io/axonops/axondb-search:3.10.0-1.7.0` | Almacén de rexistros e eventos (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend de AxonOps e endpoint dos axentes | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
 | `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2: véxase [máis abaixo](#reports-v2) | — |

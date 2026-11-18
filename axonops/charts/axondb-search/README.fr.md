@@ -2,7 +2,7 @@
 
 [English](README.md) | **Français** | [Español](README.es.md) | [Galego](README.gl.md)
 
-![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.7.0-1.6.1](https://img.shields.io/badge/AppVersion-3.7.0--1.6.1-informational?style=flat-square)
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.10.0-1.7.0](https://img.shields.io/badge/AppVersion-3.10.0--1.7.0-informational?style=flat-square)
 
 Un chart Helm pour déployer la base de recherche AxonOps sur Kubernetes. Cette base assure l'indexation et la recherche des logs, des événements et des données d'exploitation de la plateforme AxonOps.
 
@@ -27,6 +27,7 @@ Un chart Helm pour déployer la base de recherche AxonOps sur Kubernetes. Cette 
 - [Configuration](#configuration)
 - [Mise à jour](#mise-à-jour)
   - [Mise à jour vers le chart 0.3.0 (OpenSearch 3.3.2 vers 3.7.0)](#mise-à-jour-vers-le-chart-030-opensearch-332-vers-370)
+  - [Mise à jour vers le chart 0.4.0 (OpenSearch 3.7.0 vers 3.10.0)](#mise-à-jour-vers-le-chart-040-opensearch-370-vers-3100)
 - [Désinstallation](#désinstallation)
 - [Dépannage](#dépannage)
 
@@ -996,6 +997,17 @@ Le rolling update arrête chaque nœud à tour de rôle : la latence des requêt
 ```yaml
 image:
   tag: "3.3.2-1.5.0"
+```
+
+### Mise à jour vers le chart 0.4.0 (OpenSearch 3.7.0 vers 3.10.0)
+
+Le chart 0.4.0 fait passer `appVersion` de `3.7.0-1.6.1` à `3.10.0-1.7.0`. Comme `image.tag` est vide par défaut, le chart prend son tag d'image depuis `appVersion` : un `helm upgrade` vers 0.4.0 fait donc franchir à OpenSearch trois versions mineures d'un coup. L'opération n'est pas réversible en revenant en arrière sur le chart : dès qu'un nœud a démarré en 3.10.0, il a mis à jour son index Lucene sur disque, et 3.7.0 ne saura plus le lire.
+
+Avant de commencer, réalisez et vérifiez un snapshot, et confirmez que le cluster est au vert, comme décrit dans [Mise à jour vers le chart 0.3.0](#mise-à-jour-vers-le-chart-030-opensearch-332-vers-370). Pour rester sur OpenSearch 3.7.0 tout en récupérant les changements de modèles du chart, fixez explicitement l'ancienne image :
+
+```yaml
+image:
+  tag: "3.7.0-1.6.1"
 ```
 
 ## Désinstallation
