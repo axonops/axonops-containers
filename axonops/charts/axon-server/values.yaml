@@ -171,6 +171,11 @@ config:
   # and configure the paths accordingly
   sslSecretName: ""
 
+# Kubernetes injects env vars for every Service in the namespace. The
+# axon-server-api Service yields AXON_SERVER_API_PORT=tcp://<ip>:8080, which
+# axon-server reads as its listen port and then fails to start.
+enableServiceLinks: false
+
 # Service Account configuration
 serviceAccount:
   # Specifies whether a service account should be created

@@ -33,6 +33,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "axon-server.serviceAccountName" . }}
+      enableServiceLinks: {{ .Values.enableServiceLinks }}
       {{- if .Values.podSecurityContext.enabled }}
       securityContext:
         {{- if .Values.podSecurityContext.fsGroup }}

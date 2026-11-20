@@ -1042,6 +1042,7 @@ curl http://localhost:8080/api/v1/healthz
 | deployment.annotations | object | `{}` | Annotations du déploiement |
 | deployment.env | object | `{}` | Variables d'environnement supplémentaires |
 | deployment.secretEnv | string | `""` | Secret contenant des variables d'environnement |
+| enableServiceLinks | bool | `false` | Injecter les variables d'environnement des service links Kubernetes. Laisser à `false` : les variables `AXON_SERVER_*_PORT` injectées remplacent les ports d'écoute |
 | extraVolumeMounts | list | `[]` | Montages de volumes supplémentaires |
 | extraVolumes | list | `[]` | Volumes supplémentaires |
 | fullnameOverride | string | `""` | Remplacer le nom complet des ressources |

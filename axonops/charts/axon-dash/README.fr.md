@@ -712,6 +712,7 @@ kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].
 | config.listener.host | string | `"0.0.0.0"` | Hôte d'écoute |
 | config.listener.port | int | `3000` | Port d'écoute |
 | config.listener.ssl.enabled | bool | `false` | Activer SSL sur l'application |
+| enableServiceLinks | bool | `false` | Injecter les variables d'environnement des service links Kubernetes. Laisser à `false` : les variables `AXON_SERVER_*_PORT` injectées remplacent les ports d'écoute |
 | fullnameOverride | string | `""` | Remplacer le nom complet des ressources |
 | httpRoute.annotations | object | `{}` | Annotations de l'HTTPRoute |
 | httpRoute.enabled | bool | `false` | Activer l'HTTPRoute (Gateway API) |

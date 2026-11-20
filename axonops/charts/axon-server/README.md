@@ -1042,6 +1042,7 @@ curl http://localhost:8080/api/v1/healthz
 | deployment.annotations | object | `{}` | Deployment annotations |
 | deployment.env | object | `{}` | Additional environment variables |
 | deployment.secretEnv | string | `""` | Secret containing environment variables |
+| enableServiceLinks | bool | `false` | Inject Kubernetes service link env vars. Keep `false`: the injected `AXON_SERVER_*_PORT` vars override the listener ports |
 | extraVolumeMounts | list | `[]` | Additional volume mounts |
 | extraVolumes | list | `[]` | Additional volumes |
 | fullnameOverride | string | `""` | Override full resource name |
