@@ -499,8 +499,18 @@ EOS
 )
   fi
 
+  # The axon-server-api Service makes Kubernetes inject
+  # AXON_SERVER_API_PORT=tcp://<ip>:<port>, which axon-server reads as its
+  # listen port. enableServiceLinks needs axon-server chart >= 2.1.21; the
+  # explicit env var wins over the injected one on older charts.
   cat > "$AXON_SERVER_VALUES_FILE" <<EOF
 configurationSecret: ${AXON_SERVER_SECRET_NAME}
+
+enableServiceLinks: false
+
+deployment:
+  env:
+    AXON_SERVER_API_PORT: "${AXON_SERVER_API_PORT}"
 
 ${API_INGRESS_BLOCK}
 
@@ -598,6 +608,8 @@ EOS
 )
 
   cat > "$AXON_DASH_VALUES_FILE" <<EOF
+enableServiceLinks: false
+
 config:
   axonServerUrl: "${AXON_DASH_AXON_SERVER_URL}"
 
