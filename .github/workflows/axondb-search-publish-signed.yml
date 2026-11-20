@@ -12,10 +12,10 @@ on:
         required: true
         type: string
       opensearch_version:
-        description: 'OpenSearch version to build (e.g., 3.7.0)'
+        description: 'OpenSearch version to build (e.g., 3.10.0)'
         required: false
         type: string
-        default: '3.7.0'
+        default: '3.10.0'
 
 env:
   REGISTRY: ghcr.io
@@ -263,7 +263,7 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ${{ inputs.opensearch_version == '3.10.0' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
@@ -291,7 +291,7 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}-${{ inputs.container_version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.opensearch_version }}
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ${{ inputs.opensearch_version == '3.10.0' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             OPENSEARCH_VERSION=${{ steps.version.outputs.opensearch_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}

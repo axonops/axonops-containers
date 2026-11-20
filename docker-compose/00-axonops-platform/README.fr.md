@@ -36,7 +36,7 @@ derrière eux.
 | Service | Image | Rôle | Port publié |
 |---------|-------|------|-------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Stockage des métriques (Cassandra) | — |
-| `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Stockage des logs et événements (OpenSearch) | — |
+| `axondb-search` | `ghcr.io/axonops/axondb-search:3.10.0-1.7.0` | Stockage des logs et événements (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend et point de connexion des agents | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Tableau de bord web | `3000` |
 | `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, voir [ci-dessous](#reports-v2) | — |

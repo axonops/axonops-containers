@@ -2,7 +2,7 @@
 
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | **Galego**
 
-![Versión: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.7.0-1.6.1](https://img.shields.io/badge/AppVersion-3.7.0--1.6.1-informational?style=flat-square)
+![Versión: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Tipo: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.10.0-1.7.0](https://img.shields.io/badge/AppVersion-3.10.0--1.7.0-informational?style=flat-square)
 
 Un chart de Helm para despregar a base de datos de busca de AxonOps sobre
 Kubernetes. Esta base de datos dá soporte ás capacidades de indexación e busca da
@@ -29,6 +29,7 @@ plataforma AxonOps para rexistros, eventos e datos operativos.
 - [Configuración](#configuración)
 - [Actualización](#actualización)
   - [Actualización á versión 0.3.0 do chart (OpenSearch 3.3.2 a 3.7.0)](#actualización-á-versión-030-do-chart-opensearch-332-a-370)
+  - [Actualización á versión 0.4.0 do chart (OpenSearch 3.7.0 a 3.10.0)](#actualización-á-versión-040-do-chart-opensearch-370-a-3100)
 - [Desinstalación](#desinstalación)
 - [Resolución de problemas](#resolución-de-problemas)
 
@@ -1019,6 +1020,24 @@ antiga explicitamente:
 ```yaml
 image:
   tag: "3.3.2-1.5.0"
+```
+
+### Actualización á versión 0.4.0 do chart (OpenSearch 3.7.0 a 3.10.0)
+
+A versión 0.4.0 do chart move `appVersion` de `3.7.0-1.6.1` a `3.10.0-1.7.0`. Como
+`image.tag` está baleiro por defecto, o chart toma a etiqueta da imaxe de `appVersion`,
+polo que un `helm upgrade` á 0.4.0 fai avanzar OpenSearch tres versións menores dunha vez.
+Non se pode reverter volvendo atrás co chart: en canto un nodo arrancou con 3.10.0 xa
+actualizou o seu índice Lucene en disco, e 3.7.0 non poderá lelo.
+
+Antes de comezar, faga e verifique unha instantánea, e confirme que o clúster está en verde,
+como se describe en [Actualización á versión 0.3.0 do chart](#actualización-á-versión-030-do-chart-opensearch-332-a-370).
+Para quedar en OpenSearch 3.7.0 e aínda así recoller os cambios de modelo do chart,
+fixe a imaxe antiga explicitamente:
+
+```yaml
+image:
+  tag: "3.7.0-1.6.1"
 ```
 
 ## Desinstalación
