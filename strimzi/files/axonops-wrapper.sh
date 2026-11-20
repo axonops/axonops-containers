@@ -15,6 +15,10 @@ else
   KAFKA_OPTS="${KAFKA_OPTS} -javaagent:${KAFKA_AGENT_JAR}"
 fi
 
+# CVE-2026-114938 mitigation: disable the Base64 intrinsics. Placed before any
+# user-supplied KAFKA_OPTS so a later -XX:+UseBASE64Intrinsics still wins.
+export KAFKA_OPTS="-XX:-UseBASE64Intrinsics ${KAFKA_OPTS}"
+
 # Append the required Java 11+ modularity flags to KAFKA_OPTS
 export KAFKA_OPTS="${KAFKA_OPTS} \
   --add-exports=java.base/sun.nio.ch=ALL-UNNAMED \

@@ -369,6 +369,7 @@ Ficheiros clave:
 
 - [`Dockerfile`](Dockerfile): a definición do build da imaxe
 - [`files/axonops-wrapper.sh`](files/axonops-wrapper.sh): o envolveiro de arranque para a integración de AxonOps
+  O envolveiro tamén engade `-XX:-UseBASE64Intrinsics` a `KAFKA_OPTS` para mitigar CVE-2026-114938. Vai en primeiro lugar, de modo que un `-XX:+UseBASE64Intrinsics` posterior no teu propio `KAFKA_OPTS` anúlao.
 - [`files/axonops.repo.dev`](files/axonops.repo.dev): a configuración do repositorio YUM de AxonOps (dev)
 - [`files/axonops.repo.release`](files/axonops.repo.release): a configuración do repositorio YUM de AxonOps (release)
 

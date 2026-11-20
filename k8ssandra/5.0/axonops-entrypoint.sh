@@ -197,6 +197,21 @@ _add_axonops_jvm_options /opt/cassandra/conf/cassandra-env.sh
 # Also add to /config if it exists (K8ssandra operator mounts config here)
 _add_axonops_jvm_options /config/cassandra-env.sh
 
+# CVE-2026-114938 mitigation: disable the Base64 intrinsics. Skipped on JVMs
+# that do not know the flag, since an unknown -XX option aborts startup.
+_add_base64_mitigation() {
+  local env_file="$1"
+  local line='JVM_OPTS="$JVM_OPTS -XX:-UseBASE64Intrinsics"'
+  [ -f "$env_file" ] || return 0
+  grep -qF "$line" "$env_file" && return 0
+  echo "$line" >> "$env_file"
+}
+
+if java -XX:+PrintFlagsFinal -version 2>/dev/null | grep -q UseBASE64Intrinsics; then
+  _add_base64_mitigation /opt/cassandra/conf/cassandra-env.sh
+  _add_base64_mitigation /config/cassandra-env.sh
+fi
+
 # Enable jemalloc for memory optimization (UBI path)
 if [ -f /usr/lib64/libjemalloc.so.2 ]; then
     export LD_PRELOAD=/usr/lib64/libjemalloc.so.2
