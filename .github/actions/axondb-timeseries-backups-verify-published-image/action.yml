@@ -76,7 +76,7 @@ runs:
       run: |
         echo "=== Testing Script in TEST_MODE ==="
         # Run the backup script in TEST_MODE to verify it can start without AWS credentials
-        docker run --rm -e TEST_MODE=true ${{ inputs.image }} || exit 1
+        docker run --rm -e TEST_MODE=true -e RCLONE_REMOTE_NAME=test -e RCLONE_REMOTE_PATH=test/path ${{ inputs.image }} || exit 1
         echo "✓ Script runs successfully in TEST_MODE"
 
     - name: Summary
