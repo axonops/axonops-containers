@@ -21,7 +21,7 @@ AxonOps.
 ```bash
 cp env.example .env          # set AXONOPS_ORG_NAME
 docker compose up -d
-docker compose ps            # wait for all services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 Despois abra <http://localhost:3000>, escolla a súa organización e logo o clúster
@@ -36,17 +36,46 @@ de datos de AxonOps, e despois os nodos de Cassandra arrancan dun en un.
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de rexistros e eventos (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend de AxonOps e endpoint dos axentes | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Panel web | `3000` |
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, nodo seed | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, rack1 | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Clúster monitorizado, rack2 | — |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend de AxonOps e endpoint dos axentes | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2: véxase [máis abaixo](#reports-v2) | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Clúster monitorizado, nodo seed | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Clúster monitorizado, rack1 | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Clúster monitorizado, rack2 | — |
 
 De `cassandra-0` a `cassandra-2` forman un único datacenter, `dc1`, cun rack cada
 un. Só `cassandra-0` publica CQL ao host; os outros dous son accesibles dentro da
 rede de Compose e con `docker exec`.
 
 As etiquetas e digests actuais de cada imaxe: [VERSIONS.md](../../VERSIONS.md).
+
+### Reports v2
+
+`axon-reporting` serve Reports v2. Execútase xunto a `axon-dash` e comparte o
+seu espazo de nomes de rede (`network_mode: "service:axon-dash"`), así que
+ambos se alcanzan en `127.0.0.1` e `axon-server` alcánzao como
+`axon-dash:8081`. Non publica ningún porto e non ten healthcheck: a imaxe non
+inclúe nin `curl` nin `wget`.
+
+| Axuste | Servizo | Valor |
+|--------|---------|-------|
+| `AXON_REPORTING_URL` | `axon-server` | `http://axon-dash:8081` |
+| `AXONDASH_REPORTING_URL` (`axon-dash.reporting_url`) | `axon-dash` | `http://127.0.0.1:8081` |
+| `AXONDASH_URL_TEMPLATE` | `axon-reporting` | `http://127.0.0.1:3000` |
+| `AXONDASH_PATH_PREFIX` | `axon-reporting` | (baleiro) |
+
+Desde 2.0.39, `AXON_REPORTING_URL` substitúe a `AXONDASH_HOST`, `AXONDASH_PORT`
+e `AXONDASH_HTTPS` en `axon-server`, que xa non as le. `AXONDASH_URL_TEMPLATE`
+e `AXONDASH_PATH_PREFIX` defínense explicitamente porque os valores por defecto
+integrados na imaxe apuntan a un panel aloxado.
+
+Recrear `axon-dash` por separado deixa `axon-reporting` enganchado ao espazo de
+nomes de rede do contedor antigo, onde nada pode alcanzalo. Recréeo xusto
+despois:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
 
 ## Configuración
 
@@ -57,7 +86,7 @@ Todo se define no `.env`. Lista completa cos valores por defecto:
 |----------|---------|-------------|
 | `AXONOPS_ORG_NAME` | `example` | Nome da organización. Compartido por `axon-server` e os axentes: deben coincidir. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Nome do clúster monitorizado en AxonOps |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Imaxe dos nodos monitorizados |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Imaxe dos nodos monitorizados |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap por nodo monitorizado |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Xeración nova por nodo monitorizado |
 | `AXONOPS_LICENSE_KEY` | (baleiro) | Chave de licenza; baleiro executa en modo de proba |
@@ -78,7 +107,7 @@ sobrescribe o campo correspondente do `axon-server.yml` incluído na imaxe:
 | `license_key` | `LICENSE_KEY` |
 | `tls.mode` | `TLS_MODE` |
 | `log_file` | `AXON_LOG_FILE` |
-| `axon_dash_url` | `AXONDASH_HOST`, `AXONDASH_PORT`, `AXONDASH_HTTPS` |
+| `axon_reporting_url` | `AXON_REPORTING_URL` |
 | `cql_hosts` | `CQL_HOSTS` (separadas por comas) |
 | `cql_username` / `cql_password` | `CQL_USERNAME` / `CQL_PASSWORD` |
 | `cql_local_dc` | `CQL_LOCAL_DC` |
@@ -122,7 +151,7 @@ O axente só arranca unha vez Cassandra está levantada, así que normalmente es
 ausente durante parte do período de arranque de 90 s.
 
 Tanto a comprobación do axente como `HEALTHCHECK_REQUIRE_AGENT` están na imaxe
-fixada, `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. En calquera
+fixada, `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`. En calquera
 imaxe anterior o script verifica só Cassandra e a variable non ten efecto.
 
 ## Usar o clúster
@@ -188,6 +217,18 @@ organización. `AXONOPS_ORG_NAME` no `.env` define ambos; compróbeo con
 `AXONOPS_DB_PASSWORD` e `AXONOPS_SEARCH_PASSWORD` coinciden entre eles e
 `axon-server`.
 
+**Os informes non se xeran.** Comprobe cada salto ata `axon-reporting`; ambos
+imprimen `{"data":"OK"}`:
+
+```bash
+docker exec axon-dash curl -s http://127.0.0.1:8081/healthz     # axon-dash -> axon-reporting
+docker exec axon-server curl -s http://axon-dash:8081/healthz   # axon-server -> axon-reporting
+docker compose logs axon-reporting
+```
+
+A súa primeira liña de rexistro indica o panel desde o que renderiza:
+`"axon_dash": "http://127.0.0.1:3000"`.
+
 ### Variables de configuración que parecen correctas pero non o son
 
 Tres dos servizos admiten configuración baixo nomes distintos dos que suxiren os
@@ -226,7 +267,8 @@ TLS, monte un keystore e configure os dous lados á vez.
 
 `axon-dash` mapea o seu `axon-dash.yml` sobre variables de entorno por sección e
 chave: `axon-server.private_endpoints` convértese en
-`AXONSERVER_PRIVATE_ENDPOINTS`, e `axon-dash.port` en `AXONDASH_PORT`. Acepta
+`AXONSERVER_PRIVATE_ENDPOINTS`, `axon-dash.port` en `AXONDASH_PORT` e
+`axon-dash.reporting_url` en `AXONDASH_REPORTING_URL`. Acepta
 ademais calquera cousa co prefixo `AXON_SERVER_`, pásaa a minúsculas e fúndea na
 sección `axon-server`, o que significa que un nome equivocado como
 `AXON_SERVER_URL` acéptase en silencio e aparece na configuración que o dash

@@ -51,6 +51,9 @@
 ## JVM temporary directory
 -Djava.io.tmpdir=${OPENSEARCH_TMPDIR}
 
+## CVE-2026-114938 mitigation: disable the Base64 intrinsics
+-XX:-UseBASE64Intrinsics
+
 ## heap dumps
 
 # generate a heap dump when an allocation from the Java heap fails

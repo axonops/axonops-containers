@@ -4,7 +4,7 @@ This directory contains example manifests to deploy Apache Cassandra using K8ssa
 
 ## Overview
 
-- **Cassandra Version**: 5.0.6
+- **Cassandra Version**: 5.0.9
 - **Operator**: K8ssandra
 - **Nodes**: 3 replicas (configurable)
 - **Storage**: 2Gi per node (configurable)
@@ -50,7 +50,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_NAME` | `ghcr.io/axonops/cassandra:5.0.6` | AxonOps Cassandra image |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps Cassandra image |
 | `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra-5` | Cluster name |
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
@@ -62,6 +62,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 | `AXON_AGENT_ORG` | - | AxonOps organization |
 | `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server |
 | `AXON_AGENT_SERVER_PORT` | `443` | AxonOps port |
+| `AXON_AGENT_TLS_MODE` | `TLS` | Agent TLS mode; set to `disabled` for a self-hosted server without TLS |
 
 ## Manifests
 
@@ -139,6 +140,8 @@ For on-premises AxonOps, update the connection details:
 ```bash
 AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
 AXON_AGENT_SERVER_PORT=1888
+# Only when the AxonOps server agents port has TLS disabled
+AXON_AGENT_TLS_MODE=disabled
 ```
 
 ## Cleanup

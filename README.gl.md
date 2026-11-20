@@ -32,6 +32,7 @@ AxonOps.
 - [Agradecementos](#agradecementos)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [Licenza](#licenza)
 - [Avisos legais](#avisos-legais)
@@ -47,6 +48,9 @@ AxonOps.
 
 ### AxonOps autoaloxado
 - **[axonops/](./axonops/)**: a pila autoaloxada de AxonOps (todos os compoñentes da plataforma)
+
+### Corredores de mensaxes
+- **[strimzi/](./strimzi/)**: Apache Kafka en Kubernetes mediante o operador Strimzi, con monitorización integrada de AxonOps (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Integracións
 - **[axonops-schema-registry/](./axonops-schema-registry/)**: Schema Registry compatible con Confluent, con soporte de varios backends de almacenamento
@@ -105,6 +109,7 @@ e en que a opera.
 | **Para que** | avaliación, demos, desenvolvemento, despregamentos pequenos nun só host | produción, alta dispoñibilidade, calquera cousa que deba sobrevivir a un host |
 | **Plataforma AxonOps** | as pilas de [`docker-compose/`](./docker-compose/) | os charts de Helm `oci://ghcr.io/axonops/charts/*`: véxase [VERSIONS.md](VERSIONS.md#helm-charts) e [examples/AXONOPS_DEPLOYMENT.gl.md](./examples/AXONOPS_DEPLOYMENT.gl.md) |
 | **Cassandra** | a imaxe [`cassandra/`](./cassandra/), executada directamente | a imaxe [`k8ssandra/`](./k8ssandra/) mediante o operador K8ssandra: véxase [examples/K8SSANDRA_DEPLOYMENT.gl.md](./examples/K8SSANDRA_DEPLOYMENT.gl.md) |
+| **Kafka** | — | a imaxe [`strimzi/`](./strimzi/) mediante o operador Strimzi: véxase [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Escalado e conmutación por erro** | manuais | operador e planificador |
 
 Os axentes reportan a `axon-server` igual nas dúas, así que un clúster
@@ -168,6 +173,16 @@ cada liña, e `latest` resolvendo a 5.0.9. Véxase
 para o detalle por liña, e [VERSIONS.md](VERSIONS.md) para a etiqueta e o digest
 actuais de cada imaxe publicada.
 
+### Versións de Strimzi Kafka
+
+As imaxes de Strimzi versión­anse pola combinación da versión do operador
+Strimzi, a versión de Kafka, a versión do axente de AxonOps e o número de
+build: `<strimzi>-<kafka>-<axente>-<build>`. Cada build publica unha
+etiqueta por cada combinación de operador/Kafka soportada. Véxase
+[strimzi/README.md](strimzi/README.md#version-compatibility) para a matriz de
+compatibilidade completa e [VERSIONS.md](VERSIONS.md) para a etiqueta e o
+digest actuais.
+
 ## Convencións do repositorio
 
 - **Soporte multiarquitectura**: linux/amd64, linux/arm64
@@ -224,10 +239,10 @@ SHA256 da imaxe:
 
 ```yaml
 # Tag-based (good)
-image: ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+image: ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Digest-based (best)
-image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+image: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 #### Vantaxes
@@ -252,13 +267,13 @@ image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
 **Método 2: con Docker ou Podman**
 ```bash
 # Pull the image first
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Get digest
-docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}'
 
-# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 **Método 3: durante o workflow**
@@ -275,9 +290,9 @@ metadata:
   name: production-cluster
 spec:
   cassandra:
-    serverVersion: "5.0.6"
+    serverVersion: "5.0.9"
     # Use digest instead of tag
-    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:412c852252ec4ebcb8d377a505881828a7f6a5f9dc725cc4f20fda2a1bcb3494"
+    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147efbca348fa78f8daf8d5afb5c611c07a86a42b7edbb42ac1ea30c15"
     datacenters:
       - metadata:
           name: dc1
@@ -300,10 +315,10 @@ brew install sigstore/tap/cosign  # macOS
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 **Resolución de problemas (en macOS):**
@@ -316,13 +331,13 @@ Cosign:
 docker run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Using Podman
 podman run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 Isto usa o [contedor oficial de Cosign](https://github.com/sigstore/cosign) e
@@ -414,10 +429,10 @@ Kubernetes sobre controladores de admisión e aplicación de políticas de imaxe
 **Actualizar os digests:**
 ```bash
 # 1. Pull new version
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # 2. Get new digest
-NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}' | cut -d@ -f2)
 
 # 3. Update manifest
@@ -493,7 +508,7 @@ probalas antes dunha release de produción.
 
 **Rexistro:** `ghcr.io/axonops/development/<component>/<image-name>`
 
-**Exemplo:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0`
+**Exemplo:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.9-v0.1.125-dev-k8ssandra-1.4.7`
 
 **Características:**
 - Todas as imaxes están asinadas con Cosign (igual ca en produción)
@@ -641,22 +656,35 @@ transparencia. As sinaturas poden verificarse con `cosign verify` (véxase
 
 **Paso 4: verificar a release**
 
+Substitúa `<compoñente>`, `<ruta-imaxe>` e `<etiqueta>` polos valores do compoñente publicado. As rutas e etiquetas actuais están en [VERSIONS.md](VERSIONS.md).
+
 ```bash
-# View GitHub Release
-gh release view k8ssandra-signed-1.0.0
+# Ver a GitHub Release
+gh release view <compoñente>-signed-1.0.0
 
-# Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+# Descargar e probar a imaxe
+docker pull ghcr.io/<ruta-imaxe>:<etiqueta>
 
-# Verify signature
+# Verificar a sinatura
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/<ruta-imaxe>:<etiqueta>
 
-# Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+# Ou comprobar que a sinatura existe
+cosign tree ghcr.io/<ruta-imaxe>:<etiqueta>
 ```
+
+**Exemplos por compoñente:**
+
+| Compoñente | `<ruta-imaxe>` | Exemplo de `<etiqueta>` |
+|------------|----------------|-------------------------|
+| K8ssandra Cassandra | `axonops/k8ssandra/cassandra` | `5.0.9-v0.1.125-1.6.3` |
+| Cassandra (standalone) | `axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` |
+| Strimzi Kafka | `axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` |
+| AxonOps axondb-timeseries | `axonops/axondb-timeseries` | `5.0.8-1.4.0` |
+| AxonOps axondb-search | `axonops/axondb-search` | `3.7.0-1.6.1` |
+| Schema Registry | `axonops/axonops-schema-registry` | `0.2.1` |
 
 Todas as imaxes de produción están asinadas criptograficamente. A verificación da
 sinatura demostra que a imaxe a construíron os workflows oficiais e que non se
@@ -668,6 +696,8 @@ para máis detalles.
 
 Cada compoñente ten a súa documentación de release detallada:
 - [Proceso de release de K8ssandra](./k8ssandra/RELEASE.md)
+- [Proceso de release de axondb-timeseries](./axonops/axondb-timeseries/RELEASE.md)
+- [Proceso de release de axondb-search](./axonops/axondb-search/RELEASE.md)
 - [Proceso de release do Schema Registry](./axonops-schema-registry/RELEASE.md)
 
 ## Agradecementos
@@ -698,6 +728,19 @@ Máis información:
 - [K8ssandra en GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [Documentación de K8ssandra](https://docs.k8ssandra.io/)
 
+### Strimzi
+Recoñecemos o traballo de [Strimzi](https://strimzi.io/) por proporcionar o
+operador de Kubernetes que fai que executar Apache Kafka en Kubernetes sexa
+apto para produción. Strimzi simplifica o despregamento, a configuración e a
+xestión de clústeres de Kafka mediante recursos personalizados nativos de
+Kubernetes, e as imaxes de AxonOps para Strimzi estenden as imaxes base
+oficiais de Strimzi Kafka con monitorización integrada.
+
+Máis información:
+- [Web de Strimzi](https://strimzi.io/)
+- [Strimzi en GitHub](https://github.com/strimzi/strimzi-kafka-operator)
+- [Documentación de Strimzi](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 Recoñecemos o traballo de
 [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry),
@@ -723,6 +766,7 @@ terceiros.
 - **AxonOps** é unha marca rexistrada de AxonOps Limited
 - **Apache**, **Apache Cassandra** e **Cassandra** son marcas da Apache Software Foundation ou das súas filiais en Canadá, Estados Unidos e outros países
 - **Apache Kafka** e **Kafka** son marcas da Apache Software Foundation
+- **Strimzi** é unha marca da Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** é unha marca da Apache Software Foundation
 - **Docker** é unha marca ou marca rexistrada de Docker, Inc. en Estados Unidos e outros países
 - **Podman** é unha marca de Red Hat, Inc.

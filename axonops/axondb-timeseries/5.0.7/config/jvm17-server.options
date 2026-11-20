@@ -39,6 +39,9 @@
 -XX:+UseShenandoahGC
 -XX:+AlwaysPreTouch
 
+# CVE-2026-114938 mitigation: disable the Base64 intrinsics
+-XX:-UseBASE64Intrinsics
+
 # G1-specific options (disabled when using Shenandoah):
 # -XX:+ParallelRefProcEnabled
 # -XX:MaxTenuringThreshold=2

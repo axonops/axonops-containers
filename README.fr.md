@@ -31,6 +31,7 @@ Définitions de build de conteneurs et pipelines CI/CD des images de conteneurs 
 - [Remerciements](#remerciements)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [Licence](#licence)
 - [Mentions légales](#mentions-légales)
@@ -46,6 +47,9 @@ Définitions de build de conteneurs et pipelines CI/CD des images de conteneurs 
 
 ### AxonOps auto-hébergé
 - **[axonops/](./axonops/)** - Stack AxonOps auto-hébergée (tous les composants de la plateforme)
+
+### Courtiers de messages
+- **[strimzi/](./strimzi/)** - Apache Kafka sur Kubernetes via l'opérateur Strimzi, avec supervision AxonOps intégrée (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Intégrations
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Schema Registry compatible Confluent avec prise en charge de plusieurs backends de stockage
@@ -104,6 +108,7 @@ s'exécute et par ce qui l'exploite.
 | **Pour** | évaluation, démonstrations, développement, petits déploiements mono-hôte | production, haute disponibilité, tout ce qui doit survivre à la perte d'un hôte |
 | **Plateforme AxonOps** | les stacks [`docker-compose/`](./docker-compose/) | charts Helm `oci://ghcr.io/axonops/charts/*` — voir [VERSIONS.md](VERSIONS.md#helm-charts) et [examples/AXONOPS_DEPLOYMENT.fr.md](./examples/AXONOPS_DEPLOYMENT.fr.md) |
 | **Cassandra** | image [`cassandra/`](./cassandra/), exécutée directement | image [`k8ssandra/`](./k8ssandra/) via l'opérateur K8ssandra — voir [examples/K8SSANDRA_DEPLOYMENT.fr.md](./examples/K8SSANDRA_DEPLOYMENT.fr.md) |
+| **Kafka** | — | image [`strimzi/`](./strimzi/) via l'opérateur Strimzi — voir [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Scaling et bascule** | manuels | opérateur et ordonnanceur |
 
 Les agents reportent à `axon-server` de la même manière dans les deux cas : un
@@ -163,6 +168,16 @@ et `latest` désignant la 5.0.9. Voir [k8ssandra/README.fr.md](k8ssandra/README.
 pour le détail par ligne et [VERSIONS.md](VERSIONS.md) pour le tag et le digest actuels
 de chaque image publiée.
 
+### Versions Strimzi Kafka
+
+Les images Strimzi sont versionnées par la combinaison de la version de
+l'opérateur Strimzi, de la version de Kafka, de la version de l'agent AxonOps
+et du numéro de build : `<strimzi>-<kafka>-<agent>-<build>`. Chaque build
+publie un tag par combinaison opérateur/Kafka prise en charge. Voir
+[strimzi/README.md](strimzi/README.md#version-compatibility) pour la matrice
+de compatibilité complète et [VERSIONS.md](VERSIONS.md) pour le tag et le
+digest actuels.
+
 ## Conventions du dépôt
 
 - **Prise en charge multi-architecture** : linux/amd64, linux/arm64
@@ -214,10 +229,10 @@ Plutôt que d'utiliser des tags (qui peuvent être mutables), déployez à parti
 
 ```yaml
 # Tag-based (good)
-image: ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+image: ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Digest-based (best)
-image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+image: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 #### Bénéfices
@@ -242,13 +257,13 @@ image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
 **Méthode 2 : avec Docker/Podman**
 ```bash
 # Pull the image first
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Get digest
-docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}'
 
-# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 **Méthode 3 : pendant le workflow**
@@ -265,9 +280,9 @@ metadata:
   name: production-cluster
 spec:
   cassandra:
-    serverVersion: "5.0.6"
+    serverVersion: "5.0.9"
     # Use digest instead of tag
-    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:412c852252ec4ebcb8d377a505881828a7f6a5f9dc725cc4f20fda2a1bcb3494"
+    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147efbca348fa78f8daf8d5afb5c611c07a86a42b7edbb42ac1ea30c15"
     datacenters:
       - metadata:
           name: dc1
@@ -289,10 +304,10 @@ brew install sigstore/tap/cosign  # macOS
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 **Dépannage (problèmes sous macOS) :**
@@ -304,13 +319,13 @@ Si vous rencontrez des problèmes avec cosign installé localement sous macOS, u
 docker run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Using Podman
 podman run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 Cette méthode utilise le [conteneur Cosign officiel](https://github.com/sigstore/cosign) et fonctionne de façon fiable sur toutes les plateformes.
@@ -400,10 +415,10 @@ Pour la mise en place détaillée, consultez la documentation de votre distribut
 **Mettre à jour un digest :**
 ```bash
 # 1. Pull new version
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # 2. Get new digest
-NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}' | cut -d@ -f2)
 
 # 3. Update manifest
@@ -477,7 +492,7 @@ git add . && git commit -S -m "Add feature" && git push origin development
 
 **Registre :** `ghcr.io/axonops/development/<component>/<image-name>`
 
-**Exemple :** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0`
+**Exemple :** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.9-v0.1.125-dev-k8ssandra-1.4.7`
 
 **Caractéristiques :**
 - Toutes les images sont signées avec Cosign (comme en production)
@@ -616,22 +631,35 @@ Le workflow de publication signée va :
 
 **Étape 4 : vérifier la release**
 
+Remplacez `<composant>`, `<chemin-image>` et `<tag>` par les valeurs du composant publié. Les chemins et tags actuels se trouvent dans [VERSIONS.md](VERSIONS.md).
+
 ```bash
-# View GitHub Release
-gh release view k8ssandra-signed-1.0.0
+# Voir la GitHub Release
+gh release view <composant>-signed-1.0.0
 
-# Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+# Télécharger et tester l'image
+docker pull ghcr.io/<chemin-image>:<tag>
 
-# Verify signature
+# Vérifier la signature
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/<chemin-image>:<tag>
 
-# Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+# Ou vérifier que la signature existe
+cosign tree ghcr.io/<chemin-image>:<tag>
 ```
+
+**Exemples par composant :**
+
+| Composant | `<chemin-image>` | Exemple de `<tag>` |
+|-----------|------------------|--------------------|
+| K8ssandra Cassandra | `axonops/k8ssandra/cassandra` | `5.0.9-v0.1.125-1.6.3` |
+| Cassandra (standalone) | `axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` |
+| Strimzi Kafka | `axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` |
+| AxonOps axondb-timeseries | `axonops/axondb-timeseries` | `5.0.8-1.4.0` |
+| AxonOps axondb-search | `axonops/axondb-search` | `3.7.0-1.6.1` |
+| Schema Registry | `axonops/axonops-schema-registry` | `0.2.1` |
 
 Toutes les images de production sont signées cryptographiquement. La vérification de signature prouve que l'image a été construite par les workflows officiels et qu'elle n'a pas été altérée. Voir [Déploiement sécurisé de référence](#déploiement-sécurisé-de-référence) pour plus de détails.
 
@@ -639,6 +667,8 @@ Toutes les images de production sont signées cryptographiquement. La vérificat
 
 Chaque composant dispose d'une documentation de release détaillée :
 - [Processus de release K8ssandra](./k8ssandra/RELEASE.md)
+- [Processus de release axondb-timeseries](./axonops/axondb-timeseries/RELEASE.md)
+- [Processus de release axondb-search](./axonops/axondb-search/RELEASE.md)
 - [Processus de release Schema Registry](./axonops-schema-registry/RELEASE.md)
 
 ## Remerciements
@@ -659,6 +689,19 @@ Pour en savoir plus :
 - [GitHub K8ssandra](https://github.com/k8ssandra/k8ssandra-operator)
 - [Documentation K8ssandra](https://docs.k8ssandra.io/)
 
+### Strimzi
+Nous saluons [Strimzi](https://strimzi.io/) pour l'opérateur Kubernetes qui rend
+l'exécution d'Apache Kafka sur Kubernetes adaptée à la production. Strimzi
+simplifie le déploiement, la configuration et la gestion des clusters Kafka via
+des ressources personnalisées natives Kubernetes, et les images AxonOps pour
+Strimzi étendent les images de base officielles Strimzi Kafka avec une
+supervision intégrée.
+
+Pour en savoir plus :
+- [Site Strimzi](https://strimzi.io/)
+- [GitHub Strimzi](https://github.com/strimzi/strimzi-kafka-operator)
+- [Documentation Strimzi](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 Nous saluons [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry), qui fournit un Schema Registry compatible Confluent prenant en charge plusieurs backends de stockage, dont PostgreSQL, MySQL et Apache Cassandra.
 
@@ -678,6 +721,7 @@ Ce projet peut contenir des marques ou des logos de projets, produits ou service
 - **AxonOps** est une marque déposée d'AxonOps Limited
 - **Apache**, **Apache Cassandra** et **Cassandra** sont des marques de l'Apache Software Foundation ou de ses filiales au Canada, aux États-Unis et/ou dans d'autres pays
 - **Apache Kafka** et **Kafka** sont des marques de l'Apache Software Foundation
+- **Strimzi** est une marque de la Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** est une marque de l'Apache Software Foundation
 - **Docker** est une marque ou une marque déposée de Docker, Inc. aux États-Unis et/ou dans d'autres pays
 - **Podman** est une marque de Red Hat, Inc.

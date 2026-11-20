@@ -53,6 +53,9 @@
 ⚠️  WARNING: Organization name is set to "example". Please update config.org_name in your values.yaml
 {{- end }}
 
-{{ if eq .Values.dashboardUrl "https://axonops.example.com" -}}
+{{ if and (not .Values.reportingUrl) (eq .Values.dashboardUrl "https://axonops.example.com") -}}
 ⚠️  WARNING: Dashboard URL is set to example domain. Please update dashboardUrl in your values.yaml
+{{- else if and .Values.reportingUrl .Values.dashboardUrl (ne .Values.dashboardUrl "https://axonops.example.com") -}}
+NOTE: Both reportingUrl and dashboardUrl are set. reportingUrl takes precedence:
+      axon_reporting_url is rendered and dashboardUrl is ignored (axon_dash_url is omitted).
 {{- end }}

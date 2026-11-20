@@ -55,6 +55,7 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 - [Acknowledgements](#acknowledgements)
   - [Apache Cassandra](#apache-cassandra)
   - [K8ssandra](#k8ssandra)
+  - [Strimzi](#strimzi)
   - [AxonOps Schema Registry](#axonops-schema-registry)
 - [License](#license)
 - [Legal Notices](#legal-notices)
@@ -70,6 +71,9 @@ Container build definitions and CI/CD pipelines for AxonOps container images.
 
 ### AxonOps Self-Hosted
 - **[axonops/](./axonops/)** - AxonOps self-hosted stack (complete platform components)
+
+### Message Brokers
+- **[strimzi/](./strimzi/)** - Apache Kafka on Kubernetes using the Strimzi operator, with integrated AxonOps monitoring (`ghcr.io/axonops/strimzi/kafka`)
 
 ### Integrations
 - **[axonops-schema-registry/](./axonops-schema-registry/)** - Confluent-compatible Schema Registry with multi-backend storage support
@@ -128,6 +132,7 @@ operates it.
 | **Use for** | evaluation, demos, development, small single-host deployments | production, HA, anything that has to survive a host |
 | **AxonOps platform** | [`docker-compose/`](./docker-compose/) stacks | Helm charts `oci://ghcr.io/axonops/charts/*` — see [VERSIONS.md](VERSIONS.md#helm-charts) and [examples/AXONOPS_DEPLOYMENT.md](./examples/AXONOPS_DEPLOYMENT.md) |
 | **Cassandra** | [`cassandra/`](./cassandra/) image, run directly | [`k8ssandra/`](./k8ssandra/) image via the K8ssandra operator — see [examples/K8SSANDRA_DEPLOYMENT.md](./examples/K8SSANDRA_DEPLOYMENT.md) |
+| **Kafka** | — | [`strimzi/`](./strimzi/) image via the Strimzi operator — see [examples/STRIMZI_DEPLOYMENT.md](./examples/STRIMZI_DEPLOYMENT.md) |
 | **Scaling and failover** | manual | operator and scheduler |
 
 Agents report to `axon-server` the same way in both, so a cluster monitored by a
@@ -185,6 +190,13 @@ line and `latest` resolving to 5.0.9. See [k8ssandra/README.md](k8ssandra/README
 for the per-line detail and [VERSIONS.md](VERSIONS.md) for the current tag and digest of
 every published image.
 
+### Strimzi Kafka versions
+
+Strimzi images are versioned by the combination of Strimzi operator version, Kafka version, AxonOps
+agent version and build number: `<strimzi>-<kafka>-<agent>-<build>`. Each build publishes one tag
+per supported operator/Kafka combination. See [strimzi/README.md](strimzi/README.md#version-compatibility)
+for the full support matrix and [VERSIONS.md](VERSIONS.md) for the current tag and digest.
+
 ## Repository Conventions
 
 - **Multi-architecture support**: linux/amd64, linux/arm64
@@ -236,10 +248,10 @@ Instead of using tags (which can be mutable), deploy using the image's SHA256 di
 
 ```yaml
 # Tag-based (good)
-image: ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+image: ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Digest-based (best)
-image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+image: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 #### Benefits
@@ -264,13 +276,13 @@ image: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
 **Method 2: Using Docker/Podman**
 ```bash
 # Pull the image first
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Get digest
-docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}'
 
-# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:412c85225...
+# Output: ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147...
 ```
 
 **Method 3: During Workflow**
@@ -287,9 +299,9 @@ metadata:
   name: production-cluster
 spec:
   cassandra:
-    serverVersion: "5.0.6"
+    serverVersion: "5.0.9"
     # Use digest instead of tag
-    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:412c852252ec4ebcb8d377a505881828a7f6a5f9dc725cc4f20fda2a1bcb3494"
+    serverImage: "ghcr.io/axonops/k8ssandra/cassandra@sha256:c9022f147efbca348fa78f8daf8d5afb5c611c07a86a42b7edbb42ac1ea30c15"
     datacenters:
       - metadata:
           name: dc1
@@ -311,10 +323,10 @@ brew install sigstore/tap/cosign  # macOS
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 **Troubleshooting (macOS Issues):**
@@ -326,13 +338,13 @@ If you encounter issues with local cosign on macOS, use the official Cosign cont
 docker run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Using Podman
 podman run --rm gcr.io/projectsigstore/cosign:v2.4.1 verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 ```
 
 This uses the [official Cosign container](https://github.com/sigstore/cosign) and works reliably across all platforms.
@@ -422,10 +434,10 @@ For detailed setup, see your Kubernetes distribution's documentation on admissio
 **Updating Digests:**
 ```bash
 # 1. Pull new version
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # 2. Get new digest
-NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5 \
+NEW_DIGEST=$(docker inspect ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3 \
   --format='{{index .RepoDigests 0}}' | cut -d@ -f2)
 
 # 3. Update manifest
@@ -499,7 +511,7 @@ git add . && git commit -S -m "Add feature" && git push origin development
 
 **Registry:** `ghcr.io/axonops/development/<component>/<image-name>`
 
-**Example:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0`
+**Example:** `ghcr.io/axonops/development/k8ssandra/cassandra:5.0.9-v0.1.125-dev-k8ssandra-1.4.7`
 
 **Characteristics:**
 - All images are Cosign signed (same as production)
@@ -638,22 +650,35 @@ The signed publish workflow will:
 
 **Step 4: Verify Release**
 
+Replace `<component>`, `<image-path>` and `<tag>` with the values for the component you released. Current image paths and tags are listed in [VERSIONS.md](VERSIONS.md).
+
 ```bash
 # View GitHub Release
-gh release view k8ssandra-signed-1.0.0
+gh release view <component>-signed-1.0.0
 
 # Pull and test image
-docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+docker pull ghcr.io/<image-path>:<tag>
 
 # Verify signature
 cosign verify \
   --certificate-identity-regexp='https://github.com/axonops/axonops-containers' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-  ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+  ghcr.io/<image-path>:<tag>
 
 # Or check signature exists
-cosign tree ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
+cosign tree ghcr.io/<image-path>:<tag>
 ```
+
+**Examples by component:**
+
+| Component | `<image-path>` | `<tag>` example |
+|-----------|----------------|-----------------|
+| K8ssandra Cassandra | `axonops/k8ssandra/cassandra` | `5.0.9-v0.1.125-1.6.3` |
+| Cassandra (standalone) | `axonops/cassandra/cassandra` | `5.0.8-2.0.31-1.1.0` |
+| Strimzi Kafka | `axonops/strimzi/kafka` | `1.1.0-4.3.0-2.0.20-0.1.26` |
+| AxonOps axondb-timeseries | `axonops/axondb-timeseries` | `5.0.8-1.4.0` |
+| AxonOps axondb-search | `axonops/axondb-search` | `3.7.0-1.6.1` |
+| Schema Registry | `axonops/axonops-schema-registry` | `0.2.1` |
 
 All production images are cryptographically signed. Signature verification proves the image was built by official workflows and has not been tampered with. See [Gold Standard Security Deployment](#gold-standard-security-deployment) for more details.
 
@@ -661,6 +686,8 @@ All production images are cryptographically signed. Signature verification prove
 
 Each component has detailed release documentation:
 - [K8ssandra Release Process](./k8ssandra/RELEASE.md)
+- [AxonOps axondb-timeseries Release Process](./axonops/axondb-timeseries/RELEASE.md)
+- [AxonOps axondb-search Release Process](./axonops/axondb-search/RELEASE.md)
 - [Schema Registry Release Process](./axonops-schema-registry/RELEASE.md)
 
 ## Acknowledgements
@@ -681,6 +708,14 @@ For more information:
 - [K8ssandra GitHub](https://github.com/k8ssandra/k8ssandra-operator)
 - [K8ssandra Documentation](https://docs.k8ssandra.io/)
 
+### Strimzi
+We acknowledge [Strimzi](https://strimzi.io/) for providing the Kubernetes operator that makes running Apache Kafka on Kubernetes production-ready. Strimzi simplifies the deployment, configuration, and management of Kafka clusters through Kubernetes-native custom resources, and the AxonOps Strimzi images extend the official Strimzi Kafka base images with integrated monitoring.
+
+For more information:
+- [Strimzi Website](https://strimzi.io/)
+- [Strimzi GitHub](https://github.com/strimzi/strimzi-kafka-operator)
+- [Strimzi Documentation](https://strimzi.io/docs/)
+
 ### AxonOps Schema Registry
 We acknowledge [AxonOps Schema Registry](https://github.com/axonops/axonops-schema-registry) for providing a Confluent-compatible Schema Registry with support for multiple storage backends including PostgreSQL, MySQL, and Apache Cassandra.
 
@@ -700,6 +735,7 @@ This project may contain trademarks or logos for projects, products, or services
 - **AxonOps** is a registered trademark of AxonOps Limited
 - **Apache**, **Apache Cassandra**, and **Cassandra** are trademarks of the Apache Software Foundation or its subsidiaries in Canada, the United States and/or other countries
 - **Apache Kafka** and **Kafka** are trademarks of the Apache Software Foundation
+- **Strimzi** is a trademark of the Cloud Native Computing Foundation (CNCF)
 - **K8ssandra** is a trademark of the Apache Software Foundation
 - **Docker** is a trademark or registered trademark of Docker, Inc. in the United States and/or other countries
 - **Podman** is a trademark of Red Hat, Inc.
@@ -10997,7 +11033,7 @@ The AxonOps Strimzi integration allows you to build Kafka clusters running on Ku
 ```bash
 helm repo add strimzi https://strimzi.io/charts/
 helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 0.46.0 \
+  --version 1.2.0 \
   --set watchAnyNamespace=true
 ```
 
@@ -11041,17 +11077,21 @@ kubectl get pod -n kafka --watch
 
 For development or testing, you can deploy a single-node Kafka cluster with combined controller and broker roles.
 
-See the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
+The required manifests are in the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
 
 - `kafka-single-node.yaml`: Single-node Kafka cluster
 - `axonops-agent-config.yaml`: AxonOps agent configuration
 - `axonops-kafka-logging.yaml`: Logging configuration
 - `axonops-kafka-nodepool.yaml`: Node pool configuration
 
-**Update the values** and apply:
+**Update the values** and apply only the single-node files:
 
 ```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
+              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
+              -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -11165,7 +11205,7 @@ To build a custom image locally for testing:
 ```bash
 # For Kafka 3.x versions
 docker build \
-  --build-arg STRIMZI_VERSION=0.46.0 \
+  --build-arg STRIMZI_VERSION=0.46.1 \
   --build-arg KAFKA_VERSION=3.9.0 \
   --build-arg KAFKA_AGENT_PACKAGE=axon-kafka3-agent \
   --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
@@ -11310,6 +11350,7 @@ Key files:
 
 - [`Dockerfile`](Dockerfile): Image build definition
 - [`files/axonops-wrapper.sh`](files/axonops-wrapper.sh): Startup wrapper for AxonOps integration
+  The wrapper also adds `-XX:-UseBASE64Intrinsics` to `KAFKA_OPTS` to mitigate CVE-2026-114938. It is placed first, so a later `-XX:+UseBASE64Intrinsics` in your own `KAFKA_OPTS` overrides it.
 - [`files/axonops.repo.dev`](files/axonops.repo.dev): AxonOps YUM repository configuration (dev)
 - [`files/axonops.repo.release`](files/axonops.repo.release): AxonOps YUM repository configuration (release)
 
@@ -11372,8 +11413,8 @@ Key files:
 
 | Component | Version | Notes |
 | --------- | ------- | ----- |
-| Strimzi | 1.1.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
-| Kafka | 4.3.0 (latest) | Version 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0 |
+| Strimzi | 1.2.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
+| Kafka | 4.3.1 (latest) | Version 1.2.0 supports Kafka 4.2.0, 4.2.1, 4.3.0, 4.3.1 |
 | Kubernetes | 1.24+ | Any CNCF-compliant distribution |
 | AxonOps Agent | Latest | Auto-installed from repository |
 
@@ -11381,8 +11422,10 @@ Key files:
 
 | Strimzi Version | Supported Kafka Versions | Release Date |
 | --------------- | ------------------------ | ------------ |
+| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | Aug 2026 |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | Jun 2026 |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Jun 2026 |
+| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Apr 2026 |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | Mar 2026 |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Feb 2025 |
 | 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Dec 2024 |
@@ -11741,7 +11784,10 @@ helm install axonops . \
 | `axondb-search.opensearchHeapSize` | JVM heap size for OpenSearch | `8g` |
 | `axon-server.config.org_name` | Your organization name | `example` |
 | `axon-server.config.license_key` | AxonOps license key | `""` |
-| `axon-server.dashboardUrl` | Public URL for dashboard | `https://axonops.example.com` |
+| `axon-server.dashboardUrl` | Public URL for dashboard (only used when `axon-server.reportingUrl` is empty) | `https://axonops.example.com` |
+| `axon-server.reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `http://axonops-axon-dash-svc:8081` |
+| `axon-dash.reporting.image.tag` | axon-reporting image tag (required) | `"1.0.3"` |
+| `axon-dash.reporting.port` | axon-reporting port (container and Service port `reporting`) | `8081` |
 
 ### Resource Configuration
 
@@ -11805,6 +11851,37 @@ axondb-search:
     size: 100Gi  # Default for production
     # storageClass: "fast-ssd"  # Optional: specify storage class
 ```
+
+### Reports v2 (axon-reporting)
+
+Reports v2 is always on. There is nothing to enable:
+
+- The axon-dash Pod always runs an `axon-reporting` sidecar container, exposed on the dashboard Service as port `reporting` (`8081` by default).
+- `axon-server.reportingUrl` tells axon-server where to reach that sidecar. It defaults to `http://axonops-axon-dash-svc:8081`, so axon-server receives `axon_reporting_url` and `axon-server.dashboardUrl` is ignored.
+
+**Requirements:**
+- axon-server >= 2.0.39. Older servers do not read `axon_reporting_url`; leave `reportingUrl` empty for them.
+
+To change the port or install under a different release name, override both sides together:
+
+```yaml
+# values-reporting.yaml
+axon-server:
+  # Release name "my-axonops" -> Service "my-axonops-axon-dash-svc"
+  reportingUrl: http://my-axonops-axon-dash-svc:9081
+
+axon-dash:
+  reporting:
+    port: 9081
+```
+
+```bash
+helm install my-axonops . -n axonops --create-namespace -f values-reporting.yaml
+```
+
+The default `reportingUrl` assumes the release is named `axonops`. The dashboard Service is named `<release>-axon-dash-svc`, so with any other release name change `reportingUrl` to match, in the same way as `axon-dash.config.axonServerUrl`. Keep the port in `reportingUrl` equal to `axon-dash.reporting.port`.
+
+See the sub-chart READMEs for the full set of options: [axon-dash: Reports v2 (axon-reporting sidecar)](../axon-dash/README.md#reports-v2-axon-reporting-sidecar) and [axon-server: Important Notes](../axon-server/README.md#important-notes).
 
 ## Security
 
@@ -12177,7 +12254,7 @@ Copyright AxonOps. All rights reserved.
 
 **English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
-![Version: 2.1.16](https://img.shields.io/badge/Version-2.1.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.36](https://img.shields.io/badge/AppVersion-2.0.36-informational?style=flat-square)
+![Version: 2.1.17](https://img.shields.io/badge/Version-2.1.17-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.39](https://img.shields.io/badge/AppVersion-2.0.39-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Server - the unified observability platform for Apache Cassandra. The AxonOps Server is the central component that collects metrics and logs from Cassandra clusters, stores them in the timeseries and search databases, and provides APIs for the AxonOps Dashboard.
 
@@ -12531,8 +12608,8 @@ stringData:
     org_name: my-organization
     license_key: YOUR_LICENSE_KEY_HERE
 
-    # Dashboard URL
-    axon_dash_url: https://axonops.example.com
+    # Reports v2 service (axon-reporting sidecar in the axon-dash pod)
+    axon_reporting_url: http://axon-dash-svc:8081
 
     # Log to stdout for Kubernetes
     log_file: /dev/stdout
@@ -13139,7 +13216,8 @@ curl http://localhost:8080/api/v1/healthz
 | `searchDb.hosts` | Search database hosts | `[]` |
 | `searchDb.username` | Search database username | `""` |
 | `searchDb.search_secret` | Kubernetes secret name containing OpenSearch credentials | `""` |
-| `dashboardUrl` | Public URL for AxonOps Dashboard | `""` |
+| `dashboardUrl` | Public URL for AxonOps Dashboard (only used when `reportingUrl` is empty) | `""` |
+| `reportingUrl` | URL of the Reports v2 service (axon-server >= 2.0.39); takes precedence over `dashboardUrl` | `"http://axon-dash-svc:8081"` |
 | `apiIngress.enabled` | Enable API ingress | `false` |
 | `agentIngress.enabled` | Enable agent ingress | `false` |
 | `persistence.enabled` | Enable persistent storage | `true` |
@@ -13169,6 +13247,12 @@ curl http://localhost:8080/api/v1/healthz
 - `disabled`: No TLS (development only)
 - `TLS`: Server-side TLS encryption
 - `mTLS`: Mutual TLS (requires client certificates on agents)
+
+**Reports v2 (`reportingUrl`):**
+- axon-server >= 2.0.39 reads `axon_reporting_url`, which replaces `axon_dash_url`
+- When `reportingUrl` is set, the chart renders `axon_reporting_url` and omits `axon_dash_url`; `dashboardUrl` is ignored
+- When `reportingUrl` is empty, `axon_dash_url` is rendered from `dashboardUrl` as before, for servers < 2.0.39
+- In-cluster example pointing at the axon-dash chart's reporting sidecar: `http://<release>-axon-dash-svc:8081`
 
 ### Complete Values Reference
 
@@ -13206,10 +13290,11 @@ curl http://localhost:8080/api/v1/healthz
 | config.org_name | string | `"example"` | Organization name |
 | config.sslSecretName | string | `""` | Secret name containing SSL certificates |
 | config.tls.mode | string | `"disabled"` | TLS mode (disabled, TLS, mTLS) |
-| dashboardUrl | string | `""` | Public dashboard URL |
+| dashboardUrl | string | `""` | Public dashboard URL (only used when `reportingUrl` is empty) |
 | deployment.annotations | object | `{}` | Deployment annotations |
 | deployment.env | object | `{}` | Additional environment variables |
 | deployment.secretEnv | string | `""` | Secret containing environment variables |
+| enableServiceLinks | bool | `false` | Inject Kubernetes service link env vars. Keep `false`: the injected `AXON_SERVER_*_PORT` vars override the listener ports |
 | extraVolumeMounts | list | `[]` | Additional volume mounts |
 | extraVolumes | list | `[]` | Additional volumes |
 | fullnameOverride | string | `""` | Override full resource name |
@@ -13233,6 +13318,7 @@ curl http://localhost:8080/api/v1/healthz
 | podSecurityContext.runAsNonRoot | bool | `true` | Run as non-root |
 | podSecurityContext.runAsUser | int | `9988` | User ID to run pod |
 | readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/api/v1/healthz","port":"api"},"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":3}` | Readiness probe configuration |
+| reportingUrl | string | `"http://axon-dash-svc:8081"` | Reports v2 service URL (axon-server >= 2.0.39); renders `axon_reporting_url` instead of `axon_dash_url` |
 | resources | object | `{}` | Resource limits and requests |
 | searchDb.hosts | list | `[]` | Search database hosts |
 | searchDb.password | string | `""` | Search database password |
@@ -13488,6 +13574,7 @@ A Helm chart for deploying the AxonOps Dashboard - the web-based user interface 
   - [Installation with Subpath (Context Path)](#installation-with-subpath-context-path)
   - [Installation with Autoscaling](#installation-with-autoscaling)
   - [Production-Ready Installation](#production-ready-installation)
+  - [Reports v2 (axon-reporting sidecar)](#reports-v2-axon-reporting-sidecar)
 - [Configuration](#configuration)
 - [Upgrading](#upgrading)
 - [Uninstalling](#uninstalling)
@@ -14047,6 +14134,71 @@ kubectl get hpa -n production
 curl -I https://axonops.production.example.com
 ```
 
+### Reports v2 (axon-reporting sidecar)
+
+Reports v2 needs the `axon-reporting` service running beside the dashboard. The chart always adds an `axon-reporting` sidecar container to every axon-dash Pod:
+
+- axon-dash reaches its own sidecar over localhost. The chart writes `reporting_url` into `axon-dash.yml`, set to `reporting.url` or, when that is empty, `http://127.0.0.1:<reporting.port>`.
+- axon-server reaches the sidecar through the named `reporting` port on the dashboard Service: `http://<fullname>-svc:<reporting.port>`.
+- The chart points the sidecar at the axon-dash container in the same Pod by setting these environment variables:
+  - `AXONDASH_URL_TEMPLATE`: `http://127.0.0.1:<config.listener.port>`, or `https://` when `config.listener.ssl.enabled` is true.
+  - `AXONDASH_PATH_PREFIX`: `config.contextPath`.
+  - `AXONREPORTING_PORT`: `reporting.port`.
+- The sidecar uses the Pod's `imagePullSecrets`.
+
+**Requirements:**
+- axon-server >= 2.0.39 with `reportingUrl` set in the axon-server chart, pointing at the dashboard Service's `reporting` port (for example `http://axon-dash-svc:8081`).
+
+**Things to know:**
+- Each axon-dash replica gets its own sidecar. Running more than one replica (`replicaCount > 1` or autoscaling) is only safe if axon-reporting is stateless, which is not yet confirmed. Keep `replicaCount: 1` with autoscaling disabled until it is.
+- Liveness and readiness probes default to an HTTP GET on `/healthz` at the `reporting` port.
+- The image defaults to root, but it runs as any UID and needs no writable paths, so a restrictive `securityContext` like the one below is safe. `securityContext` and `volumeMounts` still default to empty.
+- Optional settings go in `reporting.env`: `AXONREPORTING_AUTH_ENABLED` (`auto`, `true` or `false`; default `auto`) and `AXONREPORTING_METRICS_CLIENT_TIMEOUT` (seconds to wait for axon-dash; default `60`).
+
+```yaml
+# values-reporting.yaml
+replicaCount: 1
+
+config:
+  axonServerUrl: "http://axon-server-api:8080"
+
+reporting:
+  port: 8081
+  # Optional axon-reporting settings
+  env:
+    - name: AXONREPORTING_METRICS_CLIENT_TIMEOUT
+      value: "120"
+  # Optional, and tested against 1.0.3: the image accepts any UID
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 9988
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+```
+
+Install:
+
+```bash
+helm install axon-dash ./axon-dash -f values-reporting.yaml
+```
+
+Check that the dashboard config and Service carry the reporting settings:
+
+```bash
+kubectl get configmap axon-dash -o yaml | grep reporting_url
+kubectl get svc axon-dash-svc -o jsonpath='{.spec.ports[?(@.name=="reporting")].port}'
+```
+
 ## Configuration
 
 ### Key Configuration Options
@@ -14068,6 +14220,8 @@ curl -I https://axonops.production.example.com
 | `autoscaling.maxReplicas` | Maximum replicas for HPA | `100` |
 | `resources.requests.cpu` | CPU request | `nil` |
 | `resources.requests.memory` | Memory request | `nil` |
+| `reporting.image.tag` | axon-reporting image tag (required) | `"1.0.3"` |
+| `reporting.port` | axon-reporting port (container and Service) | `8081` |
 
 ### Important Notes
 
@@ -14112,6 +14266,7 @@ curl -I https://axonops.production.example.com
 | config.listener.host | string | `"0.0.0.0"` | Listener host |
 | config.listener.port | int | `3000` | Listener port |
 | config.listener.ssl.enabled | bool | `false` | Enable SSL for the application |
+| enableServiceLinks | bool | `false` | Inject Kubernetes service link env vars. Keep `false`: the injected `AXON_SERVER_*_PORT` vars override the listener ports |
 | fullnameOverride | string | `""` | Override the full resource name |
 | httpRoute.annotations | object | `{}` | Annotations for HTTPRoute |
 | httpRoute.enabled | bool | `false` | Enable HTTPRoute (Gateway API) |
@@ -14137,6 +14292,17 @@ curl -I https://axonops.production.example.com
 | readinessProbe.httpGet.path | string | `"/"` | Readiness probe HTTP path |
 | readinessProbe.httpGet.port | string | `"http"` | Readiness probe HTTP port |
 | replicaCount | int | `1` | Number of replicas |
+| reporting.env | list | `[]` | Extra environment variables for the sidecar (the chart already sets `AXONDASH_URL_TEMPLATE`, `AXONDASH_PATH_PREFIX` and `AXONREPORTING_PORT`) |
+| reporting.image.pullPolicy | string | `"IfNotPresent"` | Sidecar image pull policy |
+| reporting.image.repository | string | `"registry.axonops.com/axonops-public/axonops-docker/axon-reporting"` | Sidecar container image repository |
+| reporting.image.tag | string | `"1.0.3"` | Sidecar image tag (required) |
+| reporting.livenessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar liveness probe |
+| reporting.port | int | `8081` | Sidecar port, also exposed as the `reporting` Service port |
+| reporting.readinessProbe | object | `{"httpGet":{"path":"/healthz","port":"reporting"}}` | Sidecar readiness probe |
+| reporting.resources | object | `{}` | Sidecar CPU/Memory resource requests and limits |
+| reporting.securityContext | object | `{}` | Sidecar container security context |
+| reporting.url | string | `""` | Override for `reporting_url` in axon-dash.yml (defaults to `http://127.0.0.1:<reporting.port>`) |
+| reporting.volumeMounts | list | `[]` | Additional volume mounts for the sidecar |
 | resources | object | `{}` | CPU/Memory resource requests and limits |
 | securityContext | object | `{}` | Container security context |
 | service.port | int | `3000` | Service port |
@@ -16989,7 +17155,7 @@ Passwords live in `.env`, which is gitignored. Never commit one.
 | AxonOps | self-hosted | self-hosted | SaaS | self-hosted | self-hosted |
 | Cassandra | none — bring your own | 3 nodes, monitored | 3 nodes, monitored | 3 nodes, 3 racks, monitored | 1 node, monitored |
 | Cluster auth | — | off | off | `PasswordAuthenticator` | off |
-| Containers | 4 | 7 | 3 | 7 | 5, plus a one-shot config job |
+| Containers | 5 | 8 | 3 | 8 | 6, plus a one-shot config job |
 | RAM at defaults | ~10 GB | ~10 GB | ~5 GB | ~12 GB | ~6 GB |
 | Dashboard | `localhost:3000` | `localhost:3000` | AxonOps console | `localhost:3000` | `localhost:3000` |
 | You need | nothing | nothing | a SaaS org and agent key | nothing | nothing |
@@ -17055,8 +17221,8 @@ a newer dash against an older server is the combination to avoid.
 
 ```yaml
   axon-server:
-    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:c75f6672…
-    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35
+    # Preferred (immutable): registry.axonops.com/…/axon-server@sha256:b7c41009…
+    image: registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39
 ```
 
 Change the tag and the digest comment together — a stale comment beside a new
@@ -17076,14 +17242,26 @@ update. Both are stateless: everything lives
 in `axondb-timeseries` and `axondb-search`, which you are not touching, so a
 recreate loses no data. Agents reconnect on their own once the server is back.
 
+**`axon-reporting`** (every example except 02) shares `axon-dash`'s network
+namespace. Recreating `axon-dash` leaves it attached to the old container's
+namespace, where nothing can reach it, so recreate it straight after:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
+
+It tracks the development tag `latest` until it is published to
+`registry.axonops.com`; `docker compose pull axon-reporting` fetches the newest
+build.
+
 **The agent.** It ships inside the Cassandra image rather than as its own
 container, and it is the middle component of the tag —
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` is Cassandra 5.0.8 with
-agent 2.0.31 from build 1.1.0. Upgrading the agent therefore means moving to a
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` is Cassandra 5.0.9 with
+agent 2.0.33 from build 1.2.3. Upgrading the agent therefore means moving to a
 new image tag, which in examples 01, 02 and 03 is `CASSANDRA_IMAGE` in `.env`:
 
 ```bash
-CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0
+CASSANDRA_IMAGE=ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3
 ```
 
 Recreate the nodes **one at a time**, waiting for each to come back healthy
@@ -17225,7 +17403,7 @@ your own hosts at it, or use it as the base for the other examples.
 ```bash
 cp env.example .env          # set AXONOPS_ORG_NAME
 docker compose up -d
-docker compose ps            # wait for all four services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 Then open <http://localhost:3000>.
@@ -17239,10 +17417,39 @@ A cold start takes 2–3 minutes: the two data stores initialise first, then
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend and agent endpoint | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend and agent endpoint | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, see [below](#reports-v2) | — |
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
+
+### Reports v2
+
+`axon-reporting` serves Reports v2. It runs beside `axon-dash` and shares its
+network namespace (`network_mode: "service:axon-dash"`), so the two reach each
+other on `127.0.0.1` and `axon-server` reaches it as `axon-dash:8081`. It
+publishes no port and has no healthcheck — the image ships neither `curl` nor
+`wget`.
+
+| Setting | Service | Value |
+|---------|---------|-------|
+| `AXON_REPORTING_URL` | `axon-server` | `http://axon-dash:8081` |
+| `AXONDASH_REPORTING_URL` (`axon-dash.reporting_url`) | `axon-dash` | `http://127.0.0.1:8081` |
+| `AXONDASH_URL_TEMPLATE` | `axon-reporting` | `http://127.0.0.1:3000` |
+| `AXONDASH_PATH_PREFIX` | `axon-reporting` | (empty) |
+
+From 2.0.39, `AXON_REPORTING_URL` replaces `AXONDASH_HOST`, `AXONDASH_PORT` and
+`AXONDASH_HTTPS` on `axon-server`, which no longer reads them.
+`AXONDASH_URL_TEMPLATE` and `AXONDASH_PATH_PREFIX` are set explicitly because
+the image's built-in defaults point at a hosted dashboard.
+
+Recreating `axon-dash` on its own leaves `axon-reporting` attached to the old
+container's network namespace, where nothing can reach it. Recreate it straight
+after:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
 
 ## Configuration
 
@@ -17406,6 +17613,18 @@ as a CQL protocol version. Set `AXONOPS_CASSANDRA_SSL=false` unless you have
 mounted a keystore, as explained under
 [TLS between the services](#tls-between-the-services).
 
+**Reports do not generate.** Check each hop to `axon-reporting`; both print
+`{"data":"OK"}`:
+
+```bash
+docker exec axon-dash curl -s http://127.0.0.1:8081/healthz     # axon-dash -> axon-reporting
+docker exec axon-server curl -s http://axon-dash:8081/healthz   # axon-server -> axon-reporting
+docker compose logs axon-reporting
+```
+
+Its first log line names the dashboard it renders from:
+`"axon_dash": "http://127.0.0.1:3000"`.
+
 **Other settings that look right but are ignored.** Three of these images take
 configuration under names that differ from the ones their own READMEs suggest,
 and each fails without naming the variable at fault. Example 01 documents all
@@ -17448,7 +17667,7 @@ public registry. Start here if you are evaluating AxonOps.
 ```bash
 cp env.example .env          # set AXONOPS_ORG_NAME
 docker compose up -d
-docker compose ps            # wait for all services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 Then open <http://localhost:3000> and pick your organisation, then the
@@ -17463,17 +17682,46 @@ the Cassandra nodes bootstrap one at a time.
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | AxonOps backend and agent endpoint | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Web dashboard | `3000` |
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, seed node | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack1 | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored cluster, rack2 | — |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | AxonOps backend and agent endpoint | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, see [below](#reports-v2) | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Monitored cluster, seed node | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Monitored cluster, rack1 | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Monitored cluster, rack2 | — |
 
 `cassandra-0` through `cassandra-2` are one datacentre, `dc1`, with one rack
 each. Only `cassandra-0` publishes CQL to the host; the other two are reachable
 inside the compose network and with `docker exec`.
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
+
+### Reports v2
+
+`axon-reporting` serves Reports v2. It runs beside `axon-dash` and shares its
+network namespace (`network_mode: "service:axon-dash"`), so the two reach each
+other on `127.0.0.1` and `axon-server` reaches it as `axon-dash:8081`. It
+publishes no port and has no healthcheck — the image ships neither `curl` nor
+`wget`.
+
+| Setting | Service | Value |
+|---------|---------|-------|
+| `AXON_REPORTING_URL` | `axon-server` | `http://axon-dash:8081` |
+| `AXONDASH_REPORTING_URL` (`axon-dash.reporting_url`) | `axon-dash` | `http://127.0.0.1:8081` |
+| `AXONDASH_URL_TEMPLATE` | `axon-reporting` | `http://127.0.0.1:3000` |
+| `AXONDASH_PATH_PREFIX` | `axon-reporting` | (empty) |
+
+From 2.0.39, `AXON_REPORTING_URL` replaces `AXONDASH_HOST`, `AXONDASH_PORT` and
+`AXONDASH_HTTPS` on `axon-server`, which no longer reads them.
+`AXONDASH_URL_TEMPLATE` and `AXONDASH_PATH_PREFIX` are set explicitly because
+the image's built-in defaults point at a hosted dashboard.
+
+Recreating `axon-dash` on its own leaves `axon-reporting` attached to the old
+container's network namespace, where nothing can reach it. Recreate it straight
+after:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
 
 ## Configuration
 
@@ -17483,7 +17731,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 |----------|---------|-------------|
 | `AXONOPS_ORG_NAME` | `example` | Organisation name. Shared by `axon-server` and the agents — they must match. |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Name of the monitored cluster in AxonOps |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the monitored nodes |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Image for the monitored nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per monitored node |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Young generation per monitored node |
 | `AXONOPS_LICENSE_KEY` | (empty) | License key; empty runs in trial mode |
@@ -17504,7 +17752,7 @@ of the `axon-server.yml` shipped inside the image:
 | `license_key` | `LICENSE_KEY` |
 | `tls.mode` | `TLS_MODE` |
 | `log_file` | `AXON_LOG_FILE` |
-| `axon_dash_url` | `AXONDASH_HOST`, `AXONDASH_PORT`, `AXONDASH_HTTPS` |
+| `axon_reporting_url` | `AXON_REPORTING_URL` |
 | `cql_hosts` | `CQL_HOSTS` (comma-separated) |
 | `cql_username` / `cql_password` | `CQL_USERNAME` / `CQL_PASSWORD` |
 | `cql_local_dc` | `CQL_LOCAL_DC` |
@@ -17547,7 +17795,7 @@ The agent starts only once Cassandra is up, so it is normally absent for part of
 the 90s start period.
 
 Both the agent check and `HEALTHCHECK_REQUIRE_AGENT` are in the pinned image,
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. On any earlier image
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`. On any earlier image
 the script verifies Cassandra only and the variable has no effect.
 
 ## Using the cluster
@@ -17612,6 +17860,18 @@ must share an organisation. `AXONOPS_ORG_NAME` in `.env` sets both; check with
 `AXONOPS_DB_PASSWORD` and `AXONOPS_SEARCH_PASSWORD` match between them and
 `axon-server`.
 
+**Reports do not generate.** Check each hop to `axon-reporting`; both print
+`{"data":"OK"}`:
+
+```bash
+docker exec axon-dash curl -s http://127.0.0.1:8081/healthz     # axon-dash -> axon-reporting
+docker exec axon-server curl -s http://axon-dash:8081/healthz   # axon-server -> axon-reporting
+docker compose logs axon-reporting
+```
+
+Its first log line names the dashboard it renders from:
+`"axon_dash": "http://127.0.0.1:3000"`.
+
 ### Configuration variables that look right but are not
 
 Three of the services take configuration under names that differ from the ones
@@ -17650,7 +17910,8 @@ and set both sides together.
 
 `axon-dash` maps its `axon-dash.yml` onto environment variables by section and
 key — `axon-server.private_endpoints` becomes `AXONSERVER_PRIVATE_ENDPOINTS`,
-`axon-dash.port` becomes `AXONDASH_PORT`. It also accepts anything prefixed
+`axon-dash.port` becomes `AXONDASH_PORT`,
+`axon-dash.reporting_url` becomes `AXONDASH_REPORTING_URL`. It also accepts anything prefixed
 `AXON_SERVER_`, lower-cases it and merges it into the `axon-server` section,
 which means a wrong name such as `AXON_SERVER_URL` is accepted silently and
 appears in the config the dash prints at startup without having any effect. The
@@ -17706,9 +17967,9 @@ nowhere.
 
 | Service | Image | Purpose | Published port |
 |---------|-------|---------|----------------|
-| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Seed node, `rack0` | `9042` |
-| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack1` | — |
-| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | `rack2` | — |
+| `cassandra-0` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Seed node, `rack0` | `9042` |
+| `cassandra-1` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | `rack1` | — |
+| `cassandra-2` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | `rack2` | — |
 
 One datacentre, `dc1`, with one rack per node. Only `cassandra-0` publishes CQL
 to the host; the others are reachable inside the compose network and through
@@ -17740,7 +18001,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_AGENT_KEY` | — | Agent key from the console. Required. |
 | `CASSANDRA_CLUSTER_NAME` | `saas-demo-cluster` | Cluster name shown in AxonOps |
 | `CASSANDRA_DC` | `dc1` | Datacentre name |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the nodes |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Image for the nodes |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per node |
 | `CASSANDRA_HEAP_NEWSIZE` | `256M` | Young generation per node |
 | `CQL_PORT` | `9042` | Host port for CQL on `cassandra-0` |
@@ -17787,7 +18048,7 @@ The agent starts only once Cassandra is up, so it is normally absent for part of
 the 90s start period.
 
 The agent check reached `axonops-healthcheck.sh` after the currently pinned
-image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` the
+image was published, so on `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` the
 script verifies Cassandra only and `HEALTHCHECK_REQUIRE_AGENT` has no effect.
 Both take effect with the next Cassandra image release.
 
@@ -17898,7 +18159,7 @@ lists every difference.
 ## Before you start
 
 The three nodes are pinned to the full version tag
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`, not to the floating
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`, not to the floating
 `5.0.8`. That matters here more than in the other examples.
 
 Authentication is set with `CASSANDRA_AUTHENTICATOR` and `CASSANDRA_AUTHORIZER`,
@@ -17930,7 +18191,7 @@ secured node.
 cp env.example .env          # set AXONOPS_ORG_NAME
 ./setup.sh                   # create and seed ./docker/, once
 docker compose up -d
-docker compose ps            # wait for all seven services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 `setup.sh` is not optional: the three nodes read their configuration from host
@@ -17951,17 +18212,23 @@ that does not survive losing a node.
 
 | Service | Address | Image | Purpose | Published port |
 |---------|---------|-------|---------|----------------|
-| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
+| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Cluster node, rack1 | `9142` CQL, `7199` JMX¹ |
 | `cassandra02` | 10.17.64.6 | same | Cluster node, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | same | Cluster node, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (single-node Cassandra) | — |
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
-| `axon-server` | 10.17.64.22 | `axon-server:2.0.35` | Backend and agent endpoint | `1888` |
-| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.37` | Web dashboard | `3000` |
+| `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend and agent endpoint | `1888` |
+| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Web dashboard | `3000` |
+| `axon-reporting` | shares `axon-dash`'s | `axon-reporting:1.0.3` | Reports v2 | — |
 
 ¹ Bound to `127.0.0.1` only — see [Remote JMX](#remote-jmx).
 
 Current tags and digests for every image: [VERSIONS.md](../../VERSIONS.md).
+
+`axon-reporting` serves Reports v2. It has no address of its own: it shares
+`axon-dash`'s network namespace, so `axon-server` reaches it as
+`axon-dash:8081`. Details: [example
+00](../00-axonops-platform/README.md#reports-v2).
 
 ## The cluster
 
@@ -18042,7 +18309,7 @@ overwrites, and only the configuration.
 3. **Resolves the image.** It greps `CASSANDRA_IMAGE=` out of `./.env` (last
    occurrence wins, surrounding quotes stripped) and falls back to the default
    compiled into the script,
-   `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` — which must match
+   `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` — which must match
    the default in `docker-compose.yaml`. It does not parse the compose file.
 4. **Pulls the image if it is not present locally**, so the seeding step below
    cannot fail on a missing image.
@@ -18184,7 +18451,7 @@ Everything is set in `.env`. Full list with defaults: [`env.example`](env.exampl
 | `AXONOPS_CASSANDRA_SSL` | `false` | TLS from `axon-server` to `axondb-timeseries` |
 | `CASSANDRA_CLUSTER_NAME` | `secure-cluster` | Cluster name shown in AxonOps |
 | `CASSANDRA_DC` | `dc1` | Datacentre name |
-| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image for the three nodes — 1.1.0 or later, see [Before you start](#before-you-start) |
+| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Image for the three nodes — 1.1.0 or later, see [Before you start](#before-you-start) |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap per cluster node |
 | `CASSANDRA_MEM_LIMIT` | `2g` | Container memory limit per node |
 | `CASSANDRA_CPUS` | `2.0` | CPU limit per node |
@@ -18264,7 +18531,7 @@ node with `HEALTHCHECK_REQUIRE_AGENT=true`, raise `start_period` rather than
 lowering `retries`.
 
 Both the agent check and `HEALTHCHECK_REQUIRE_AGENT` are in the pinned image,
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`. On any earlier image
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`. On any earlier image
 the script verifies Cassandra only and the variable has no effect.
 
 Cluster data and configuration live under `./docker/` on the host — see
@@ -18292,8 +18559,8 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 
 | Original | Here | Why |
 |----------|------|-----|
-| Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | The point of the port. Metrics, logs, alerting and repair scheduling in one platform, and no JMX exporter sidecars to configure |
-| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Same Cassandra, with the AxonOps agent and Java agent already installed |
+| Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash`, `axon-reporting` | The point of the port. Metrics, logs, alerting and repair scheduling in one platform, and no JMX exporter sidecars to configure |
+| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Same Cassandra, with the AxonOps agent and Java agent already installed |
 | Bind mounts under `${PWD}/docker/` | Kept | Reproduces the customer environment. `setup.sh` creates and seeds them — see [Storage](#storage) |
 | Bind-mounted `conf` volumes | Kept | Same reason. The image can be driven entirely by environment variables, but this way the configuration is editable on the host |
 | `7000`, `7001` published per node | Not published | Internode ports; nothing outside the compose network uses them |
@@ -18424,7 +18691,7 @@ exits. `docker compose ps` showing it as `Exited (0)` is success — it is a
 one-shot job, not a service. In the dashboard the rules appear under
 **Alerts → Rules** for your cluster.
 
-Roughly 6 GB of RAM at the defaults. Five long-running containers.
+Roughly 6 GB of RAM at the defaults. Six long-running containers.
 
 ## What it runs
 
@@ -18434,6 +18701,7 @@ Roughly 6 GB of RAM at the defaults. Five long-running containers.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, log and event store |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | AxonOps backend, agent endpoint on 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Dashboard on 3000, also proxies the API |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Reports v2, inside `axon-dash`'s network namespace |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | The monitored node, Cassandra + agent |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | One-shot. Applies `config.yaml`, then exits |
 
@@ -18441,6 +18709,10 @@ The `config` image is the AxonOps Ansible execution environment. It already
 contains Ansible and the [`axonops.axonops`](https://galaxy.ansible.com/ui/repo/published/axonops/axonops/)
 collection, so nothing is installed at run time and the container needs no
 volumes beyond the playbook itself.
+
+`axon-reporting` serves Reports v2. It shares `axon-dash`'s network namespace,
+so `axon-server` reaches it as `axon-dash:8081`. Details: [example
+00](../00-axonops-platform/README.md#reports-v2).
 
 ## Editing the alerts
 
@@ -18524,7 +18796,7 @@ See [`env.example`](env.example) for the full list with defaults.
 |---|---|---|
 | `AXONOPS_ORG_NAME` | `example` | Organisation. The agent, axon-server and the config container must agree |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Cluster the alert rules attach to |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Monitored node image |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Monitored node image |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Development value |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Change it. The default is public |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | Change it. The image enforces a password policy |
@@ -19427,12 +19699,12 @@ Create or edit `k8ssandra/k8ssandra-config.env`:
 # K8ssandra Cluster Configuration
 K8SSANDRA_CLUSTER_NAME=axonops-k8ssandra
 K8SSANDRA_NAMESPACE=k8ssandra-operator
-CASSANDRA_VERSION=5.0.6
+CASSANDRA_VERSION=5.0.9
 CASSANDRA_DC_NAME=dc1
 CASSANDRA_DC_SIZE=3
 
 # AxonOps Container Image
-IMAGE_NAME=ghcr.io/axonops/cassandra:5.0.6
+IMAGE_NAME=ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
 
 # Storage Configuration
 STORAGE_CLASS=local-path
@@ -19458,8 +19730,8 @@ AXON_AGENT_SERVER_PORT=443
 | --- | --- | --- |
 | `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra` | Name of the Cassandra cluster |
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
-| `CASSANDRA_VERSION` | `5.0.6` | Cassandra version |
-| `IMAGE_NAME` | `ghcr.io/axonops/cassandra:5.0.6` | AxonOps Cassandra image |
+| `CASSANDRA_VERSION` | `5.0.9` | Cassandra version |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps Cassandra image |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
 | `CASSANDRA_DC_SIZE` | `3` | Number of Cassandra nodes |
 | `STORAGE_CLASS` | `local-path` | Kubernetes StorageClass |
@@ -19744,10 +20016,10 @@ kubectl create namespace kafka
 helm search repo strimzi --versions
 
 # Install the operator (specify version based on support matrix)
-# Example: Strimzi 0.50.0 supports Kafka 4.1.1
+# Example: Strimzi 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0
 helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
   -n strimzi \
-  --version 0.50.0 \
+  --version 1.1.0 \
   --set watchNamespaces="{kafka}" \
   --wait
 
@@ -19783,9 +20055,12 @@ Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before 
 
 | Strimzi Version | Supported Kafka Versions | Kubernetes Versions |
 | --- | --- | --- |
-| 0.45.0 | 3.8.x, 3.9.x | 1.25+ |
-| 0.44.0 | 3.7.x, 3.8.x | 1.25+ |
-| 0.43.0 | 3.7.x, 3.8.x | 1.23+ |
+| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | 1.27+ |
+| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | 1.27+ |
+| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | 1.26+ |
+| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
+| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
+| 0.47.0 | 3.9.0, 3.9.1 | 1.25+ |
 
 *Note: This table is for reference only. Always verify current compatibility at [strimzi.io/downloads](https://strimzi.io/downloads/).*
 
@@ -20484,6 +20759,45 @@ export AXON_DASH_INGRESS_HOST=axonops.yourdomain.com
 # Access at: https://axonops.yourdomain.com
 ```
 
+## Reports v2 (axon-reporting)
+
+Reports v2 runs `axon-reporting` as a sidecar in the axon-dash pod, and axon-server
+reaches it through the axon-dash Service. It needs axon-server 2.0.39 or newer.
+The setup script always adds the sidecar to the axon-dash values and writes
+`axon_reporting_url` into the server Secret. There is nothing to enable.
+
+```bash
+# Optional overrides (defaults shown)
+export AXON_DASH_REPORTING_IMAGE_REPOSITORY=registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+export AXON_DASH_REPORTING_IMAGE_TAG=1.0.3
+export AXON_DASH_REPORTING_PORT=8081
+./axonops-setup.sh
+```
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Sidecar image |
+| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | Sidecar image tag |
+| `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |
+| `AXON_SERVER_REPORTING_URL` | `http://<axon-dash fullname>-svc.<namespace>.svc.cluster.local:<port>` | URL axon-server uses to reach the sidecar |
+
+Until the charts with Reports v2 support are released, install them from this
+repository instead of the OCI registry:
+
+```bash
+export AXON_DASH_CHART=../../axonops/charts/axon-dash
+export AXON_SERVER_CHART=../../axonops/charts/axon-server
+```
+
+Check the sidecar is running:
+
+```bash
+kubectl get pods -n axonops -l app.kubernetes.io/instance=axon-dash \
+  -o jsonpath='{.items[*].spec.containers[*].name}'
+# axon-dash axon-reporting
+kubectl logs -n axonops deploy/axon-dash -c axon-reporting
+```
+
 ## Integrating with Data Platforms
 
 ### Strimzi Kafka
@@ -20580,7 +20894,7 @@ This directory contains example manifests to deploy Apache Cassandra using K8ssa
 
 ## Overview
 
-- **Cassandra Version**: 5.0.6
+- **Cassandra Version**: 5.0.9
 - **Operator**: K8ssandra
 - **Nodes**: 3 replicas (configurable)
 - **Storage**: 2Gi per node (configurable)
@@ -20626,7 +20940,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_NAME` | `ghcr.io/axonops/cassandra:5.0.6` | AxonOps Cassandra image |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps Cassandra image |
 | `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra-5` | Cluster name |
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
 | `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
@@ -20638,6 +20952,7 @@ export $(grep -v '^#' k8ssandra-config.env | xargs)
 | `AXON_AGENT_ORG` | - | AxonOps organization |
 | `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server |
 | `AXON_AGENT_SERVER_PORT` | `443` | AxonOps port |
+| `AXON_AGENT_TLS_MODE` | `TLS` | Agent TLS mode; set to `disabled` for a self-hosted server without TLS |
 
 ## Manifests
 
@@ -20715,6 +21030,8 @@ For on-premises AxonOps, update the connection details:
 ```bash
 AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
 AXON_AGENT_SERVER_PORT=1888
+# Only when the AxonOps server agents port has TLS disabled
+AXON_AGENT_TLS_MODE=disabled
 ```
 
 ## Cleanup
@@ -20744,7 +21061,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.1.1
+- **Kafka Version**: 4.3.0
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 6 replicas, 20Gi storage
 - **Controllers**: 3 replicas, 5Gi storage
@@ -20772,7 +21089,7 @@ source strimzi-config.env
 | --- | --- | --- |
 | `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
 | `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `axonops-kafka` |
-| `KAFKA_VERSION` | Kafka version | `4.1.1` |
+| `KAFKA_VERSION` | Kafka version | `4.3.0` |
 | `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
 | `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
 | `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
@@ -20901,7 +21218,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.1.1
+- **Kafka Version**: 4.3.0
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 3 replicas (configurable), 10Gi storage
 - **Controllers**: 3 replicas (configurable), 5Gi storage
@@ -21116,7 +21433,7 @@ This directory contains example manifests to deploy a Strimzi-based Kafka cluste
 
 ## Overview
 
-- **Kafka Version**: 4.1.1
+- **Kafka Version**: 4.3.0
 - **Mode**: KRaft (no ZooKeeper)
 - **Brokers**: 6 replicas, 20Gi storage
 - **Controllers**: 3 replicas, 10Gi storage
@@ -21147,7 +21464,7 @@ source strimzi-config.env
 | --- | --- | --- |
 | `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
 | `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `example` |
-| `KAFKA_VERSION` | Kafka version | `4.1.1` |
+| `KAFKA_VERSION` | Kafka version | `4.3.0` |
 | `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
 | `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
 | `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |

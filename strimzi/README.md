@@ -30,7 +30,7 @@ The AxonOps Strimzi integration allows you to build Kafka clusters running on Ku
 ```bash
 helm repo add strimzi https://strimzi.io/charts/
 helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 0.46.0 \
+  --version 1.2.0 \
   --set watchAnyNamespace=true
 ```
 
@@ -74,17 +74,21 @@ kubectl get pod -n kafka --watch
 
 For development or testing, you can deploy a single-node Kafka cluster with combined controller and broker roles.
 
-See the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
+The required manifests are in the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
 
 - `kafka-single-node.yaml`: Single-node Kafka cluster
 - `axonops-agent-config.yaml`: AxonOps agent configuration
 - `axonops-kafka-logging.yaml`: Logging configuration
 - `axonops-kafka-nodepool.yaml`: Node pool configuration
 
-**Update the values** and apply:
+**Update the values** and apply only the single-node files:
 
 ```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
+              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
+              -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -198,7 +202,7 @@ To build a custom image locally for testing:
 ```bash
 # For Kafka 3.x versions
 docker build \
-  --build-arg STRIMZI_VERSION=0.46.0 \
+  --build-arg STRIMZI_VERSION=0.46.1 \
   --build-arg KAFKA_VERSION=3.9.0 \
   --build-arg KAFKA_AGENT_PACKAGE=axon-kafka3-agent \
   --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
@@ -343,6 +347,7 @@ Key files:
 
 - [`Dockerfile`](Dockerfile): Image build definition
 - [`files/axonops-wrapper.sh`](files/axonops-wrapper.sh): Startup wrapper for AxonOps integration
+  The wrapper also adds `-XX:-UseBASE64Intrinsics` to `KAFKA_OPTS` to mitigate CVE-2026-114938. It is placed first, so a later `-XX:+UseBASE64Intrinsics` in your own `KAFKA_OPTS` overrides it.
 - [`files/axonops.repo.dev`](files/axonops.repo.dev): AxonOps YUM repository configuration (dev)
 - [`files/axonops.repo.release`](files/axonops.repo.release): AxonOps YUM repository configuration (release)
 
@@ -405,8 +410,8 @@ Key files:
 
 | Component | Version | Notes |
 | --------- | ------- | ----- |
-| Strimzi | 1.1.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
-| Kafka | 4.3.0 (latest) | Version 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0 |
+| Strimzi | 1.2.0 (latest) | ConfigMap support requires 0.44+, KRaft mode required |
+| Kafka | 4.3.1 (latest) | Version 1.2.0 supports Kafka 4.2.0, 4.2.1, 4.3.0, 4.3.1 |
 | Kubernetes | 1.24+ | Any CNCF-compliant distribution |
 | AxonOps Agent | Latest | Auto-installed from repository |
 
@@ -414,8 +419,10 @@ Key files:
 
 | Strimzi Version | Supported Kafka Versions | Release Date |
 | --------------- | ------------------------ | ------------ |
+| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | Aug 2026 |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | Jun 2026 |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Jun 2026 |
+| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Apr 2026 |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | Mar 2026 |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Feb 2025 |
 | 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Dec 2024 |

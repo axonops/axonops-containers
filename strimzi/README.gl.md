@@ -34,7 +34,7 @@ imaxes estándar de Strimzi Kafka cos compoñentes do axente de AxonOps.
 ```bash
 helm repo add strimzi https://strimzi.io/charts/
 helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 0.46.0 \
+  --version 1.2.0 \
   --set watchAnyNamespace=true
 ```
 
@@ -88,10 +88,14 @@ Consulte o directorio [`examples/strimzi/cloud/`](../examples/strimzi/cloud/):
 - `axonops-kafka-logging.yaml`: a configuración de rexistro
 - `axonops-kafka-nodepool.yaml`: a configuración do pool de nodos
 
-**Actualice os valores** e aplique:
+**Actualice os valores** e aplique só os ficheiros dun só nodo:
 
 ```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
+              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
+              -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -216,7 +220,7 @@ Para construír unha imaxe personalizada en local, para probas:
 ```bash
 # For Kafka 3.x versions
 docker build \
-  --build-arg STRIMZI_VERSION=0.46.0 \
+  --build-arg STRIMZI_VERSION=0.46.1 \
   --build-arg KAFKA_VERSION=3.9.0 \
   --build-arg KAFKA_AGENT_PACKAGE=axon-kafka3-agent \
   --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
@@ -365,6 +369,7 @@ Ficheiros clave:
 
 - [`Dockerfile`](Dockerfile): a definición do build da imaxe
 - [`files/axonops-wrapper.sh`](files/axonops-wrapper.sh): o envolveiro de arranque para a integración de AxonOps
+  O envolveiro tamén engade `-XX:-UseBASE64Intrinsics` a `KAFKA_OPTS` para mitigar CVE-2026-114938. Vai en primeiro lugar, de modo que un `-XX:+UseBASE64Intrinsics` posterior no teu propio `KAFKA_OPTS` anúlao.
 - [`files/axonops.repo.dev`](files/axonops.repo.dev): a configuración do repositorio YUM de AxonOps (dev)
 - [`files/axonops.repo.release`](files/axonops.repo.release): a configuración do repositorio YUM de AxonOps (release)
 
@@ -427,8 +432,8 @@ Ficheiros clave:
 
 | Compoñente | Versión | Notas |
 | --------- | ------- | ----- |
-| Strimzi | 1.1.0 (última) | O soporte de ConfigMap require 0.44+, e o modo KRaft é obrigatorio |
-| Kafka | 4.3.0 (última) | A versión 1.1.0 admite Kafka 4.2.0, 4.2.1 e 4.3.0 |
+| Strimzi | 1.2.0 (última) | O soporte de ConfigMap require 0.44+, e o modo KRaft é obrigatorio |
+| Kafka | 4.3.1 (última) | A versión 1.2.0 admite Kafka 4.2.0, 4.2.1, 4.3.0 e 4.3.1 |
 | Kubernetes | 1.24+ | Calquera distribución conforme á CNCF |
 | Axente de AxonOps | Última | Instálase automaticamente dende o repositorio |
 
@@ -436,8 +441,10 @@ Ficheiros clave:
 
 | Versión de Strimzi | Versións de Kafka admitidas | Data de publicación |
 | --------------- | ------------------------ | ------------ |
+| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | ago. 2026 |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | xuñ. 2026 |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | xuñ. 2026 |
+| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | abr. 2026 |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | mar. 2026 |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | feb. 2025 |
 | 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | dec. 2024 |

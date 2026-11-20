@@ -30,7 +30,7 @@ Le conteneur `config` démarre en dernier, applique
 service. Dans le tableau de bord, les règles apparaissent sous
 **Alerts → Rules** pour votre cluster.
 
-Environ 6 Go de RAM aux valeurs par défaut. Cinq conteneurs de longue durée.
+Environ 6 Go de RAM aux valeurs par défaut. Six conteneurs de longue durée.
 
 ## Ce qui est exécuté
 
@@ -40,6 +40,7 @@ Environ 6 Go de RAM aux valeurs par défaut. Cinq conteneurs de longue durée.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, stockage des logs et événements |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | Backend AxonOps, point d'entrée des agents sur 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Tableau de bord sur 3000, sert aussi de proxy à l'API |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Reports v2, dans l'espace de noms réseau d'`axon-dash` |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | Le nœud supervisé, Cassandra + agent |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | Ponctuel. Applique `config.yaml`, puis s'arrête |
 
@@ -48,6 +49,10 @@ contient déjà Ansible et la collection
 [`axonops.axonops`](https://galaxy.ansible.com/ui/repo/published/axonops/axonops/),
 donc rien n'est installé à l'exécution et le conteneur n'a besoin d'aucun volume
 en dehors du playbook lui-même.
+
+`axon-reporting` fournit Reports v2. Il partage l'espace de noms réseau
+d'`axon-dash`, et `axon-server` l'atteint donc via `axon-dash:8081`.
+Détails : [exemple 00](../00-axonops-platform/README.fr.md#reports-v2).
 
 ## Modifier les alertes
 
@@ -135,7 +140,7 @@ avec les valeurs par défaut.
 |---|---|---|
 | `AXONOPS_ORG_NAME` | `example` | Organisation. L'agent, axon-server et le conteneur config doivent être d'accord |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Cluster auquel les règles d'alerte sont rattachées |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image du nœud supervisé |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Image du nœud supervisé |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Valeur de développement |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Changez-le. La valeur par défaut est publique |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | Changez-le. L'image impose une politique de mot de passe |

@@ -150,6 +150,45 @@ export AXON_DASH_INGRESS_HOST=axonops.yourdomain.com
 # Access at: https://axonops.yourdomain.com
 ```
 
+## Reports v2 (axon-reporting)
+
+Reports v2 runs `axon-reporting` as a sidecar in the axon-dash pod, and axon-server
+reaches it through the axon-dash Service. It needs axon-server 2.0.39 or newer.
+The setup script always adds the sidecar to the axon-dash values and writes
+`axon_reporting_url` into the server Secret. There is nothing to enable.
+
+```bash
+# Optional overrides (defaults shown)
+export AXON_DASH_REPORTING_IMAGE_REPOSITORY=registry.axonops.com/axonops-public/axonops-docker/axon-reporting
+export AXON_DASH_REPORTING_IMAGE_TAG=1.0.3
+export AXON_DASH_REPORTING_PORT=8081
+./axonops-setup.sh
+```
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Sidecar image |
+| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | Sidecar image tag |
+| `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |
+| `AXON_SERVER_REPORTING_URL` | `http://<axon-dash fullname>-svc.<namespace>.svc.cluster.local:<port>` | URL axon-server uses to reach the sidecar |
+
+Until the charts with Reports v2 support are released, install them from this
+repository instead of the OCI registry:
+
+```bash
+export AXON_DASH_CHART=../../axonops/charts/axon-dash
+export AXON_SERVER_CHART=../../axonops/charts/axon-server
+```
+
+Check the sidecar is running:
+
+```bash
+kubectl get pods -n axonops -l app.kubernetes.io/instance=axon-dash \
+  -o jsonpath='{.items[*].spec.containers[*].name}'
+# axon-dash axon-reporting
+kubectl logs -n axonops deploy/axon-dash -c axon-reporting
+```
+
 ## Integrating with Data Platforms
 
 ### Strimzi Kafka

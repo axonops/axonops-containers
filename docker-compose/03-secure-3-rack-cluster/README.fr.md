@@ -29,7 +29,7 @@ liste toutes les différences.
 ## Avant de commencer
 
 Les trois nœuds sont figés sur le tag de version complet
-`ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`, et non sur le tag
+`ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`, et non sur le tag
 flottant `5.0.8`. Cela compte davantage ici que dans les autres exemples.
 
 L'authentification est définie par `CASSANDRA_AUTHENTICATOR` et
@@ -62,7 +62,7 @@ qu'à hauteur de son nœud le moins sécurisé.
 cp env.example .env          # set AXONOPS_ORG_NAME
 ./setup.sh                   # create and seed ./docker/, once
 docker compose up -d
-docker compose ps            # wait for all seven services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 `setup.sh` n'est pas facultatif : les trois nœuds lisent leur configuration dans
@@ -85,17 +85,23 @@ keyspace `system_auth` qui ne survit pas à la perte d'un nœud.
 
 | Service | Adresse | Image | Rôle | Port publié |
 |---------|---------|-------|------|-------------|
-| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Nœud du cluster, rack1 | `9142` CQL, `7199` JMX¹ |
+| `cassandra01` | 10.17.64.5 | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Nœud du cluster, rack1 | `9142` CQL, `7199` JMX¹ |
 | `cassandra02` | 10.17.64.6 | idem | Nœud du cluster, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | idem | Nœud du cluster, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Stockage des métriques (Cassandra mono-nœud) | — |
 | `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Stockage des logs et événements (OpenSearch) | — |
-| `axon-server` | 10.17.64.22 | `axon-server:2.0.35` | Backend et point de connexion des agents | `1888` |
-| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.37` | Tableau de bord web | `3000` |
+| `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend et point de connexion des agents | `1888` |
+| `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Tableau de bord web | `3000` |
+| `axon-reporting` | celle d'`axon-dash` | `axon-reporting:1.0.3` | Reports v2 | — |
 
 ¹ Liés à `127.0.0.1` uniquement — voir [JMX distant](#jmx-distant).
 
 Tags et digests actuels de chaque image : [VERSIONS.md](../../VERSIONS.md).
+
+`axon-reporting` fournit Reports v2. Il n'a pas d'adresse propre : il partage
+l'espace de noms réseau d'`axon-dash`, et `axon-server` l'atteint donc via
+`axon-dash:8081`. Détails : [exemple
+00](../00-axonops-platform/README.fr.md#reports-v2).
 
 ## Le cluster
 
@@ -182,7 +188,7 @@ le souhaitez ; seul `--force` écrase, et uniquement la configuration.
 3. **Résout l'image.** Il extrait `CASSANDRA_IMAGE=` de `./.env` par grep (la
    dernière occurrence l'emporte, les guillemets encadrants sont retirés) et
    retombe sur la valeur par défaut compilée dans le script,
-   `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` — qui doit
+   `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` — qui doit
    correspondre à celle de `docker-compose.yaml`. Il n'analyse pas le fichier
    Compose.
 4. **Télécharge l'image si elle n'est pas présente localement**, pour que
@@ -339,7 +345,7 @@ Tout se règle dans `.env`. Liste complète avec les valeurs par défaut :
 | `AXONOPS_CASSANDRA_SSL` | `false` | TLS d'`axon-server` vers `axondb-timeseries` |
 | `CASSANDRA_CLUSTER_NAME` | `secure-cluster` | Nom du cluster affiché dans AxonOps |
 | `CASSANDRA_DC` | `dc1` | Nom du datacentre |
-| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Image des trois nœuds — 1.1.0 ou plus récent, voir [Avant de commencer](#avant-de-commencer) |
+| `CASSANDRA_IMAGE` | `…/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Image des trois nœuds — 1.1.0 ou plus récent, voir [Avant de commencer](#avant-de-commencer) |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Heap par nœud du cluster |
 | `CASSANDRA_MEM_LIMIT` | `2g` | Limite mémoire du conteneur par nœud |
 | `CASSANDRA_CPUS` | `2.0` | Limite CPU par nœud |
@@ -423,7 +429,7 @@ lent avec `HEALTHCHECK_REQUIRE_AGENT=true`, augmentez `start_period` plutôt que
 de baisser `retries`.
 
 Le contrôle de l'agent et `HEALTHCHECK_REQUIRE_AGENT` sont tous deux présents
-dans l'image figée, `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0`.
+dans l'image figée, `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3`.
 Sur toute image antérieure, le script ne vérifie que Cassandra et la variable
 n'a aucun effet.
 
@@ -453,8 +459,8 @@ AXONOPS_OPENSEARCH_HEAP_SIZE=2g
 
 | Origine | Ici | Pourquoi |
 |---------|-----|----------|
-| Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash` | C'est tout l'objet du portage. Métriques, logs, alertes et planification des réparations dans une seule plateforme, et aucun sidecar exportateur JMX à configurer |
-| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Le même Cassandra, avec l'agent AxonOps et l'agent Java déjà installés |
+| Prometheus, Grafana, 3× `cassandra_exporter`, Reaper | `axondb-timeseries`, `axondb-search`, `axon-server`, `axon-dash`, `axon-reporting` | C'est tout l'objet du portage. Métriques, logs, alertes et planification des réparations dans une seule plateforme, et aucun sidecar exportateur JMX à configurer |
+| `cassandra:5.0.8` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Le même Cassandra, avec l'agent AxonOps et l'agent Java déjà installés |
 | Bind mounts sous `${PWD}/docker/` | Conservés | Reproduit l'environnement client. `setup.sh` les crée et les initialise — voir [Stockage](#stockage) |
 | Volumes `conf` en bind mount | Conservés | Même raison. L'image peut être pilotée entièrement par variables d'environnement, mais ainsi la configuration reste modifiable sur l'hôte |
 | `7000`, `7001` publiés par nœud | Non publiés | Ports internœuds ; rien hors du réseau Compose ne les utilise |

@@ -29,7 +29,7 @@ remata. Que `docker compose ps` o amose como `Exited (0)` é sinal de éxito: é
 job dun só uso, non un servizo. No panel, as regras aparecen baixo
 **Alerts → Rules** para o seu clúster.
 
-Arredor de 6 GB de RAM cos valores por defecto. Cinco contedores de longa
+Arredor de 6 GB de RAM cos valores por defecto. Seis contedores de longa
 duración.
 
 ## Que executa
@@ -40,6 +40,7 @@ duración.
 | `axondb-search` | `ghcr.io/axonops/axondb-search` | OpenSearch, almacén de rexistros e eventos |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server` | Backend de AxonOps, endpoint dos axentes no 1888 |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash` | Panel no 3000, que ademais fai de proxy da API |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Reports v2, no espazo de nomes de rede de `axon-dash` |
 | `cassandra` | `ghcr.io/axonops/cassandra/cassandra` | O nodo monitorizado, Cassandra + axente |
 | `config` | `ghcr.io/axonops/axonops-ansible-ee` | Dun só uso. Aplica `config.yaml` e remata |
 
@@ -48,6 +49,10 @@ Ansible e a colección
 [`axonops.axonops`](https://galaxy.ansible.com/ui/repo/published/axonops/axonops/),
 así que non se instala nada en tempo de execución e o contedor non precisa máis
 volumes ca o propio playbook.
+
+`axon-reporting` serve Reports v2. Comparte o espazo de nomes de rede de
+`axon-dash`, así que `axon-server` alcánzao como `axon-dash:8081`.
+Detalles: [exemplo 00](../00-axonops-platform/README.gl.md#reports-v2).
 
 ## Editar as alertas
 
@@ -133,7 +138,7 @@ valores por defecto.
 |---|---|---|
 | `AXONOPS_ORG_NAME` | `example` | Organización. O axente, axon-server e o contedor de configuración deben coincidir |
 | `CASSANDRA_CLUSTER_NAME` | `demo-cluster` | Clúster ao que se asocian as regras de alerta |
-| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.8-2.0.31-1.1.0` | Imaxe do nodo monitorizado |
+| `CASSANDRA_IMAGE` | `ghcr.io/axonops/cassandra/cassandra:5.0.9-2.0.33-1.2.3` | Imaxe do nodo monitorizado |
 | `CASSANDRA_HEAP_SIZE` | `1G` | Valor de desenvolvemento |
 | `AXONOPS_DB_PASSWORD` | `axonops` | Cámbiea. O valor por defecto é público |
 | `AXONOPS_SEARCH_PASSWORD` | `MyS3cur3P@ss2025` | Cámbiea. A imaxe aplica unha política de contrasinais |

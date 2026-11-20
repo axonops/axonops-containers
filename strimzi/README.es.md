@@ -34,7 +34,7 @@ imágenes estándar de Strimzi Kafka con los componentes del agente de AxonOps.
 ```bash
 helm repo add strimzi https://strimzi.io/charts/
 helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 0.46.0 \
+  --version 1.2.0 \
   --set watchAnyNamespace=true
 ```
 
@@ -89,10 +89,14 @@ Consulte el directorio [`examples/strimzi/cloud/`](../examples/strimzi/cloud/):
 - `axonops-kafka-logging.yaml`: la configuración de registro
 - `axonops-kafka-nodepool.yaml`: la configuración del pool de nodos
 
-**Actualice los valores** y aplique:
+**Actualice los valores** y aplique solo los ficheros de un solo nodo:
 
 ```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
+kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
+              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
+              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
+              -n kafka
 kubectl get pod -n kafka --watch
 ```
 
@@ -217,7 +221,7 @@ Para construir una imagen personalizada en local, para pruebas:
 ```bash
 # For Kafka 3.x versions
 docker build \
-  --build-arg STRIMZI_VERSION=0.46.0 \
+  --build-arg STRIMZI_VERSION=0.46.1 \
   --build-arg KAFKA_VERSION=3.9.0 \
   --build-arg KAFKA_AGENT_PACKAGE=axon-kafka3-agent \
   --build-arg AXONOPS_REPO_FILE=axonops.repo.dev \
@@ -366,6 +370,7 @@ Ficheros clave:
 
 - [`Dockerfile`](Dockerfile): la definición del build de la imagen
 - [`files/axonops-wrapper.sh`](files/axonops-wrapper.sh): el envoltorio de arranque para la integración de AxonOps
+  El envoltorio también añade `-XX:-UseBASE64Intrinsics` a `KAFKA_OPTS` para mitigar CVE-2026-114938. Va en primer lugar, de modo que un `-XX:+UseBASE64Intrinsics` posterior en tu propio `KAFKA_OPTS` lo anula.
 - [`files/axonops.repo.dev`](files/axonops.repo.dev): la configuración del repositorio YUM de AxonOps (dev)
 - [`files/axonops.repo.release`](files/axonops.repo.release): la configuración del repositorio YUM de AxonOps (release)
 
@@ -428,8 +433,8 @@ Ficheros clave:
 
 | Componente | Versión | Notas |
 | --------- | ------- | ----- |
-| Strimzi | 1.1.0 (última) | El soporte de ConfigMap requiere 0.44+, y el modo KRaft es obligatorio |
-| Kafka | 4.3.0 (última) | La versión 1.1.0 admite Kafka 4.2.0, 4.2.1 y 4.3.0 |
+| Strimzi | 1.2.0 (última) | El soporte de ConfigMap requiere 0.44+, y el modo KRaft es obligatorio |
+| Kafka | 4.3.1 (última) | La versión 1.2.0 admite Kafka 4.2.0, 4.2.1, 4.3.0 y 4.3.1 |
 | Kubernetes | 1.24+ | Cualquier distribución conforme a la CNCF |
 | Agente de AxonOps | Última | Se instala automáticamente desde el repositorio |
 
@@ -437,8 +442,10 @@ Ficheros clave:
 
 | Versión de Strimzi | Versiones de Kafka admitidas | Fecha de publicación |
 | --------------- | ------------------------ | ------------ |
+| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | ago. 2026 |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | jun. 2026 |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | jun. 2026 |
+| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | abr. 2026 |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | mar. 2026 |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | feb. 2025 |
 | 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | dic. 2024 |

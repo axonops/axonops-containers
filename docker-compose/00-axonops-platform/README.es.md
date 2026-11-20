@@ -19,7 +19,7 @@ agentes de sus propios hosts, o úsela como base para los demás ejemplos.
 ```bash
 cp env.example .env          # set AXONOPS_ORG_NAME
 docker compose up -d
-docker compose ps            # wait for all four services to report healthy
+docker compose ps            # wait for all services to be up and healthy
 ```
 
 Después abra <http://localhost:3000>.
@@ -33,10 +33,39 @@ almacenes de datos, y detrás de ellos suben `axon-server` y el panel.
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra) | — |
 | `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de registros y eventos (OpenSearch) | — |
-| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.35` | Backend y endpoint de los agentes | `1888` |
-| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.37` | Panel web | `3000` |
+| `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend y endpoint de los agentes | `1888` |
+| `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
+| `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2: véase [más abajo](#reports-v2) | — |
 
 Las etiquetas y digests actuales de cada imagen: [VERSIONS.md](../../VERSIONS.md).
+
+### Reports v2
+
+`axon-reporting` sirve Reports v2. Se ejecuta junto a `axon-dash` y comparte su
+espacio de nombres de red (`network_mode: "service:axon-dash"`), así que ambos
+se alcanzan en `127.0.0.1` y `axon-server` lo alcanza como `axon-dash:8081`. No
+publica ningún puerto y no tiene healthcheck: la imagen no incluye ni `curl` ni
+`wget`.
+
+| Ajuste | Servicio | Valor |
+|--------|----------|-------|
+| `AXON_REPORTING_URL` | `axon-server` | `http://axon-dash:8081` |
+| `AXONDASH_REPORTING_URL` (`axon-dash.reporting_url`) | `axon-dash` | `http://127.0.0.1:8081` |
+| `AXONDASH_URL_TEMPLATE` | `axon-reporting` | `http://127.0.0.1:3000` |
+| `AXONDASH_PATH_PREFIX` | `axon-reporting` | (vacío) |
+
+Desde 2.0.39, `AXON_REPORTING_URL` sustituye a `AXONDASH_HOST`, `AXONDASH_PORT`
+y `AXONDASH_HTTPS` en `axon-server`, que ya no las lee. `AXONDASH_URL_TEMPLATE`
+y `AXONDASH_PATH_PREFIX` se definen explícitamente porque los valores por
+defecto integrados en la imagen apuntan a un panel alojado.
+
+Recrear `axon-dash` por separado deja `axon-reporting` enganchado al espacio de
+nombres de red del contenedor antiguo, donde nada puede alcanzarlo. Recréelo
+justo después:
+
+```bash
+docker compose up -d --force-recreate axon-reporting
+```
 
 ## Configuración
 
@@ -205,6 +234,18 @@ Un lado está usando TLS y el otro no: 22 es `0x16`, el primer byte de un
 ClientHello de TLS leído como una versión de protocolo CQL. Ponga
 `AXONOPS_CASSANDRA_SSL=false` a menos que haya montado un keystore, como se
 explica en [TLS entre los servicios](#tls-entre-los-servicios).
+
+**Los informes no se generan.** Compruebe cada salto hasta `axon-reporting`;
+ambos imprimen `{"data":"OK"}`:
+
+```bash
+docker exec axon-dash curl -s http://127.0.0.1:8081/healthz     # axon-dash -> axon-reporting
+docker exec axon-server curl -s http://axon-dash:8081/healthz   # axon-server -> axon-reporting
+docker compose logs axon-reporting
+```
+
+Su primera línea de registro indica el panel desde el que renderiza:
+`"axon_dash": "http://127.0.0.1:3000"`.
 
 **Otros ajustes que parecen correctos pero se ignoran.** Tres de estas imágenes
 admiten configuración bajo nombres distintos de los que sugieren sus propios
