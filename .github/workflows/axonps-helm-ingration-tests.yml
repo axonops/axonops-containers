@@ -52,6 +52,10 @@ jobs:
           export AXON_TIMESERIES_RES_LIMIT_CPU="1000m"
           export AXON_TIMESERIES_RES_LIMIT_MEM="2Gi"
 
+          # Test the charts in this checkout, not the latest published ones.
+          export AXON_SERVER_CHART="$GITHUB_WORKSPACE/axonops/charts/axon-server"
+          export AXON_DASH_CHART="$GITHUB_WORKSPACE/axonops/charts/axon-dash"
+
           ./axonops-setup.sh
 
       - name: Verify AxonOps Server is Running
