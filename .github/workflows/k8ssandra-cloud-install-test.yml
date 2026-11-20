@@ -102,9 +102,12 @@ jobs:
             --wait \
             --set crds.enabled=true
 
+          # Pin the chart, not just the image. Chart 1.34.0 no longer ships the
+          # Stargate CRD that operator v1.29.0 watches, so its controllers never
+          # start and the K8ssandraCluster is never reconciled.
           helm repo add k8ssandra https://helm.k8ssandra.io/stable
           helm upgrade --install k8ssandra-operator k8ssandra/k8ssandra-operator -n ${K8SSANDRA_NAMESPACE} \
-            --create-namespace --set image.tag=v1.29.0 \
+            --create-namespace --version 1.29.0 \
             --wait
 
       - name: Create Cassandra Cluster using cloud example
@@ -118,7 +121,16 @@ jobs:
 
       - name: Wait for Cassandra Cluster to be Ready
         run: |
-          kubectl wait pods --for=condition=Ready -n ${K8SSANDRA_NAMESPACE} --timeout=900s -l app.kubernetes.io/created-by=cass-operator
+          # kubectl wait fails immediately when no pod matches yet, so wait for
+          # cass-operator to create one first.
+          SELECTOR=app.kubernetes.io/created-by=cass-operator
+          for _ in $(seq 1 60); do
+            if [ -n "$(kubectl get pods -n ${K8SSANDRA_NAMESPACE} -l ${SELECTOR} -o name)" ]; then
+              break
+            fi
+            sleep 10
+          done
+          kubectl wait pods --for=condition=Ready -n ${K8SSANDRA_NAMESPACE} --timeout=900s -l ${SELECTOR}
 
       # Without this the only evidence of a failure is "timed out waiting for
       # the condition", which says nothing about why the pod never started.
@@ -129,6 +141,8 @@ jobs:
           kubectl describe pods -n ${K8SSANDRA_NAMESPACE} -l app.kubernetes.io/created-by=cass-operator || true
           kubectl get events -n ${K8SSANDRA_NAMESPACE} --sort-by=.lastTimestamp | tail -50 || true
           kubectl logs -n ${K8SSANDRA_NAMESPACE} -l app.kubernetes.io/name=cass-operator --tail=100 || true
+          kubectl logs -n ${K8SSANDRA_NAMESPACE} deploy/k8ssandra-operator --tail=100 || true
+          kubectl get cassandradatacenter,statefulset -n ${K8SSANDRA_NAMESPACE} || true
           kubectl get k8ssandracluster -n ${K8SSANDRA_NAMESPACE} -o yaml || true
 
       - name: Confirm it registered against AxonOps SaaS
