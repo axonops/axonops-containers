@@ -1,26 +1,29 @@
+---
+# One hostPath PersistentVolume, pinned to one node. strimzi-setup.sh applies
+# it once per controller with STRIMZI_VOLUME_INDEX and STRIMZI_VOLUME_NODE set.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pv-${STRIMZI_CLUSTER_NAME}-controller-${STRIMZI_CONTROLLER_ID}
+  name: ${STRIMZI_CLUSTER_NAME}-controller-${STRIMZI_VOLUME_INDEX}
   labels:
     strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
-    strimzi.io/pool: ${STRIMZI_CLUSTER_NAME}-controller
+    strimzi.io/pool-name: controller
 spec:
   capacity:
     storage: ${STRIMZI_CONTROLLER_STORAGE_SIZE}
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   volumeMode: Filesystem
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: strimzi-hostpath-manual
+  storageClassName: ${STRIMZI_LOCAL_STORAGE_CLASS}
   hostPath:
-    path: /data/strimzi/${STRIMZI_CLUSTER_NAME}/controller-${STRIMZI_CONTROLLER_ID}
+    path: ${STRIMZI_HOST_BASE_DIR}/${STRIMZI_CLUSTER_NAME}/controller-${STRIMZI_VOLUME_INDEX}
     type: Directory
   nodeAffinity:
     required:
       nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - ${STRIMZI_CONTROLLER_NODE}
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - ${STRIMZI_VOLUME_NODE}

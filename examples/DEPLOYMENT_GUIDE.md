@@ -1,269 +1,115 @@
-# On-Premises Deployment Guide
+# Deployment Guide
 
 **English** | [Français](DEPLOYMENT_GUIDE.fr.md) | [Español](DEPLOYMENT_GUIDE.es.md) | [Galego](DEPLOYMENT_GUIDE.gl.md)
 
-Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
+These examples deploy AxonOps, and Kafka or Cassandra clusters monitored by AxonOps, on Kubernetes. Each example directory is self-contained: a configuration file, the manifests or script, and a README with the exact steps.
 
-## Overview
+## Examples
 
-This guide provides deployment instructions for running various data platforms on Kubernetes with optional AxonOps monitoring and management capabilities.
-
-## Quick Navigation
-
-| Component | Description | Guide |
+| Directory | Deploys | AxonOps target |
 | --- | --- | --- |
-| AxonOps | Monitoring and management platform | [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) |
-| Strimzi Kafka | Apache Kafka on Kubernetes | [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md) |
-| K8ssandra | Apache Cassandra on Kubernetes | [K8SSANDRA_DEPLOYMENT.md](K8SSANDRA_DEPLOYMENT.md) |
+| [axonops/](axonops/) | Self-hosted AxonOps: server, dashboard, Timeseries and Search databases | - |
+| [strimzi/cloud/](strimzi/cloud/) | Strimzi Kafka on dynamically provisioned volumes | AxonOps Cloud |
+| [strimzi/on-premises/](strimzi/on-premises/) | Strimzi Kafka on dynamically provisioned volumes | Self-hosted AxonOps |
+| [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka on hostPath volumes pinned to nodes | Self-hosted AxonOps |
+| [k8ssandra/](k8ssandra/) | Cassandra with the K8ssandra operator | AxonOps Cloud or self-hosted |
 
-## Example Manifests
-
-Ready-to-use Kubernetes manifests are available in the following directories:
-
-| Directory | Description |
-| --- | --- |
-| [axonops/](axonops/) | AxonOps server, dashboard, and database components |
-| [strimzi/cloud/](strimzi/cloud/) | Production Strimzi Kafka for cloud environments |
-| [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka with local persistent volumes |
-| [k8ssandra/](k8ssandra/) | K8ssandra Cassandra cluster examples |
+Guides: [AxonOps](AXONOPS_DEPLOYMENT.md), [Strimzi](STRIMZI_DEPLOYMENT.md), [K8ssandra](K8SSANDRA_DEPLOYMENT.md), [node selectors for local disks](NODE_SELECTOR_GUIDE.md).
 
 ## Prerequisites
 
-All deployments require:
+- Kubernetes 1.27 or newer and a `kubectl` context with cluster-admin rights
+- `helm` 3.8 or newer
+- `envsubst`, from the `gettext` package: `brew install gettext` on macOS, `apt-get install gettext-base` on Debian and Ubuntu, `dnf install gettext` on RHEL
+- A default StorageClass, except for `strimzi/local-disk/`
 
-1. **Kubernetes Cluster** (v1.21+)
-   - Single-node or multi-node supported
+## How the examples work
 
-2. **Command-line Tools**
-   - `kubectl` - Kubernetes CLI
-   - `helm` - Helm package manager v3.x or later
-   - `envsubst` - Variable substitution (part of `gettext` package)
+Every example follows the same pattern:
 
-3. **Cluster Access**
-   - Configured `kubectl` context
-   - Sufficient permissions (cluster-admin or equivalent)
+1. `cd` into the example directory and `source` its `.env` file. Each file is a list of `export` lines; edit it, or export overrides before sourcing it. Values that are already set are kept, and values derived from them follow.
+2. Export secrets in the shell instead of writing them in the file: `AXON_SEARCH_PASSWORD` and `AXON_SERVER_CQL_PASSWORD` for AxonOps, `AXON_AGENT_KEY` for AxonOps Cloud.
+3. Apply the manifests with `envsubst < file.yaml | kubectl apply -f -`, or run the example script.
 
-4. **Storage** (choose one)
-   - Dynamic storage provisioner (recommended for production)
-   - hostPath storage (for single-node testing)
+Nothing is tied to a fixed namespace. Each component has one variable:
 
-### Installing envsubst
+| Variable | Default | Used by |
+| --- | --- | --- |
+| `AXONOPS_NAMESPACE` | `axonops` | `axonops/`, and the Kafka and Cassandra examples to find the AxonOps server |
+| `KAFKA_NAMESPACE` | `kafka` | `strimzi/*` |
+| `STRIMZI_OPERATOR_NAMESPACE` | `strimzi` | Strimzi operator |
+| `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | `k8ssandra/` |
 
-The `envsubst` command is used to substitute environment variables in YAML templates.
+Agents find a self-hosted server at `axon-server-agent.$AXONOPS_NAMESPACE.svc.cluster.local:1888`. The examples that report to it build this address from `axonops/axonops-config.env`, so source that file first in the same shell.
 
-**macOS:**
-```bash
-brew install gettext
-brew link --force gettext
-```
+## Scenarios
 
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install gettext-base
-```
-
-**RHEL/CentOS:**
-```bash
-sudo yum install gettext
-```
-
-**Verify installation:**
-```bash
-envsubst --version
-```
-
----
-
-## Deployment Scenarios
-
-### Scenario 1: AxonOps Only
-
-Deploy just the monitoring platform to monitor existing clusters:
+### AxonOps only
 
 ```bash
-cd axonops/
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
-./axonops-setup.sh
-```
-
-See [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) for full details.
-
----
-
-### Scenario 2: Kafka with AxonOps Monitoring (Recommended)
-
-Deploy Kafka with comprehensive monitoring:
-
-```bash
-# Step 1: Deploy AxonOps monitoring platform
-cd axonops/
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
-./axonops-setup.sh
-
-# Step 2: Configure Strimzi (edit strimzi-setup.env as needed)
-vi strimzi-setup.env
-
-# Step 3: Deploy Kafka with automatic monitoring integration
+cd examples/axonops
 source axonops-config.env
-source strimzi-setup.env
-./strimzi-setup.sh
-```
-
-See [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) and [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md).
-
----
-
-### Scenario 3: Kafka Standalone (Cloud Examples)
-
-Deploy Kafka using the cloud example manifests:
-
-```bash
-cd strimzi/cloud/
-
-# Configure and source environment variables
-vi strimzi-config.env
-source strimzi-config.env
-
-# Create the AxonOps secret
-kubectl create secret generic axonops-agent -n kafka \
-  --from-literal=AXON_AGENT_CLUSTER_NAME=$AXON_AGENT_CLUSTER_NAME \
-  --from-literal=AXON_AGENT_ORG=$AXON_AGENT_ORG \
-  --from-literal=AXON_AGENT_SERVER_HOST=$AXON_AGENT_SERVER_HOST \
-  --from-literal=AXON_AGENT_KEY=$AXON_AGENT_KEY
-
-# Apply manifests
-kubectl apply -f kafka-logging-cm.yaml
-kubectl apply -f kafka-node-pool-controller.yaml
-kubectl apply -f kafka-node-pool-brokers.yaml
-kubectl apply -f kafka-cluster.yaml
-```
-
-See [strimzi/cloud/README.md](strimzi/cloud/README.md) for full details.
-
----
-
-### Scenario 4: Cassandra with K8ssandra
-
-Deploy Apache Cassandra using K8ssandra:
-
-```bash
-cd k8ssandra/
-
-# Configure environment variables
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-
-# Apply the cluster manifest
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
-```
-
-See [K8SSANDRA_DEPLOYMENT.md](K8SSANDRA_DEPLOYMENT.md) for full details.
-
----
-
-### Scenario 5: Full Stack (AxonOps + Kafka + Cassandra)
-
-Deploy the complete monitoring and data platform stack:
-
-```bash
-# Step 1: Deploy AxonOps
-cd axonops/
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
+export AXON_SEARCH_PASSWORD="$(openssl rand -base64 24)"
+export AXON_SERVER_CQL_PASSWORD="$(openssl rand -base64 24)"
 ./axonops-setup.sh
-source axonops-config.env
-
-# Step 2: Deploy Kafka
-export STRIMZI_NODE_HOSTNAME='your-node-name'
-./strimzi-setup.sh
-
-# Step 3: Deploy Cassandra
-cd ../k8ssandra/
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
----
+### Kafka monitored by self-hosted AxonOps
 
-## Using envsubst with Manifests
-
-Many example manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsubst` to substitute values before applying:
-
-### Basic Usage
+Install AxonOps as above, install the [Strimzi operator](STRIMZI_DEPLOYMENT.md#install-the-strimzi-operator), then from the same shell:
 
 ```bash
-# Source configuration file
-export $(grep -v '^#' config.env | xargs)
-
-# Apply manifest with variable substitution
-envsubst < manifest.yaml | kubectl apply -f -
-```
-
-### Processing Multiple Files
-
-```bash
-# Source configuration
+cd ../strimzi/on-premises
+source ../../axonops/axonops-config.env
 source strimzi-config.env
-
-# Apply all manifests in order
-for f in manifest1.yaml manifest2.yaml manifest3.yaml; do
-  envsubst < $f | kubectl apply -f -
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
 done
 ```
 
-### Generating Processed Manifests
+For hostPath volumes on chosen nodes, use [strimzi/local-disk/](strimzi/local-disk/) and its `strimzi-setup.sh` instead.
 
-For GitOps or review purposes, generate fully processed manifests:
+### Kafka monitored by AxonOps Cloud
 
 ```bash
-export $(grep -v '^#' config.env | xargs)
-
-# Generate single output file
-envsubst < input.yaml > processed-output.yaml
-
-# Or generate multiple files
-for f in *.yaml; do
-  envsubst < $f > processed/$f
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
 done
 ```
 
-### Selective Variable Substitution
+### Cassandra monitored by AxonOps Cloud
 
-To substitute only specific variables:
-
-```bash
-# Only substitute NAMESPACE and CLUSTER_NAME
-envsubst '$NAMESPACE $CLUSTER_NAME' < manifest.yaml | kubectl apply -f -
-```
-
----
-
-## Verification
-
-After deployment, verify all components are running:
+Install the [K8ssandra operator](K8SSANDRA_DEPLOYMENT.md#install-the-k8ssandra-operator), then:
 
 ```bash
-# Check all namespaces
-kubectl get pods -A | grep -E "axonops|kafka|k8ssandra|strimzi"
-
-# Check specific namespace
-kubectl get pods -n kafka
-kubectl get pods -n axonops
-kubectl get pods -n k8ssandra-operator
+cd examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
----
+For a self-hosted server, see the [K8ssandra example](k8ssandra/README.md#examples).
+
+## Rendering for review or GitOps
+
+`envsubst` writes to standard output, so any apply command becomes a render command:
+
+```bash
+envsubst < kafka-cluster.yaml > kafka-cluster.rendered.yaml
+```
+
+The scripts take `RENDER_ONLY=true` and write to a `generated/` directory, which git ignores. Rendered files can contain passwords and agent keys; do not commit them.
 
 ## Support
 
-- **AxonOps Documentation**: [https://docs.axonops.com](https://docs.axonops.com)
-- **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
-- **Strimzi Documentation**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
-- **K8ssandra Documentation**: [https://docs.k8ssandra.io/](https://docs.k8ssandra.io/)
-- **Apache Kafka Documentation**: [https://kafka.apache.org/documentation/](https://kafka.apache.org/documentation/)
-- **Apache Cassandra Documentation**: [https://cassandra.apache.org/doc/](https://cassandra.apache.org/doc/)
-
----
-
-**Last Updated:** 2026-02-13
+- [AxonOps documentation](https://docs.axonops.com)
+- [Strimzi documentation](https://strimzi.io/docs/operators/latest/)
+- [K8ssandra documentation](https://docs.k8ssandra.io/)

@@ -1,3 +1,4 @@
+---
 apiVersion: k8ssandra.io/v1alpha1
 kind: K8ssandraCluster
 metadata:
@@ -22,16 +23,31 @@ spec:
         containers:
           - name: cassandra
             env:
-              - name: AXON_AGENT_KEY
-                value: "${AXON_AGENT_KEY}"
               - name: AXON_AGENT_ORG
-                value: "${AXON_AGENT_ORG}"
+                valueFrom:
+                  secretKeyRef:
+                    name: ${K8SSANDRA_CLUSTER_NAME}-axonops-agent
+                    key: AXON_AGENT_ORG
+              - name: AXON_AGENT_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: ${K8SSANDRA_CLUSTER_NAME}-axonops-agent
+                    key: AXON_AGENT_KEY
               - name: AXON_AGENT_SERVER_HOST
-                value: "${AXON_AGENT_SERVER_HOST}"
+                valueFrom:
+                  secretKeyRef:
+                    name: ${K8SSANDRA_CLUSTER_NAME}-axonops-agent
+                    key: AXON_AGENT_SERVER_HOST
               - name: AXON_AGENT_SERVER_PORT
-                value: "${AXON_AGENT_SERVER_PORT}"
+                valueFrom:
+                  secretKeyRef:
+                    name: ${K8SSANDRA_CLUSTER_NAME}-axonops-agent
+                    key: AXON_AGENT_SERVER_PORT
               - name: AXON_AGENT_TLS_MODE
-                value: "${AXON_AGENT_TLS_MODE}"
+                valueFrom:
+                  secretKeyRef:
+                    name: ${K8SSANDRA_CLUSTER_NAME}-axonops-agent
+                    key: AXON_AGENT_TLS_MODE
         config:
           jvmOptions:
             heap_initial_size: ${HEAP_SIZE}

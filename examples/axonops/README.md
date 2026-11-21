@@ -1,276 +1,181 @@
-# AxonOps Server Examples
+# Self-hosted AxonOps on Kubernetes
 
-This directory contains example configurations and setup scripts for deploying AxonOps monitoring platform on Kubernetes.
+`axonops-setup.sh` installs a complete AxonOps stack in one namespace using the AxonOps Helm charts:
 
-## Overview
+| Component | Chart | Purpose |
+| --- | --- | --- |
+| AxonDB Timeseries | `oci://ghcr.io/axonops/charts/axondb-timeseries` | Metrics store (Cassandra) |
+| AxonDB Search | `oci://ghcr.io/axonops/charts/axondb-search` | Logs and events (OpenSearch) |
+| axon-server | `oci://ghcr.io/axonops/charts/axon-server` | Receives agent data, serves the API |
+| axon-dash | `oci://ghcr.io/axonops/charts/axon-dash` | Web UI, with the Reports v2 `axon-reporting` sidecar |
 
-AxonOps provides comprehensive monitoring and management for Apache Kafka and Cassandra clusters. The deployment consists of:
-
-- **axon-server** - Core monitoring and management server
-- **axondb-timeseries** - Time-series database for metrics storage (Cassandra-based)
-- **axondb-search** - Search database for log aggregation (OpenSearch-based)
-- **axon-dash** - Web-based dashboard for visualization
+TLS on the databases is off by default, and so is cert-manager. To turn TLS on, see [TLS](#tls).
 
 ## Prerequisites
 
-- A Kubernetes cluster (v1.21+)
-- `kubectl` configured with cluster access
-- `helm` v3.x or later
-- `envsubst` command (part of `gettext` package)
+- Kubernetes 1.27 or newer, with a default StorageClass (or set the storage variables below)
+- `kubectl` and `helm` 3.8 or newer
+- About 4 CPU and 8 GiB of memory free for the default sizes
+
+## Quick start
+
+```bash
+cd examples/axonops
+source axonops-config.env
+export AXON_SEARCH_PASSWORD="$(openssl rand -base64 24)"
+export AXON_SERVER_CQL_PASSWORD="$(openssl rand -base64 24)"
+./axonops-setup.sh
+```
+
+The script waits for every release to become ready, then prints how to reach the dashboard and the address agents should use:
+
+```text
+axon-server-agent.axonops.svc.cluster.local:1888
+```
+
+Keep the passwords: running the script again with different ones breaks the connection between axon-server and the databases.
 
 ## Files
 
-| File | Description |
+| File | Purpose |
 | --- | --- |
-| `axonops-config.env` | Environment variables for AxonOps configuration |
-| `axonops-setup.sh` | Automated deployment script for AxonOps |
-| `strimzi-setup.env` | Environment variables for Strimzi Kafka configuration |
-| `strimzi-setup.sh` | Strimzi Kafka deployment script (with AxonOps integration) |
-| `axonops-server-secret.yaml` | Example Secret for axon-server configuration |
-| `axonops-dash-values.yaml` | Helm values for AxonOps Dashboard |
-| `search-values.yaml` | Helm values for AxonDB Search |
-| `timeseries-values.yaml` | Helm values for AxonDB Timeseries |
-| `strimzi/` | Symlink to Strimzi local-disk examples |
+| `axonops-config.env` | Main settings. Also read by the Strimzi and K8ssandra examples to find this server. |
+| `axonops-setup.sh` | Installs or upgrades the stack. Safe to re-run. |
+| `generated/` | Values files and the axon-server Secret written by the script. Contains passwords; ignored by git. |
 
-## Quick Start
+## Examples
 
-### Using the Setup Script
+Install into a different namespace with a named StorageClass:
 
 ```bash
-# Set required passwords
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
-
-# Run the setup script
+source axonops-config.env
+export AXONOPS_NAMESPACE=monitoring
+export AXON_TIMESERIES_STORAGE_CLASS=fast-ssd AXON_SEARCH_STORAGE_CLASS=fast-ssd
+export AXON_TIMESERIES_VOLUME_SIZE=100Gi AXON_SEARCH_VOLUME_SIZE=50Gi
 ./axonops-setup.sh
 ```
 
-The script will:
-1. Install cert-manager (if needed)
-2. Deploy AxonDB Timeseries
-3. Deploy AxonDB Search
-4. Deploy AxonOps Server
-5. Deploy AxonOps Dashboard
-6. Generate `axonops-config.env` with connection details
-
-### Manual Deployment with Helm
+Expose the dashboard and the agent endpoint through an Ingress controller:
 
 ```bash
-# Source configuration
-export $(grep -v '^#' axonops-config.env | xargs)
-
-# Add AxonOps Helm repository
-helm repo add axonops https://helm.axonops.com
-helm repo update
-
-# Create namespace
-kubectl create namespace axonops
-
-# Deploy components
-helm install axondb-timeseries axonops/axondb-timeseries \
-  -n axonops -f timeseries-values.yaml
-
-helm install axondb-search axonops/axondb-search \
-  -n axonops -f search-values.yaml
-
-helm install axon-server axonops/axon-server \
-  -n axonops --set searchDb.password=$AXON_SEARCH_PASSWORD
-
-helm install axon-dash axonops/axon-dash \
-  -n axonops -f axonops-dash-values.yaml
+source axonops-config.env
+export AXON_DASH_INGRESS_ENABLED=true AXON_DASH_INGRESS_CLASS_NAME=nginx
+export AXON_DASH_INGRESS_HOST=axonops.example.com
+export AXON_SERVER_AGENT_INGRESS_ENABLED=true
+export AXON_SERVER_AGENT_INGRESS_HOST=agents.example.com
+./axonops-setup.sh
 ```
+
+Render the values files and print the commands a real run would execute, without changing the cluster (`RENDER_ONLY=true`):
+
+```bash
+source axonops-config.env
+RENDER_ONLY=true ./axonops-setup.sh
+ls generated/
+```
+
+## TLS
+
+TLS between axon-server and the databases is off by default. To turn it on with certificates from cert-manager:
+
+```bash
+source axonops-config.env
+export AXON_TIMESERIES_TLS_ENABLED=true AXON_SEARCH_TLS_ENABLED=true
+export CERT_MANAGER_INSTALL=true   # only needed if cert-manager is not installed yet
+./axonops-setup.sh
+```
+
+The script creates the self-signed `ClusterIssuer` `selfsigned-cluster-issuer`; set `CLUSTER_ISSUER_CREATE=false` and `CLUSTER_ISSUER_NAME` to use your own. Without cert-manager, put the certificates in a Secret and set `AXON_TIMESERIES_TLS_EXISTING_SECRET` / `AXON_SEARCH_TLS_EXISTING_SECRET` with `AXON_*_CERTMANAGER_ENABLED=false`. For AxonDB Timeseries the script stops when TLS is on and neither source is set, because the database would start without TLS and axon-server could not connect. AxonDB Search falls back to the certificates built into its image.
 
 ## Configuration
 
-### Environment Variables
+Set variables in `axonops-config.env`, or export them before sourcing it; values already set are kept. The script has the same defaults, so it also runs without the file.
 
-Edit `axonops-config.env` to customize your deployment:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AXONOPS_NAMESPACE` | `axonops` | Namespace for every component. `NS_AXONOPS` is still accepted. |
+| `AXON_SERVER_ORG_NAME` | `example` | Organisation name. Agents must send the same value as `AXON_AGENT_ORG`. |
+| `AXON_SEARCH_PASSWORD` | none, required | OpenSearch admin password |
+| `AXON_SERVER_CQL_PASSWORD` | none, required | Timeseries database password |
+| `AXON_SEARCH_USER` | `admin` | OpenSearch admin user |
+| `AXON_SERVER_CQL_USERNAME` | `axonops` | Timeseries database user |
+| `AXON_SERVER_AGENTS_PORT` | `1888` | Port agents connect to |
+| `AXON_SERVER_API_PORT` | `8080` | axon-server API port |
+| `AXON_SERVER_LICENSE_KEY` | empty | AxonOps licence key |
+| `AXON_TIMESERIES_PERSISTENCE_ENABLED` / `AXON_SEARCH_PERSISTENCE_ENABLED` | `true` | Use a PVC. `false` keeps data only for the life of the pod. |
+| `AXON_TIMESERIES_STORAGE_CLASS` / `AXON_SEARCH_STORAGE_CLASS` | empty (cluster default) | StorageClass for the PVC |
+| `AXON_TIMESERIES_VOLUME_SIZE` / `AXON_SEARCH_VOLUME_SIZE` | `10Gi` | PVC size |
+| `AXON_TIMESERIES_HEAP_SIZE` / `AXON_SEARCH_HEAP_SIZE` | `2048M` / `2g` | JVM heap |
+| `AXON_TIMESERIES_USE_HOSTPATH` / `AXON_SEARCH_USE_HOSTPATH` | `false` | Store data in a hostPath directory instead of a PVC. Single-node clusters only. |
+| `AXON_TIMESERIES_HOSTPATH_DIR` / `AXON_SEARCH_HOSTPATH_DIR` | `/data/axon-timeseries` / `/data/axon-search` | hostPath directory, owned by UID 999 |
+| `AXON_TIMESERIES_HOSTPATH_CREATE` / `AXON_SEARCH_HOSTPATH_CREATE` | `false` | Create the hostPath directory with `sudo` on the machine running the script |
+| `AXON_DASH_NODEPORT_ENABLED` | `false` | Expose axon-dash as a NodePort Service. The script prints the assigned port. |
+| `AXON_DASH_INGRESS_ENABLED`, `AXON_DASH_INGRESS_HOST`, `AXON_DASH_INGRESS_CLASS_NAME` | `false`, `axonops.example.com`, empty | Dashboard Ingress |
+| `AXON_*_INGRESS_CERT_ISSUER_ANNOTATION` | empty | cert-manager `ClusterIssuer` added as an Ingress annotation |
+| `AXON_SERVER_API_INGRESS_ENABLED`, `AXON_SERVER_API_INGRESS_HOST` | `false`, `api.example.com` | API Ingress |
+| `AXON_SERVER_AGENT_INGRESS_ENABLED`, `AXON_SERVER_AGENT_INGRESS_HOST` | `false`, `agents.example.com` | gRPC Ingress for agents outside the cluster |
+| `CERT_MANAGER_INSTALL` | `false` | With database TLS on: install cert-manager when it is missing. An installed cert-manager is always reused, never reinstalled. |
+| `CLUSTER_ISSUER_CREATE` | `true` | Create `CLUSTER_ISSUER_NAME` as a self-signed `ClusterIssuer` when it does not exist. An existing issuer is never modified. |
+| `AXON_TIMESERIES_TLS_ENABLED` / `AXON_SEARCH_TLS_ENABLED` | `false` | TLS on the database. axon-server connects with TLS to match. |
+| `AXON_TIMESERIES_CERTMANAGER_ENABLED` / `AXON_SEARCH_CERTMANAGER_ENABLED` | `true` | Issue the database certificate with cert-manager |
+| `AXON_TIMESERIES_TLS_EXISTING_SECRET` / `AXON_SEARCH_TLS_EXISTING_SECRET` | empty | Secret with your own TLS material, used instead of cert-manager. With Timeseries TLS on, the script stops unless cert-manager or this Secret provides the certificate. |
+| `CLUSTER_ISSUER_NAME` | `selfsigned-cluster-issuer` | Issuer for the database certificates |
+| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | `axon-reporting` sidecar image tag |
+| `AXON_*_CHART` | `oci://ghcr.io/axonops/charts/<chart>` | Chart reference, for example a local path such as `../../axonops/charts/axon-server` |
+| `AXON_*_HELM_EXTRA_ARGS` | empty | Extra arguments for each `helm upgrade --install` |
+| `HELM_WAIT` | `true` | Install each AxonOps release with `helm --wait`. `false` returns without waiting for the pods; cert-manager always waits. |
+| `HELM_TIMEOUT` | `10m` | Timeout for each release when `HELM_WAIT=true` |
+| `RENDER_ONLY` | `false` | Write `generated/` and print the commands a real run would execute; install nothing |
 
-```bash
-# Namespace
-NS_AXONOPS=axonops
+Release names (`AXON_TIMESERIES_RELEASE_NAME`, `AXON_SEARCH_RELEASE_NAME`, `AXON_SERVER_RELEASE_NAME`, `AXON_DASH_RELEASE_NAME`) can be changed; the script derives the Service names from them.
 
-# Server ports
-AXON_SERVER_AGENTS_PORT=1888    # Port for Kafka/Cassandra agents
-AXON_SERVER_API_PORT=8080       # API port
+## Reports v2
 
-# Organization
-AXON_SERVER_ORG_NAME=example
-
-# Search database credentials
-AXON_SEARCH_USER=admin
-AXON_SEARCH_PASSWORD=your-secure-password
-
-# Timeseries database credentials
-AXON_SERVER_CQL_USERNAME=axonops
-AXON_SERVER_CQL_PASSWORD=your-secure-cql-password
-```
-
-### Server Configuration Secret
-
-The `axonops-server-secret.yaml` contains the full server configuration. Key settings:
-
-| Setting | Description |
-| --- | --- |
-| `agents_port` | Port for agent connections (1888) |
-| `api_port` | REST API port (8080) |
-| `search_db.hosts` | OpenSearch endpoint |
-| `cql_hosts` | Cassandra hosts for metrics storage |
-| `org_name` | Organization name |
-| `tls.mode` | TLS mode (disabled/enabled) |
-| `auth.enabled` | Authentication toggle |
-
-## Accessing the Dashboard
-
-### Port Forward (Quick Access)
-
-```bash
-kubectl port-forward -n axonops svc/axon-dash 3000:3000
-
-# Access at: http://localhost:3000
-```
-
-### NodePort
+The axon-dash pod runs `axon-reporting` as a sidecar and axon-server reaches it at `axon_reporting_url`. The script configures both; nothing needs enabling. It needs axon-server 2.0.39 or newer. Check that the sidecar runs:
 
 ```bash
-export AXON_DASH_NODEPORT_ENABLED=true
-export AXON_DASH_NODEPORT_PORT=32000
-./axonops-setup.sh
-
-# Access at: http://<node-ip>:32000
-```
-
-### Ingress
-
-```bash
-export AXON_DASH_INGRESS_ENABLED=true
-export AXON_DASH_INGRESS_HOST=axonops.yourdomain.com
-./axonops-setup.sh
-
-# Access at: https://axonops.yourdomain.com
-```
-
-## Reports v2 (axon-reporting)
-
-Reports v2 runs `axon-reporting` as a sidecar in the axon-dash pod, and axon-server
-reaches it through the axon-dash Service. It needs axon-server 2.0.39 or newer.
-The setup script always adds the sidecar to the axon-dash values and writes
-`axon_reporting_url` into the server Secret. There is nothing to enable.
-
-```bash
-# Optional overrides (defaults shown)
-export AXON_DASH_REPORTING_IMAGE_REPOSITORY=registry.axonops.com/axonops-public/axonops-docker/axon-reporting
-export AXON_DASH_REPORTING_IMAGE_TAG=1.0.3
-export AXON_DASH_REPORTING_PORT=8081
-./axonops-setup.sh
-```
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Sidecar image |
-| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | Sidecar image tag |
-| `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |
-| `AXON_SERVER_REPORTING_URL` | `http://<axon-dash fullname>-svc.<namespace>.svc.cluster.local:<port>` | URL axon-server uses to reach the sidecar |
-
-Until the charts with Reports v2 support are released, install them from this
-repository instead of the OCI registry:
-
-```bash
-export AXON_DASH_CHART=../../axonops/charts/axon-dash
-export AXON_SERVER_CHART=../../axonops/charts/axon-server
-```
-
-Check the sidecar is running:
-
-```bash
-kubectl get pods -n axonops -l app.kubernetes.io/instance=axon-dash \
+kubectl get pods -n "$AXONOPS_NAMESPACE" -l app.kubernetes.io/instance=axon-dash \
   -o jsonpath='{.items[*].spec.containers[*].name}'
 # axon-dash axon-reporting
-kubectl logs -n axonops deploy/axon-dash -c axon-reporting
 ```
 
-## Integrating with Data Platforms
+## Connecting agents
 
-### Strimzi Kafka
+Agents in the same cluster connect to `axon-server-agent.<namespace>.svc.cluster.local:1888` with TLS disabled. The [Strimzi on-premises](../strimzi/on-premises/), [Strimzi local-disk](../strimzi/local-disk/) and [K8ssandra](../k8ssandra/) examples build that address from `AXONOPS_NAMESPACE`, so source `axonops-config.env` in the same shell before their configuration files.
 
-After deploying AxonOps, integrate with Kafka:
+## Verify
 
 ```bash
-# Source AxonOps configuration
-source axonops-config.env
-
-# Configure Strimzi (edit strimzi-setup.env as needed)
-vi strimzi-setup.env
-
-# Source Strimzi configuration and deploy
-source strimzi-setup.env
-./strimzi-setup.sh
+helm list -n "$AXONOPS_NAMESPACE"
+kubectl get pods -n "$AXONOPS_NAMESPACE"
+kubectl port-forward -n "$AXONOPS_NAMESPACE" svc/axon-dash-svc 3000:3000
 ```
 
-Or use environment variables directly:
+Then open <http://localhost:3000>.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Pods stay `Pending` | `kubectl get pvc -n "$AXONOPS_NAMESPACE"`. Without a default StorageClass, set `AXON_*_STORAGE_CLASS`. |
+| axon-server cannot reach the databases | The passwords changed between runs. Compare `generated/axon-server-secret.yaml` with the values used by the database releases. |
+| axon-server logs `tls: first record does not look like a TLS handshake` | The database has no certificate, so it runs without TLS. `kubectl logs axondb-timeseries-0` shows `SSL encryption not enabled`. Keep `AXON_TIMESERIES_CERTMANAGER_ENABLED=true` or set `AXON_TIMESERIES_TLS_EXISTING_SECRET`, then reinstall the database. |
+| Certificates not issued | `kubectl get clusterissuer` and `kubectl get certificate -n "$AXONOPS_NAMESPACE"` |
+
+## Remove
 
 ```bash
-source axonops-config.env
-export STRIMZI_NODE_HOSTNAME='your-node-name'
-export STRIMZI_CLUSTER_NAME='my-cluster'
-./strimzi-setup.sh
+for r in axon-dash axon-server axondb-search axondb-timeseries; do
+  helm uninstall "$r" -n "$AXONOPS_NAMESPACE"
+done
+kubectl delete secret axon-server-config -n "$AXONOPS_NAMESPACE"
+# Deletes all AxonOps data:
+kubectl delete pvc --all -n "$AXONOPS_NAMESPACE"
+kubectl delete namespace "$AXONOPS_NAMESPACE"
 ```
 
-Or use the Strimzi cloud examples:
+## Related
 
-```bash
-cd ../strimzi/cloud/
-export AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-export AXON_AGENT_SERVER_PORT=1888
-# ... apply manifests
-```
-
-### K8ssandra Cassandra
-
-Configure K8ssandra to connect to self-hosted AxonOps:
-
-```bash
-export AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-export AXON_AGENT_SERVER_PORT=1888
-export AXON_AGENT_ORG=$AXON_SERVER_ORG_NAME
-
-cd ../k8ssandra/
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
-```
-
-## Verification
-
-```bash
-# Check all pods
-kubectl get pods -n axonops
-
-# Check services
-kubectl get svc -n axonops
-
-# Check Helm releases
-helm list -n axonops
-
-# View server logs
-kubectl logs -n axonops deployment/axon-server
-```
-
-## Cleanup
-
-```bash
-# Uninstall Helm releases
-helm uninstall axon-dash -n axonops
-helm uninstall axon-server -n axonops
-helm uninstall axondb-search -n axonops
-helm uninstall axondb-timeseries -n axonops
-
-# Delete namespace
-kubectl delete namespace axonops
-```
-
-## Related Documentation
-
-- [Full AxonOps Deployment Guide](../AXONOPS_DEPLOYMENT.md)
-- [Strimzi Kafka Integration](../STRIMZI_DEPLOYMENT.md)
-- [K8ssandra Integration](../K8SSANDRA_DEPLOYMENT.md)
-- [AxonOps Documentation](https://docs.axonops.com)
-- [AxonOps Agent Setup](https://axonops.com/docs/get_started/agent_setup/)
+- [AxonOps deployment guide](../AXONOPS_DEPLOYMENT.md)
+- [AxonOps meta-chart](../../axonops/charts/axonops/README.md), a single Helm release for the same stack
+- [AxonOps documentation](https://docs.axonops.com)

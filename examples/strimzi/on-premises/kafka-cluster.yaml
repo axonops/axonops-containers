@@ -4,15 +4,12 @@ kind: Kafka
 metadata:
   name: ${STRIMZI_CLUSTER_NAME}
   namespace: ${KAFKA_NAMESPACE}
-  annotations:
-    strimzi.io/node-pools: enabled
-    strimzi.io/kraft: enabled
 spec:
   kafka:
     version: ${KAFKA_VERSION}
     image: ${KAFKA_CONTAINER_IMAGE}
     rack:
-      topologyKey: topology.kubernetes.io/zone
+      topologyKey: ${KAFKA_RACK_TOPOLOGY_KEY}
     listeners:
       - name: plain
         port: 9092
@@ -23,23 +20,32 @@ spec:
         type: internal
         tls: true
     config:
-      offsets.topic.replication.factor: 3
-      transaction.state.log.replication.factor: 3
-      transaction.state.log.min.isr: 2
-      default.replication.factor: 3
-      min.insync.replicas: 2
+      default.replication.factor: ${KAFKA_REPLICATION_FACTOR}
+      min.insync.replicas: ${KAFKA_MIN_INSYNC_REPLICAS}
+      offsets.topic.replication.factor: ${KAFKA_REPLICATION_FACTOR}
+      transaction.state.log.replication.factor: ${KAFKA_REPLICATION_FACTOR}
+      transaction.state.log.min.isr: ${KAFKA_MIN_INSYNC_REPLICAS}
     jvmOptions:
       javaSystemProperties:
         - name: kafka.logs.dir
           value: /var/log/kafka
+    # The AxonOps agent reads the Kafka log from /var/log/kafka/server.log.
     logging:
       type: inline
       loggers:
-        log4j.rootLogger: "INFO, FILE"
-        log4j.appender.FILE: "org.apache.log4j.RollingFileAppender"
-        log4j.appender.FILE.File: "/var/log/kafka/server.log"
-        log4j.appender.FILE.MaxFileSize: "10MB"
-        log4j.appender.FILE.MaxBackupIndex: "5"
-        log4j.appender.FILE.layout: "org.apache.log4j.PatternLayout"
-        log4j.appender.FILE.layout.ConversionPattern: "[%d] %p %m (%c)%n"
-        log4j.logger.axonops.io.netty: "ERROR"
+        rootLogger.level: "INFO"
+        rootLogger.appenderRefs: "file"
+        rootLogger.appenderRef.file.ref: "FILE"
+        appender.file.type: "RollingFile"
+        appender.file.name: "FILE"
+        appender.file.fileName: "${sys:kafka.logs.dir}/server.log"
+        appender.file.filePattern: "${sys:kafka.logs.dir}/server.log.%i"
+        appender.file.layout.type: "PatternLayout"
+        appender.file.layout.pattern: "[%d] %p %m (%c)%n"
+        appender.file.policies.type: "Policies"
+        appender.file.policies.size.type: "SizeBasedTriggeringPolicy"
+        appender.file.policies.size.size: "10MB"
+        appender.file.strategy.type: "DefaultRolloverStrategy"
+        appender.file.strategy.max: "5"
+        logger.netty.name: "axonops.io.netty"
+        logger.netty.level: "ERROR"

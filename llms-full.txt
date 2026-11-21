@@ -8624,8 +8624,6 @@ Docker containers for Apache Cassandra with integrated AxonOps monitoring and ma
   - [scripts/install_k8ssandra.sh](#scriptsinstall_k8ssandrash)
   - [scripts/rebuild.sh](#scriptsrebuildsh)
 - [Examples](#examples)
-  - [examples/k8ssandra/cluster-axonops-ubi.yaml](#examplesk8ssandracluster-axonops-ubiyaml)
-  - [Customizing the Example](#customizing-the-example)
 - [CI/CD Pipeline](#cicd-pipeline)
   - [Automated Builds and Testing](#automated-builds-and-testing)
 - [Container Features](#container-features)
@@ -8793,12 +8791,12 @@ docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 For Kubernetes deployments, use the image with K8ssandra Operator:
 
 ```bash
-export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5"
-export AXON_AGENT_KEY="your-key"
-export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+cd examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG="your-org" AXON_AGENT_KEY="your-key"
 
-cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
 See [Deploying to Kubernetes](#deploying-to-kubernetes) for detailed instructions.
@@ -9158,17 +9156,15 @@ Once you have the digest, update the `K8SSANDRA_VERSIONS` repository variable wi
 
 ### Using the Example Configuration
 
-The `examples/k8ssandra/cluster-axonops-ubi.yaml` provides a template for deploying a 3-node Cassandra 5.0 cluster:
+[`examples/k8ssandra/`](../examples/k8ssandra/) holds a K8ssandraCluster template, the Secret with the agent settings, and a configuration file. Its [README](../examples/k8ssandra/README.md) lists every setting.
 
 ```bash
-# Set your environment variables
-export IMAGE_NAME="your-image"
-export AXON_AGENT_KEY="your-key"
-export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+cd ../examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG="your-org" AXON_AGENT_KEY="your-key"
 
-# Apply the configuration
-cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
 ### Verifying the Deployment
@@ -9177,13 +9173,13 @@ After deploying, verify that your cluster is running:
 
 ```bash
 # Check cluster status
-kubectl get k8ssandraclusters -n k8ssandra-operator
+kubectl get k8ssandraclusters -n "$K8SSANDRA_NAMESPACE"
 
 # Watch pods come up (wait for all to show Running and Ready)
-kubectl get pods -n k8ssandra-operator -w
+kubectl get pods -n "$K8SSANDRA_NAMESPACE" -w
 
 # Check detailed cluster status
-kubectl describe k8ssandracluster <cluster-name> -n k8ssandra-operator
+kubectl describe k8ssandracluster "$K8SSANDRA_CLUSTER_NAME" -n "$K8SSANDRA_NAMESPACE"
 ```
 
 All Cassandra pods should show `2/2` in the READY column when fully started.
@@ -9355,43 +9351,15 @@ cd 5.0
 
 ## Examples
 
-### examples/k8ssandra/cluster-axonops-ubi.yaml
+[`examples/k8ssandra/`](../examples/k8ssandra/) contains:
 
-A complete K8ssandraCluster resource definition showcasing:
+| File | Content |
+| --- | --- |
+| `k8ssandra-config.env` | Cluster name, namespace, image, size, storage, resources and agent settings |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent` with the agent settings |
+| `cluster-axonops-ubi.yaml` | K8ssandraCluster using the AxonOps image |
 
-**Cluster Specifications:**
-- Name: `axonops-k8ssandra-50`
-- Namespace: `k8ssandra-operator`
-- Cassandra Version: 5.0.6
-- Image: `ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0` (default)
-- Datacenter: `dc1` with 3 nodes
-
-**Resource Allocation:**
-```yaml
-resources:
-  limits:
-    cpu: 1
-    memory: 2Gi
-  requests:
-    cpu: 1
-    memory: 1Gi
-```
-
-**Storage Configuration:**
-```yaml
-storageConfig:
-  cassandraDataVolumeClaimSpec:
-    storageClassName: local-path
-    accessModes:
-      - ReadWriteOnce
-    resources:
-      requests:
-        storage: 2Gi
-```
-
-**AxonOps Volume (Required):**
-
-AxonOps requires a persistent volume to store its configuration. Add this to your cluster configuration:
+The template sets the agent variables on the `cassandra` container from the Secret, and adds the PVC the agent needs at `/var/lib/axonops`:
 
 ```yaml
         extraVolumes:
@@ -9399,6 +9367,7 @@ AxonOps requires a persistent volume to store its configuration. Add this to you
             - name: axonops-data
               mountPath: /var/lib/axonops
               pvcSpec:
+                storageClassName: ${STORAGE_CLASS}
                 accessModes:
                   - ReadWriteOnce
                 resources:
@@ -9406,44 +9375,9 @@ AxonOps requires a persistent volume to store its configuration. Add this to you
                     storage: ${AXONOPS_STORAGE_SIZE}
 ```
 
-`AXONOPS_STORAGE_SIZE` defaults to `2Gi` in `examples/k8ssandra/k8ssandra-config.env`. Set it before rendering the manifest to change the size. Most StorageClasses cannot shrink a volume once created, so pick the size before the first apply.
+`AXONOPS_STORAGE_SIZE` defaults to `2Gi`. Most StorageClasses cannot shrink a volume once created, so pick the size before the first apply.
 
-**AxonOps Integration:**
-The example shows proper environment variable injection for the AxonOps agent using the container-level environment variables approach required by K8ssandra.
-
-### Customizing the Example
-
-**Note:** Commands in this section assume you are in the `k8ssandra/` directory.
-
-To use this example:
-
-1. Copy the example file:
-   ```bash
-   cp examples/k8ssandra/cluster-axonops-ubi.yaml my-cluster.yml
-   ```
-
-2. Update the values in `my-cluster.yml`:
-   - **Cluster name**: Edit the `metadata.name` field (e.g., change `axonops-k8ssandra-50` to `my-cassandra-cluster`). Note: The cluster name is used to generate service names, secret names, and pod names.
-   - **Namespace**: Edit `metadata.namespace` if deploying to a different namespace
-   - **Node count**: Adjust `size` under `datacenters` (default is 3)
-   - **Resources**: Modify CPU/memory allocations under `resources`
-   - **Storage**: Update `storage` size under `storageConfig`
-
-3. Deploy:
-   ```bash
-   export AXON_AGENT_KEY="your-key"
-   export AXON_AGENT_ORG="your-org"
-   export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
-   # Optional: Override default image
-   export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0"
-
-   cat my-cluster.yml | envsubst | kubectl apply -f -
-   ```
-
-**Note:** The example uses the new image format `5.0.6-v0.1.110-1.0.0` which includes:
-- Cassandra version: 5.0.6
-- k8ssandra API version: v0.1.110
-- AxonOps container version: 1.0.0
+To customise the cluster, change the variables in `k8ssandra-config.env` (cluster name, namespace, `CASSANDRA_DC_SIZE`, resources, storage), or copy `cluster-axonops-ubi.yaml` and edit it. The image tag `<cassandra>-v<k8ssandra api>-<image>` must match `CASSANDRA_VERSION`; for example `5.0.9-v0.1.125-1.6.3` is Cassandra 5.0.9, k8ssandra API v0.1.125 and image 1.6.3.
 
 ## CI/CD Pipeline
 
@@ -11028,138 +10962,62 @@ The AxonOps Strimzi integration allows you to build Kafka clusters running on Ku
 
 ## Quick Start
 
-### 1. Install Strimzi Operator
+### 1. Install the Strimzi operator
 
 ```bash
-helm repo add strimzi https://strimzi.io/charts/
-helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 1.2.0 \
-  --set watchAnyNamespace=true
+helm upgrade --install strimzi-kafka-operator \
+  oci://quay.io/strimzi-helm/strimzi-kafka-operator \
+  --version 1.1.0 \
+  --namespace strimzi --create-namespace \
+  --set watchAnyNamespace=true \
+  --wait
 ```
 
-### 2. Create Kafka Namespace
+### 2. Deploy a Kafka cluster
+
+Ready-to-use manifests are in [`examples/strimzi/`](../examples/strimzi/). Each directory has a `strimzi-config.env` file and a README with the full steps:
+
+| Example | Storage | AxonOps target |
+| --- | --- | --- |
+| [`cloud/`](../examples/strimzi/cloud/) | PVCs from a StorageClass | AxonOps Cloud |
+| [`on-premises/`](../examples/strimzi/on-premises/) | PVCs from a StorageClass | Self-hosted AxonOps |
+| [`local-disk/`](../examples/strimzi/local-disk/) | hostPath volumes pinned to nodes | Self-hosted AxonOps |
 
 ```bash
-kubectl create namespace kafka
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl get pods -n "$KAFKA_NAMESPACE" --watch
 ```
 
-### 3. Deploy Kafka Cluster
+`kafka-connect.yaml` in the same directories adds a Kafka Connect cluster whose workers report to AxonOps with the `connect` node type. Kafka Connect support is in beta.
 
-Choose one of the configuration methods below based on your requirements.
-
-#### Option A: Cloud Deployment (Multi-Node)
-
-For production cloud deployments with separate controller and broker pools.
-
-See the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory for all required manifests:
-
-- `kafka-cluster.yaml`: Main Kafka cluster configuration
-- `kafka-node-pool-controller.yaml`: Controller node pool
-- `kafka-node-pool-brokers.yaml`: Broker node pool
-- `kafka-logging-cm.yaml`: Logging configuration
-- `axonops-config-secret.yaml`: AxonOps credentials
-
-**Update the following values**:
-
-- `YOUR_AXONOPS_HOST`: Your AxonOps server hostname (e.g., `agents.axonops.com`)
-- `YOUR_AXONOPS_API_KEY`: Your AxonOps organization API key
-- `YOUR_CLUSTER_NAME`: A unique name for this Kafka cluster
-- `YOUR_ORG_NAME`: Your AxonOps organization name
-
-Then apply:
-
-```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
-kubectl get pod -n kafka --watch
-```
-
-#### Option B: Single Node (Development/Testing)
-
-For development or testing, you can deploy a single-node Kafka cluster with combined controller and broker roles.
-
-The required manifests are in the [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) directory:
-
-- `kafka-single-node.yaml`: Single-node Kafka cluster
-- `axonops-agent-config.yaml`: AxonOps agent configuration
-- `axonops-kafka-logging.yaml`: Logging configuration
-- `axonops-kafka-nodepool.yaml`: Node pool configuration
-
-**Update the values** and apply only the single-node files:
-
-```bash
-kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
-              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
-              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
-              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
-              -n kafka
-kubectl get pod -n kafka --watch
-```
-
-#### Option C: Local Disk Storage
-
-For deployments using local persistent volumes.
-
-See the [`examples/strimzi/local-disk/`](../examples/strimzi/local-disk/) directory for all required manifests.
-
-```bash
-kubectl apply -f ../examples/strimzi/local-disk/ -n kafka
-kubectl get pod -n kafka --watch
-```
-
-#### Option D: Kafka Connect Cluster
-
-Deploy a Kafka Connect cluster for streaming data between Kafka and other systems.
-
-**Prerequisites**: Ensure you have a running Kafka cluster (deployed using one of the options above).
-
-**Update the following values** in [`examples/strimzi/cloud/kafka-connect.yaml`](../examples/strimzi/cloud/kafka-connect.yaml):
-
-- `YOUR_AXONOPS_HOST`: Your AxonOps server hostname (e.g., `agents.axonops.com`)
-- `YOUR_AXONOPS_API_KEY`: Your AxonOps organization API key
-- `YOUR_CLUSTER_NAME`: A unique name for this Kafka Connect cluster
-- `YOUR_ORG_NAME`: Your AxonOps organization name
-- `ghcr.io/axonops/strimzi/kafka:latest`: Replace with your specific AxonOps-enabled Kafka image
-- `my-cluster-kafka-bootstrap:9092`: Replace with your actual Kafka bootstrap server address
-
-Then apply:
-
-```bash
-kubectl apply -f ../examples/strimzi/cloud/kafka-connect.yaml -n kafka
-kubectl get pod -n kafka --watch
-```
-
-**Note**: Kafka Connect support is currently in beta. The Connect workers will report metrics to AxonOps using the `connect` node type.
+See the [Strimzi deployment guide](../examples/STRIMZI_DEPLOYMENT.md) for operator and image version compatibility.
 
 ## Configuration Details
 
-### Required Environment Variables
+### Agent Environment Variables
 
-When using environment variable-based configuration, the following variables must be set:
+The image reads its agent settings from environment variables on the Kafka container. The examples set them from a Secret with `valueFrom.secretKeyRef`.
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `KAFKA_NODE_TYPE` | Role of the Kafka node | `kraft-controller` or `kraft-broker` |
-| `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.com` |
-| `AXON_AGENT_KEY` | AxonOps API key | Your API key from AxonOps dashboard |
-| `AGENT_CLUSTER_NAME` | Unique cluster identifier | `my-kafka-prod` |
-| `AXON_AGENT_ORG` | AxonOps organization name | Your organization name |
+| `KAFKA_NODE_TYPE` | Role of the Kafka node | `kraft-controller`, `kraft-broker` or `connect` |
+| `AXON_AGENT_CLUSTER_NAME` | Cluster name shown in AxonOps | `my-kafka-prod` |
+| `AXON_AGENT_ORG` | AxonOps organisation name | Your organisation name |
+| `AXON_AGENT_KEY` | AxonOps agent key | Your key from the AxonOps console |
+| `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
+| `AXON_AGENT_SERVER_PORT` | AxonOps server port | `443`, or `1888` for a self-hosted server |
+| `AXON_AGENT_TLS_MODE` | Agent TLS mode | `TLS` or `disabled` |
 
-### Optional Environment Variables
+### Configuration File
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAFKA_CLIENT_BROKERS` | Broker addresses (for brokers) | `0.0.0.0:9092` |
-
-### ConfigMap Configuration
-
-The ConfigMap approach allows you to provide a complete `axon-agent.yml` configuration file. This is useful for:
-
-- Advanced metric collection configuration
-- Custom logging settings
-- Multiple datacenter deployments
-- Fine-grained control over agent behavior
-
-See [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) for the full structure.
+To configure the agent with a complete `axon-agent.yml` instead, mount it at `/mnt/axon-agent.yml`, for example from a ConfigMap through `template.pod.volumes` and `template.kafkaContainer.volumeMounts` in the KafkaNodePool. The image links it to `/etc/axonops/axon-agent.yml` at startup.
 
 ## Rack Awareness
 
@@ -11184,7 +11042,7 @@ kubectl label node worker-3 topology.kubernetes.io/zone=us-east-1c
 The rack awareness configuration is already included in the example manifests:
 
 ```yaml
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: my-cluster
@@ -11194,7 +11052,7 @@ spec:
       topologyKey: topology.kubernetes.io/zone
 ```
 
-The node label defaults to `topology.kubernetes.io/zone` but can be overridden using the `topologyKey` parameter.
+The examples set `topologyKey` from `KAFKA_RACK_TOPOLOGY_KEY`: `topology.kubernetes.io/zone` in `cloud/`, `kubernetes.io/hostname` in `on-premises/` and `local-disk/`.
 
 ## Building Custom Images
 
@@ -11275,13 +11133,13 @@ To remove all Kafka resources from the example cluster:
 
 ```bash
 # Delete all Strimzi resources
-kubectl delete $(kubectl get strimzi -o name -n kafka) -n kafka
+kubectl delete $(kubectl get strimzi -o name -n "$KAFKA_NAMESPACE") -n "$KAFKA_NAMESPACE"
 
 # Delete persistent volume claims
-kubectl delete pvc --all -n kafka
+kubectl delete pvc --all -n "$KAFKA_NAMESPACE"
 
 # Uninstall Strimzi operator
-helm uninstall my-strimzi-kafka-operator
+helm uninstall strimzi-kafka-operator -n strimzi
 
 # Clean up local images (if needed)
 docker rmi axonkafka:local
@@ -11298,38 +11156,38 @@ k3s crictl rmi ghcr.io/axonops/strimzi/kafka:0.47.0-3.9.0
 ### Check Pod Status
 
 ```bash
-kubectl get pods -n kafka
-kubectl describe pod <pod-name> -n kafka
+kubectl get pods -n "$KAFKA_NAMESPACE"
+kubectl describe pod <pod-name> -n "$KAFKA_NAMESPACE"
 ```
 
 ### View Logs
 
 ```bash
 # Kafka broker logs
-kubectl logs <broker-pod-name> -n kafka
+kubectl logs <broker-pod-name> -n "$KAFKA_NAMESPACE"
 
 # AxonOps agent logs
-kubectl exec <pod-name> -n kafka -- tail -f /var/log/axonops/axon-agent.log
+kubectl exec <pod-name> -n "$KAFKA_NAMESPACE" -- tail -f /var/log/axonops/axon-agent.log
 
 # Follow all logs from a pod
-kubectl logs -f <pod-name> -n kafka
+kubectl logs -f <pod-name> -n "$KAFKA_NAMESPACE"
 ```
 
 ### Verify AxonOps Connection
 
 ```bash
 # Check if agent is running
-kubectl exec <pod-name> -n kafka -- ps aux | grep axon
+kubectl exec <pod-name> -n "$KAFKA_NAMESPACE" -- ps aux | grep axon
 
 # Check agent configuration
-kubectl exec <pod-name> -n kafka -- cat /etc/axonops/axon-agent.yml
+kubectl exec <pod-name> -n "$KAFKA_NAMESPACE" -- cat /etc/axonops/axon-agent.yml
 ```
 
 ### Common Issues
 
 **Problem**: Pods are stuck in `Pending` or `CrashLoopBackOff`
-- Check resource availability: `kubectl describe pod <pod-name> -n kafka`
-- Verify PVC status: `kubectl get pvc -n kafka`
+- Check resource availability: `kubectl describe pod <pod-name> -n "$KAFKA_NAMESPACE"`
+- Verify PVC status: `kubectl get pvc -n "$KAFKA_NAMESPACE"`
 
 **Problem**: AxonOps agent not reporting metrics
 - Verify API key is correct in configuration
@@ -11356,58 +11214,7 @@ Key files:
 
 ## Example Configurations
 
-### Single Node Cluster
-
-**Directory**: [`examples/strimzi/cloud/`](../examples/strimzi/cloud/)
-
-- **Topology**: Single node with combined controller + broker role
-- **Replicas**: 1
-- **Storage**: Persistent volume
-- **Configuration Method**: ConfigMap-based
-- **Use Case**: Development, testing, demos
-
-### Cloud Deployment (Multi-Node)
-
-**Directory**: [`examples/strimzi/cloud/`](../examples/strimzi/cloud/)
-
-- **Topology**: Separate controller and broker pools
-- **Controllers**: 3 replicas
-- **Brokers**: 3 replicas
-- **Configuration Method**: ConfigMap-based with full agent configuration
-- **Features**:
-  - Rack awareness enabled
-  - Custom logging configuration
-  - Separate AxonOps config for controllers and brokers
-- **Use Case**: Production cloud deployments
-
-### Local Disk Storage
-
-**Directory**: [`examples/strimzi/local-disk/`](../examples/strimzi/local-disk/)
-
-- **Topology**: Separate controller and broker pools
-- **Storage**: Local persistent volumes
-- **Features**:
-  - StorageClass configuration
-  - RBAC setup
-  - Volume provisioning
-- **Use Case**: On-premises deployments with local storage
-
-### Kafka Connect Cluster
-
-**File**: [`examples/strimzi/cloud/kafka-connect.yaml`](../examples/strimzi/cloud/kafka-connect.yaml)
-
-- **Component**: Kafka Connect workers
-- **Replicas**: 1 (can be scaled as needed)
-- **Configuration Method**: ConfigMap-based
-- **Features**:
-  - Connector resource support enabled
-  - AxonOps monitoring for Connect workers
-  - Configurable storage topics for Connect metadata
-- **Configuration Topics**:
-  - Config storage: `connect-configs`
-  - Status storage: `connect-status`
-  - Offset storage: `connect-offsets`
-- **Use Case**: Data integration, ETL pipelines, streaming data between Kafka and external systems
+The examples are described in [`examples/STRIMZI_DEPLOYMENT.md`](../examples/STRIMZI_DEPLOYMENT.md). All three create a Kafka cluster with separate KRaft controller and broker pools, rack awareness, and the AxonOps agent in every container.
 
 ## Version Compatibility
 
@@ -18845,275 +18652,121 @@ Maintained by [AxonOps](https://axonops.com). For support, contact us at
 
 # Source: examples/DEPLOYMENT_GUIDE.md
 
-# On-Premises Deployment Guide
+# Deployment Guide
 
 **English** | [Français](DEPLOYMENT_GUIDE.fr.md) | [Español](DEPLOYMENT_GUIDE.es.md) | [Galego](DEPLOYMENT_GUIDE.gl.md)
 
-Welcome to the on-premises deployment guide for AxonOps and data platform solutions on Kubernetes.
+These examples deploy AxonOps, and Kafka or Cassandra clusters monitored by AxonOps, on Kubernetes. Each example directory is self-contained: a configuration file, the manifests or script, and a README with the exact steps.
 
-## Overview
+## Examples
 
-This guide provides deployment instructions for running various data platforms on Kubernetes with optional AxonOps monitoring and management capabilities.
-
-## Quick Navigation
-
-| Component | Description | Guide |
+| Directory | Deploys | AxonOps target |
 | --- | --- | --- |
-| AxonOps | Monitoring and management platform | [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) |
-| Strimzi Kafka | Apache Kafka on Kubernetes | [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md) |
-| K8ssandra | Apache Cassandra on Kubernetes | [K8SSANDRA_DEPLOYMENT.md](K8SSANDRA_DEPLOYMENT.md) |
+| [axonops/](axonops/) | Self-hosted AxonOps: server, dashboard, Timeseries and Search databases | - |
+| [strimzi/cloud/](strimzi/cloud/) | Strimzi Kafka on dynamically provisioned volumes | AxonOps Cloud |
+| [strimzi/on-premises/](strimzi/on-premises/) | Strimzi Kafka on dynamically provisioned volumes | Self-hosted AxonOps |
+| [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka on hostPath volumes pinned to nodes | Self-hosted AxonOps |
+| [k8ssandra/](k8ssandra/) | Cassandra with the K8ssandra operator | AxonOps Cloud or self-hosted |
 
-## Example Manifests
-
-Ready-to-use Kubernetes manifests are available in the following directories:
-
-| Directory | Description |
-| --- | --- |
-| [axonops/](axonops/) | AxonOps server, dashboard, and database components |
-| [strimzi/cloud/](strimzi/cloud/) | Production Strimzi Kafka for cloud environments |
-| [strimzi/local-disk/](strimzi/local-disk/) | Strimzi Kafka with local persistent volumes |
-| [k8ssandra/](k8ssandra/) | K8ssandra Cassandra cluster examples |
+Guides: [AxonOps](AXONOPS_DEPLOYMENT.md), [Strimzi](STRIMZI_DEPLOYMENT.md), [K8ssandra](K8SSANDRA_DEPLOYMENT.md), [node selectors for local disks](NODE_SELECTOR_GUIDE.md).
 
 ## Prerequisites
 
-All deployments require:
+- Kubernetes 1.27 or newer and a `kubectl` context with cluster-admin rights
+- `helm` 3.8 or newer
+- `envsubst`, from the `gettext` package: `brew install gettext` on macOS, `apt-get install gettext-base` on Debian and Ubuntu, `dnf install gettext` on RHEL
+- A default StorageClass, except for `strimzi/local-disk/`
 
-1. **Kubernetes Cluster** (v1.21+)
-   - Single-node or multi-node supported
+## How the examples work
 
-2. **Command-line Tools**
-   - `kubectl` - Kubernetes CLI
-   - `helm` - Helm package manager v3.x or later
-   - `envsubst` - Variable substitution (part of `gettext` package)
+Every example follows the same pattern:
 
-3. **Cluster Access**
-   - Configured `kubectl` context
-   - Sufficient permissions (cluster-admin or equivalent)
+1. `cd` into the example directory and `source` its `.env` file. Each file is a list of `export` lines; edit it, or export overrides before sourcing it. Values that are already set are kept, and values derived from them follow.
+2. Export secrets in the shell instead of writing them in the file: `AXON_SEARCH_PASSWORD` and `AXON_SERVER_CQL_PASSWORD` for AxonOps, `AXON_AGENT_KEY` for AxonOps Cloud.
+3. Apply the manifests with `envsubst < file.yaml | kubectl apply -f -`, or run the example script.
 
-4. **Storage** (choose one)
-   - Dynamic storage provisioner (recommended for production)
-   - hostPath storage (for single-node testing)
+Nothing is tied to a fixed namespace. Each component has one variable:
 
-### Installing envsubst
+| Variable | Default | Used by |
+| --- | --- | --- |
+| `AXONOPS_NAMESPACE` | `axonops` | `axonops/`, and the Kafka and Cassandra examples to find the AxonOps server |
+| `KAFKA_NAMESPACE` | `kafka` | `strimzi/*` |
+| `STRIMZI_OPERATOR_NAMESPACE` | `strimzi` | Strimzi operator |
+| `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | `k8ssandra/` |
 
-The `envsubst` command is used to substitute environment variables in YAML templates.
+Agents find a self-hosted server at `axon-server-agent.$AXONOPS_NAMESPACE.svc.cluster.local:1888`. The examples that report to it build this address from `axonops/axonops-config.env`, so source that file first in the same shell.
 
-**macOS:**
-```bash
-brew install gettext
-brew link --force gettext
-```
+## Scenarios
 
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install gettext-base
-```
-
-**RHEL/CentOS:**
-```bash
-sudo yum install gettext
-```
-
-**Verify installation:**
-```bash
-envsubst --version
-```
-
----
-
-## Deployment Scenarios
-
-### Scenario 1: AxonOps Only
-
-Deploy just the monitoring platform to monitor existing clusters:
+### AxonOps only
 
 ```bash
-cd axonops/
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
-./axonops-setup.sh
-```
-
-See [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) for full details.
-
----
-
-### Scenario 2: Kafka with AxonOps Monitoring (Recommended)
-
-Deploy Kafka with comprehensive monitoring:
-
-```bash
-# Step 1: Deploy AxonOps monitoring platform
-cd axonops/
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
-./axonops-setup.sh
-
-# Step 2: Configure Strimzi (edit strimzi-setup.env as needed)
-vi strimzi-setup.env
-
-# Step 3: Deploy Kafka with automatic monitoring integration
+cd examples/axonops
 source axonops-config.env
-source strimzi-setup.env
-./strimzi-setup.sh
-```
-
-See [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) and [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md).
-
----
-
-### Scenario 3: Kafka Standalone (Cloud Examples)
-
-Deploy Kafka using the cloud example manifests:
-
-```bash
-cd strimzi/cloud/
-
-# Configure and source environment variables
-vi strimzi-config.env
-source strimzi-config.env
-
-# Create the AxonOps secret
-kubectl create secret generic axonops-agent -n kafka \
-  --from-literal=AXON_AGENT_CLUSTER_NAME=$AXON_AGENT_CLUSTER_NAME \
-  --from-literal=AXON_AGENT_ORG=$AXON_AGENT_ORG \
-  --from-literal=AXON_AGENT_SERVER_HOST=$AXON_AGENT_SERVER_HOST \
-  --from-literal=AXON_AGENT_KEY=$AXON_AGENT_KEY
-
-# Apply manifests
-kubectl apply -f kafka-logging-cm.yaml
-kubectl apply -f kafka-node-pool-controller.yaml
-kubectl apply -f kafka-node-pool-brokers.yaml
-kubectl apply -f kafka-cluster.yaml
-```
-
-See [strimzi/cloud/README.md](strimzi/cloud/README.md) for full details.
-
----
-
-### Scenario 4: Cassandra with K8ssandra
-
-Deploy Apache Cassandra using K8ssandra:
-
-```bash
-cd k8ssandra/
-
-# Configure environment variables
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-
-# Apply the cluster manifest
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
-```
-
-See [K8SSANDRA_DEPLOYMENT.md](K8SSANDRA_DEPLOYMENT.md) for full details.
-
----
-
-### Scenario 5: Full Stack (AxonOps + Kafka + Cassandra)
-
-Deploy the complete monitoring and data platform stack:
-
-```bash
-# Step 1: Deploy AxonOps
-cd axonops/
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
+export AXON_SEARCH_PASSWORD="$(openssl rand -base64 24)"
+export AXON_SERVER_CQL_PASSWORD="$(openssl rand -base64 24)"
 ./axonops-setup.sh
-source axonops-config.env
-
-# Step 2: Deploy Kafka
-export STRIMZI_NODE_HOSTNAME='your-node-name'
-./strimzi-setup.sh
-
-# Step 3: Deploy Cassandra
-cd ../k8ssandra/
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
----
+### Kafka monitored by self-hosted AxonOps
 
-## Using envsubst with Manifests
-
-Many example manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsubst` to substitute values before applying:
-
-### Basic Usage
+Install AxonOps as above, install the [Strimzi operator](STRIMZI_DEPLOYMENT.md#install-the-strimzi-operator), then from the same shell:
 
 ```bash
-# Source configuration file
-export $(grep -v '^#' config.env | xargs)
-
-# Apply manifest with variable substitution
-envsubst < manifest.yaml | kubectl apply -f -
-```
-
-### Processing Multiple Files
-
-```bash
-# Source configuration
+cd ../strimzi/on-premises
+source ../../axonops/axonops-config.env
 source strimzi-config.env
-
-# Apply all manifests in order
-for f in manifest1.yaml manifest2.yaml manifest3.yaml; do
-  envsubst < $f | kubectl apply -f -
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
 done
 ```
 
-### Generating Processed Manifests
+For hostPath volumes on chosen nodes, use [strimzi/local-disk/](strimzi/local-disk/) and its `strimzi-setup.sh` instead.
 
-For GitOps or review purposes, generate fully processed manifests:
+### Kafka monitored by AxonOps Cloud
 
 ```bash
-export $(grep -v '^#' config.env | xargs)
-
-# Generate single output file
-envsubst < input.yaml > processed-output.yaml
-
-# Or generate multiple files
-for f in *.yaml; do
-  envsubst < $f > processed/$f
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
 done
 ```
 
-### Selective Variable Substitution
+### Cassandra monitored by AxonOps Cloud
 
-To substitute only specific variables:
-
-```bash
-# Only substitute NAMESPACE and CLUSTER_NAME
-envsubst '$NAMESPACE $CLUSTER_NAME' < manifest.yaml | kubectl apply -f -
-```
-
----
-
-## Verification
-
-After deployment, verify all components are running:
+Install the [K8ssandra operator](K8SSANDRA_DEPLOYMENT.md#install-the-k8ssandra-operator), then:
 
 ```bash
-# Check all namespaces
-kubectl get pods -A | grep -E "axonops|kafka|k8ssandra|strimzi"
-
-# Check specific namespace
-kubectl get pods -n kafka
-kubectl get pods -n axonops
-kubectl get pods -n k8ssandra-operator
+cd examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
----
+For a self-hosted server, see the [K8ssandra example](k8ssandra/README.md#examples).
+
+## Rendering for review or GitOps
+
+`envsubst` writes to standard output, so any apply command becomes a render command:
+
+```bash
+envsubst < kafka-cluster.yaml > kafka-cluster.rendered.yaml
+```
+
+The scripts take `RENDER_ONLY=true` and write to a `generated/` directory, which git ignores. Rendered files can contain passwords and agent keys; do not commit them.
 
 ## Support
 
-- **AxonOps Documentation**: [https://docs.axonops.com](https://docs.axonops.com)
-- **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
-- **Strimzi Documentation**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
-- **K8ssandra Documentation**: [https://docs.k8ssandra.io/](https://docs.k8ssandra.io/)
-- **Apache Kafka Documentation**: [https://kafka.apache.org/documentation/](https://kafka.apache.org/documentation/)
-- **Apache Cassandra Documentation**: [https://cassandra.apache.org/doc/](https://cassandra.apache.org/doc/)
-
----
-
-**Last Updated:** 2026-02-13
+- [AxonOps documentation](https://docs.axonops.com)
+- [Strimzi documentation](https://strimzi.io/docs/operators/latest/)
+- [K8ssandra documentation](https://docs.k8ssandra.io/)
 
 ---
 
@@ -19123,480 +18776,103 @@ kubectl get pods -n k8ssandra-operator
 
 **English** | [Français](AXONOPS_DEPLOYMENT.fr.md) | [Español](AXONOPS_DEPLOYMENT.es.md) | [Galego](AXONOPS_DEPLOYMENT.gl.md)
 
-This guide covers deploying AxonOps monitoring and management services on Kubernetes.
+This guide installs a self-hosted AxonOps stack on Kubernetes with the script in [axonops/](axonops/). The [axonops/README.md](axonops/README.md) lists every setting.
 
-## Quick Start
+## Components
+
+| Component | Purpose |
+| --- | --- |
+| axondb-timeseries | Metrics store (Cassandra) |
+| axondb-search | Logs and events (OpenSearch) |
+| axon-server | Receives data from the agents and serves the API |
+| axon-dash | Web UI, with the `axon-reporting` sidecar for Reports v2 |
+
+All four are installed in one namespace, `AXONOPS_NAMESPACE` (default `axonops`), from the charts at `oci://ghcr.io/axonops/charts`. TLS on the databases is off by default, and so is cert-manager.
+
+## Quick start
 
 ```bash
-# Set the required passwords
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-password'
-
-# Deploy AxonOps services
+cd examples/axonops
+source axonops-config.env
+export AXON_SEARCH_PASSWORD="$(openssl rand -base64 24)"
+export AXON_SERVER_CQL_PASSWORD="$(openssl rand -base64 24)"
 ./axonops-setup.sh
 ```
 
-That's it! AxonOps services will be deployed and ready to monitor your Kafka clusters.
+The script writes the Helm values and the axon-server configuration Secret to `axonops/generated/`, installs each release with `helm upgrade --install --wait`, and prints how to reach the dashboard. Re-running it upgrades the releases in place. Keep the same passwords for every run.
 
----
+## Storage
 
-## Overview
+| Mode | Settings | Use |
+| --- | --- | --- |
+| PVC (default) | `AXON_TIMESERIES_STORAGE_CLASS`, `AXON_SEARCH_STORAGE_CLASS`, `AXON_*_VOLUME_SIZE` | Any cluster with a StorageClass |
+| hostPath | `AXON_TIMESERIES_USE_HOSTPATH=true`, `AXON_SEARCH_USE_HOSTPATH=true` | Single-node test clusters |
+| None | `AXON_*_PERSISTENCE_ENABLED=false` | Throwaway tests; data is lost with the pod |
 
-AxonOps provides comprehensive monitoring and management for Apache Kafka clusters. The deployment consists of four main components:
-
-- **axon-server** - Core monitoring and management server
-- **axondb-timeseries** - Time-series database for metrics storage
-- **axondb-search** - Search database for log aggregation and querying
-- **axon-dash** - Web-based dashboard for visualization
-
-## Prerequisites
-
-1. **Kubernetes Cluster** (single or multi-node)
-2. **Required Tools**:
-   - `kubectl` - Kubernetes CLI
-   - `helm` - Helm package manager v3.x or later
-3. **Namespace**: By default uses `axonops` namespace (auto-created)
-
-## Configuration
-
-### Required Configuration
-
-**CRITICAL**: Set the required passwords before deploying:
+For hostPath, create the directories on the node before running the script:
 
 ```bash
-export AXON_SEARCH_PASSWORD='YourSecurePasswordHere'
-export AXON_SERVER_CQL_PASSWORD='YourSecureCQLPasswordHere'
-```
-
-### Optional Configuration
-
-Customize the deployment by setting these environment variables:
-
-```bash
-# Namespace
-export NS_AXONOPS="axonops"           # Default namespace for AxonOps
-
-# AxonOps Server configuration
-export AXON_SERVER_AGENTS_PORT="1888"       # Port for Kafka agents (default: 1888)
-export AXON_SERVER_API_PORT="8080"          # API port (default: 8080)
-
-# Storage configuration
-export AXON_SEARCH_USE_HOSTPATH="false"     # Use hostPath for Search DB (default: false)
-export AXON_TIMESERIES_USE_HOSTPATH="false" # Use hostPath for Timeseries DB (default: false)
-
-# Storage sizes (for PVC mode)
-export AXON_TIMESERIES_VOLUME_SIZE="10Gi"   # Timeseries DB storage
-export AXON_SEARCH_VOLUME_SIZE="10Gi"       # Search DB storage
-
-# Dashboard access
-export AXON_DASH_INGRESS_ENABLED="false"    # Enable Ingress (default: false)
-export AXON_DASH_INGRESS_HOST=""            # Ingress hostname
-export AXON_DASH_NODEPORT_ENABLED="false"   # Enable NodePort (default: false)
-export AXON_DASH_NODEPORT_PORT=""           # NodePort port number
-
-export AXON_SEARCH_USER=admin
-export AXON_SEARCH_PASSWORD=secure-password-here-5o02GzIn+58JbgU437WI8QksSHE
-export AXON_SERVER_CQL_USERNAME=axonops
-export AXON_SERVER_CQL_PASSWORD=secure-password-here-4kaZo3tLV3zuBRsLN2Xtudn1qwc
-```
-
-### Storage Options
-
-AxonOps supports two storage modes for its databases:
-
-#### PVC Mode (Default - Recommended)
-
-Uses dynamic PersistentVolumeClaims with your cluster's default or specified storage class:
-
-```bash
-# Use default storage class
-./axonops-setup.sh
-
-# Or specify storage sizes
-export AXON_TIMESERIES_VOLUME_SIZE="50Gi"
-export AXON_SEARCH_VOLUME_SIZE="20Gi"
-./axonops-setup.sh
-```
-
-**Benefits:**
-- Works with any storage provider
-- Suitable for production environments
-- Supports multi-node clusters
-- Automatic volume management
-
-#### hostPath Mode (Single-Node Testing Only)
-
-Uses local directories on the Kubernetes node:
-
-```bash
-export AXON_SEARCH_USE_HOSTPATH="true"
-export AXON_TIMESERIES_USE_HOSTPATH="true"
-./axonops-setup.sh
-```
-
-**Limitations:**
-- Requires single-node cluster
-- Not suitable for production
-- Manual directory creation required
-
-If using hostPath mode, create directories on the node:
-
-```bash
-# On the Kubernetes node
 sudo mkdir -p /data/axon-timeseries /data/axon-search
 sudo chown -R 999:999 /data/axon-timeseries /data/axon-search
-sudo chmod -R 755 /data/axon-timeseries /data/axon-search
 ```
 
-## Deployment Steps
+## Dashboard access
 
-### Step 1: Set Required Passwords
+| Method | Settings | Address |
+| --- | --- | --- |
+| Port-forward (default) | none | `kubectl port-forward -n "$AXONOPS_NAMESPACE" svc/axon-dash-svc 3000:3000`, then <http://localhost:3000> |
+| NodePort | `AXON_DASH_NODEPORT_ENABLED=true` | `http://<node-ip>:<port>`; the script prints the port |
+| Ingress | `AXON_DASH_INGRESS_ENABLED=true`, `AXON_DASH_INGRESS_HOST`, `AXON_DASH_INGRESS_CLASS_NAME` | `https://<host>` |
+
+## Connecting Kafka and Cassandra
+
+Agents in the same cluster connect to:
+
+```text
+axon-server-agent.<AXONOPS_NAMESPACE>.svc.cluster.local:1888   (TLS disabled)
+```
+
+The [Strimzi on-premises](strimzi/on-premises/), [Strimzi local-disk](strimzi/local-disk/) and [K8ssandra](k8ssandra/README.md#examples) examples read `AXONOPS_NAMESPACE`, `AXON_SERVER_ORG_NAME` and `AXON_SERVER_AGENTS_PORT` from `axonops/axonops-config.env`. Source it before their own configuration file:
 
 ```bash
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
+source examples/axonops/axonops-config.env
+source examples/strimzi/on-premises/strimzi-config.env
 ```
 
-### Step 2: (Optional) Customize Configuration
+For agents outside the cluster, enable the gRPC Ingress with `AXON_SERVER_AGENT_INGRESS_ENABLED=true` and `AXON_SERVER_AGENT_INGRESS_HOST`, and point the agents at that host on port 443 with `AXON_AGENT_TLS_MODE=TLS`.
+
+## Verify
 
 ```bash
-# Example: Change namespace
-export NS_AXONOPS="monitoring"
-
-# Example: Use larger storage
-export AXON_TIMESERIES_VOLUME_SIZE="100Gi"
-export AXON_SEARCH_VOLUME_SIZE="50Gi"
+helm list -n "$AXONOPS_NAMESPACE"
+kubectl get pods,pvc -n "$AXONOPS_NAMESPACE"
+kubectl logs -n "$AXONOPS_NAMESPACE" deploy/axon-server --tail=50
 ```
 
-### Step 3: Run Deployment Script
+## Remove
 
 ```bash
-chmod +x axonops-setup.sh
-./axonops-setup.sh
+for r in axon-dash axon-server axondb-search axondb-timeseries; do
+  helm uninstall "$r" -n "$AXONOPS_NAMESPACE"
+done
+kubectl delete secret axon-server-config -n "$AXONOPS_NAMESPACE"
+kubectl delete pvc --all -n "$AXONOPS_NAMESPACE"   # deletes all AxonOps data
+kubectl delete namespace "$AXONOPS_NAMESPACE"
 ```
 
-The script will:
-1. Install cert-manager (if not already installed)
-2. Deploy AxonDB Timeseries database
-3. Deploy AxonDB Search database
-4. Deploy AxonOps Server
-5. Deploy AxonOps Dashboard
-6. Create `axonops-config.env` with connection details
-
-### Step 4: Wait for Services to be Ready
-
-```bash
-# Check pod status
-kubectl get pods -n axonops
-
-# Wait for all pods to be Running
-kubectl wait --for=condition=ready pod --all -n axonops --timeout=300s
-```
-
-## Accessing AxonOps Dashboard
-
-### Option 1: Port Forward (Quick Access)
-
-```bash
-kubectl port-forward -n axonops svc/axon-dash 3000:3000
-
-# Access at: http://localhost:3000
-```
-
-### Option 2: NodePort (External Access)
-
-Enable NodePort during deployment:
-
-```bash
-export AXON_DASH_NODEPORT_ENABLED="true"
-export AXON_DASH_NODEPORT_PORT="32000"
-./axonops-setup.sh
-
-# Access at: http://<node-ip>:32000
-```
-
-### Option 3: Ingress (Production)
-
-Enable Ingress during deployment:
-
-```bash
-export AXON_DASH_INGRESS_ENABLED="true"
-export AXON_DASH_INGRESS_HOST="axonops.yourdomain.com"
-./axonops-setup.sh
-
-# Access at: https://axonops.yourdomain.com
-```
-
-**Note:** Requires an Ingress controller installed in your cluster.
-
-## Integration with Kafka
-
-After deploying AxonOps, you can connect it to your Kafka clusters:
-
-### For New Strimzi Deployments
-
-```bash
-# Source the AxonOps configuration
-source axonops-config.env
-
-# Deploy Strimzi with AxonOps integration
-./strimzi-setup.sh
-```
-
-See [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md) for details.
-
-### For Existing Kafka Clusters
-
-Configure the AxonOps agent on your Kafka brokers using the connection details from `axonops-config.env`:
-
-```bash
-# Agent connection details
-AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-AXON_AGENT_SERVER_PORT=1888
-```
-
-## Verifying the Deployment
-
-### Check Component Status
-
-```bash
-# View all AxonOps pods
-kubectl get pods -n axonops
-
-# View all services
-kubectl get svc -n axonops
-
-# Check Helm releases
-helm list -n axonops
-```
-
-Expected output:
-- 4 Helm releases: `axon-server`, `axondb-timeseries`, `axondb-search`, `axon-dash`
-- All pods in Running state
-- Services with ClusterIP endpoints
-
-### Check Logs
-
-```bash
-# AxonOps Server logs
-kubectl logs -n axonops deployment/axon-server -f
-
-# Dashboard logs
-kubectl logs -n axonops deployment/axon-dash -f
-
-# Timeseries DB logs
-kubectl logs -n axonops statefulset/axondb-timeseries -f
-
-# Search DB logs
-kubectl logs -n axonops statefulset/axondb-search -f
-```
-
-### Test Dashboard Access
-
-```bash
-# Port-forward and open browser
-kubectl port-forward -n axonops svc/axon-dash 3000:3000
-
-# In another terminal or browser, navigate to:
-# http://localhost:3000
-```
-
-## Troubleshooting
-
-### Pods Stuck in Pending State
-
-**Check PersistentVolume Claims:**
-
-```bash
-kubectl get pvc -n axonops
-```
-
-**Possible causes:**
-- No storage class available
-- Insufficient storage capacity
-- For hostPath mode: directories not created or wrong permissions
-
-**Solutions:**
-
-```bash
-# Check available storage classes
-kubectl get storageclass
-
-# For hostPath mode, verify directories exist
-ssh <node> "ls -la /data/axon-timeseries /data/axon-search"
-
-# Check pod events
-kubectl describe pod <pod-name> -n axonops
-```
-
-### Search Database Connection Issues
-
-**Symptom:** AxonOps Server can't connect to Search database
-
-**Check password configuration:**
-
-```bash
-# Verify secret exists
-kubectl get secret axon-server-config -n axonops
-
-# Check server configuration
-kubectl get secret axon-server-config -n axonops -o jsonpath='{.data.axon-server\.yml}' | base64 -d
-```
-
-**Solution:**
-
-```bash
-# Recreate the secret with correct password
-kubectl delete secret axon-server-config -n axonops
-export AXON_SEARCH_PASSWORD='your-password'
-export AXON_SERVER_CQL_PASSWORD='your-cql-password'
-./axonops-setup.sh
-```
-
-### Dashboard Not Accessible
-
-**Check service type:**
-
-```bash
-kubectl get svc axon-dash -n axonops
-```
-
-**If using NodePort, verify port is accessible:**
-
-```bash
-# Check firewall rules
-# Ensure node port is open in security groups/firewall
-
-# Test connectivity
-curl http://<node-ip>:<nodeport>
-```
-
-**If using Ingress, verify Ingress configuration:**
-
-```bash
-kubectl get ingress -n axonops
-kubectl describe ingress axon-dash -n axonops
-```
-
-### Certificate Issues
-
-**Check cert-manager status:**
-
-```bash
-kubectl get pods -n cert-manager
-kubectl get clusterissuer
-```
-
-**View certificate status:**
-
-```bash
-kubectl get certificate -n axonops
-kubectl describe certificate -n axonops
-```
-
-## Configuration Reference
-
-### Generated Configuration File
-
-After deployment, `axonops-config.env` is created with these variables:
-
-```bash
-NS_AXONOPS=axonops
-AXON_SERVER_AGENTS_PORT=1888
-AXON_SERVER_API_PORT=8080
-AXON_SERVER_ORG_NAME=example
-```
-
-Source this file before deploying Kafka to enable automatic integration.
-
-### Helm Chart Versions
-
-The script uses specific chart versions:
-
-- **axondb-timeseries**: Latest from AxonOps repository
-- **axondb-search**: Latest from AxonOps repository
-- **axon-server**: Latest from AxonOps repository
-- **axon-dash**: Latest from AxonOps repository
-
-## Cleanup
-
-### Remove AxonOps Services
-
-```bash
-# Uninstall Helm releases
-helm uninstall -n axonops axon-dash
-helm uninstall -n axonops axon-server
-helm uninstall -n axonops axondb-search
-helm uninstall -n axonops axondb-timeseries
-
-# Delete namespace
-kubectl delete namespace axonops
-```
-
-### Remove Data (CAUTION: Deletes all data)
-
-For hostPath storage:
-
-```bash
-# On the Kubernetes node
-sudo rm -rf /data/axon-timeseries
-sudo rm -rf /data/axon-search
-```
-
-For PVC storage, delete PVCs:
-
-```bash
-kubectl delete pvc -n axonops --all
-```
-
-### Remove cert-manager (Optional)
-
-Only if not used by other services:
-
-```bash
-helm uninstall -n cert-manager cert-manager
-kubectl delete namespace cert-manager
-```
-
-## Production Considerations
-
-For production deployments:
-
-1. **Storage**: Use distributed storage with proper backup and disaster recovery
-2. **High Availability**: Consider deploying multiple replicas (requires Helm chart customization)
-3. **Security**:
-   - Use strong passwords
-   - Enable TLS for all components
-   - Configure proper RBAC
-   - Use network policies
-4. **Monitoring**: Monitor AxonOps components themselves
-5. **Resource Limits**: Set appropriate CPU and memory limits
-6. **Backup**: Regular backups of Search and Timeseries databases
-7. **Access Control**: Use Ingress with authentication/authorization
-
-## Example Configurations
-
-Ready-to-use configurations are available in the [axonops/](axonops/) directory:
-
-- `axonops-config.env` - Environment variables
-- `axonops-setup.sh` - Automated deployment script
-- `axonops-server-secret.yaml` - Server configuration example
-- Helm values files for each component
-
-## Additional Resources
-
-- **AxonOps Documentation**: [https://docs.axonops.com](https://docs.axonops.com)
-- **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
-- **Strimzi Kafka Integration**: [STRIMZI_DEPLOYMENT.md](STRIMZI_DEPLOYMENT.md)
-- **K8ssandra Cassandra Integration**: [K8SSANDRA_DEPLOYMENT.md](K8SSANDRA_DEPLOYMENT.md)
-- **Strimzi Cloud Examples**: [strimzi/cloud/](strimzi/cloud/) - Ready-to-use Kubernetes manifests
-- **K8ssandra Examples**: [k8ssandra/](k8ssandra/) - Cassandra cluster examples
-- **Helm Charts**: AxonOps Helm repository
-- **Support**: Contact AxonOps support for production deployments
-
----
-
-**Last Updated:** 2026-02-13
+## Production notes
+
+- Use a StorageClass with backups and size the volumes for your retention.
+- Set a licence key with `AXON_SERVER_LICENSE_KEY`.
+- To turn on TLS between axon-server and the databases, set `AXON_TIMESERIES_TLS_ENABLED=true` and `AXON_SEARCH_TLS_ENABLED=true`. The certificates come from cert-manager (`CERT_MANAGER_INSTALL=true` installs it) or from your own Secrets; see [axonops/README.md](axonops/README.md#tls).
+- Store the generated passwords in a secrets manager; `axonops/generated/` holds them in plain text.
+- The [AxonOps meta-chart](../axonops/charts/axonops/README.md) installs the same stack as a single Helm release, which suits GitOps tools better than a script.
+
+## Related
+
+- [axonops/README.md](axonops/README.md): every setting of the script
+- [Deployment guide](DEPLOYMENT_GUIDE.md)
+- [AxonOps documentation](https://docs.axonops.com)
 
 ---
 
@@ -19606,384 +18882,89 @@ Ready-to-use configurations are available in the [axonops/](axonops/) directory:
 
 **English** | [Français](K8SSANDRA_DEPLOYMENT.fr.md) | [Español](K8SSANDRA_DEPLOYMENT.es.md) | [Galego](K8SSANDRA_DEPLOYMENT.gl.md)
 
-This guide covers deploying Apache Cassandra using the K8ssandra operator on Kubernetes, with optional AxonOps monitoring integration.
+This guide deploys Apache Cassandra with the K8ssandra operator and the AxonOps Cassandra image, which runs the AxonOps agent next to Cassandra. The manifests and every setting are in [k8ssandra/](k8ssandra/README.md).
 
-## Quick Start
+## Install the K8ssandra operator
+
+The operator needs cert-manager. Install both once per Kubernetes cluster:
 
 ```bash
-# 1. Install K8ssandra operator
+helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --version v1.19.1 \
+  --namespace cert-manager --create-namespace \
+  --set crds.enabled=true --wait
+
+export K8SSANDRA_OPERATOR_NAMESPACE=k8ssandra-operator
 helm repo add k8ssandra https://helm.k8ssandra.io/stable
 helm repo update
-helm install k8ssandra-operator k8ssandra/k8ssandra-operator -n k8ssandra-operator --create-namespace
+helm upgrade --install k8ssandra-operator k8ssandra/k8ssandra-operator \
+  --version 1.29.0 \
+  --namespace "$K8SSANDRA_OPERATOR_NAMESPACE" --create-namespace \
+  --wait
+```
 
-# 2. Configure and deploy cluster
-cd k8ssandra/
-export $(grep -v '^#' k8ssandra-config.env | xargs)
+Installed like this, the operator only manages clusters in its own namespace, which is the example default. To deploy clusters in other namespaces, add `--set global.clusterScoped=true`.
+
+## Deploy a cluster
+
+```bash
+cd examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
 envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+kubectl wait k8ssandracluster/"$K8SSANDRA_CLUSTER_NAME" -n "$K8SSANDRA_NAMESPACE" \
+  --for=condition=CassandraInitialized --timeout=20m
 ```
 
----
+Apply the Secret first: the Cassandra container reads the agent settings from it.
 
-## Overview
+## AxonOps target
 
-K8ssandra is a production-ready platform for running Apache Cassandra on Kubernetes. This deployment uses:
+| Target | Settings |
+| --- | --- |
+| AxonOps Cloud (default) | `AXON_AGENT_ORG`, `AXON_AGENT_KEY`; server `agents.axonops.cloud:443`, TLS |
+| Self-hosted AxonOps | `AXON_AGENT_SERVER_HOST=axon-server-agent.$AXONOPS_NAMESPACE.svc.cluster.local`, `AXON_AGENT_SERVER_PORT=1888`, `AXON_AGENT_TLS_MODE=disabled` |
 
-- **K8ssandra Operator** - Kubernetes operator for managing Cassandra clusters
-- **AxonOps Images** - Cassandra images with embedded AxonOps agent
-- **AxonOps Cloud** - Optional monitoring and management integration
+For a self-hosted server installed from [axonops/](axonops/), source `axonops/axonops-config.env` first and follow the [self-hosted example](k8ssandra/README.md#examples).
 
-### Features
+## Image versions
 
-- Automated deployment and scaling
-- Rolling upgrades and repairs
-- Backup and restore capabilities
-- AxonOps monitoring integration
+`IMAGE_NAME` must match `CASSANDRA_VERSION`. Tags read `<cassandra>-v<k8ssandra api>-<image>`, for example `5.0.9-v0.1.125-1.6.3`. Published tags are listed in [VERSIONS.md](../VERSIONS.md) and the [K8ssandra image README](../k8ssandra/README.md).
 
-## Prerequisites
+## Scaling
 
-1. **Kubernetes Cluster** (v1.21+)
-   - Single-node or multi-node supported
-2. **Required Tools**:
-   - `kubectl` - Kubernetes CLI
-   - `helm` - Helm package manager v3.x
-   - `envsubst` - Variable substitution (part of `gettext` package)
-3. **Storage**: PersistentVolume support or local-path provisioner
-4. **Optional**: AxonOps account for monitoring integration
-
-## Installing K8ssandra Operator
-
-### Step 1: Add Helm Repository
+Change `CASSANDRA_DC_SIZE` and apply the manifest again:
 
 ```bash
-helm repo add k8ssandra https://helm.k8ssandra.io/stable
-helm repo update
-```
-
-### Step 2: Install the Operator
-
-```bash
-# Create namespace and install operator
-helm install k8ssandra-operator k8ssandra/k8ssandra-operator \
-  -n k8ssandra-operator \
-  --create-namespace
-```
-
-### Step 3: Verify Installation
-
-```bash
-# Check operator pods
-kubectl get pods -n k8ssandra-operator
-
-# Wait for operator to be ready
-kubectl wait --for=condition=ready pod \
-  -l app.kubernetes.io/name=k8ssandra-operator \
-  -n k8ssandra-operator \
-  --timeout=300s
-```
-
-Expected output:
-
-```text
-NAME                                                READY   STATUS    RESTARTS   AGE
-k8ssandra-operator-xxxxxxx-xxxxx                    1/1     Running   0          1m
-k8ssandra-operator-cass-operator-xxxxxxx-xxxxx      1/1     Running   0          1m
-```
-
-## Configuration
-
-### Environment Variables
-
-Create or edit `k8ssandra/k8ssandra-config.env`:
-
-```bash
-# K8ssandra Cluster Configuration
-K8SSANDRA_CLUSTER_NAME=axonops-k8ssandra
-K8SSANDRA_NAMESPACE=k8ssandra-operator
-CASSANDRA_VERSION=5.0.9
-CASSANDRA_DC_NAME=dc1
-CASSANDRA_DC_SIZE=3
-
-# AxonOps Container Image
-IMAGE_NAME=ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3
-
-# Storage Configuration
-STORAGE_CLASS=local-path
-STORAGE_SIZE=10Gi
-
-# Resource Limits
-CPU_LIMIT=2
-CPU_REQUEST=1
-MEMORY_LIMIT=4Gi
-MEMORY_REQUEST=2Gi
-HEAP_SIZE=1G
-
-# AxonOps Agent Configuration (for AxonOps Cloud)
-AXON_AGENT_KEY=your-agent-key
-AXON_AGENT_ORG=your-organization
-AXON_AGENT_SERVER_HOST=agents.axonops.cloud
-AXON_AGENT_SERVER_PORT=443
-```
-
-### Configuration Variables Reference
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra` | Name of the Cassandra cluster |
-| `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
-| `CASSANDRA_VERSION` | `5.0.9` | Cassandra version |
-| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps Cassandra image |
-| `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
-| `CASSANDRA_DC_SIZE` | `3` | Number of Cassandra nodes |
-| `STORAGE_CLASS` | `local-path` | Kubernetes StorageClass |
-| `STORAGE_SIZE` | `10Gi` | Storage per node |
-| `AXON_AGENT_KEY` | - | AxonOps API key |
-| `AXON_AGENT_ORG` | - | AxonOps organization name |
-| `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server hostname |
-| `AXON_AGENT_SERVER_PORT` | `443` | AxonOps server port |
-
-## Deployment
-
-### Using envsubst
-
-The example manifests use environment variable placeholders. Use `envsubst` to substitute values before applying:
-
-```bash
-cd k8ssandra/
-
-# 1. Source configuration
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-
-# 2. Apply cluster manifest with variable substitution
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
-```
-
-### Manual Deployment
-
-Alternatively, edit the YAML file directly and apply:
-
-```bash
-# Edit the manifest
-vi k8ssandra/cluster-axonops-ubi.yaml
-
-# Apply directly
-kubectl apply -f k8ssandra/cluster-axonops-ubi.yaml
-```
-
-### Wait for Cluster to be Ready
-
-```bash
-# Watch cluster status
-kubectl get k8ssandraclusters -n k8ssandra-operator -w
-
-# Check pods
-kubectl get pods -n k8ssandra-operator -l cassandra.datastax.com/cluster=$K8SSANDRA_CLUSTER_NAME
-
-# View cluster details
-kubectl describe k8ssandracluster $K8SSANDRA_CLUSTER_NAME -n k8ssandra-operator
-```
-
-## Verifying the Deployment
-
-### Check Cluster Status
-
-```bash
-# View K8ssandraCluster resource
-kubectl get k8ssandraclusters -n k8ssandra-operator
-
-# View CassandraDatacenter
-kubectl get cassandradatacenters -n k8ssandra-operator
-
-# View all pods
-kubectl get pods -n k8ssandra-operator -o wide
-```
-
-### Test Cassandra Connectivity
-
-```bash
-# Get a shell in a Cassandra pod
-kubectl exec -it ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator -- cqlsh
-
-# Run a simple query
-cqlsh> SELECT cluster_name, listen_address FROM system.local;
-cqlsh> DESCRIBE KEYSPACES;
-```
-
-### Check AxonOps Integration
-
-If using AxonOps Cloud:
-
-```bash
-# Check agent logs
-kubectl logs ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator | grep -i axon
-
-# Verify agent environment variables
-kubectl exec ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator -- env | grep AXON
-```
-
-Then check the AxonOps dashboard at [https://console.axonops.cloud](https://console.axonops.cloud) to verify your cluster appears.
-
-## AxonOps Integration Options
-
-### Option 1: AxonOps Cloud (SaaS)
-
-Use AxonOps Cloud for managed monitoring:
-
-1. Sign up at [https://axonops.cloud](https://axonops.cloud)
-2. Create an organization and get your API key
-3. Configure the agent environment variables in `k8ssandra-config.env`:
-
-```bash
-AXON_AGENT_KEY=your-api-key
-AXON_AGENT_ORG=your-organization
-AXON_AGENT_SERVER_HOST=agents.axonops.cloud
-AXON_AGENT_SERVER_PORT=443
-```
-
-### Option 2: Self-Hosted AxonOps
-
-Deploy AxonOps on-premises first, then configure Cassandra to connect:
-
-```bash
-# Deploy AxonOps (see AXONOPS_DEPLOYMENT.md)
-cd ../axonops/
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
-./axonops-setup.sh
-source axonops-config.env
-
-# Configure K8ssandra to use self-hosted AxonOps
-export AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-export AXON_AGENT_SERVER_PORT=1888
-export AXON_AGENT_ORG=$AXON_SERVER_ORG_NAME
-
-# Deploy K8ssandra
-cd ../k8ssandra/
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
-```
-
-## Scaling the Cluster
-
-### Add Nodes
-
-```bash
-# Edit the datacenter size
-kubectl patch k8ssandracluster $K8SSANDRA_CLUSTER_NAME \
-  -n k8ssandra-operator \
-  --type='json' \
-  -p='[{"op": "replace", "path": "/spec/cassandra/datacenters/0/size", "value": 5}]'
-
-# Or edit the manifest and reapply
 export CASSANDRA_DC_SIZE=5
 envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
-### Remove Nodes
-
-Scale down carefully to avoid data loss:
-
-```bash
-# Decommission nodes first, then reduce size
-kubectl patch k8ssandracluster $K8SSANDRA_CLUSTER_NAME \
-  -n k8ssandra-operator \
-  --type='json' \
-  -p='[{"op": "replace", "path": "/spec/cassandra/datacenters/0/size", "value": 3}]'
-```
+When scaling down, the operator decommissions the removed nodes one at a time. Make sure the remaining nodes have room for their data first.
 
 ## Troubleshooting
 
-### Pods Stuck in Pending
+| Symptom | Check |
+| --- | --- |
+| Pod `CreateContainerConfigError` | The agent Secret is missing: `kubectl get secret "$K8SSANDRA_CLUSTER_NAME-axonops-agent" -n "$K8SSANDRA_NAMESPACE"` |
+| Pods `Pending` | `kubectl get pvc -n "$K8SSANDRA_NAMESPACE"`; set `STORAGE_CLASS` if there is no default StorageClass |
+| Nothing created after apply | The cluster namespace differs from the operator namespace and the operator is not cluster-scoped |
+| Cluster missing in AxonOps | `kubectl logs <pod> -c cassandra \| grep -i axon` for connection errors; check host, port, TLS mode and key |
 
-```bash
-# Check PVC status
-kubectl get pvc -n k8ssandra-operator
+## Production notes
 
-# Check events
-kubectl get events -n k8ssandra-operator --sort-by='.lastTimestamp'
+- Give each node at least 4 CPU and 8 GiB of memory, and raise `HEAP_SIZE` with it.
+- Use fast SSD-backed StorageClasses.
+- Use replication factor 3 for application keyspaces.
+- Configure backups, for example with K8ssandra Medusa.
 
-# Verify storage class exists
-kubectl get storageclass
-```
+## Related
 
-### Cassandra Not Starting
-
-```bash
-# Check pod logs
-kubectl logs ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator
-
-# Check init container logs
-kubectl logs ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator -c server-config-init
-
-# Describe pod for events
-kubectl describe pod ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator
-```
-
-### AxonOps Agent Not Connecting
-
-```bash
-# Verify environment variables
-kubectl exec ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator -- env | grep AXON
-
-# Test network connectivity to AxonOps
-kubectl exec ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator -- nc -zv $AXON_AGENT_SERVER_HOST $AXON_AGENT_SERVER_PORT
-
-# Check agent logs
-kubectl logs ${K8SSANDRA_CLUSTER_NAME}-${CASSANDRA_DC_NAME}-default-sts-0 \
-  -n k8ssandra-operator | grep -i "axon\|agent"
-```
-
-## Cleanup
-
-### Remove Cassandra Cluster
-
-```bash
-# Delete the K8ssandraCluster
-kubectl delete k8ssandracluster $K8SSANDRA_CLUSTER_NAME -n k8ssandra-operator
-
-# Delete PVCs (WARNING: deletes all data)
-kubectl delete pvc -l cassandra.datastax.com/cluster=$K8SSANDRA_CLUSTER_NAME \
-  -n k8ssandra-operator
-```
-
-### Remove K8ssandra Operator
-
-```bash
-# Uninstall operator
-helm uninstall k8ssandra-operator -n k8ssandra-operator
-
-# Delete namespace
-kubectl delete namespace k8ssandra-operator
-```
-
-## Production Considerations
-
-1. **Storage**: Use high-performance SSDs with appropriate IOPS
-2. **Resources**: Allocate sufficient CPU and memory (recommend 4+ cores, 8GB+ RAM per node)
-3. **Replication**: Use replication factor of 3 for production
-4. **Backup**: Configure Medusa for automated backups
-5. **Monitoring**: Use AxonOps for comprehensive monitoring and alerting
-6. **Security**: Enable TLS encryption and authentication
-7. **Network**: Use dedicated network for inter-node communication
-
-## Additional Resources
-
-- **K8ssandra Documentation**: [https://docs.k8ssandra.io/](https://docs.k8ssandra.io/)
-- **K8ssandra GitHub**: [https://github.com/k8ssandra/k8ssandra](https://github.com/k8ssandra/k8ssandra)
-- **AxonOps Documentation**: [https://docs.axonops.com](https://docs.axonops.com)
-- **AxonOps Agent Setup**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
-- **Apache Cassandra Documentation**: [https://cassandra.apache.org/doc/](https://cassandra.apache.org/doc/)
-- **Example Manifests**: [k8ssandra/](k8ssandra/)
-
----
-
-**Last Updated:** 2026-02-13
+- [k8ssandra/README.md](k8ssandra/README.md): files and every setting
+- [AxonOps K8ssandra image](../k8ssandra/README.md)
+- [K8ssandra documentation](https://docs.k8ssandra.io/)
 
 ---
 
@@ -19993,1595 +18974,916 @@ kubectl delete namespace k8ssandra-operator
 
 **English** | [Français](STRIMZI_DEPLOYMENT.fr.md) | [Español](STRIMZI_DEPLOYMENT.es.md) | [Galego](STRIMZI_DEPLOYMENT.gl.md)
 
-This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
+This guide deploys Apache Kafka with the Strimzi operator and the AxonOps Kafka image, which runs the AxonOps agent in every Kafka container.
 
-## Quick Start
+## Choose an example
 
-### Step 1: Install Strimzi Operator
+| Example | Storage | AxonOps target | Deployment |
+| --- | --- | --- | --- |
+| [strimzi/cloud/](strimzi/cloud/) | PVCs from a StorageClass | AxonOps Cloud | `envsubst` and `kubectl apply` |
+| [strimzi/on-premises/](strimzi/on-premises/) | PVCs from a StorageClass | Self-hosted AxonOps | `envsubst` and `kubectl apply` |
+| [strimzi/local-disk/](strimzi/local-disk/) | hostPath PVs pinned to nodes | Self-hosted AxonOps | `strimzi-setup.sh` |
 
-Before deploying Kafka clusters, install the Strimzi operator using Helm.
+The three share the same resources and variable names:
 
-**Important:** Check the [Strimzi downloads page](https://strimzi.io/downloads/) to verify which Strimzi version supports your desired Kafka version. The support matrix shows compatible Kafka versions for each Strimzi release.
+| Resource | Name |
+| --- | --- |
+| Kafka | `$STRIMZI_CLUSTER_NAME` (default `my-cluster`) in `$KAFKA_NAMESPACE` (default `kafka`) |
+| KafkaNodePools | `controller` and `broker` |
+| Agent Secret | `$STRIMZI_CLUSTER_NAME-axonops-agent`, read by every Kafka container |
+| Bootstrap Service | `$STRIMZI_CLUSTER_NAME-kafka-bootstrap:9092` (plain), `:9093` (TLS) |
+
+## Install the Strimzi operator
+
+Install it once per Kubernetes cluster. The examples need an operator that watches the Kafka namespace; `watchAnyNamespace=true` covers any namespace.
 
 ```bash
-# Add Strimzi Helm repository
-helm repo add strimzi https://strimzi.io/charts/
-helm repo update
-
-# Create namespaces
-kubectl create namespace strimzi
-kubectl create namespace kafka
-
-# Check available versions
-helm search repo strimzi --versions
-
-# Install the operator (specify version based on support matrix)
-# Example: Strimzi 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0
-helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  -n strimzi \
+export STRIMZI_OPERATOR_NAMESPACE=strimzi
+helm upgrade --install strimzi-kafka-operator \
+  oci://quay.io/strimzi-helm/strimzi-kafka-operator \
   --version 1.1.0 \
-  --set watchNamespaces="{kafka}" \
+  --namespace "$STRIMZI_OPERATOR_NAMESPACE" --create-namespace \
+  --set watchAnyNamespace=true \
   --wait
-
-# Verify installation
-kubectl get pods -n strimzi
-kubectl get crd | grep strimzi
+kubectl get pods -n "$STRIMZI_OPERATOR_NAMESPACE"
 ```
 
-### Step 2: Deploy Kafka Cluster
+To limit the operator to one namespace, replace `watchAnyNamespace=true` with `--set "watchNamespaces={$KAFKA_NAMESPACE}"` and create that namespace first.
 
-Choose one of the deployment examples based on your use case. Each example includes its own README with detailed deployment instructions:
+`strimzi/local-disk/strimzi-setup.sh` runs this step itself when the Strimzi CRDs are missing.
 
-| Directory | Use Case | Description |
-| --- | --- | --- |
-| [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, cloud storage |
-| [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
+## Deploy
 
-Each example directory contains:
+Follow the README of the chosen example. For [strimzi/cloud/](strimzi/cloud/):
 
-- `README.md` - Complete deployment instructions
-- `strimzi-config.env` - Configuration variables
-- YAML manifests for all Kafka cluster components
+```bash
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
 
-### Step 3: Add AxonOps Monitoring (Optional)
+## Version compatibility
 
-See [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) for deploying AxonOps monitoring. The Strimzi example manifests include AxonOps agent configuration variables.
+`KAFKA_VERSION` must be supported by the operator, and `KAFKA_CONTAINER_IMAGE` must be built for both. AxonOps image tags read `<strimzi>-<kafka>-<agent>-<image>`, so `1.1.0-4.3.0-2.0.32-0.1.28` is Strimzi 1.1.0 with Kafka 4.3.0. Published tags are listed in [VERSIONS.md](../VERSIONS.md).
 
----
-
-## Strimzi Version Compatibility
-
-Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before installation to ensure compatibility:
-
-| Strimzi Version | Supported Kafka Versions | Kubernetes Versions |
+| Strimzi | Kafka | Kubernetes |
 | --- | --- | --- |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | 1.27+ |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | 1.27+ |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | 1.26+ |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
-| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
-| 0.47.0 | 3.9.0, 3.9.1 | 1.25+ |
 
-*Note: This table is for reference only. Always verify current compatibility at [strimzi.io/downloads](https://strimzi.io/downloads/).*
+The examples use the `kafka.strimzi.io/v1` API, available from Strimzi 0.49. Check the [Strimzi downloads page](https://strimzi.io/downloads/) for the current matrix.
 
-## Additional Resources
+## Related
 
-- **Strimzi Documentation**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
-- **Strimzi GitHub**: [https://github.com/strimzi/strimzi-kafka-operator](https://github.com/strimzi/strimzi-kafka-operator)
-- **Node Selector Guide**: [NODE_SELECTOR_GUIDE.md](NODE_SELECTOR_GUIDE.md)
-
----
-
-**Last Updated:** 2026-02-13
+- [Node selector guide](NODE_SELECTOR_GUIDE.md) for `strimzi/local-disk/`
+- [AxonOps Kafka image](../strimzi/README.md)
+- [AxonOps deployment guide](AXONOPS_DEPLOYMENT.md)
+- [Strimzi documentation](https://strimzi.io/docs/operators/latest/)
 
 ---
 
 # Source: examples/NODE_SELECTOR_GUIDE.md
 
-# Strimzi Node Selector Configuration Guide
+# Strimzi Node Selector Guide
 
 **English** | [Français](NODE_SELECTOR_GUIDE.fr.md) | [Español](NODE_SELECTOR_GUIDE.es.md) | [Galego](NODE_SELECTOR_GUIDE.gl.md)
 
-## Overview
+This guide covers volume placement for the [strimzi/local-disk/](strimzi/local-disk/) example, where Kafka data lives in hostPath directories on chosen nodes. Use it to put brokers on nodes with fast disks, keep controllers off busy nodes, or spread replicas across racks. The [strimzi/cloud/](strimzi/cloud/) and [strimzi/on-premises/](strimzi/on-premises/) examples use dynamically provisioned volumes and do not need it.
 
-This guide explains how to use the Strimzi deployment script to pin Kafka brokers and controllers to specific Kubernetes nodes. This is essential when you need to:
+## How placement works
 
-- Ensure data locality for performance
-- Pin components to nodes with specific hardware (NVMe, high memory, etc.)
-- Distribute brokers across availability zones
-- Control storage placement for persistent volumes
+`strimzi-setup.sh` creates one PersistentVolume per replica, named `<cluster>-controller-<n>` or `<cluster>-broker-<n>`, each with a node affinity for one node. Each node pool claims only the volumes labelled for that pool. Because the StorageClass binds on first use, the scheduler places each pod on a node that still has a free volume of its pool, and the pod stays on that node afterwards.
 
-**Key Features:**
-- Automatic node affinity configuration for hostPath storage
-- Support for both single-node and multi-node deployments
-- Flexible replica-to-node mapping
-- Pre-deployment validation of node availability
-- Post-deployment verification of pod placement
+The volume index `<n>` is not the Kafka node id. Strimzi numbers pods across both pools, so `my-cluster-broker-3` can use volume `my-cluster-broker-0`. Plan nodes per pool, not per pod name.
 
-## Quick Start
+## Settings
 
-### Single Node Deployment
+| Variable | Default | Description |
+| --- | --- | --- |
+| `KAFKA_CONTROLLER_NODE_SELECTORS` | empty | Controller volumes, `<index>:<node>,...` |
+| `KAFKA_BROKER_NODE_SELECTORS` | empty | Broker volumes, `<index>:<node>,...` |
+| `STRIMZI_NODE_HOSTNAME` | empty | Node for every volume without a mapping. Found automatically on a single-node cluster. |
+| `STRIMZI_CONTROLLER_REPLICAS` / `STRIMZI_BROKER_REPLICAS` | `3` / `3` | Number of volumes per pool |
+| `STRIMZI_HOST_BASE_DIR` | `/data/strimzi` | Parent directory on the nodes |
+
+The index can be written as `0`, `broker-0`, `controller-0` or `ctrl-0`. The script stops when an index is out of range, a pair has no node, a node does not exist, or a volume has no node.
+
+Node names must match `kubectl get nodes` exactly.
+
+## Layouts
+
+All on one node:
 
 ```bash
-# Default behavior - all components on one node
-export STRIMZI_NODE_HOSTNAME='your-node-name'
+export STRIMZI_NODE_HOSTNAME=worker-1
 ./strimzi-setup.sh
 ```
 
-### Multi-Node Deployment
+One controller and one broker per node:
 
 ```bash
-# Distribute brokers across nodes
-export KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1,broker-1:worker-2,broker-2:worker-3"
-
-# Keep controllers together on one node
-export KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,ctrl-1:control-1,ctrl-2:control-1"
-
-# Run the deployment
-./strimzi-setup.sh
-```
-
-That's it! The script will:
-- Validate all specified nodes exist and are ready
-- Create PersistentVolumes with node affinity (for hostPath mode)
-- Inject node affinity into KafkaNodePools automatically
-- Verify pod placement after deployment
-
-## Configuration Options
-
-### Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `KAFKA_BROKER_NODE_SELECTORS` | Comma-separated broker:node pairs | `"broker-0:node1,broker-1:node2"` |
-| `KAFKA_CONTROLLER_NODE_SELECTORS` | Comma-separated controller:node pairs | `"controller-0:node1,controller-1:node2"` |
-| `KAFKA_BROKER_REPLICAS` | Number of broker replicas | `3` |
-| `KAFKA_CONTROLLER_REPLICAS` | Number of controller replicas | `3` |
-| `STRIMZI_NODE_HOSTNAME` | Default node when selectors not specified | `"worker-1"` |
-| `STORAGE_MODE` | Storage mode: `hostPath` or `pvc` | `"hostPath"` |
-
-### Selector Format
-
-Node selectors use the format: `replica-id:node-name`
-
-- **Replica ID**: Can be in multiple formats:
-  - Full broker name: `broker-0`, `broker-1`, etc.
-  - Full controller name: `controller-0`, `controller-1`, etc.
-  - Short controller name: `ctrl-0`, `ctrl-1`, etc.
-  - Number only: `0`, `1`, `2`, etc.
-- **Node Name**: Must be exact Kubernetes node name
-
-Examples:
-```bash
-# Broker formats (all equivalent for broker 0)
-KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1"
-KAFKA_BROKER_NODE_SELECTORS="0:worker-1"
-
-# Controller formats (all equivalent for controller 0)
-KAFKA_CONTROLLER_NODE_SELECTORS="controller-0:control-1"
-KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1"
-KAFKA_CONTROLLER_NODE_SELECTORS="0:control-1"
-
-# Mixed formats work too
-KAFKA_BROKER_NODE_SELECTORS="broker-0:worker-1,1:worker-2,broker-2:worker-3"
-KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,controller-1:control-1,2:control-1"
-```
-
-## Deployment Scenarios
-
-### Scenario 1: All Components on Single Node
-
-```bash
-# Explicitly set all to same node
-export KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-1,2:worker-1"
-export KAFKA_CONTROLLER_NODE_SELECTORS="0:worker-1,1:worker-1,2:worker-1"
-
-# Or use default behavior (simpler and recommended)
-export STRIMZI_NODE_HOSTNAME="worker-1"
-unset KAFKA_BROKER_NODE_SELECTORS
-unset KAFKA_CONTROLLER_NODE_SELECTORS
-
-./strimzi-setup.sh
-```
-
-### Scenario 2: Distributed Brokers, Co-located Controllers
-
-```bash
-# Brokers across different nodes for better throughput
+export KAFKA_CONTROLLER_NODE_SELECTORS="0:worker-1,1:worker-2,2:worker-3"
 export KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-2,2:worker-3"
-
-# Controllers on a single control node for better coordination
-export KAFKA_CONTROLLER_NODE_SELECTORS="ctrl-0:control-1,ctrl-1:control-1,ctrl-2:control-1"
-
 ./strimzi-setup.sh
 ```
 
-### Scenario 3: High Availability Across Zones
+Brokers on NVMe nodes, controllers on general nodes:
 
 ```bash
-# Distribute across availability zones
-export KAFKA_BROKER_NODE_SELECTORS="0:az1-node1,1:az2-node1,2:az3-node1"
-export KAFKA_CONTROLLER_NODE_SELECTORS="0:az1-node2,1:az2-node2,2:az3-node2"
-
+export KAFKA_BROKER_NODE_SELECTORS="0:nvme-1,1:nvme-2,2:nvme-3"
+export KAFKA_CONTROLLER_NODE_SELECTORS="0:general-1,1:general-2,2:general-3"
 ./strimzi-setup.sh
 ```
 
-### Scenario 4: Storage-Optimized Placement
+One broker pinned, the rest on a default node:
 
 ```bash
-# Pin to nodes with NVMe storage for better performance
-export KAFKA_BROKER_NODE_SELECTORS="0:nvme-node-1,1:nvme-node-2,2:nvme-node-3"
-
-# Controllers on standard nodes (less I/O intensive)
-export KAFKA_CONTROLLER_NODE_SELECTORS="0:standard-node-1,1:standard-node-1,2:standard-node-1"
-
+export KAFKA_BROKER_NODE_SELECTORS="0:nvme-1"
+export STRIMZI_NODE_HOSTNAME=worker-1
 ./strimzi-setup.sh
 ```
 
-### Scenario 5: Partial Node Selectors
+Keep the three controllers on three different nodes in production: the KRaft quorum survives the loss of one node only if no two controllers share it.
+
+## Preparing the nodes
+
+Run the script with `RENDER_ONLY=true` first. It prints the directories each node needs:
 
 ```bash
-# Only specify some replicas, others use default
-export KAFKA_BROKER_NODE_SELECTORS="0:special-node-1"  # Only broker-0 pinned
-export STRIMZI_NODE_HOSTNAME="default-node"  # broker-1 and broker-2 use this
-
-./strimzi-setup.sh
+source strimzi-config.env
+export KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-2,2:worker-3"
+RENDER_ONLY=true ./strimzi-setup.sh
 ```
 
-## Storage Considerations
-
-### hostPath Mode
-
-When using `hostPath` storage mode with node selectors:
-
-1. **Create directories on target nodes** before deployment:
-   ```bash
-   # On each target node
-   sudo mkdir -p /data/strimzi/my-cluster/broker-pool-0
-   sudo mkdir -p /data/strimzi/my-cluster/controller-0
-   sudo chown -R 1001:1001 /data/strimzi
-   sudo chmod -R 755 /data/strimzi
-   ```
-
-2. **PersistentVolumes are automatically created** with node affinity matching pod placement:
-   ```yaml
-   # Example: Broker 0 on worker-1
-   nodeAffinity:
-     required:
-       nodeSelectorTerms:
-       - matchExpressions:
-         - key: kubernetes.io/hostname
-           operator: In
-           values:
-           - worker-1  # Matches KAFKA_BROKER_NODE_SELECTORS for broker-0
-   ```
-
-3. **KafkaNodePools automatically get node affinity** to ensure pods start on nodes with their storage:
-   ```yaml
-   # Automatically injected by the script
-   template:
-     pod:
-       affinity:
-         nodeAffinity:
-           requiredDuringSchedulingIgnoredDuringExecution:
-             nodeSelectorTerms:
-             - matchExpressions:
-               - key: kubernetes.io/hostname
-                 operator: In
-                 values:
-                 - worker-1  # All nodes used by this pool
-                 - worker-2
-                 - worker-3
-   ```
-
-   This ensures that:
-   - Pods can only be scheduled on nodes where storage exists
-   - Storage and compute are co-located for optimal performance
-   - Failed pods won't be scheduled on nodes without their data
-
-### PVC Mode
-
-When using PVC mode with dynamic provisioning:
-
-```bash
-export STORAGE_MODE="pvc"
-export STORAGE_CLASS="fast-ssd"  # Or leave empty for default
-export STORAGE_SIZE="100Gi"
-
-# Node selectors still control pod placement (no node affinity injection needed)
-export KAFKA_BROKER_NODE_SELECTORS="0:node1,1:node2,2:node3"
-
-./strimzi-setup.sh
+```text
+  # on worker-1
+  sudo mkdir -p /data/strimzi/my-cluster/controller-0 /data/strimzi/my-cluster/broker-0
+  sudo chown -R 1001:1001 /data/strimzi/my-cluster
 ```
 
-**Note:** In PVC mode, node affinity is NOT automatically injected into KafkaNodePools since the storage provisioner handles volume placement. Pods can be scheduled more flexibly based on resource availability.
+Run those commands on each node, then run the script without `RENDER_ONLY`. The rendered manifests are in `generated/strimzi-local-disk.yaml`.
 
-## Pre-Deployment Validation
-
-The script performs several validation checks:
-
-### 1. Node Existence Check
-```bash
-# Script validates all specified nodes exist
-# If a node doesn't exist, deployment is aborted
-```
-
-### 2. Node Readiness Check
-```bash
-# Warns if nodes are not in Ready state
-# Deployment continues with warning
-```
-
-### 3. Storage Label Check (Optional)
-```bash
-# Checks for kafka-storage=true label
-# Informational only, not required
-
-# To add label:
-kubectl label node worker-1 kafka-storage=true
-```
-
-## Testing
-
-### Run Test Suite
+## Verify
 
 ```bash
-# Interactive test menu
-./test-node-selectors.sh
-
-# Run all tests automatically
-./test-node-selectors.sh all
-
-# Check current placement
-./test-node-selectors.sh status
-
-# Clean up test deployment
-./test-node-selectors.sh cleanup
-```
-
-### Manual Verification
-
-```bash
-# Check pod placement
-kubectl get pods -n kafka -o wide
-
-# Verify specific pod placement
-kubectl get pod broker-pool-0 -n kafka -o jsonpath='{.spec.nodeName}'
-
-# Check PV node affinity
-kubectl get pv -l strimzi.io/cluster=my-cluster -o yaml | grep -A5 nodeAffinity
-
-# Monitor pod scheduling events
-kubectl describe pod broker-pool-0 -n kafka | grep -A10 Events
+kubectl get pods -n "$KAFKA_NAMESPACE" -o wide
+kubectl get pv -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME" \
+  -o custom-columns=PV:.metadata.name,NODE:.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0],CLAIM:.spec.claimRef.name
 ```
 
 ## Troubleshooting
 
-### Issue: Pods Stuck in Pending
+| Symptom | Cause and fix |
+| --- | --- |
+| Pod `Pending`, `didn't find available persistent volumes to bind` | The pool has fewer volumes than replicas, or the volumes sit on nodes that cannot run the pod (taints, resources). Check `kubectl get pv`. |
+| Pod `ContainerCreating`, `hostPath type check failed` | The directory is missing on that node. Create it. |
+| Kafka exits with `AccessDeniedException` | The directory is not owned by UID 1001. Run the `chown` command. |
+| `Node 'x' not found` from the script | Typo in a selector. Compare with `kubectl get nodes`. |
 
-**Symptom**: Pods remain in Pending state
+## Related
 
-**Possible Causes**:
-1. Node doesn't have enough resources
-2. PV node affinity doesn't match pod placement
-3. Storage not available on target node
-
-**Solution**:
-```bash
-# Check pod events
-kubectl describe pod broker-pool-0 -n kafka
-
-# Check node resources
-kubectl describe node worker-1
-
-# Verify PV node affinity matches pod node
-kubectl get pv pv-my-cluster-broker-pool-0 -o yaml
-```
-
-### Issue: Node Not Found Error
-
-**Symptom**: Script fails with "Node not found in cluster"
-
-**Solution**:
-```bash
-# List available nodes
-kubectl get nodes
-
-# Use exact node names from the output
-export KAFKA_BROKER_NODE_SELECTORS="0:actual-node-name"
-```
-
-### Issue: Storage Not Binding
-
-**Symptom**: PVCs remain in Pending state
-
-**Possible Causes**:
-1. PV node affinity doesn't match pod's node
-2. Storage directories don't exist on node
-3. Permissions issues
-
-**Solution**:
-```bash
-# Check PVC status
-kubectl get pvc -n kafka
-
-# Verify PV node affinity
-kubectl get pv -o yaml | grep -B5 -A5 nodeAffinity
-
-# SSH to node and check directories
-ssh node-1 "ls -la /data/strimzi/my-cluster"
-```
-
-### Issue: Uneven Distribution
-
-**Symptom**: Multiple brokers on same node despite different selectors
-
-**Check**:
-```bash
-# Verify environment variables
-echo $KAFKA_BROKER_NODE_SELECTORS
-
-# Check actual pod placement
-kubectl get pods -n kafka -o custom-columns=POD:.metadata.name,NODE:.spec.nodeName
-
-# Look for topology constraints
-kubectl get kafkanodepool broker-pool -n kafka -o yaml | grep -A10 affinity
-```
-
-## Best Practices
-
-### 1. Label Your Nodes
-
-```bash
-# Label nodes by role
-kubectl label node worker-1 node-role=kafka-broker
-kubectl label node control-1 node-role=kafka-controller
-
-# Label by storage type
-kubectl label node nvme-node-1 storage-type=nvme
-kubectl label node worker-1 storage-type=standard
-```
-
-### 2. Plan Storage Layout
-
-- **Co-locate storage and compute**: Ensure PVs are on the same nodes as pods
-- **Use local storage for performance**: hostPath or local PV for best performance
-- **Consider failure domains**: Distribute across zones/racks
-
-### 3. Monitor Resource Usage
-
-```bash
-# Check node resources before deployment
-kubectl top nodes
-
-# Monitor after deployment
-kubectl top pods -n kafka
-```
-
-### 4. Use Dedicated Nodes
-
-For production:
-- Consider dedicating nodes to Kafka
-- Use taints and tolerations for exclusive scheduling
-- Separate controller and broker nodes for large clusters
-
-### 5. Document Your Configuration
-
-Create a configuration file:
-```bash
-# kafka-placement.env
-export KAFKA_BROKER_NODE_SELECTORS="0:prod-kafka-1,1:prod-kafka-2,2:prod-kafka-3"
-export KAFKA_CONTROLLER_NODE_SELECTORS="0:prod-control-1,1:prod-control-2,2:prod-control-3"
-export STORAGE_MODE="hostPath"
-export STRIMZI_HOST_BASE_DIR="/data/kafka"
-
-# Source before deployment
-source kafka-placement.env
-./strimzi-setup-with-node-selectors.sh
-```
-
-## Migration from Existing Deployment
-
-### Step 1: Backup Current Configuration
-
-```bash
-# Export current Kafka configuration
-kubectl get kafka my-cluster -n kafka -o yaml > kafka-backup.yaml
-kubectl get kafkanodepool -n kafka -o yaml > nodepool-backup.yaml
-```
-
-### Step 2: Plan Node Mapping
-
-```bash
-# Check current pod placement
-kubectl get pods -n kafka -o wide
-
-# Plan new placement based on requirements
-```
-
-### Step 3: Prepare Target Nodes
-
-```bash
-# On each target node
-sudo mkdir -p /data/strimzi/my-cluster
-sudo chown -R 1001:1001 /data/strimzi
-```
-
-### Step 4: Deploy with Node Selectors
-
-```bash
-# Set your node mappings
-export KAFKA_BROKER_NODE_SELECTORS="0:new-node-1,1:new-node-2,2:new-node-3"
-
-# Run migration (consider doing this during maintenance window)
-./strimzi-setup.sh
-```
-
-## Advanced Configuration
-
-### Custom Affinity Rules
-
-For more complex affinity requirements, modify the generated NodePool:
-
-```yaml
-template:
-  pod:
-    affinity:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: node-role
-              operator: In
-              values: ["kafka-broker"]
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          preference:
-            matchExpressions:
-            - key: storage-type
-              operator: In
-              values: ["nvme"]
-```
-
-### Using with Kubernetes Operators
-
-The node selector configuration works with:
-- **Cluster Autoscaler**: Pre-provision or label node groups
-- **Karpenter**: Use provisioner requirements
-- **Node Feature Discovery**: Leverage hardware labels
-
-## Support and Feedback
-
-For issues or questions:
-1. Check the troubleshooting section
-2. Review test output: `./test-node-selectors.sh all`
-3. Examine pod events: `kubectl describe pod <pod-name> -n kafka`
-4. Check operator logs: `kubectl logs -n strimzi -l name=strimzi-cluster-operator`
-
-## Appendix: Complete Example
-
-```bash
-#!/bin/bash
-# Complete deployment example
-
-# 1. Check available nodes
-echo "Available nodes:"
-kubectl get nodes
-
-# 2. Label nodes for clarity
-kubectl label node worker-1 kafka-role=broker storage=nvme
-kubectl label node worker-2 kafka-role=broker storage=nvme
-kubectl label node worker-3 kafka-role=broker storage=nvme
-kubectl label node control-1 kafka-role=controller storage=ssd
-
-# 3. Set configuration
-export STRIMZI_CLUSTER_NAME="production-kafka"
-export NS_KAFKA="kafka-prod"
-export STORAGE_MODE="hostPath"
-export STRIMZI_HOST_BASE_DIR="/data/kafka"
-
-# 4. Configure node placement
-export KAFKA_BROKER_NODE_SELECTORS="0:worker-1,1:worker-2,2:worker-3"
-export KAFKA_CONTROLLER_NODE_SELECTORS="0:control-1,1:control-1,2:control-1"
-
-# 5. Configure resources
-export KAFKA_BROKER_REPLICAS=3
-export KAFKA_CONTROLLER_REPLICAS=3
-export STRIMZI_BROKER_STORAGE_SIZE="100Gi"
-export STRIMZI_CONTROLLER_STORAGE_SIZE="10Gi"
-
-# 6. Deploy
-./strimzi-setup.sh
-
-# 7. Verify
-kubectl get pods -n kafka-prod -o wide
-kubectl get pv -l strimzi.io/cluster=production-kafka
-
-# 8. Test
-kubectl run kafka-test -ti --image=quay.io/strimzi/kafka:latest-kafka-3.9.0 \
-  --rm=true --restart=Never -- \
-  bin/kafka-topics.sh --bootstrap-server production-kafka-kafka-bootstrap:9092 --list
-```
+- [strimzi/local-disk/README.md](strimzi/local-disk/README.md)
+- [Strimzi deployment guide](STRIMZI_DEPLOYMENT.md)
+- [Kubernetes local and hostPath volumes](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath)
 
 ---
 
 # Source: examples/axonops/README.md
 
-# AxonOps Server Examples
+# Self-hosted AxonOps on Kubernetes
 
-This directory contains example configurations and setup scripts for deploying AxonOps monitoring platform on Kubernetes.
+`axonops-setup.sh` installs a complete AxonOps stack in one namespace using the AxonOps Helm charts:
 
-## Overview
+| Component | Chart | Purpose |
+| --- | --- | --- |
+| AxonDB Timeseries | `oci://ghcr.io/axonops/charts/axondb-timeseries` | Metrics store (Cassandra) |
+| AxonDB Search | `oci://ghcr.io/axonops/charts/axondb-search` | Logs and events (OpenSearch) |
+| axon-server | `oci://ghcr.io/axonops/charts/axon-server` | Receives agent data, serves the API |
+| axon-dash | `oci://ghcr.io/axonops/charts/axon-dash` | Web UI, with the Reports v2 `axon-reporting` sidecar |
 
-AxonOps provides comprehensive monitoring and management for Apache Kafka and Cassandra clusters. The deployment consists of:
-
-- **axon-server** - Core monitoring and management server
-- **axondb-timeseries** - Time-series database for metrics storage (Cassandra-based)
-- **axondb-search** - Search database for log aggregation (OpenSearch-based)
-- **axon-dash** - Web-based dashboard for visualization
+TLS on the databases is off by default, and so is cert-manager. To turn TLS on, see [TLS](#tls).
 
 ## Prerequisites
 
-- A Kubernetes cluster (v1.21+)
-- `kubectl` configured with cluster access
-- `helm` v3.x or later
-- `envsubst` command (part of `gettext` package)
+- Kubernetes 1.27 or newer, with a default StorageClass (or set the storage variables below)
+- `kubectl` and `helm` 3.8 or newer
+- About 4 CPU and 8 GiB of memory free for the default sizes
+
+## Quick start
+
+```bash
+cd examples/axonops
+source axonops-config.env
+export AXON_SEARCH_PASSWORD="$(openssl rand -base64 24)"
+export AXON_SERVER_CQL_PASSWORD="$(openssl rand -base64 24)"
+./axonops-setup.sh
+```
+
+The script waits for every release to become ready, then prints how to reach the dashboard and the address agents should use:
+
+```text
+axon-server-agent.axonops.svc.cluster.local:1888
+```
+
+Keep the passwords: running the script again with different ones breaks the connection between axon-server and the databases.
 
 ## Files
 
-| File | Description |
+| File | Purpose |
 | --- | --- |
-| `axonops-config.env` | Environment variables for AxonOps configuration |
-| `axonops-setup.sh` | Automated deployment script for AxonOps |
-| `strimzi-setup.env` | Environment variables for Strimzi Kafka configuration |
-| `strimzi-setup.sh` | Strimzi Kafka deployment script (with AxonOps integration) |
-| `axonops-server-secret.yaml` | Example Secret for axon-server configuration |
-| `axonops-dash-values.yaml` | Helm values for AxonOps Dashboard |
-| `search-values.yaml` | Helm values for AxonDB Search |
-| `timeseries-values.yaml` | Helm values for AxonDB Timeseries |
-| `strimzi/` | Symlink to Strimzi local-disk examples |
+| `axonops-config.env` | Main settings. Also read by the Strimzi and K8ssandra examples to find this server. |
+| `axonops-setup.sh` | Installs or upgrades the stack. Safe to re-run. |
+| `generated/` | Values files and the axon-server Secret written by the script. Contains passwords; ignored by git. |
 
-## Quick Start
+## Examples
 
-### Using the Setup Script
+Install into a different namespace with a named StorageClass:
 
 ```bash
-# Set required passwords
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
-
-# Run the setup script
+source axonops-config.env
+export AXONOPS_NAMESPACE=monitoring
+export AXON_TIMESERIES_STORAGE_CLASS=fast-ssd AXON_SEARCH_STORAGE_CLASS=fast-ssd
+export AXON_TIMESERIES_VOLUME_SIZE=100Gi AXON_SEARCH_VOLUME_SIZE=50Gi
 ./axonops-setup.sh
 ```
 
-The script will:
-1. Install cert-manager (if needed)
-2. Deploy AxonDB Timeseries
-3. Deploy AxonDB Search
-4. Deploy AxonOps Server
-5. Deploy AxonOps Dashboard
-6. Generate `axonops-config.env` with connection details
-
-### Manual Deployment with Helm
+Expose the dashboard and the agent endpoint through an Ingress controller:
 
 ```bash
-# Source configuration
-export $(grep -v '^#' axonops-config.env | xargs)
-
-# Add AxonOps Helm repository
-helm repo add axonops https://helm.axonops.com
-helm repo update
-
-# Create namespace
-kubectl create namespace axonops
-
-# Deploy components
-helm install axondb-timeseries axonops/axondb-timeseries \
-  -n axonops -f timeseries-values.yaml
-
-helm install axondb-search axonops/axondb-search \
-  -n axonops -f search-values.yaml
-
-helm install axon-server axonops/axon-server \
-  -n axonops --set searchDb.password=$AXON_SEARCH_PASSWORD
-
-helm install axon-dash axonops/axon-dash \
-  -n axonops -f axonops-dash-values.yaml
+source axonops-config.env
+export AXON_DASH_INGRESS_ENABLED=true AXON_DASH_INGRESS_CLASS_NAME=nginx
+export AXON_DASH_INGRESS_HOST=axonops.example.com
+export AXON_SERVER_AGENT_INGRESS_ENABLED=true
+export AXON_SERVER_AGENT_INGRESS_HOST=agents.example.com
+./axonops-setup.sh
 ```
+
+Render the values files and print the commands a real run would execute, without changing the cluster (`RENDER_ONLY=true`):
+
+```bash
+source axonops-config.env
+RENDER_ONLY=true ./axonops-setup.sh
+ls generated/
+```
+
+## TLS
+
+TLS between axon-server and the databases is off by default. To turn it on with certificates from cert-manager:
+
+```bash
+source axonops-config.env
+export AXON_TIMESERIES_TLS_ENABLED=true AXON_SEARCH_TLS_ENABLED=true
+export CERT_MANAGER_INSTALL=true   # only needed if cert-manager is not installed yet
+./axonops-setup.sh
+```
+
+The script creates the self-signed `ClusterIssuer` `selfsigned-cluster-issuer`; set `CLUSTER_ISSUER_CREATE=false` and `CLUSTER_ISSUER_NAME` to use your own. Without cert-manager, put the certificates in a Secret and set `AXON_TIMESERIES_TLS_EXISTING_SECRET` / `AXON_SEARCH_TLS_EXISTING_SECRET` with `AXON_*_CERTMANAGER_ENABLED=false`. For AxonDB Timeseries the script stops when TLS is on and neither source is set, because the database would start without TLS and axon-server could not connect. AxonDB Search falls back to the certificates built into its image.
 
 ## Configuration
 
-### Environment Variables
+Set variables in `axonops-config.env`, or export them before sourcing it; values already set are kept. The script has the same defaults, so it also runs without the file.
 
-Edit `axonops-config.env` to customize your deployment:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AXONOPS_NAMESPACE` | `axonops` | Namespace for every component. `NS_AXONOPS` is still accepted. |
+| `AXON_SERVER_ORG_NAME` | `example` | Organisation name. Agents must send the same value as `AXON_AGENT_ORG`. |
+| `AXON_SEARCH_PASSWORD` | none, required | OpenSearch admin password |
+| `AXON_SERVER_CQL_PASSWORD` | none, required | Timeseries database password |
+| `AXON_SEARCH_USER` | `admin` | OpenSearch admin user |
+| `AXON_SERVER_CQL_USERNAME` | `axonops` | Timeseries database user |
+| `AXON_SERVER_AGENTS_PORT` | `1888` | Port agents connect to |
+| `AXON_SERVER_API_PORT` | `8080` | axon-server API port |
+| `AXON_SERVER_LICENSE_KEY` | empty | AxonOps licence key |
+| `AXON_TIMESERIES_PERSISTENCE_ENABLED` / `AXON_SEARCH_PERSISTENCE_ENABLED` | `true` | Use a PVC. `false` keeps data only for the life of the pod. |
+| `AXON_TIMESERIES_STORAGE_CLASS` / `AXON_SEARCH_STORAGE_CLASS` | empty (cluster default) | StorageClass for the PVC |
+| `AXON_TIMESERIES_VOLUME_SIZE` / `AXON_SEARCH_VOLUME_SIZE` | `10Gi` | PVC size |
+| `AXON_TIMESERIES_HEAP_SIZE` / `AXON_SEARCH_HEAP_SIZE` | `2048M` / `2g` | JVM heap |
+| `AXON_TIMESERIES_USE_HOSTPATH` / `AXON_SEARCH_USE_HOSTPATH` | `false` | Store data in a hostPath directory instead of a PVC. Single-node clusters only. |
+| `AXON_TIMESERIES_HOSTPATH_DIR` / `AXON_SEARCH_HOSTPATH_DIR` | `/data/axon-timeseries` / `/data/axon-search` | hostPath directory, owned by UID 999 |
+| `AXON_TIMESERIES_HOSTPATH_CREATE` / `AXON_SEARCH_HOSTPATH_CREATE` | `false` | Create the hostPath directory with `sudo` on the machine running the script |
+| `AXON_DASH_NODEPORT_ENABLED` | `false` | Expose axon-dash as a NodePort Service. The script prints the assigned port. |
+| `AXON_DASH_INGRESS_ENABLED`, `AXON_DASH_INGRESS_HOST`, `AXON_DASH_INGRESS_CLASS_NAME` | `false`, `axonops.example.com`, empty | Dashboard Ingress |
+| `AXON_*_INGRESS_CERT_ISSUER_ANNOTATION` | empty | cert-manager `ClusterIssuer` added as an Ingress annotation |
+| `AXON_SERVER_API_INGRESS_ENABLED`, `AXON_SERVER_API_INGRESS_HOST` | `false`, `api.example.com` | API Ingress |
+| `AXON_SERVER_AGENT_INGRESS_ENABLED`, `AXON_SERVER_AGENT_INGRESS_HOST` | `false`, `agents.example.com` | gRPC Ingress for agents outside the cluster |
+| `CERT_MANAGER_INSTALL` | `false` | With database TLS on: install cert-manager when it is missing. An installed cert-manager is always reused, never reinstalled. |
+| `CLUSTER_ISSUER_CREATE` | `true` | Create `CLUSTER_ISSUER_NAME` as a self-signed `ClusterIssuer` when it does not exist. An existing issuer is never modified. |
+| `AXON_TIMESERIES_TLS_ENABLED` / `AXON_SEARCH_TLS_ENABLED` | `false` | TLS on the database. axon-server connects with TLS to match. |
+| `AXON_TIMESERIES_CERTMANAGER_ENABLED` / `AXON_SEARCH_CERTMANAGER_ENABLED` | `true` | Issue the database certificate with cert-manager |
+| `AXON_TIMESERIES_TLS_EXISTING_SECRET` / `AXON_SEARCH_TLS_EXISTING_SECRET` | empty | Secret with your own TLS material, used instead of cert-manager. With Timeseries TLS on, the script stops unless cert-manager or this Secret provides the certificate. |
+| `CLUSTER_ISSUER_NAME` | `selfsigned-cluster-issuer` | Issuer for the database certificates |
+| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | `axon-reporting` sidecar image tag |
+| `AXON_*_CHART` | `oci://ghcr.io/axonops/charts/<chart>` | Chart reference, for example a local path such as `../../axonops/charts/axon-server` |
+| `AXON_*_HELM_EXTRA_ARGS` | empty | Extra arguments for each `helm upgrade --install` |
+| `HELM_WAIT` | `true` | Install each AxonOps release with `helm --wait`. `false` returns without waiting for the pods; cert-manager always waits. |
+| `HELM_TIMEOUT` | `10m` | Timeout for each release when `HELM_WAIT=true` |
+| `RENDER_ONLY` | `false` | Write `generated/` and print the commands a real run would execute; install nothing |
 
-```bash
-# Namespace
-NS_AXONOPS=axonops
+Release names (`AXON_TIMESERIES_RELEASE_NAME`, `AXON_SEARCH_RELEASE_NAME`, `AXON_SERVER_RELEASE_NAME`, `AXON_DASH_RELEASE_NAME`) can be changed; the script derives the Service names from them.
 
-# Server ports
-AXON_SERVER_AGENTS_PORT=1888    # Port for Kafka/Cassandra agents
-AXON_SERVER_API_PORT=8080       # API port
+## Reports v2
 
-# Organization
-AXON_SERVER_ORG_NAME=example
-
-# Search database credentials
-AXON_SEARCH_USER=admin
-AXON_SEARCH_PASSWORD=your-secure-password
-
-# Timeseries database credentials
-AXON_SERVER_CQL_USERNAME=axonops
-AXON_SERVER_CQL_PASSWORD=your-secure-cql-password
-```
-
-### Server Configuration Secret
-
-The `axonops-server-secret.yaml` contains the full server configuration. Key settings:
-
-| Setting | Description |
-| --- | --- |
-| `agents_port` | Port for agent connections (1888) |
-| `api_port` | REST API port (8080) |
-| `search_db.hosts` | OpenSearch endpoint |
-| `cql_hosts` | Cassandra hosts for metrics storage |
-| `org_name` | Organization name |
-| `tls.mode` | TLS mode (disabled/enabled) |
-| `auth.enabled` | Authentication toggle |
-
-## Accessing the Dashboard
-
-### Port Forward (Quick Access)
-
-```bash
-kubectl port-forward -n axonops svc/axon-dash 3000:3000
-
-# Access at: http://localhost:3000
-```
-
-### NodePort
+The axon-dash pod runs `axon-reporting` as a sidecar and axon-server reaches it at `axon_reporting_url`. The script configures both; nothing needs enabling. It needs axon-server 2.0.39 or newer. Check that the sidecar runs:
 
 ```bash
-export AXON_DASH_NODEPORT_ENABLED=true
-export AXON_DASH_NODEPORT_PORT=32000
-./axonops-setup.sh
-
-# Access at: http://<node-ip>:32000
-```
-
-### Ingress
-
-```bash
-export AXON_DASH_INGRESS_ENABLED=true
-export AXON_DASH_INGRESS_HOST=axonops.yourdomain.com
-./axonops-setup.sh
-
-# Access at: https://axonops.yourdomain.com
-```
-
-## Reports v2 (axon-reporting)
-
-Reports v2 runs `axon-reporting` as a sidecar in the axon-dash pod, and axon-server
-reaches it through the axon-dash Service. It needs axon-server 2.0.39 or newer.
-The setup script always adds the sidecar to the axon-dash values and writes
-`axon_reporting_url` into the server Secret. There is nothing to enable.
-
-```bash
-# Optional overrides (defaults shown)
-export AXON_DASH_REPORTING_IMAGE_REPOSITORY=registry.axonops.com/axonops-public/axonops-docker/axon-reporting
-export AXON_DASH_REPORTING_IMAGE_TAG=1.0.3
-export AXON_DASH_REPORTING_PORT=8081
-./axonops-setup.sh
-```
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `AXON_DASH_REPORTING_IMAGE_REPOSITORY` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting` | Sidecar image |
-| `AXON_DASH_REPORTING_IMAGE_TAG` | `1.0.3` | Sidecar image tag |
-| `AXON_DASH_REPORTING_PORT` | `8081` | Port the sidecar listens on and the axon-dash Service exposes |
-| `AXON_SERVER_REPORTING_URL` | `http://<axon-dash fullname>-svc.<namespace>.svc.cluster.local:<port>` | URL axon-server uses to reach the sidecar |
-
-Until the charts with Reports v2 support are released, install them from this
-repository instead of the OCI registry:
-
-```bash
-export AXON_DASH_CHART=../../axonops/charts/axon-dash
-export AXON_SERVER_CHART=../../axonops/charts/axon-server
-```
-
-Check the sidecar is running:
-
-```bash
-kubectl get pods -n axonops -l app.kubernetes.io/instance=axon-dash \
+kubectl get pods -n "$AXONOPS_NAMESPACE" -l app.kubernetes.io/instance=axon-dash \
   -o jsonpath='{.items[*].spec.containers[*].name}'
 # axon-dash axon-reporting
-kubectl logs -n axonops deploy/axon-dash -c axon-reporting
 ```
 
-## Integrating with Data Platforms
+## Connecting agents
 
-### Strimzi Kafka
+Agents in the same cluster connect to `axon-server-agent.<namespace>.svc.cluster.local:1888` with TLS disabled. The [Strimzi on-premises](../strimzi/on-premises/), [Strimzi local-disk](../strimzi/local-disk/) and [K8ssandra](../k8ssandra/) examples build that address from `AXONOPS_NAMESPACE`, so source `axonops-config.env` in the same shell before their configuration files.
 
-After deploying AxonOps, integrate with Kafka:
+## Verify
 
 ```bash
-# Source AxonOps configuration
-source axonops-config.env
-
-# Configure Strimzi (edit strimzi-setup.env as needed)
-vi strimzi-setup.env
-
-# Source Strimzi configuration and deploy
-source strimzi-setup.env
-./strimzi-setup.sh
+helm list -n "$AXONOPS_NAMESPACE"
+kubectl get pods -n "$AXONOPS_NAMESPACE"
+kubectl port-forward -n "$AXONOPS_NAMESPACE" svc/axon-dash-svc 3000:3000
 ```
 
-Or use environment variables directly:
+Then open <http://localhost:3000>.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Pods stay `Pending` | `kubectl get pvc -n "$AXONOPS_NAMESPACE"`. Without a default StorageClass, set `AXON_*_STORAGE_CLASS`. |
+| axon-server cannot reach the databases | The passwords changed between runs. Compare `generated/axon-server-secret.yaml` with the values used by the database releases. |
+| axon-server logs `tls: first record does not look like a TLS handshake` | The database has no certificate, so it runs without TLS. `kubectl logs axondb-timeseries-0` shows `SSL encryption not enabled`. Keep `AXON_TIMESERIES_CERTMANAGER_ENABLED=true` or set `AXON_TIMESERIES_TLS_EXISTING_SECRET`, then reinstall the database. |
+| Certificates not issued | `kubectl get clusterissuer` and `kubectl get certificate -n "$AXONOPS_NAMESPACE"` |
+
+## Remove
 
 ```bash
-source axonops-config.env
-export STRIMZI_NODE_HOSTNAME='your-node-name'
-export STRIMZI_CLUSTER_NAME='my-cluster'
-./strimzi-setup.sh
+for r in axon-dash axon-server axondb-search axondb-timeseries; do
+  helm uninstall "$r" -n "$AXONOPS_NAMESPACE"
+done
+kubectl delete secret axon-server-config -n "$AXONOPS_NAMESPACE"
+# Deletes all AxonOps data:
+kubectl delete pvc --all -n "$AXONOPS_NAMESPACE"
+kubectl delete namespace "$AXONOPS_NAMESPACE"
 ```
 
-Or use the Strimzi cloud examples:
+## Related
 
-```bash
-cd ../strimzi/cloud/
-export AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-export AXON_AGENT_SERVER_PORT=1888
-# ... apply manifests
-```
-
-### K8ssandra Cassandra
-
-Configure K8ssandra to connect to self-hosted AxonOps:
-
-```bash
-export AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-export AXON_AGENT_SERVER_PORT=1888
-export AXON_AGENT_ORG=$AXON_SERVER_ORG_NAME
-
-cd ../k8ssandra/
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
-```
-
-## Verification
-
-```bash
-# Check all pods
-kubectl get pods -n axonops
-
-# Check services
-kubectl get svc -n axonops
-
-# Check Helm releases
-helm list -n axonops
-
-# View server logs
-kubectl logs -n axonops deployment/axon-server
-```
-
-## Cleanup
-
-```bash
-# Uninstall Helm releases
-helm uninstall axon-dash -n axonops
-helm uninstall axon-server -n axonops
-helm uninstall axondb-search -n axonops
-helm uninstall axondb-timeseries -n axonops
-
-# Delete namespace
-kubectl delete namespace axonops
-```
-
-## Related Documentation
-
-- [Full AxonOps Deployment Guide](../AXONOPS_DEPLOYMENT.md)
-- [Strimzi Kafka Integration](../STRIMZI_DEPLOYMENT.md)
-- [K8ssandra Integration](../K8SSANDRA_DEPLOYMENT.md)
-- [AxonOps Documentation](https://docs.axonops.com)
-- [AxonOps Agent Setup](https://axonops.com/docs/get_started/agent_setup/)
+- [AxonOps deployment guide](../AXONOPS_DEPLOYMENT.md)
+- [AxonOps meta-chart](../../axonops/charts/axonops/README.md), a single Helm release for the same stack
+- [AxonOps documentation](https://docs.axonops.com)
 
 ---
 
 # Source: examples/k8ssandra/README.md
 
-# AxonOps K8ssandra Cassandra Examples
+# K8ssandra Cassandra with the AxonOps agent
 
-This directory contains example manifests to deploy Apache Cassandra using K8ssandra with AxonOps monitoring.
+A Cassandra cluster run by the K8ssandra operator, using the AxonOps Cassandra image so every node runs the AxonOps agent. The agents report to AxonOps Cloud by default, or to a self-hosted AxonOps server.
 
-## Overview
-
-- **Cassandra Version**: 5.0.9
-- **Operator**: K8ssandra
-- **Nodes**: 3 replicas (configurable)
-- **Storage**: 2Gi per node (configurable)
-- **Monitoring**: AxonOps Cloud integration
+| Setting | Default |
+| --- | --- |
+| Cassandra | 5.0.9 |
+| Datacenter | `dc1`, 3 nodes |
+| Storage | 10Gi data + 2Gi agent state per node, default StorageClass |
+| Resources | 1-2 CPU, 2-4 GiB memory, 1G heap per node |
 
 ## Prerequisites
 
-- A Kubernetes cluster with the [K8ssandra operator](https://k8ssandra.io/) installed
-- `envsubst` command available (part of `gettext` package)
-- AxonOps account (optional, for monitoring)
+- Kubernetes 1.27 or newer, with a default StorageClass
+- The K8ssandra operator and cert-manager (see [K8SSANDRA_DEPLOYMENT.md](../K8SSANDRA_DEPLOYMENT.md#install-the-k8ssandra-operator))
+- `envsubst` (package `gettext`)
+- An AxonOps Cloud organisation and agent key, or a self-hosted AxonOps server
 
-## Installing K8ssandra Operator
+## Quick start
 
 ```bash
-# Add Helm repository
-helm repo add k8ssandra https://helm.k8ssandra.io/stable
-helm repo update
+cd examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG=your-org
+export AXON_AGENT_KEY=your-agent-key
 
-# Install the operator. Set the global scope to true if you would like to use
-# multiple namespaces
-helm install k8ssandra-operator k8ssandra/k8ssandra-operator \
-  -n k8ssandra-operator \
-  --create-namespace \
-  --set global.clusterScoped=true
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+kubectl wait k8ssandracluster/"$K8SSANDRA_CLUSTER_NAME" -n "$K8SSANDRA_NAMESPACE" \
+  --for=condition=CassandraInitialized --timeout=20m
+```
 
-# Verify installation
-kubectl get pods -n k8ssandra-operator
+The Secret must exist before the cluster: the Cassandra container reads the agent settings from it and does not start without it.
+
+## Files
+
+| File | Resource |
+| --- | --- |
+| `k8ssandra-config.env` | Settings for both manifests |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent` with the agent settings |
+| `cluster-axonops-ubi.yaml` | K8ssandraCluster `<cluster>` with the AxonOps image and a PVC for `/var/lib/axonops` |
+
+Pods are named `<cluster>-<dc>-default-sts-<n>`.
+
+## Examples
+
+Report to the self-hosted AxonOps server from [../axonops/](../axonops/):
+
+```bash
+source ../axonops/axonops-config.env
+source k8ssandra-config.env
+export AXON_AGENT_ORG="$AXON_SERVER_ORG_NAME" AXON_AGENT_KEY=not-used
+export AXON_AGENT_SERVER_HOST="axon-server-agent.$AXONOPS_NAMESPACE.svc.cluster.local"
+export AXON_AGENT_SERVER_PORT="$AXON_SERVER_AGENTS_PORT" AXON_AGENT_TLS_MODE=disabled
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+```
+
+Deploy into a namespace other than the operator's. The operator must have been installed with `--set global.clusterScoped=true`:
+
+```bash
+source k8ssandra-config.env
+export K8SSANDRA_NAMESPACE=cassandra
+kubectl create namespace "$K8SSANDRA_NAMESPACE"
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+```
+
+Scale the datacenter to 5 nodes:
+
+```bash
+export CASSANDRA_DC_SIZE=5
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
 ## Configuration
 
-A `k8ssandra-config.env` file is provided with default configuration values.
-
-```bash
-# Review and edit the configuration
-cat k8ssandra-config.env
-
-# Source the environment variables
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-```
-
-### Configuration Variables
-
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps Cassandra image |
-| `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra-5` | Cluster name |
-| `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
-| `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
-| `CASSANDRA_DC_SIZE` | `3` | Number of nodes |
-| `STORAGE_CLASS` | `` | StorageClass name |
-| `STORAGE_SIZE` | `2Gi` | Storage per node |
-| `AXONOPS_STORAGE_SIZE` | `2Gi` | Size of the AxonOps agent data volume (`/var/lib/axonops`) |
-| `AXON_AGENT_KEY` | - | AxonOps API key |
-| `AXON_AGENT_ORG` | - | AxonOps organization |
-| `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server |
-| `AXON_AGENT_SERVER_PORT` | `443` | AxonOps port |
-| `AXON_AGENT_TLS_MODE` | `TLS` | Agent TLS mode; set to `disabled` for a self-hosted server without TLS |
+| `K8SSANDRA_OPERATOR_NAMESPACE` | `k8ssandra-operator` | Namespace of the operator |
+| `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Namespace of the cluster. Must equal the operator namespace unless the operator is cluster-scoped. |
+| `K8SSANDRA_CLUSTER_NAME` | `my-cassandra` | K8ssandraCluster name and Cassandra cluster name |
+| `CASSANDRA_VERSION` | `5.0.9` | Cassandra version |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps image, tag `<cassandra>-v<k8ssandra api>-<image>`. Must match `CASSANDRA_VERSION`. |
+| `CASSANDRA_DC_NAME` / `CASSANDRA_DC_SIZE` | `dc1` / `3` | Datacenter name and node count |
+| `STORAGE_CLASS` | empty (cluster default) | StorageClass for both PVCs |
+| `STORAGE_SIZE` | `10Gi` | Cassandra data volume |
+| `AXONOPS_STORAGE_SIZE` | `2Gi` | Agent state volume at `/var/lib/axonops`. Most StorageClasses cannot shrink it later. |
+| `CPU_REQUEST` / `CPU_LIMIT` | `1` / `2` | CPU per node |
+| `MEMORY_REQUEST` / `MEMORY_LIMIT` | `2Gi` / `4Gi` | Memory per node |
+| `HEAP_SIZE` | `1G` | Cassandra heap |
+| `AXON_AGENT_ORG` | `your-org` | AxonOps organisation |
+| `AXON_AGENT_KEY` | none, required for AxonOps Cloud | Agent key. Export it; do not write it in the file. |
+| `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps endpoint |
+| `AXON_AGENT_SERVER_PORT` | `443` | `1888` for a self-hosted server |
+| `AXON_AGENT_TLS_MODE` | `TLS` | `disabled` for a self-hosted server without TLS on the agent port |
 
-## Manifests
-
-| File | Description |
-| --- | --- |
-| `k8ssandra-config.env` | Environment variables for configuration |
-| `cluster-axonops-ubi.yaml` | K8ssandraCluster resource with AxonOps agent |
-
-## Deployment
-
-### Using envsubst
-
-The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsubst` to substitute the values before applying:
+## Verify
 
 ```bash
-# 1. Source the configuration
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-
-# 2. Apply the cluster manifest with variable substitution
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+kubectl get k8ssandracluster,cassandradatacenter,pods -n "$K8SSANDRA_NAMESPACE"
+POD="$K8SSANDRA_CLUSTER_NAME-$CASSANDRA_DC_NAME-default-sts-0"
+kubectl logs -n "$K8SSANDRA_NAMESPACE" "$POD" -c cassandra | grep -i axon
 ```
 
-### One-liner Deployment
+## Remove
 
 ```bash
-export $(grep -v '^#' k8ssandra-config.env | xargs) && \
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+kubectl delete k8ssandracluster "$K8SSANDRA_CLUSTER_NAME" -n "$K8SSANDRA_NAMESPACE"
+kubectl delete secret "$K8SSANDRA_CLUSTER_NAME-axonops-agent" -n "$K8SSANDRA_NAMESPACE"
+# Deletes the Cassandra data:
+kubectl delete pvc -n "$K8SSANDRA_NAMESPACE" -l cassandra.datastax.com/cluster="$K8SSANDRA_CLUSTER_NAME"
 ```
 
-### Generate Processed Manifest
+## Related
 
-To generate a processed manifest for review or GitOps:
-
-```bash
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-envsubst < cluster-axonops-ubi.yaml > processed-cluster.yaml
-```
-
-## Verification
-
-```bash
-# Check the K8ssandraCluster status
-kubectl get k8ssandraclusters -n k8ssandra-operator
-
-# Check CassandraDatacenter
-kubectl get cassandradatacenters -n k8ssandra-operator
-
-# Check pods
-kubectl get pods -n k8ssandra-operator
-
-# Connect to Cassandra
-kubectl exec -it axonops-k8ssandra-5-dc1-default-sts-0 \
-  -n k8ssandra-operator -- cqlsh
-```
-
-## AxonOps Integration
-
-### AxonOps Cloud
-
-1. Sign up at [https://axonops.cloud](https://axonops.cloud)
-2. Get your API key and organization name
-3. Update `k8ssandra-config.env` with your credentials:
-
-```bash
-AXON_AGENT_KEY=your-api-key
-AXON_AGENT_ORG=your-organization
-AXON_AGENT_SERVER_HOST=agents.axonops.cloud
-AXON_AGENT_SERVER_PORT=443
-```
-
-### Self-Hosted AxonOps
-
-For on-premises AxonOps, update the connection details:
-
-```bash
-AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-AXON_AGENT_SERVER_PORT=1888
-# Only when the AxonOps server agents port has TLS disabled
-AXON_AGENT_TLS_MODE=disabled
-```
-
-## Cleanup
-
-```bash
-# Delete the cluster
-kubectl delete k8ssandracluster axonops-k8ssandra-5 -n k8ssandra-operator
-
-# Delete PVCs (WARNING: deletes data)
-kubectl delete pvc -l cassandra.datastax.com/cluster=axonops-k8ssandra-5 \
-  -n k8ssandra-operator
-```
-
-## Related Documentation
-
-- [Full K8ssandra Deployment Guide](../K8SSANDRA_DEPLOYMENT.md)
-- [AxonOps Deployment Guide](../AXONOPS_DEPLOYMENT.md)
-- [K8ssandra Documentation](https://docs.k8ssandra.io/)
+- [K8ssandra deployment guide](../K8SSANDRA_DEPLOYMENT.md)
+- [AxonOps K8ssandra image](../../k8ssandra/README.md)
+- [K8ssandra documentation](https://docs.k8ssandra.io/)
 
 ---
 
 # Source: examples/strimzi/cloud/README.md
 
-# AxonOps Strimzi Kafka Cloud Examples
+# Strimzi Kafka reporting to AxonOps Cloud
 
-This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring on cloud Kubernetes environments.
+A KRaft Kafka cluster run by the Strimzi operator, using the AxonOps Kafka image so every controller and broker runs the AxonOps agent. The agents report to AxonOps Cloud (SaaS). For a self-hosted AxonOps server use [../on-premises/](../on-premises/); the manifests are identical and only `strimzi-config.env` differs.
 
-## Overview
-
-- **Kafka Version**: 4.3.0
-- **Mode**: KRaft (no ZooKeeper)
-- **Brokers**: 6 replicas, 20Gi storage
-- **Controllers**: 3 replicas, 5Gi storage
-- **Replication Factor**: 3 (production-ready)
+| Setting | Default |
+| --- | --- |
+| Kafka | 4.3.0, KRaft |
+| Controllers | 3, 10Gi each |
+| Brokers | 3, 20Gi each |
+| Replication factor / min ISR | 3 / 2 |
+| Rack awareness | `topology.kubernetes.io/zone` |
+| Storage | PVCs from the default StorageClass |
 
 ## Prerequisites
 
-- A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
+- Kubernetes 1.27 or newer, with a default StorageClass
+- The Strimzi operator 1.1.0, watching the Kafka namespace (see [STRIMZI_DEPLOYMENT.md](../../STRIMZI_DEPLOYMENT.md#install-the-strimzi-operator))
+- `envsubst` (package `gettext`)
+- An AxonOps Cloud organisation and agent key
+- Nodes labelled with `topology.kubernetes.io/zone`. Managed clusters (EKS, GKE, AKS) set it. Otherwise set `KAFKA_RACK_TOPOLOGY_KEY=kubernetes.io/hostname`.
+
+## Quick start
+
+```bash
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org
+export AXON_AGENT_KEY=your-agent-key
+
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
+
+The cluster appears in AxonOps Cloud under the name in `AXON_AGENT_CLUSTER_NAME` a minute or two after the pods are ready.
+
+## Files
+
+| File | Resource |
+| --- | --- |
+| `strimzi-config.env` | Settings for every manifest |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent` with the agent settings. Every Kafka container reads it through `valueFrom.secretKeyRef`. |
+| `kafka-node-pool-controller.yaml` | KafkaNodePool `controller` (KRaft controllers) |
+| `kafka-node-pool-brokers.yaml` | KafkaNodePool `broker` |
+| `kafka-cluster.yaml` | Kafka `<cluster>`: listeners, replication, rack awareness, logging to `/var/log/kafka/server.log` for the agent |
+| `kafka-connect.yaml` | Optional KafkaConnect `<cluster>-connect`, also monitored by AxonOps |
+
+Pods are named `<cluster>-controller-<id>` and `<cluster>-broker-<id>`. Node ids are shared by both pools, so the first broker is not always `-0`.
+
+## Examples
+
+Use a different namespace, cluster name and StorageClass:
+
+```bash
+export KAFKA_NAMESPACE=streaming STRIMZI_CLUSTER_NAME=orders
+export STRIMZI_BROKER_STORAGE_CLASS=gp3 STRIMZI_CONTROLLER_STORAGE_CLASS=gp3
+source strimzi-config.env
+```
+
+Export overrides before sourcing the file: it keeps values that are already set, and derived values such as `AXON_AGENT_CLUSTER_NAME` follow `STRIMZI_CLUSTER_NAME`. Start a new shell to drop them.
+
+Add Kafka Connect after the cluster is ready:
+
+```bash
+envsubst < kafka-connect.yaml | kubectl apply -f -
+kubectl wait kafkaconnect/"$STRIMZI_CLUSTER_NAME-connect" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
+
+Render everything to one file for review or GitOps:
+
+```bash
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  echo "---"; envsubst < "$f"
+done > rendered.yaml
+```
+
+`rendered.yaml` contains the agent key. Do not commit it.
 
 ## Configuration
 
-Edit the `strimzi-config.env` file with your settings:
-
-```bash
-# Review and edit the configuration
-cat strimzi-config.env
-
-# Source the environment variables
-source strimzi-config.env
-```
-
-### Configuration Variables
-
-| Variable | Description | Default |
+| Variable | Default | Description |
 | --- | --- | --- |
-| `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
-| `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `axonops-kafka` |
-| `KAFKA_VERSION` | Kafka version | `4.3.0` |
-| `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
-| `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
-| `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
-| `STRIMZI_BROKER_STORAGE_CLASS` | Storage class for brokers | `""` (default) |
-| `STRIMZI_CONTROLLER_REPLICAS` | Number of controller replicas | `3` |
-| `STRIMZI_CONTROLLER_STORAGE_SIZE` | Storage size per controller | `5Gi` |
-| `STRIMZI_CONTROLLER_STORAGE_CLASS` | Storage class for controllers | `""` (default) |
-| `KAFKA_CONNECT_REPLICAS` | Number of Kafka Connect replicas | `2` |
-| `KAFKA_CONNECT_IMAGE` | Kafka Connect container image | See .env file |
-| `AXON_AGENT_CLUSTER_NAME` | AxonOps cluster name | `kafka` |
-| `AXON_AGENT_ORG` | AxonOps organisation | `example` |
-| `AXON_AGENT_KEY` | AxonOps agent key | `CHANGEME` |
-| `AXON_AGENT_SERVER_HOST` | AxonOps server hostname | `agents.axonops.cloud` |
-| `AXON_AGENT_TLS_MODE` | TLS mode for AxonOps connection | `TLS` |
+| `KAFKA_NAMESPACE` | `kafka` | Namespace for every resource |
+| `STRIMZI_CLUSTER_NAME` | `my-cluster` | Kafka resource name, used as a prefix for pods, Services and the Secret |
+| `KAFKA_RACK_TOPOLOGY_KEY` | `topology.kubernetes.io/zone` | Node label for rack awareness and pod spreading |
+| `KAFKA_VERSION` | `4.3.0` | Kafka version. Must be supported by the operator version. |
+| `KAFKA_CONTAINER_IMAGE` | `ghcr.io/axonops/strimzi/kafka:1.1.0-4.3.0-2.0.32-0.1.28` | AxonOps Kafka image, tag `<strimzi>-<kafka>-<agent>-<image>` |
+| `KAFKA_REPLICATION_FACTOR` | `3` | Default and internal topic replication factor. At most the broker count. |
+| `KAFKA_MIN_INSYNC_REPLICAS` | `2` | Default and transaction log min ISR |
+| `STRIMZI_CONTROLLER_REPLICAS` | `3` | Controllers. Use an odd number. |
+| `STRIMZI_CONTROLLER_STORAGE_SIZE` / `_CLASS` | `10Gi` / empty | Controller volume |
+| `STRIMZI_BROKER_REPLICAS` | `3` | Brokers |
+| `STRIMZI_BROKER_STORAGE_SIZE` / `_CLASS` | `20Gi` / empty | Broker volume. Empty class means the cluster default. |
+| `KAFKA_CONNECT_REPLICAS` | `1` | Kafka Connect workers |
+| `AXON_AGENT_ORG` | `your-org` | AxonOps organisation |
+| `AXON_AGENT_KEY` | none, required | AxonOps agent key. Export it; do not write it in the file. |
+| `AXON_AGENT_CLUSTER_NAME` | `$STRIMZI_CLUSTER_NAME` | Cluster name shown in AxonOps |
+| `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps endpoint |
+| `AXON_AGENT_SERVER_PORT` | `443` | AxonOps endpoint port |
+| `AXON_AGENT_TLS_MODE` | `TLS` | Agent TLS mode |
 
-## Manifests
-
-| File | Description |
-| --- | --- |
-| `axonops-config-secret.yaml` | Secret with AxonOps agent connection details |
-| `kafka-logging-cm.yaml` | ConfigMap with log4j configuration for Kafka |
-| `kafka-node-pool-controller.yaml` | KafkaNodePool for KRaft controllers |
-| `kafka-node-pool-brokers.yaml` | KafkaNodePool for brokers |
-| `kafka-cluster.yaml` | Kafka cluster resource (KRaft mode) |
-| `kafka-connect.yaml` | KafkaConnect deployment (optional) |
-
-## Deployment
-
-### 1. Source Configuration and Create Namespace
+To change the agent settings later, update the Secret and restart the pods; Strimzi does not roll them for a Secret change:
 
 ```bash
-# Source the environment variables
-source strimzi-config.env
-
-# Create the namespace
-kubectl create namespace ${KAFKA_NAMESPACE}
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+kubectl annotate strimzipodset -n "$KAFKA_NAMESPACE" \
+  "$STRIMZI_CLUSTER_NAME-controller" "$STRIMZI_CLUSTER_NAME-broker" \
+  strimzi.io/manual-rolling-update=true
 ```
 
-### 2. Deploy the AxonOps Agent Secret
+## Verify
 
 ```bash
-envsubst < axonops-config-secret.yaml | kubectl apply -f -
+kubectl get kafka,kafkanodepool,pods,pvc -n "$KAFKA_NAMESPACE"
+# Agent output is in the Kafka container log
+BROKER=$(kubectl get pod -n "$KAFKA_NAMESPACE" -l strimzi.io/pool-name=broker -o name | head -1)
+kubectl logs -n "$KAFKA_NAMESPACE" "$BROKER" -c kafka | grep -i axon
 ```
 
-### 3. Deploy the Logging ConfigMap
+## Remove
 
 ```bash
-envsubst < kafka-logging-cm.yaml | kubectl apply -f -
+kubectl delete kafkaconnect "$STRIMZI_CLUSTER_NAME-connect" -n "$KAFKA_NAMESPACE" --ignore-not-found
+kubectl delete kafka "$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE"
+kubectl delete kafkanodepool controller broker -n "$KAFKA_NAMESPACE"
+kubectl delete secret "$STRIMZI_CLUSTER_NAME-axonops-agent" -n "$KAFKA_NAMESPACE"
+# deleteClaim is false, so the data volumes stay. To delete them:
+kubectl delete pvc -n "$KAFKA_NAMESPACE" -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
 ```
 
-### 4. Deploy the KRaft Controller Node Pool
+## Related
 
-```bash
-envsubst < kafka-node-pool-controller.yaml | kubectl apply -f -
-```
-
-### 5. Deploy the Broker Node Pool
-
-```bash
-envsubst < kafka-node-pool-brokers.yaml | kubectl apply -f -
-```
-
-### 6. Deploy the Kafka Cluster
-
-```bash
-envsubst < kafka-cluster.yaml | kubectl apply -f -
-```
-
-### 7. (Optional) Deploy Kafka Connect
-
-> **Note:** Kafka Connect is supported by AxonOps but is out of scope for this example. If you need help setting up Kafka Connect with AxonOps monitoring, please contact [AxonOps](https://axonops.com) or [Digitalis](https://digitalis.io) for support.
-
-**Note:** The `kafka-cluster.yaml` must be applied after the node pools, as the Kafka resource references them.
-
-## Configuration Notes
-
-- The storage class variables (`STRIMZI_BROKER_STORAGE_CLASS`, `STRIMZI_CONTROLLER_STORAGE_CLASS`) should be set to match your environment's available StorageClass.
-- The container images reference AxonOps custom Strimzi images with the agent embedded.
-- Topology spread constraints are configured using `topology.kubernetes.io/zone`. Adjust the `topologyKey` for your infrastructure (see below).
-
-## Topology Key Configuration
-
-The `topologyKey` in `kafka-node-pool-controller.yaml` and `kafka-cluster.yaml` controls how pods are distributed across failure domains. The correct value depends on your Kubernetes environment.
-
-To check which topology labels are available on your nodes:
-
-```bash
-kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{.metadata.labels}{"\n\n"}{end}' | grep -E "topology|zone|region"
-```
-
-Or view all labels for a specific node:
-
-```bash
-kubectl describe node <node-name> | grep -A 20 "Labels:"
-```
-
-### Common topology keys by provider
-
-| Provider | Zone key | Region key |
-| --- | --- | --- |
-| Standard Kubernetes | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
-| AWS EKS | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
-| Google GKE | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
-| Azure AKS | `topology.kubernetes.io/zone` | `topology.kubernetes.io/region` |
-
-### Cloud provider documentation
-
-- [AWS EKS - Spread workloads across zones](https://docs.aws.amazon.com/prescriptive-guidance/latest/ha-resiliency-amazon-eks-apps/spread-workloads.html)
-- [Google GKE - Node labels](https://cloud.google.com/kubernetes-engine/docs/concepts/node-labels)
-- [Azure AKS - Availability zones](https://learn.microsoft.com/en-us/azure/aks/availability-zones-overview)
-- [Kubernetes - Well-known labels](https://kubernetes.io/docs/reference/labels-annotations-taints/#topologykubernetesiozone)
-
-## Related Documentation
-
-- [Full Strimzi Deployment Guide](../../STRIMZI_DEPLOYMENT.md)
-- [AxonOps Deployment Guide](../../AXONOPS_DEPLOYMENT.md)
-- [Node Selector Guide](../../NODE_SELECTOR_GUIDE.md)
+- [Strimzi deployment guide](../../STRIMZI_DEPLOYMENT.md)
+- [AxonOps Kafka image](../../../strimzi/README.md)
+- [Strimzi documentation](https://strimzi.io/docs/operators/latest/)
 
 ---
 
 # Source: examples/strimzi/local-disk/README.md
 
-# AxonOps Strimzi Kafka Local Disk Examples
+# Strimzi Kafka on local disks
 
-This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring using local persistent volumes.
+A KRaft Kafka cluster with the AxonOps agent whose data lives in directories on chosen Kubernetes nodes, through hostPath PersistentVolumes. Use it on bare metal or lab clusters without a storage provisioner. With a StorageClass that provisions volumes, use [../on-premises/](../on-premises/) instead.
 
-## Overview
+`strimzi-setup.sh` does the deployment: it installs the Strimzi operator if its CRDs are missing, creates one PersistentVolume per controller and broker on the node you choose for it, and applies the node pools and the Kafka cluster. The agents report to a self-hosted AxonOps server, by default the one from [../../axonops/](../../axonops/).
 
-- **Kafka Version**: 4.3.0
-- **Mode**: KRaft (no ZooKeeper)
-- **Brokers**: 3 replicas (configurable), 10Gi storage
-- **Controllers**: 3 replicas (configurable), 5Gi storage
-- **Replication Factor**: 1 (development/testing)
-- **Storage**: Local persistent volumes with manual provisioning
+| Setting | Default |
+| --- | --- |
+| Kafka | 4.3.0, KRaft |
+| Controllers | 3, 10Gi each |
+| Brokers | 3, 20Gi each |
+| Replication factor / min ISR | 3 / 2 |
+| Volume directories | `/data/strimzi/<cluster>/controller-<n>` and `/data/strimzi/<cluster>/broker-<n>` |
 
 ## Prerequisites
 
-- A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
-- `envsubst` command available (part of `gettext` package)
-- Local storage paths available on nodes
+- Kubernetes 1.27 or newer, `kubectl`, `helm` and `envsubst` (package `gettext`)
+- bash 3.2 or newer
+- Shell access to the nodes that hold the volumes, to create the directories
+- A self-hosted AxonOps server reachable from the pods
 
-## Configuration
+## Quick start
 
-A `strimzi-config.env` file is provided with default configuration values. Edit this file to customize your deployment.
+On a single-node cluster the script places every volume on that node:
 
 ```bash
-# Review and edit the configuration
-cat strimzi-config.env
-
-# Source the environment variables
+cd examples/strimzi/local-disk
+source ../../axonops/axonops-config.env   # AxonOps namespace, organisation and port
 source strimzi-config.env
+RENDER_ONLY=true ./strimzi-setup.sh       # prints the directories to create
 ```
 
-### Configuration Variables
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `STRIMZI_NAMESPACE` | `kafka` | Kubernetes namespace for deployment |
-| `STRIMZI_CLUSTER_NAME` | `my-cluster` | Name of the Kafka cluster |
-| `STRIMZI_BROKER_REPLICAS` | `3` | Number of broker replicas |
-| `STRIMZI_BROKER_STORAGE_SIZE` | `10Gi` | Storage size per broker |
-| `STRIMZI_CONTROLLER_REPLICAS` | `3` | Number of controller replicas |
-| `STRIMZI_CONTROLLER_STORAGE_SIZE` | `5Gi` | Storage size per controller |
-| `AXON_AGENT_CLUSTER_NAME` | `my-cluster` | AxonOps cluster name |
-| `AXON_AGENT_ORG` | `your-org` | AxonOps organization |
-| `AXON_AGENT_TLS_MODE` | `disabled` | AxonOps TLS mode |
-| `AXON_AGENT_SERVER_HOST` | `axon-server.axonops.svc.cluster.local` | AxonOps server host |
-| `AXON_AGENT_SERVER_PORT` | `1888` | AxonOps server port |
-
-### Per-Node Volume Variables
-
-The following variables must be set when creating PersistentVolumes. Since each broker and controller needs its own PV, you must apply the volume manifests **multiple times** with different values:
-
-| Variable | Description |
-| --- | --- |
-| `STRIMZI_BROKER_ID` | Broker index (0, 1, 2, etc.) - set for each broker volume |
-| `STRIMZI_BROKER_NODE` | Kubernetes node hostname where the broker volume resides |
-| `STRIMZI_CONTROLLER_ID` | Controller index (0, 1, 2, etc.) - set for each controller volume |
-| `STRIMZI_CONTROLLER_NODE` | Kubernetes node hostname where the controller volume resides |
-
-## Manifests
-
-| File | Description |
-| --- | --- |
-| `strimzi-config.env` | Environment variables for configuration |
-| `strimzi-storageclass.yaml` | StorageClass for local persistent volumes |
-| `strimzi-broker-volumes.yaml` | PersistentVolumes for brokers |
-| `strimzi-controller-volumes.yaml` | PersistentVolumes for controllers |
-| `strimzi-kafka-rbac.yaml` | RBAC resources for Kafka |
-| `strimzi-controller-pools.yaml` | KafkaNodePool for KRaft controllers |
-| `strimzi-broker-pools.yaml` | KafkaNodePool for brokers |
-| `strimzi-kafka-cluster.yaml` | Kafka cluster resource (KRaft mode) |
-
-## Deployment
-
-**Prerequisites:** Before proceeding, ensure you have created the local storage directories on each node and set the correct ownership. See [Local Storage Setup](#local-storage-setup) below.
-
-### Using envsubst
-
-The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsubst` to substitute the values before applying:
+Run the printed commands on the node, for example:
 
 ```bash
-# 1. Source the configuration
-source strimzi-config.env
-
-# 2. Create the namespace
-kubectl create namespace $STRIMZI_NAMESPACE
-
-# 3. Apply the StorageClass
-kubectl apply -f strimzi-storageclass.yaml
-
-# 4. Create PersistentVolumes for each broker (repeat for each broker ID)
-# You must apply the broker volume manifest once per broker with unique STRIMZI_BROKER_ID and STRIMZI_BROKER_NODE
-export STRIMZI_BROKER_ID=0 STRIMZI_BROKER_NODE=node1 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-export STRIMZI_BROKER_ID=1 STRIMZI_BROKER_NODE=node2 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-export STRIMZI_BROKER_ID=2 STRIMZI_BROKER_NODE=node3 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-
-# 5. Create PersistentVolumes for each controller (repeat for each controller ID)
-# You must apply the controller volume manifest once per controller with unique STRIMZI_CONTROLLER_ID and STRIMZI_CONTROLLER_NODE
-export STRIMZI_CONTROLLER_ID=0 STRIMZI_CONTROLLER_NODE=node1 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-export STRIMZI_CONTROLLER_ID=1 STRIMZI_CONTROLLER_NODE=node2 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-export STRIMZI_CONTROLLER_ID=2 STRIMZI_CONTROLLER_NODE=node3 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-
-# 6. Apply RBAC resources
-envsubst < strimzi-kafka-rbac.yaml | kubectl apply -f -
-
-# 7. Create the controller node pool
-envsubst < strimzi-controller-pools.yaml | kubectl apply -f -
-
-# 8. Create the broker node pool
-envsubst < strimzi-broker-pools.yaml | kubectl apply -f -
-
-# 9. Create the Kafka cluster
-envsubst < strimzi-kafka-cluster.yaml | kubectl apply -f -
-```
-
-### One-liner Deployment
-
-Apply all manifests in order. Note that you must customize the node names (`node1`, `node2`, `node3`) to match your actual Kubernetes node hostnames:
-
-```bash
-source strimzi-config.env && \
-kubectl create namespace $STRIMZI_NAMESPACE --dry-run=client -o yaml | kubectl apply -f - && \
-kubectl apply -f strimzi-storageclass.yaml && \
-# Create broker PVs (adjust node names to match your cluster)
-for i in 0 1 2; do
-  export STRIMZI_BROKER_ID=$i STRIMZI_BROKER_NODE=node$((i+1))
-  envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-done && \
-# Create controller PVs (adjust node names to match your cluster)
-for i in 0 1 2; do
-  export STRIMZI_CONTROLLER_ID=$i STRIMZI_CONTROLLER_NODE=node$((i+1))
-  envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-done && \
-# Apply remaining manifests
-for f in strimzi-kafka-rbac.yaml strimzi-controller-pools.yaml strimzi-broker-pools.yaml strimzi-kafka-cluster.yaml; do
-  envsubst < $f | kubectl apply -f -
-done
-```
-
-### Generate Processed Manifests
-
-To generate processed manifests for review or GitOps (adjust node names to match your cluster):
-
-```bash
-source strimzi-config.env
-
-# Generate all processed manifests to a single file
-{
-  echo "---"
-  cat strimzi-storageclass.yaml
-  # Generate broker PVs
-  for i in 0 1 2; do
-    export STRIMZI_BROKER_ID=$i STRIMZI_BROKER_NODE=node$((i+1))
-    echo "---"
-    envsubst < strimzi-broker-volumes.yaml
-  done
-  # Generate controller PVs
-  for i in 0 1 2; do
-    export STRIMZI_CONTROLLER_ID=$i STRIMZI_CONTROLLER_NODE=node$((i+1))
-    echo "---"
-    envsubst < strimzi-controller-volumes.yaml
-  done
-  # Generate remaining manifests
-  for f in strimzi-kafka-rbac.yaml strimzi-controller-pools.yaml strimzi-broker-pools.yaml \
-           strimzi-kafka-cluster.yaml; do
-    echo "---"
-    envsubst < $f
-  done
-} > processed-manifests.yaml
-```
-
-## Local Storage Setup
-
-**Important:** Before deploying, you must create the local storage directories on each Kubernetes node and set the correct ownership. Kafka runs as user ID 1001, so the directories must be owned by this user.
-
-The paths follow the pattern:
-
-- Brokers: `/data/strimzi/${STRIMZI_CLUSTER_NAME}/broker-pool-${STRIMZI_BROKER_ID}`
-- Controllers: `/data/strimzi/${STRIMZI_CLUSTER_NAME}/controller-${STRIMZI_CONTROLLER_ID}`
-
-```bash
-# On each node, create the storage directories (using default cluster name 'my-cluster')
-sudo mkdir -p /data/strimzi/my-cluster/broker-pool-{0,1,2}
-sudo mkdir -p /data/strimzi/my-cluster/controller-{0,1,2}
-
-# Set ownership to Kafka user (UID 1001)
+sudo mkdir -p /data/strimzi/my-cluster/controller-{0,1,2} /data/strimzi/my-cluster/broker-{0,1,2}
 sudo chown -R 1001:1001 /data/strimzi/my-cluster
 ```
 
-Make sure to create the directories on the correct nodes as specified by `STRIMZI_BROKER_NODE` and `STRIMZI_CONTROLLER_NODE` variables. For example, if broker-0 is on node1, create `/data/strimzi/my-cluster/broker-pool-0` on node1.
-
-## Verification
+Then deploy:
 
 ```bash
-# Check the Kafka cluster status
-kubectl get kafka -n $STRIMZI_NAMESPACE
-
-# Check node pools
-kubectl get kafkanodepool -n $STRIMZI_NAMESPACE
-
-# Check pods
-kubectl get pods -n $STRIMZI_NAMESPACE
-
-# Check persistent volumes
-kubectl get pv | grep kafka
+./strimzi-setup.sh
 ```
 
-## Related Documentation
+The script waits until the Kafka resource is Ready and prints each pod with its node.
 
-- [Full Strimzi Deployment Guide](../../STRIMZI_DEPLOYMENT.md)
-- [AxonOps Deployment Guide](../../AXONOPS_DEPLOYMENT.md)
+## Placing volumes on several nodes
+
+Each volume is pinned to one node. Map volume indices to nodes with `<index>:<node>` pairs; indices without a mapping use `STRIMZI_NODE_HOSTNAME`:
+
+```bash
+source strimzi-config.env
+export KAFKA_CONTROLLER_NODE_SELECTORS="0:node-a,1:node-b,2:node-c"
+export KAFKA_BROKER_NODE_SELECTORS="0:node-a,1:node-b,2:node-c"
+./strimzi-setup.sh
+```
+
+A pod runs on the node of the volume it binds to. The volume index is not the Kafka node id; Strimzi numbers pods across both pools. See the [node selector guide](../../NODE_SELECTOR_GUIDE.md) for more layouts.
+
+## Files
+
+| File | Resource |
+| --- | --- |
+| `strimzi-config.env` | Settings for the script and every manifest |
+| `strimzi-setup.sh` | Renders and applies everything below |
+| `strimzi-storageclass.yaml` | StorageClass `strimzi-local` (no provisioner, `WaitForFirstConsumer`) |
+| `strimzi-controller-volumes.yaml`, `strimzi-broker-volumes.yaml` | One PersistentVolume, rendered once per replica with `STRIMZI_VOLUME_INDEX` and `STRIMZI_VOLUME_NODE` |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent`, read by every Kafka container |
+| `kafka-node-pool-controller.yaml`, `kafka-node-pool-brokers.yaml` | KafkaNodePools `controller` and `broker`. Their claims select only the volumes labelled for their pool. |
+| `kafka-cluster.yaml` | Kafka `<cluster>` |
+
+## Configuration
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `KAFKA_NAMESPACE` | `kafka` | Namespace for the Kafka resources |
+| `STRIMZI_CLUSTER_NAME` | `my-cluster` | Kafka resource name, also part of the PV names and paths |
+| `STRIMZI_CONTROLLER_REPLICAS` / `STRIMZI_BROKER_REPLICAS` | `3` / `3` | Pool sizes. One volume is created per replica. |
+| `STRIMZI_CONTROLLER_STORAGE_SIZE` / `STRIMZI_BROKER_STORAGE_SIZE` | `10Gi` / `20Gi` | Size requested and declared on each PV. hostPath does not enforce it. |
+| `KAFKA_REPLICATION_FACTOR` / `KAFKA_MIN_INSYNC_REPLICAS` | `3` / `2` | Use `1` / `1` with a single broker |
+| `STRIMZI_HOST_BASE_DIR` | `/data/strimzi` | Parent directory of the volumes on each node |
+| `STRIMZI_HOST_UID` / `STRIMZI_HOST_GID` | `1001` / `1001` | Owner of the directories. Kafka runs as UID 1001. |
+| `STRIMZI_LOCAL_STORAGE_CLASS` | `strimzi-local` | StorageClass for the PVs |
+| `STRIMZI_NODE_HOSTNAME` | empty | Node for unmapped volumes. Found automatically on a single-node cluster. |
+| `KAFKA_CONTROLLER_NODE_SELECTORS` / `KAFKA_BROKER_NODE_SELECTORS` | empty | `<index>:<node>,...`. `broker-0`, `controller-0` and `ctrl-0` are accepted as indices. |
+| `STRIMZI_CREATE_HOST_DIRS` | `false` | Create the directories with `sudo` on the machine running the script. Only useful when it is the node. |
+| `KAFKA_RACK_TOPOLOGY_KEY` | `kubernetes.io/hostname` | Node label for rack awareness |
+| `KAFKA_VERSION`, `KAFKA_CONTAINER_IMAGE` | `4.3.0`, AxonOps image | As in the [cloud example](../cloud/README.md#configuration) |
+| `AXONOPS_NAMESPACE` | `axonops` | Namespace of the AxonOps server |
+| `AXON_AGENT_*` | self-hosted server in `AXONOPS_NAMESPACE`, TLS disabled | As in the [on-premises example](../on-premises/README.md#configuration) |
+| `STRIMZI_OPERATOR_INSTALL` / `STRIMZI_OPERATOR_NAMESPACE` / `STRIMZI_OPERATOR_VERSION` | `true` / `strimzi` / `1.1.0` | Operator install when its CRDs are missing. Script only. |
+| `HELM_WAIT` | `true` | Install the operator with `helm --wait`. Script only. |
+| `RENDER_ONLY` | `false` | Write `generated/strimzi-local-disk.yaml`, print the directories and the commands a real run would execute, apply nothing. Script only. |
+| `KAFKA_READY_TIMEOUT` | `600s` | How long to wait for the Kafka resource. Script only. |
+
+## Verify
+
+```bash
+kubectl get kafka,kafkanodepool,pvc -n "$KAFKA_NAMESPACE"
+kubectl get pv -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
+kubectl get pods -n "$KAFKA_NAMESPACE" -o wide
+```
+
+| Symptom | Cause |
+| --- | --- |
+| PVC `Pending`, event `didn't find available persistent volumes to bind` | Fewer PVs than replicas, or the size in the PV is smaller than the claim |
+| Pod `ContainerCreating`, event `hostPath type check failed` | The directory does not exist on that node |
+| Kafka container exits with `AccessDeniedException` | The directory is not owned by UID 1001 |
+
+## Remove
+
+```bash
+kubectl delete kafka "$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE"
+kubectl delete kafkanodepool controller broker -n "$KAFKA_NAMESPACE"
+kubectl delete secret "$STRIMZI_CLUSTER_NAME-axonops-agent" -n "$KAFKA_NAMESPACE"
+kubectl delete pvc -n "$KAFKA_NAMESPACE" -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
+kubectl delete pv -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
+# The data stays on the nodes until you delete the directories:
+# sudo rm -rf /data/strimzi/my-cluster
+```
+
+## Related
+
+- [Node selector guide](../../NODE_SELECTOR_GUIDE.md)
+- [Strimzi deployment guide](../../STRIMZI_DEPLOYMENT.md)
 
 ---
 
 # Source: examples/strimzi/on-premises/README.md
 
-# AxonOps Strimzi Kafka On-Premises Example
+# Strimzi Kafka reporting to a self-hosted AxonOps server
 
-This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring, connecting to an **on-premises AxonOps Server** (self-hosted).
+A KRaft Kafka cluster run by the Strimzi operator, using the AxonOps Kafka image so every controller and broker runs the AxonOps agent. The agents report to a self-hosted AxonOps server, such as the one installed by [../../axonops/](../../axonops/). For AxonOps Cloud use [../cloud/](../cloud/); the manifests are identical and only `strimzi-config.env` differs.
 
-## Overview
-
-- **Kafka Version**: 4.3.0
-- **Mode**: KRaft (no ZooKeeper)
-- **Brokers**: 6 replicas, 20Gi storage
-- **Controllers**: 3 replicas, 10Gi storage
-- **Replication Factor**: 3 (production-ready)
-- **AxonOps Connection**: On-premises AxonOps Server (no TLS, no API key required)
+| Setting | Default |
+| --- | --- |
+| Kafka | 4.3.0, KRaft |
+| Controllers | 3, 10Gi each |
+| Brokers | 3, 20Gi each |
+| Replication factor / min ISR | 3 / 2 |
+| Rack awareness | `kubernetes.io/hostname` |
+| Storage | PVCs from the default StorageClass |
 
 ## Prerequisites
 
-- A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
-- An on-premises AxonOps Server accessible from the Kubernetes cluster (e.g. `axon-server-agent.axonops.svc.cluster.local`)
-- `envsubst` available (part of `gettext` package)
+- Kubernetes 1.27 or newer, with a default StorageClass
+- The Strimzi operator 1.1.0, watching the Kafka namespace (see [STRIMZI_DEPLOYMENT.md](../../STRIMZI_DEPLOYMENT.md#install-the-strimzi-operator))
+- `envsubst` (package `gettext`)
+- A self-hosted AxonOps server reachable from the pods. With [../../axonops/](../../axonops/) in the same cluster nothing else is needed.
+
+## Quick start
+
+```bash
+cd examples/strimzi/on-premises
+# Sets AXONOPS_NAMESPACE, AXON_SERVER_ORG_NAME and AXON_SERVER_AGENTS_PORT
+source ../../axonops/axonops-config.env
+source strimzi-config.env
+
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
+
+The cluster appears in AxonOps under the name in `AXON_AGENT_CLUSTER_NAME` a minute or two after the pods are ready.
+
+## Files
+
+| File | Resource |
+| --- | --- |
+| `strimzi-config.env` | Settings for every manifest |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent` with the agent settings. Every Kafka container reads it through `valueFrom.secretKeyRef`. |
+| `kafka-node-pool-controller.yaml` | KafkaNodePool `controller` (KRaft controllers) |
+| `kafka-node-pool-brokers.yaml` | KafkaNodePool `broker` |
+| `kafka-cluster.yaml` | Kafka `<cluster>`: listeners, replication, rack awareness, logging to `/var/log/kafka/server.log` for the agent |
+| `kafka-connect.yaml` | Optional KafkaConnect `<cluster>-connect`, also monitored by AxonOps |
+
+Pods are named `<cluster>-controller-<id>` and `<cluster>-broker-<id>`. Node ids are shared by both pools, so the first broker is not always `-0`.
+
+## Examples
+
+Use a different namespace, cluster name and StorageClass:
+
+```bash
+export KAFKA_NAMESPACE=streaming STRIMZI_CLUSTER_NAME=orders
+export STRIMZI_BROKER_STORAGE_CLASS=gp3 STRIMZI_CONTROLLER_STORAGE_CLASS=gp3
+source strimzi-config.env
+```
+
+Export overrides before sourcing the file: it keeps values that are already set, and derived values such as `AXON_AGENT_CLUSTER_NAME` follow `STRIMZI_CLUSTER_NAME`. Start a new shell to drop them.
+
+Add Kafka Connect after the cluster is ready:
+
+```bash
+envsubst < kafka-connect.yaml | kubectl apply -f -
+kubectl wait kafkaconnect/"$STRIMZI_CLUSTER_NAME-connect" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
+
+Render everything to one file for review or GitOps:
+
+```bash
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  echo "---"; envsubst < "$f"
+done > rendered.yaml
+```
+
+Review `rendered.yaml` for credentials before committing it.
 
 ## Configuration
 
-Edit the `strimzi-config.env` file with your settings:
-
-```bash
-# Review and edit the configuration
-cat strimzi-config.env
-
-# Source the environment variables
-source strimzi-config.env
-```
-
-### Configuration Variables
-
-| Variable | Description | Default |
+| Variable | Default | Description |
 | --- | --- | --- |
-| `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
-| `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `example` |
-| `KAFKA_VERSION` | Kafka version | `4.3.0` |
-| `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
-| `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
-| `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
-| `STRIMZI_BROKER_STORAGE_CLASS` | Storage class for brokers | `""` (default) |
-| `STRIMZI_CONTROLLER_REPLICAS` | Number of controller replicas | `3` |
-| `STRIMZI_CONTROLLER_STORAGE_SIZE` | Storage size per controller | `10Gi` |
-| `STRIMZI_CONTROLLER_STORAGE_CLASS` | Storage class for controllers | `""` (default) |
-| `AXON_AGENT_CLUSTER_NAME` | AxonOps cluster name | `example` |
-| `AXON_AGENT_ORG` | AxonOps organisation | `example` |
-| `AXON_AGENT_KEY` | AxonOps agent key | `not-used` |
-| `AXON_AGENT_SERVER_HOST` | AxonOps Server hostname | `axon-server-agent.axonops.svc.cluster.local` |
-| `AXON_AGENT_SERVER_PORT` | AxonOps Server agent port | `1888` |
-| `AXON_AGENT_TLS_MODE` | TLS mode for AxonOps connection | `disabled` |
+| `KAFKA_NAMESPACE` | `kafka` | Namespace for every resource |
+| `STRIMZI_CLUSTER_NAME` | `my-cluster` | Kafka resource name, used as a prefix for pods, Services and the Secret |
+| `KAFKA_RACK_TOPOLOGY_KEY` | `kubernetes.io/hostname` | Node label for rack awareness and pod spreading. Use `topology.kubernetes.io/zone` if your nodes carry it. |
+| `KAFKA_VERSION` | `4.3.0` | Kafka version. Must be supported by the operator version. |
+| `KAFKA_CONTAINER_IMAGE` | `ghcr.io/axonops/strimzi/kafka:1.1.0-4.3.0-2.0.32-0.1.28` | AxonOps Kafka image, tag `<strimzi>-<kafka>-<agent>-<image>` |
+| `KAFKA_REPLICATION_FACTOR` | `3` | Default and internal topic replication factor. At most the broker count. |
+| `KAFKA_MIN_INSYNC_REPLICAS` | `2` | Default and transaction log min ISR |
+| `STRIMZI_CONTROLLER_REPLICAS` | `3` | Controllers. Use an odd number. |
+| `STRIMZI_CONTROLLER_STORAGE_SIZE` / `_CLASS` | `10Gi` / empty | Controller volume |
+| `STRIMZI_BROKER_REPLICAS` | `3` | Brokers |
+| `STRIMZI_BROKER_STORAGE_SIZE` / `_CLASS` | `20Gi` / empty | Broker volume. Empty class means the cluster default. |
+| `KAFKA_CONNECT_REPLICAS` | `1` | Kafka Connect workers |
+| `AXONOPS_NAMESPACE` | `axonops`, or the value from `axonops-config.env` | Namespace of the AxonOps server |
+| `AXON_AGENT_ORG` | `$AXON_SERVER_ORG_NAME`, else `example` | Must match the server `org_name` |
+| `AXON_AGENT_KEY` | `not-used` | Not used by a self-hosted server |
+| `AXON_AGENT_CLUSTER_NAME` | `$STRIMZI_CLUSTER_NAME` | Cluster name shown in AxonOps |
+| `AXON_AGENT_SERVER_HOST` | `axon-server-agent.$AXONOPS_NAMESPACE.svc.cluster.local` | axon-server agent Service. Use the agent Ingress host for a server outside the cluster. |
+| `AXON_AGENT_SERVER_PORT` | `$AXON_SERVER_AGENTS_PORT`, else `1888` | axon-server agent port |
+| `AXON_AGENT_TLS_MODE` | `disabled` | `TLS` when the server agent port or Ingress uses TLS |
 
-### On-Premises vs Cloud differences
-
-| Setting | On-Premises | Cloud (SaaS) |
-| --- | --- | --- |
-| `AXON_AGENT_SERVER_HOST` | Your AxonOps Server address (e.g. K8s service DNS) | `agents.axonops.cloud` |
-| `AXON_AGENT_SERVER_PORT` | `1888` | `443` |
-| `AXON_AGENT_TLS_MODE` | `disabled` (or `TLS` if configured) | `TLS` |
-| `AXON_AGENT_KEY` | `not-used` | Your AxonOps API key |
-
-## Manifests
-
-| File | Description |
-| --- | --- |
-| `strimzi-config.env` | Environment variables for all manifests |
-| `axonops-config-secret.yaml` | Secret with AxonOps agent connection details |
-| `kafka-logging-cm.yaml` | ConfigMap with log4j configuration for Kafka |
-| `kafka-node-pool-controller.yaml` | KafkaNodePool for KRaft controllers |
-| `kafka-node-pool-brokers.yaml` | KafkaNodePool for brokers |
-| `kafka-cluster.yaml` | Kafka cluster resource (KRaft mode) |
-| `kafka-connect.yaml` | KafkaConnect deployment (optional) |
-
-## Deployment
-
-### 1. Source Configuration and Create Namespace
+To change the agent settings later, update the Secret and restart the pods; Strimzi does not roll them for a Secret change:
 
 ```bash
-# Source the environment variables
-source strimzi-config.env
-
-# Create the namespace
-kubectl create namespace ${KAFKA_NAMESPACE}
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+kubectl annotate strimzipodset -n "$KAFKA_NAMESPACE" \
+  "$STRIMZI_CLUSTER_NAME-controller" "$STRIMZI_CLUSTER_NAME-broker" \
+  strimzi.io/manual-rolling-update=true
 ```
 
-### 2. Deploy the AxonOps Agent Secret
+## Verify
 
 ```bash
-envsubst < axonops-config-secret.yaml | kubectl apply -f -
+kubectl get kafka,kafkanodepool,pods,pvc -n "$KAFKA_NAMESPACE"
+# Agent output is in the Kafka container log
+BROKER=$(kubectl get pod -n "$KAFKA_NAMESPACE" -l strimzi.io/pool-name=broker -o name | head -1)
+kubectl logs -n "$KAFKA_NAMESPACE" "$BROKER" -c kafka | grep -i axon
 ```
 
-### 3. Deploy the Logging ConfigMap
+## Remove
 
 ```bash
-envsubst < kafka-logging-cm.yaml | kubectl apply -f -
+kubectl delete kafkaconnect "$STRIMZI_CLUSTER_NAME-connect" -n "$KAFKA_NAMESPACE" --ignore-not-found
+kubectl delete kafka "$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE"
+kubectl delete kafkanodepool controller broker -n "$KAFKA_NAMESPACE"
+kubectl delete secret "$STRIMZI_CLUSTER_NAME-axonops-agent" -n "$KAFKA_NAMESPACE"
+# deleteClaim is false, so the data volumes stay. To delete them:
+kubectl delete pvc -n "$KAFKA_NAMESPACE" -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
 ```
 
-### 4. Deploy the KRaft Controller Node Pool
+## Related
 
-```bash
-envsubst < kafka-node-pool-controller.yaml | kubectl apply -f -
-```
-
-### 5. Deploy the Broker Node Pool
-
-```bash
-envsubst < kafka-node-pool-brokers.yaml | kubectl apply -f -
-```
-
-### 6. Deploy the Kafka Cluster
-
-```bash
-envsubst < kafka-cluster.yaml | kubectl apply -f -
-```
-
-### 7. (Optional) Deploy Kafka Connect
-
-> **Note:** Kafka Connect is supported by AxonOps but is out of scope for this example. If you need help setting up Kafka Connect with AxonOps monitoring, please contact [AxonOps](https://axonops.com) or [Digitalis](https://digitalis.io) for support.
-
-**Note:** The `kafka-cluster.yaml` must be applied after the node pools, as the Kafka resource references them.
-
-## Configuration Notes
-
-- The storage class variables (`STRIMZI_BROKER_STORAGE_CLASS`, `STRIMZI_CONTROLLER_STORAGE_CLASS`) should be set to match your environment's available StorageClass.
-- The container images reference AxonOps custom Strimzi images with the agent embedded.
-- Topology spread constraints are configured using `topology.kubernetes.io/zone`. For on-premises clusters without zone labels, you may want to change the `topologyKey` to `kubernetes.io/hostname` to spread pods across nodes instead.
-- For Kafka Connect, you need to define `KAFKA_CONNECT_IMAGE` and `KAFKA_CONNECT_REPLICAS` in your environment before deploying.
-
-## Topology Key Configuration
-
-The `topologyKey` in `kafka-cluster.yaml` controls how pods are distributed across failure domains. For on-premises environments, the correct value depends on your cluster's node labels.
-
-To check which topology labels are available on your nodes:
-
-```bash
-kubectl get nodes --show-labels | grep -E "topology|zone|hostname"
-```
-
-### Common topology keys for on-premises
-
-| Scenario | Topology Key | Use Case |
-| --- | --- | --- |
-| Multi-zone on-prem | `topology.kubernetes.io/zone` | Nodes labelled by rack/zone |
-| Single-zone on-prem | `kubernetes.io/hostname` | Spread across individual nodes |
-| Custom labels | Your custom label key | Custom rack/failure-domain labels |
-
-If your on-premises nodes don't have zone labels, update the `topologyKey` in `kafka-cluster.yaml`:
-
-```yaml
-rack:
-  topologyKey: kubernetes.io/hostname
-```
-
-## Related Documentation
-
-- [Full Strimzi Deployment Guide](../../STRIMZI_DEPLOYMENT.md)
-- [AxonOps Deployment Guide](../../AXONOPS_DEPLOYMENT.md)
-- [Node Selector Guide](../../NODE_SELECTOR_GUIDE.md)
+- [Strimzi deployment guide](../../STRIMZI_DEPLOYMENT.md)
+- [AxonOps Kafka image](../../../strimzi/README.md)
+- [Strimzi documentation](https://strimzi.io/docs/operators/latest/)
