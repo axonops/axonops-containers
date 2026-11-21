@@ -2,83 +2,77 @@
 
 **English** | [Français](STRIMZI_DEPLOYMENT.fr.md) | [Español](STRIMZI_DEPLOYMENT.es.md) | [Galego](STRIMZI_DEPLOYMENT.gl.md)
 
-This guide covers deploying Apache Kafka using the Strimzi operator on Kubernetes, with optional AxonOps monitoring integration.
+This guide deploys Apache Kafka with the Strimzi operator and the AxonOps Kafka image, which runs the AxonOps agent in every Kafka container.
 
-## Quick Start
+## Choose an example
 
-### Step 1: Install Strimzi Operator
+| Example | Storage | AxonOps target | Deployment |
+| --- | --- | --- | --- |
+| [strimzi/cloud/](strimzi/cloud/) | PVCs from a StorageClass | AxonOps Cloud | `envsubst` and `kubectl apply` |
+| [strimzi/on-premises/](strimzi/on-premises/) | PVCs from a StorageClass | Self-hosted AxonOps | `envsubst` and `kubectl apply` |
+| [strimzi/local-disk/](strimzi/local-disk/) | hostPath PVs pinned to nodes | Self-hosted AxonOps | `strimzi-setup.sh` |
 
-Before deploying Kafka clusters, install the Strimzi operator using Helm.
+The three share the same resources and variable names:
 
-**Important:** Check the [Strimzi downloads page](https://strimzi.io/downloads/) to verify which Strimzi version supports your desired Kafka version. The support matrix shows compatible Kafka versions for each Strimzi release.
+| Resource | Name |
+| --- | --- |
+| Kafka | `$STRIMZI_CLUSTER_NAME` (default `my-cluster`) in `$KAFKA_NAMESPACE` (default `kafka`) |
+| KafkaNodePools | `controller` and `broker` |
+| Agent Secret | `$STRIMZI_CLUSTER_NAME-axonops-agent`, read by every Kafka container |
+| Bootstrap Service | `$STRIMZI_CLUSTER_NAME-kafka-bootstrap:9092` (plain), `:9093` (TLS) |
+
+## Install the Strimzi operator
+
+Install it once per Kubernetes cluster. The examples need an operator that watches the Kafka namespace; `watchAnyNamespace=true` covers any namespace.
 
 ```bash
-# Add Strimzi Helm repository
-helm repo add strimzi https://strimzi.io/charts/
-helm repo update
-
-# Create namespaces
-kubectl create namespace strimzi
-kubectl create namespace kafka
-
-# Check available versions
-helm search repo strimzi --versions
-
-# Install the operator (specify version based on support matrix)
-# Example: Strimzi 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0
-helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  -n strimzi \
+export STRIMZI_OPERATOR_NAMESPACE=strimzi
+helm upgrade --install strimzi-kafka-operator \
+  oci://quay.io/strimzi-helm/strimzi-kafka-operator \
   --version 1.1.0 \
-  --set watchNamespaces="{kafka}" \
+  --namespace "$STRIMZI_OPERATOR_NAMESPACE" --create-namespace \
+  --set watchAnyNamespace=true \
   --wait
-
-# Verify installation
-kubectl get pods -n strimzi
-kubectl get crd | grep strimzi
+kubectl get pods -n "$STRIMZI_OPERATOR_NAMESPACE"
 ```
 
-### Step 2: Deploy Kafka Cluster
+To limit the operator to one namespace, replace `watchAnyNamespace=true` with `--set "watchNamespaces={$KAFKA_NAMESPACE}"` and create that namespace first.
 
-Choose one of the deployment examples based on your use case. Each example includes its own README with detailed deployment instructions:
+`strimzi/local-disk/strimzi-setup.sh` runs this step itself when the Strimzi CRDs are missing.
 
-| Directory | Use Case | Description |
-| --- | --- | --- |
-| [strimzi/cloud/](strimzi/cloud/) | Production | 6 brokers, 3 controllers, cloud storage |
-| [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Local persistent volumes, configurable |
+## Deploy
 
-Each example directory contains:
+Follow the README of the chosen example. For [strimzi/cloud/](strimzi/cloud/):
 
-- `README.md` - Complete deployment instructions
-- `strimzi-config.env` - Configuration variables
-- YAML manifests for all Kafka cluster components
+```bash
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
 
-### Step 3: Add AxonOps Monitoring (Optional)
+## Version compatibility
 
-See [AXONOPS_DEPLOYMENT.md](AXONOPS_DEPLOYMENT.md) for deploying AxonOps monitoring. The Strimzi example manifests include AxonOps agent configuration variables.
+`KAFKA_VERSION` must be supported by the operator, and `KAFKA_CONTAINER_IMAGE` must be built for both. AxonOps image tags read `<strimzi>-<kafka>-<agent>-<image>`, so `1.1.0-4.3.0-2.0.32-0.1.28` is Strimzi 1.1.0 with Kafka 4.3.0. Published tags are listed in [VERSIONS.md](../VERSIONS.md).
 
----
-
-## Strimzi Version Compatibility
-
-Always check the [Strimzi support matrix](https://strimzi.io/downloads/) before installation to ensure compatibility:
-
-| Strimzi Version | Supported Kafka Versions | Kubernetes Versions |
+| Strimzi | Kafka | Kubernetes |
 | --- | --- | --- |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | 1.27+ |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | 1.27+ |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | 1.26+ |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
-| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
-| 0.47.0 | 3.9.0, 3.9.1 | 1.25+ |
 
-*Note: This table is for reference only. Always verify current compatibility at [strimzi.io/downloads](https://strimzi.io/downloads/).*
+The examples use the `kafka.strimzi.io/v1` API, available from Strimzi 0.49. Check the [Strimzi downloads page](https://strimzi.io/downloads/) for the current matrix.
 
-## Additional Resources
+## Related
 
-- **Strimzi Documentation**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
-- **Strimzi GitHub**: [https://github.com/strimzi/strimzi-kafka-operator](https://github.com/strimzi/strimzi-kafka-operator)
-- **Node Selector Guide**: [NODE_SELECTOR_GUIDE.md](NODE_SELECTOR_GUIDE.md)
-
----
-
-**Last Updated:** 2026-02-13
+- [Node selector guide](NODE_SELECTOR_GUIDE.md) for `strimzi/local-disk/`
+- [AxonOps Kafka image](../strimzi/README.md)
+- [AxonOps deployment guide](AXONOPS_DEPLOYMENT.md)
+- [Strimzi documentation](https://strimzi.io/docs/operators/latest/)

@@ -1,158 +1,141 @@
-# AxonOps Strimzi Kafka On-Premises Example
+# Strimzi Kafka reporting to a self-hosted AxonOps server
 
-This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring, connecting to an **on-premises AxonOps Server** (self-hosted).
+A KRaft Kafka cluster run by the Strimzi operator, using the AxonOps Kafka image so every controller and broker runs the AxonOps agent. The agents report to a self-hosted AxonOps server, such as the one installed by [../../axonops/](../../axonops/). For AxonOps Cloud use [../cloud/](../cloud/); the manifests are identical and only `strimzi-config.env` differs.
 
-## Overview
-
-- **Kafka Version**: 4.3.0
-- **Mode**: KRaft (no ZooKeeper)
-- **Brokers**: 6 replicas, 20Gi storage
-- **Controllers**: 3 replicas, 10Gi storage
-- **Replication Factor**: 3 (production-ready)
-- **AxonOps Connection**: On-premises AxonOps Server (no TLS, no API key required)
+| Setting | Default |
+| --- | --- |
+| Kafka | 4.3.0, KRaft |
+| Controllers | 3, 10Gi each |
+| Brokers | 3, 20Gi each |
+| Replication factor / min ISR | 3 / 2 |
+| Rack awareness | `kubernetes.io/hostname` |
+| Storage | PVCs from the default StorageClass |
 
 ## Prerequisites
 
-- A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
-- An on-premises AxonOps Server accessible from the Kubernetes cluster (e.g. `axon-server-agent.axonops.svc.cluster.local`)
-- `envsubst` available (part of `gettext` package)
+- Kubernetes 1.27 or newer, with a default StorageClass
+- The Strimzi operator 1.1.0, watching the Kafka namespace (see [STRIMZI_DEPLOYMENT.md](../../STRIMZI_DEPLOYMENT.md#install-the-strimzi-operator))
+- `envsubst` (package `gettext`)
+- A self-hosted AxonOps server reachable from the pods. With [../../axonops/](../../axonops/) in the same cluster nothing else is needed.
+
+## Quick start
+
+```bash
+cd examples/strimzi/on-premises
+# Sets AXONOPS_NAMESPACE, AXON_SERVER_ORG_NAME and AXON_SERVER_AGENTS_PORT
+source ../../axonops/axonops-config.env
+source strimzi-config.env
+
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
+
+The cluster appears in AxonOps under the name in `AXON_AGENT_CLUSTER_NAME` a minute or two after the pods are ready.
+
+## Files
+
+| File | Resource |
+| --- | --- |
+| `strimzi-config.env` | Settings for every manifest |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent` with the agent settings. Every Kafka container reads it through `valueFrom.secretKeyRef`. |
+| `kafka-node-pool-controller.yaml` | KafkaNodePool `controller` (KRaft controllers) |
+| `kafka-node-pool-brokers.yaml` | KafkaNodePool `broker` |
+| `kafka-cluster.yaml` | Kafka `<cluster>`: listeners, replication, rack awareness, logging to `/var/log/kafka/server.log` for the agent |
+| `kafka-connect.yaml` | Optional KafkaConnect `<cluster>-connect`, also monitored by AxonOps |
+
+Pods are named `<cluster>-controller-<id>` and `<cluster>-broker-<id>`. Node ids are shared by both pools, so the first broker is not always `-0`.
+
+## Examples
+
+Use a different namespace, cluster name and StorageClass:
+
+```bash
+export KAFKA_NAMESPACE=streaming STRIMZI_CLUSTER_NAME=orders
+export STRIMZI_BROKER_STORAGE_CLASS=gp3 STRIMZI_CONTROLLER_STORAGE_CLASS=gp3
+source strimzi-config.env
+```
+
+Export overrides before sourcing the file: it keeps values that are already set, and derived values such as `AXON_AGENT_CLUSTER_NAME` follow `STRIMZI_CLUSTER_NAME`. Start a new shell to drop them.
+
+Add Kafka Connect after the cluster is ready:
+
+```bash
+envsubst < kafka-connect.yaml | kubectl apply -f -
+kubectl wait kafkaconnect/"$STRIMZI_CLUSTER_NAME-connect" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
+
+Render everything to one file for review or GitOps:
+
+```bash
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  echo "---"; envsubst < "$f"
+done > rendered.yaml
+```
+
+Review `rendered.yaml` for credentials before committing it.
 
 ## Configuration
 
-Edit the `strimzi-config.env` file with your settings:
-
-```bash
-# Review and edit the configuration
-cat strimzi-config.env
-
-# Source the environment variables
-source strimzi-config.env
-```
-
-### Configuration Variables
-
-| Variable | Description | Default |
+| Variable | Default | Description |
 | --- | --- | --- |
-| `KAFKA_NAMESPACE` | Kubernetes namespace for Kafka | `kafka` |
-| `STRIMZI_CLUSTER_NAME` | Name of the Kafka cluster | `example` |
-| `KAFKA_VERSION` | Kafka version | `4.3.0` |
-| `KAFKA_CONTAINER_IMAGE` | Kafka container image with AxonOps agent | See .env file |
-| `STRIMZI_BROKER_REPLICAS` | Number of broker replicas | `6` |
-| `STRIMZI_BROKER_STORAGE_SIZE` | Storage size per broker | `20Gi` |
-| `STRIMZI_BROKER_STORAGE_CLASS` | Storage class for brokers | `""` (default) |
-| `STRIMZI_CONTROLLER_REPLICAS` | Number of controller replicas | `3` |
-| `STRIMZI_CONTROLLER_STORAGE_SIZE` | Storage size per controller | `10Gi` |
-| `STRIMZI_CONTROLLER_STORAGE_CLASS` | Storage class for controllers | `""` (default) |
-| `AXON_AGENT_CLUSTER_NAME` | AxonOps cluster name | `example` |
-| `AXON_AGENT_ORG` | AxonOps organisation | `example` |
-| `AXON_AGENT_KEY` | AxonOps agent key | `not-used` |
-| `AXON_AGENT_SERVER_HOST` | AxonOps Server hostname | `axon-server-agent.axonops.svc.cluster.local` |
-| `AXON_AGENT_SERVER_PORT` | AxonOps Server agent port | `1888` |
-| `AXON_AGENT_TLS_MODE` | TLS mode for AxonOps connection | `disabled` |
+| `KAFKA_NAMESPACE` | `kafka` | Namespace for every resource |
+| `STRIMZI_CLUSTER_NAME` | `my-cluster` | Kafka resource name, used as a prefix for pods, Services and the Secret |
+| `KAFKA_RACK_TOPOLOGY_KEY` | `kubernetes.io/hostname` | Node label for rack awareness and pod spreading. Use `topology.kubernetes.io/zone` if your nodes carry it. |
+| `KAFKA_VERSION` | `4.3.0` | Kafka version. Must be supported by the operator version. |
+| `KAFKA_CONTAINER_IMAGE` | `ghcr.io/axonops/strimzi/kafka:1.1.0-4.3.0-2.0.32-0.1.28` | AxonOps Kafka image, tag `<strimzi>-<kafka>-<agent>-<image>` |
+| `KAFKA_REPLICATION_FACTOR` | `3` | Default and internal topic replication factor. At most the broker count. |
+| `KAFKA_MIN_INSYNC_REPLICAS` | `2` | Default and transaction log min ISR |
+| `STRIMZI_CONTROLLER_REPLICAS` | `3` | Controllers. Use an odd number. |
+| `STRIMZI_CONTROLLER_STORAGE_SIZE` / `_CLASS` | `10Gi` / empty | Controller volume |
+| `STRIMZI_BROKER_REPLICAS` | `3` | Brokers |
+| `STRIMZI_BROKER_STORAGE_SIZE` / `_CLASS` | `20Gi` / empty | Broker volume. Empty class means the cluster default. |
+| `KAFKA_CONNECT_REPLICAS` | `1` | Kafka Connect workers |
+| `AXONOPS_NAMESPACE` | `axonops`, or the value from `axonops-config.env` | Namespace of the AxonOps server |
+| `AXON_AGENT_ORG` | `$AXON_SERVER_ORG_NAME`, else `example` | Must match the server `org_name` |
+| `AXON_AGENT_KEY` | `not-used` | Not used by a self-hosted server |
+| `AXON_AGENT_CLUSTER_NAME` | `$STRIMZI_CLUSTER_NAME` | Cluster name shown in AxonOps |
+| `AXON_AGENT_SERVER_HOST` | `axon-server-agent.$AXONOPS_NAMESPACE.svc.cluster.local` | axon-server agent Service. Use the agent Ingress host for a server outside the cluster. |
+| `AXON_AGENT_SERVER_PORT` | `$AXON_SERVER_AGENTS_PORT`, else `1888` | axon-server agent port |
+| `AXON_AGENT_TLS_MODE` | `disabled` | `TLS` when the server agent port or Ingress uses TLS |
 
-### On-Premises vs Cloud differences
-
-| Setting | On-Premises | Cloud (SaaS) |
-| --- | --- | --- |
-| `AXON_AGENT_SERVER_HOST` | Your AxonOps Server address (e.g. K8s service DNS) | `agents.axonops.cloud` |
-| `AXON_AGENT_SERVER_PORT` | `1888` | `443` |
-| `AXON_AGENT_TLS_MODE` | `disabled` (or `TLS` if configured) | `TLS` |
-| `AXON_AGENT_KEY` | `not-used` | Your AxonOps API key |
-
-## Manifests
-
-| File | Description |
-| --- | --- |
-| `strimzi-config.env` | Environment variables for all manifests |
-| `axonops-config-secret.yaml` | Secret with AxonOps agent connection details |
-| `kafka-logging-cm.yaml` | ConfigMap with log4j configuration for Kafka |
-| `kafka-node-pool-controller.yaml` | KafkaNodePool for KRaft controllers |
-| `kafka-node-pool-brokers.yaml` | KafkaNodePool for brokers |
-| `kafka-cluster.yaml` | Kafka cluster resource (KRaft mode) |
-| `kafka-connect.yaml` | KafkaConnect deployment (optional) |
-
-## Deployment
-
-### 1. Source Configuration and Create Namespace
+To change the agent settings later, update the Secret and restart the pods; Strimzi does not roll them for a Secret change:
 
 ```bash
-# Source the environment variables
-source strimzi-config.env
-
-# Create the namespace
-kubectl create namespace ${KAFKA_NAMESPACE}
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+kubectl annotate strimzipodset -n "$KAFKA_NAMESPACE" \
+  "$STRIMZI_CLUSTER_NAME-controller" "$STRIMZI_CLUSTER_NAME-broker" \
+  strimzi.io/manual-rolling-update=true
 ```
 
-### 2. Deploy the AxonOps Agent Secret
+## Verify
 
 ```bash
-envsubst < axonops-config-secret.yaml | kubectl apply -f -
+kubectl get kafka,kafkanodepool,pods,pvc -n "$KAFKA_NAMESPACE"
+# Agent output is in the Kafka container log
+BROKER=$(kubectl get pod -n "$KAFKA_NAMESPACE" -l strimzi.io/pool-name=broker -o name | head -1)
+kubectl logs -n "$KAFKA_NAMESPACE" "$BROKER" -c kafka | grep -i axon
 ```
 
-### 3. Deploy the Logging ConfigMap
+## Remove
 
 ```bash
-envsubst < kafka-logging-cm.yaml | kubectl apply -f -
+kubectl delete kafkaconnect "$STRIMZI_CLUSTER_NAME-connect" -n "$KAFKA_NAMESPACE" --ignore-not-found
+kubectl delete kafka "$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE"
+kubectl delete kafkanodepool controller broker -n "$KAFKA_NAMESPACE"
+kubectl delete secret "$STRIMZI_CLUSTER_NAME-axonops-agent" -n "$KAFKA_NAMESPACE"
+# deleteClaim is false, so the data volumes stay. To delete them:
+kubectl delete pvc -n "$KAFKA_NAMESPACE" -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
 ```
 
-### 4. Deploy the KRaft Controller Node Pool
+## Related
 
-```bash
-envsubst < kafka-node-pool-controller.yaml | kubectl apply -f -
-```
-
-### 5. Deploy the Broker Node Pool
-
-```bash
-envsubst < kafka-node-pool-brokers.yaml | kubectl apply -f -
-```
-
-### 6. Deploy the Kafka Cluster
-
-```bash
-envsubst < kafka-cluster.yaml | kubectl apply -f -
-```
-
-### 7. (Optional) Deploy Kafka Connect
-
-> **Note:** Kafka Connect is supported by AxonOps but is out of scope for this example. If you need help setting up Kafka Connect with AxonOps monitoring, please contact [AxonOps](https://axonops.com) or [Digitalis](https://digitalis.io) for support.
-
-**Note:** The `kafka-cluster.yaml` must be applied after the node pools, as the Kafka resource references them.
-
-## Configuration Notes
-
-- The storage class variables (`STRIMZI_BROKER_STORAGE_CLASS`, `STRIMZI_CONTROLLER_STORAGE_CLASS`) should be set to match your environment's available StorageClass.
-- The container images reference AxonOps custom Strimzi images with the agent embedded.
-- Topology spread constraints are configured using `topology.kubernetes.io/zone`. For on-premises clusters without zone labels, you may want to change the `topologyKey` to `kubernetes.io/hostname` to spread pods across nodes instead.
-- For Kafka Connect, you need to define `KAFKA_CONNECT_IMAGE` and `KAFKA_CONNECT_REPLICAS` in your environment before deploying.
-
-## Topology Key Configuration
-
-The `topologyKey` in `kafka-cluster.yaml` controls how pods are distributed across failure domains. For on-premises environments, the correct value depends on your cluster's node labels.
-
-To check which topology labels are available on your nodes:
-
-```bash
-kubectl get nodes --show-labels | grep -E "topology|zone|hostname"
-```
-
-### Common topology keys for on-premises
-
-| Scenario | Topology Key | Use Case |
-| --- | --- | --- |
-| Multi-zone on-prem | `topology.kubernetes.io/zone` | Nodes labelled by rack/zone |
-| Single-zone on-prem | `kubernetes.io/hostname` | Spread across individual nodes |
-| Custom labels | Your custom label key | Custom rack/failure-domain labels |
-
-If your on-premises nodes don't have zone labels, update the `topologyKey` in `kafka-cluster.yaml`:
-
-```yaml
-rack:
-  topologyKey: kubernetes.io/hostname
-```
-
-## Related Documentation
-
-- [Full Strimzi Deployment Guide](../../STRIMZI_DEPLOYMENT.md)
-- [AxonOps Deployment Guide](../../AXONOPS_DEPLOYMENT.md)
-- [Node Selector Guide](../../NODE_SELECTOR_GUIDE.md)
+- [Strimzi deployment guide](../../STRIMZI_DEPLOYMENT.md)
+- [AxonOps Kafka image](../../../strimzi/README.md)
+- [Strimzi documentation](https://strimzi.io/docs/operators/latest/)

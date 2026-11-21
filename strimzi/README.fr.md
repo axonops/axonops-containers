@@ -28,135 +28,59 @@ L'intégration AxonOps pour Strimzi permet de construire des clusters Kafka fonc
 ### 1. Installer l'opérateur Strimzi
 
 ```bash
-helm repo add strimzi https://strimzi.io/charts/
-helm install my-strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  --version 1.2.0 \
-  --set watchAnyNamespace=true
+helm upgrade --install strimzi-kafka-operator \
+  oci://quay.io/strimzi-helm/strimzi-kafka-operator \
+  --version 1.1.0 \
+  --namespace strimzi --create-namespace \
+  --set watchAnyNamespace=true \
+  --wait
 ```
 
-### 2. Créer le namespace Kafka
+### 2. Déployer un cluster Kafka
+
+Des manifestes prêts à l'emploi se trouvent dans [`examples/strimzi/`](../examples/strimzi/). Chaque répertoire contient un fichier `strimzi-config.env` et un README avec toutes les étapes :
+
+| Exemple | Stockage | Cible AxonOps |
+| --- | --- | --- |
+| [`cloud/`](../examples/strimzi/cloud/) | PVC issus d'une StorageClass | AxonOps Cloud |
+| [`on-premises/`](../examples/strimzi/on-premises/) | PVC issus d'une StorageClass | AxonOps auto-hébergé |
+| [`local-disk/`](../examples/strimzi/local-disk/) | Volumes hostPath attachés à des nœuds | AxonOps auto-hébergé |
 
 ```bash
-kubectl create namespace kafka
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl get pods -n "$KAFKA_NAMESPACE" --watch
 ```
 
-### 3. Déployer le cluster Kafka
+`kafka-connect.yaml`, dans les mêmes répertoires, ajoute un cluster Kafka Connect dont les workers remontent à AxonOps sous le type de nœud `connect`. La prise en charge de Kafka Connect est en bêta.
 
-Choisissez l'une des méthodes de configuration ci-dessous selon vos besoins.
-
-#### Option A : déploiement cloud (multi-nœuds)
-
-Pour les déploiements cloud de production, avec des pools de controllers et de brokers distincts.
-
-Tous les manifestes nécessaires se trouvent dans le répertoire [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) :
-
-- `kafka-cluster.yaml` : configuration principale du cluster Kafka
-- `kafka-node-pool-controller.yaml` : pool de nœuds controller
-- `kafka-node-pool-brokers.yaml` : pool de nœuds broker
-- `kafka-logging-cm.yaml` : configuration des logs
-- `axonops-config-secret.yaml` : identifiants AxonOps
-
-**Renseignez les valeurs suivantes** :
-
-- `YOUR_AXONOPS_HOST` : le nom d'hôte de votre serveur AxonOps (par exemple `agents.axonops.com`)
-- `YOUR_AXONOPS_API_KEY` : la clé d'API de votre organisation AxonOps
-- `YOUR_CLUSTER_NAME` : un nom unique pour ce cluster Kafka
-- `YOUR_ORG_NAME` : le nom de votre organisation AxonOps
-
-Puis appliquez :
-
-```bash
-kubectl apply -f ../examples/strimzi/cloud/ -n kafka
-kubectl get pod -n kafka --watch
-```
-
-#### Option B : nœud unique (développement / test)
-
-Pour le développement ou les tests, vous pouvez déployer un cluster Kafka à un seul nœud combinant les rôles controller et broker.
-
-Voir le répertoire [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) :
-
-- `kafka-single-node.yaml` : cluster Kafka à nœud unique
-- `axonops-agent-config.yaml` : configuration de l'agent AxonOps
-- `axonops-kafka-logging.yaml` : configuration des logs
-- `axonops-kafka-nodepool.yaml` : configuration du pool de nœuds
-
-**Renseignez les valeurs** puis appliquez uniquement les fichiers nœud unique :
-
-```bash
-kubectl apply -f ../examples/strimzi/cloud/axonops-agent-config.yaml \
-              -f ../examples/strimzi/cloud/axonops-kafka-logging.yaml \
-              -f ../examples/strimzi/cloud/axonops-kafka-nodepool.yaml \
-              -f ../examples/strimzi/cloud/kafka-single-node.yaml \
-              -n kafka
-kubectl get pod -n kafka --watch
-```
-
-#### Option C : stockage sur disque local
-
-Pour les déploiements utilisant des volumes persistants locaux.
-
-Tous les manifestes nécessaires se trouvent dans le répertoire [`examples/strimzi/local-disk/`](../examples/strimzi/local-disk/).
-
-```bash
-kubectl apply -f ../examples/strimzi/local-disk/ -n kafka
-kubectl get pod -n kafka --watch
-```
-
-#### Option D : cluster Kafka Connect
-
-Déployez un cluster Kafka Connect pour faire circuler des données entre Kafka et d'autres systèmes.
-
-**Prérequis** : disposer d'un cluster Kafka en fonctionnement (déployé avec l'une des options ci-dessus).
-
-**Renseignez les valeurs suivantes** dans [`examples/strimzi/cloud/kafka-connect.yaml`](../examples/strimzi/cloud/kafka-connect.yaml) :
-
-- `YOUR_AXONOPS_HOST` : le nom d'hôte de votre serveur AxonOps (par exemple `agents.axonops.com`)
-- `YOUR_AXONOPS_API_KEY` : la clé d'API de votre organisation AxonOps
-- `YOUR_CLUSTER_NAME` : un nom unique pour ce cluster Kafka Connect
-- `YOUR_ORG_NAME` : le nom de votre organisation AxonOps
-- `ghcr.io/axonops/strimzi/kafka:latest` : à remplacer par votre image Kafka AxonOps précise
-- `my-cluster-kafka-bootstrap:9092` : à remplacer par l'adresse réelle de votre serveur bootstrap Kafka
-
-Puis appliquez :
-
-```bash
-kubectl apply -f ../examples/strimzi/cloud/kafka-connect.yaml -n kafka
-kubectl get pod -n kafka --watch
-```
-
-**Note** : la prise en charge de Kafka Connect est actuellement en bêta. Les workers Connect remontent leurs métriques à AxonOps sous le type de nœud `connect`.
+Voir le [guide de déploiement Strimzi](../examples/STRIMZI_DEPLOYMENT.fr.md) pour la compatibilité des versions de l'opérateur et de l'image.
 
 ## Détails de configuration
 
-### Variables d'environnement obligatoires
+### Variables d'environnement de l'agent
 
-Lorsque la configuration se fait par variables d'environnement, les variables suivantes doivent être définies :
+L'image lit les réglages de l'agent dans les variables d'environnement du conteneur Kafka. Les exemples les définissent depuis un Secret avec `valueFrom.secretKeyRef`.
 
 | Variable | Description | Exemple |
 |----------|-------------|---------|
-| `KAFKA_NODE_TYPE` | Rôle du nœud Kafka | `kraft-controller` ou `kraft-broker` |
-| `AXON_AGENT_SERVER_HOST` | Nom d'hôte du serveur AxonOps | `agents.axonops.com` |
-| `AXON_AGENT_KEY` | Clé d'API AxonOps | Votre clé d'API depuis le dashboard AxonOps |
-| `AGENT_CLUSTER_NAME` | Identifiant unique du cluster | `my-kafka-prod` |
+| `KAFKA_NODE_TYPE` | Rôle du nœud Kafka | `kraft-controller`, `kraft-broker` ou `connect` |
+| `AXON_AGENT_CLUSTER_NAME` | Nom du cluster affiché dans AxonOps | `my-kafka-prod` |
 | `AXON_AGENT_ORG` | Nom de l'organisation AxonOps | Le nom de votre organisation |
+| `AXON_AGENT_KEY` | Clé d'agent AxonOps | Votre clé depuis la console AxonOps |
+| `AXON_AGENT_SERVER_HOST` | Nom d'hôte du serveur AxonOps | `agents.axonops.cloud` |
+| `AXON_AGENT_SERVER_PORT` | Port du serveur AxonOps | `443`, ou `1888` pour un serveur auto-hébergé |
+| `AXON_AGENT_TLS_MODE` | Mode TLS de l'agent | `TLS` ou `disabled` |
 
-### Variables d'environnement optionnelles
+### Fichier de configuration
 
-| Variable | Description | Défaut |
-|----------|-------------|---------|
-| `KAFKA_CLIENT_BROKERS` | Adresses des brokers (pour les brokers) | `0.0.0.0:9092` |
-
-### Configuration par ConfigMap
-
-L'approche ConfigMap permet de fournir un fichier de configuration `axon-agent.yml` complet. C'est utile pour :
-
-- une configuration avancée de la collecte de métriques
-- des réglages de logs personnalisés
-- des déploiements multi-datacenters
-- un contrôle fin du comportement de l'agent
-
-Voir [`examples/strimzi/cloud/`](../examples/strimzi/cloud/) pour la structure complète.
+Pour configurer l'agent avec un fichier `axon-agent.yml` complet, montez-le sur `/mnt/axon-agent.yml`, par exemple depuis un ConfigMap via `template.pod.volumes` et `template.kafkaContainer.volumeMounts` dans le KafkaNodePool. Au démarrage, l'image le lie à `/etc/axonops/axon-agent.yml`.
 
 ## Rack awareness
 
@@ -181,7 +105,7 @@ kubectl label node worker-3 topology.kubernetes.io/zone=us-east-1c
 La configuration du rack awareness est déjà présente dans les manifestes d'exemple :
 
 ```yaml
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: my-cluster
@@ -191,7 +115,7 @@ spec:
       topologyKey: topology.kubernetes.io/zone
 ```
 
-Le label de nœud vaut `topology.kubernetes.io/zone` par défaut, mais peut être remplacé via le paramètre `topologyKey`.
+Les exemples définissent `topologyKey` à partir de `KAFKA_RACK_TOPOLOGY_KEY` : `topology.kubernetes.io/zone` dans `cloud/`, `kubernetes.io/hostname` dans `on-premises/` et `local-disk/`.
 
 ## Construire des images personnalisées
 
@@ -272,13 +196,13 @@ Pour supprimer toutes les ressources Kafka du cluster d'exemple :
 
 ```bash
 # Delete all Strimzi resources
-kubectl delete $(kubectl get strimzi -o name -n kafka) -n kafka
+kubectl delete $(kubectl get strimzi -o name -n "$KAFKA_NAMESPACE") -n "$KAFKA_NAMESPACE"
 
 # Delete persistent volume claims
-kubectl delete pvc --all -n kafka
+kubectl delete pvc --all -n "$KAFKA_NAMESPACE"
 
 # Uninstall Strimzi operator
-helm uninstall my-strimzi-kafka-operator
+helm uninstall strimzi-kafka-operator -n strimzi
 
 # Clean up local images (if needed)
 docker rmi axonkafka:local
@@ -295,38 +219,38 @@ k3s crictl rmi ghcr.io/axonops/strimzi/kafka:0.47.0-3.9.0
 ### Vérifier l'état des pods
 
 ```bash
-kubectl get pods -n kafka
-kubectl describe pod <pod-name> -n kafka
+kubectl get pods -n "$KAFKA_NAMESPACE"
+kubectl describe pod <pod-name> -n "$KAFKA_NAMESPACE"
 ```
 
 ### Consulter les logs
 
 ```bash
 # Kafka broker logs
-kubectl logs <broker-pod-name> -n kafka
+kubectl logs <broker-pod-name> -n "$KAFKA_NAMESPACE"
 
 # AxonOps agent logs
-kubectl exec <pod-name> -n kafka -- tail -f /var/log/axonops/axon-agent.log
+kubectl exec <pod-name> -n "$KAFKA_NAMESPACE" -- tail -f /var/log/axonops/axon-agent.log
 
 # Follow all logs from a pod
-kubectl logs -f <pod-name> -n kafka
+kubectl logs -f <pod-name> -n "$KAFKA_NAMESPACE"
 ```
 
 ### Vérifier la connexion à AxonOps
 
 ```bash
 # Check if agent is running
-kubectl exec <pod-name> -n kafka -- ps aux | grep axon
+kubectl exec <pod-name> -n "$KAFKA_NAMESPACE" -- ps aux | grep axon
 
 # Check agent configuration
-kubectl exec <pod-name> -n kafka -- cat /etc/axonops/axon-agent.yml
+kubectl exec <pod-name> -n "$KAFKA_NAMESPACE" -- cat /etc/axonops/axon-agent.yml
 ```
 
 ### Problèmes courants
 
 **Problème** : les pods restent bloqués en `Pending` ou en `CrashLoopBackOff`
-- Vérifiez les ressources disponibles : `kubectl describe pod <pod-name> -n kafka`
-- Vérifiez l'état des PVC : `kubectl get pvc -n kafka`
+- Vérifiez les ressources disponibles : `kubectl describe pod <pod-name> -n "$KAFKA_NAMESPACE"`
+- Vérifiez l'état des PVC : `kubectl get pvc -n "$KAFKA_NAMESPACE"`
 
 **Problème** : l'agent AxonOps ne remonte pas de métriques
 - Vérifiez que la clé d'API est correcte dans la configuration
@@ -353,58 +277,7 @@ Fichiers clés :
 
 ## Exemples de configuration
 
-### Cluster à nœud unique
-
-**Répertoire** : [`examples/strimzi/cloud/`](../examples/strimzi/cloud/)
-
-- **Topologie** : un nœud unique combinant les rôles controller et broker
-- **Réplicas** : 1
-- **Stockage** : volume persistant
-- **Méthode de configuration** : par ConfigMap
-- **Cas d'usage** : développement, tests, démonstrations
-
-### Déploiement cloud (multi-nœuds)
-
-**Répertoire** : [`examples/strimzi/cloud/`](../examples/strimzi/cloud/)
-
-- **Topologie** : pools de controllers et de brokers séparés
-- **Controllers** : 3 réplicas
-- **Brokers** : 3 réplicas
-- **Méthode de configuration** : par ConfigMap, avec configuration complète de l'agent
-- **Caractéristiques** :
-  - rack awareness activé
-  - configuration des logs personnalisée
-  - configuration AxonOps distincte pour les controllers et les brokers
-- **Cas d'usage** : déploiements cloud de production
-
-### Stockage sur disque local
-
-**Répertoire** : [`examples/strimzi/local-disk/`](../examples/strimzi/local-disk/)
-
-- **Topologie** : pools de controllers et de brokers séparés
-- **Stockage** : volumes persistants locaux
-- **Caractéristiques** :
-  - configuration de la StorageClass
-  - mise en place du RBAC
-  - provisionnement des volumes
-- **Cas d'usage** : déploiements on-premises avec stockage local
-
-### Cluster Kafka Connect
-
-**Fichier** : [`examples/strimzi/cloud/kafka-connect.yaml`](../examples/strimzi/cloud/kafka-connect.yaml)
-
-- **Composant** : workers Kafka Connect
-- **Réplicas** : 1 (peut être augmenté selon les besoins)
-- **Méthode de configuration** : par ConfigMap
-- **Caractéristiques** :
-  - prise en charge des ressources Connector activée
-  - supervision AxonOps des workers Connect
-  - topics de stockage configurables pour les métadonnées Connect
-- **Topics de configuration** :
-  - stockage de la configuration : `connect-configs`
-  - stockage des statuts : `connect-status`
-  - stockage des offsets : `connect-offsets`
-- **Cas d'usage** : intégration de données, pipelines ETL, circulation de données entre Kafka et des systèmes externes
+Les exemples sont décrits dans [`examples/STRIMZI_DEPLOYMENT.fr.md`](../examples/STRIMZI_DEPLOYMENT.fr.md). Tous trois créent un cluster Kafka avec des pools KRaft controller et broker distincts, le rack awareness et l'agent AxonOps dans chaque conteneur.
 
 ## Compatibilité des versions
 

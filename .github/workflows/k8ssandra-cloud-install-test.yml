@@ -9,6 +9,7 @@ on:
       - 'fix/**'
     paths:
       - 'k8ssandra/**'
+      - 'examples/k8ssandra/**'
       - '.github/workflows/k8ssandra-cloud-install-test.yml'
   pull_request:
     branches:
@@ -16,6 +17,7 @@ on:
       - development
     paths:
       - 'k8ssandra/**'
+      - 'examples/k8ssandra/**'
       - '.github/workflows/k8ssandra-cloud-install-test.yml'
   workflow_dispatch:
 
@@ -37,6 +39,7 @@ env:
   AXON_AGENT_KEY: ${{ secrets.AXON_AGENT_KEY }}
   AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
   AXON_AGENT_SERVER_PORT: "443"
+  AXON_AGENT_TLS_MODE: TLS
 
 jobs:
   test-k8ssandra-installation:
@@ -113,7 +116,8 @@ jobs:
       - name: Create Cassandra Cluster using cloud example
         run: |
           for node in $(kubectl get node -oname); do kubectl label $node topology.kubernetes.io/zone=github; done
-          cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
+          envsubst < examples/k8ssandra/axonops-agent-secret.yaml | kubectl apply -f -
+          envsubst < examples/k8ssandra/cluster-axonops-ubi.yaml | kubectl apply -f -
           echo "Waiting for Cassandra cluster to start provisioning..."
           sleep 60 # Wait a bit for the cluster to start provisioning before checking status
         env:

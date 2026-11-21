@@ -36,8 +36,6 @@ K8ssandra.
   - [scripts/install_k8ssandra.sh](#scriptsinstall_k8ssandrash)
   - [scripts/rebuild.sh](#scriptsrebuildsh)
 - [Ejemplos](#ejemplos)
-  - [examples/k8ssandra/cluster-axonops-ubi.yaml](#examplesk8ssandracluster-axonops-ubiyaml)
-  - [Personalizar el ejemplo](#personalizar-el-ejemplo)
 - [Pipeline de CI/CD](#pipeline-de-cicd)
   - [Builds y pruebas automatizados](#builds-y-pruebas-automatizados)
 - [Prestaciones del contenedor](#prestaciones-del-contenedor)
@@ -224,12 +222,12 @@ docker pull ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5
 Para despliegues en Kubernetes, use la imagen con el operador K8ssandra:
 
 ```bash
-export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.5"
-export AXON_AGENT_KEY="your-key"
-export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+cd examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG="your-org" AXON_AGENT_KEY="your-key"
 
-cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
 Véase [Desplegar en Kubernetes](#desplegar-en-kubernetes) para las instrucciones
@@ -623,18 +621,18 @@ Una vez tenga el digest, actualice la variable de repositorio
 
 ### Usar la configuración de ejemplo
 
-`examples/k8ssandra/cluster-axonops-ubi.yaml` es una plantilla para desplegar un
-clúster de Cassandra 5.0 de 3 nodos:
+[`examples/k8ssandra/`](../examples/k8ssandra/) contiene una plantilla de
+K8ssandraCluster, el Secret con los ajustes del agente y un fichero de
+configuración. Su [README](../examples/k8ssandra/README.md) enumera todos los
+ajustes.
 
 ```bash
-# Set your environment variables
-export IMAGE_NAME="your-image"
-export AXON_AGENT_KEY="your-key"
-export AXON_AGENT_ORG="your-org"
-export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
+cd ../examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG="your-org" AXON_AGENT_KEY="your-key"
 
-# Apply the configuration
-cat examples/k8ssandra/cluster-axonops-ubi.yaml | envsubst | kubectl apply -f -
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
 ### Verificar el despliegue
@@ -643,13 +641,13 @@ Tras el despliegue, verifique que su clúster está funcionando:
 
 ```bash
 # Check cluster status
-kubectl get k8ssandraclusters -n k8ssandra-operator
+kubectl get k8ssandraclusters -n "$K8SSANDRA_NAMESPACE"
 
 # Watch pods come up (wait for all to show Running and Ready)
-kubectl get pods -n k8ssandra-operator -w
+kubectl get pods -n "$K8SSANDRA_NAMESPACE" -w
 
 # Check detailed cluster status
-kubectl describe k8ssandracluster <cluster-name> -n k8ssandra-operator
+kubectl describe k8ssandracluster "$K8SSANDRA_CLUSTER_NAME" -n "$K8SSANDRA_NAMESPACE"
 ```
 
 Todos los pods de Cassandra deberían mostrar `2/2` en la columna READY cuando
@@ -853,44 +851,16 @@ cd 5.0
 
 ## Ejemplos
 
-### examples/k8ssandra/cluster-axonops-ubi.yaml
+[`examples/k8ssandra/`](../examples/k8ssandra/) contiene:
 
-Una definición completa de recurso K8ssandraCluster que muestra:
+| Fichero | Contenido |
+| --- | --- |
+| `k8ssandra-config.env` | Nombre del clúster, namespace, imagen, tamaño, almacenamiento, recursos y ajustes del agente |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent` con los ajustes del agente |
+| `cluster-axonops-ubi.yaml` | K8ssandraCluster que usa la imagen de AxonOps |
 
-**Especificaciones del clúster:**
-- Nombre: `axonops-k8ssandra-50`
-- Espacio de nombres: `k8ssandra-operator`
-- Versión de Cassandra: 5.0.6
-- Imagen: `ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0` (por defecto)
-- Datacenter: `dc1` con 3 nodos
-
-**Asignación de recursos:**
-```yaml
-resources:
-  limits:
-    cpu: 1
-    memory: 2Gi
-  requests:
-    cpu: 1
-    memory: 1Gi
-```
-
-**Configuración del almacenamiento:**
-```yaml
-storageConfig:
-  cassandraDataVolumeClaimSpec:
-    storageClassName: local-path
-    accessModes:
-      - ReadWriteOnce
-    resources:
-      requests:
-        storage: 2Gi
-```
-
-**Volumen de AxonOps (obligatorio):**
-
-AxonOps necesita un volumen persistente para guardar su configuración. Añada esto
-a su configuración de clúster:
+La plantilla define las variables del agente en el contenedor `cassandra` a partir
+del Secret, y añade la PVC que el agente necesita en `/var/lib/axonops`:
 
 ```yaml
         extraVolumes:
@@ -898,6 +868,7 @@ a su configuración de clúster:
             - name: axonops-data
               mountPath: /var/lib/axonops
               pvcSpec:
+                storageClassName: ${STORAGE_CLASS}
                 accessModes:
                   - ReadWriteOnce
                 resources:
@@ -905,50 +876,16 @@ a su configuración de clúster:
                     storage: ${AXONOPS_STORAGE_SIZE}
 ```
 
-`AXONOPS_STORAGE_SIZE` vale `2Gi` por defecto en
-`examples/k8ssandra/k8ssandra-config.env`. Defínalo antes de renderizar el
-manifiesto para cambiar el tamaño. La mayoría de las StorageClass no pueden
-encoger un volumen una vez creado, así que elija el tamaño antes del primer apply.
+`AXONOPS_STORAGE_SIZE` vale `2Gi` por defecto. La mayoría de las StorageClass no
+pueden encoger un volumen una vez creado, así que elija el tamaño antes del primer
+apply.
 
-**Integración con AxonOps:**
-El ejemplo muestra la inyección correcta de variables de entorno para el agente de
-AxonOps, con el enfoque de variables a nivel de contenedor que exige K8ssandra.
-
-### Personalizar el ejemplo
-
-**Nota:** los comandos de esta sección suponen que está en el directorio
-`k8ssandra/`.
-
-Para usar este ejemplo:
-
-1. Copie el fichero de ejemplo:
-   ```bash
-   cp examples/k8ssandra/cluster-axonops-ubi.yaml my-cluster.yml
-   ```
-
-2. Actualice los valores de `my-cluster.yml`:
-   - **Nombre del clúster**: edite el campo `metadata.name` (por ejemplo, cambie `axonops-k8ssandra-50` por `my-cassandra-cluster`). Nota: el nombre del clúster se usa para generar los nombres de servicios, secretos y pods.
-   - **Espacio de nombres**: edite `metadata.namespace` si despliega en otro espacio de nombres
-   - **Número de nodos**: ajuste `size` bajo `datacenters` (por defecto son 3)
-   - **Recursos**: modifique las asignaciones de CPU y memoria bajo `resources`
-   - **Almacenamiento**: actualice el tamaño de `storage` bajo `storageConfig`
-
-3. Despliegue:
-   ```bash
-   export AXON_AGENT_KEY="your-key"
-   export AXON_AGENT_ORG="your-org"
-   export AXON_AGENT_SERVER_HOST="agents.axonops.cloud"
-   # Optional: Override default image
-   export IMAGE_NAME="ghcr.io/axonops/k8ssandra/cassandra:5.0.6-v0.1.110-1.0.0"
-
-   cat my-cluster.yml | envsubst | kubectl apply -f -
-   ```
-
-**Nota:** el ejemplo usa el nuevo formato de imagen `5.0.6-v0.1.110-1.0.0`, que
-incluye:
-- La versión de Cassandra: 5.0.6
-- La versión de la API de k8ssandra: v0.1.110
-- La versión del contenedor de AxonOps: 1.0.0
+Para personalizar el clúster, cambie las variables de `k8ssandra-config.env`
+(nombre del clúster, namespace, `CASSANDRA_DC_SIZE`, recursos, almacenamiento), o
+copie `cluster-axonops-ubi.yaml` y edítelo. La etiqueta de imagen
+`<cassandra>-v<k8ssandra api>-<image>` debe corresponder a `CASSANDRA_VERSION`;
+por ejemplo, `5.0.9-v0.1.125-1.6.3` es Cassandra 5.0.9, la API de k8ssandra
+v0.1.125 y la imagen 1.6.3.
 
 ## Pipeline de CI/CD
 

@@ -2,489 +2,100 @@
 
 [English](AXONOPS_DEPLOYMENT.md) | [Français](AXONOPS_DEPLOYMENT.fr.md) | [Español](AXONOPS_DEPLOYMENT.es.md) | **Galego**
 
-Esta guía cobre o despregamento dos servizos de monitorización e xestión de
-AxonOps sobre Kubernetes.
+Esta guía instala unha pila de AxonOps autoaloxada sobre Kubernetes co script de [axonops/](axonops/). O [axonops/README.md](axonops/README.md) lista todas as opcións.
+
+## Compoñentes
+
+| Compoñente | Función |
+| --- | --- |
+| axondb-timeseries | Almacén de métricas (Cassandra) |
+| axondb-search | Rexistros e eventos (OpenSearch) |
+| axon-server | Recibe os datos dos axentes e serve a API |
+| axon-dash | Interface web, co sidecar `axon-reporting` para Reports v2 |
+
+Os catro instálanse nun só espazo de nomes, `AXONOPS_NAMESPACE` (por defecto `axonops`), a partir dos charts de `oci://ghcr.io/axonops/charts`. TLS nas bases de datos está desactivado por defecto, igual que cert-manager.
 
 ## Inicio rápido
 
 ```bash
-# Set the required passwords
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-password'
-
-# Deploy AxonOps services
+cd examples/axonops
+source axonops-config.env
+export AXON_SEARCH_PASSWORD="$(openssl rand -base64 24)"
+export AXON_SERVER_CQL_PASSWORD="$(openssl rand -base64 24)"
 ./axonops-setup.sh
 ```
 
-E xa está! Os servizos de AxonOps quedarán despregados e listos para monitorizar
-os seus clústeres de Kafka.
+O script escribe os valores de Helm e o Secret de configuración de axon-server en `axonops/generated/`, instala cada release con `helm upgrade --install --wait` e mostra como acceder ao panel. Ao executalo de novo actualiza as releases no sitio. Use os mesmos contrasinais en todas as execucións.
 
----
+## Almacenamento
 
-## Visión xeral
+| Modo | Opcións | Uso |
+| --- | --- | --- |
+| PVC (por defecto) | `AXON_TIMESERIES_STORAGE_CLASS`, `AXON_SEARCH_STORAGE_CLASS`, `AXON_*_VOLUME_SIZE` | Calquera clúster cunha StorageClass |
+| hostPath | `AXON_TIMESERIES_USE_HOSTPATH=true`, `AXON_SEARCH_USE_HOSTPATH=true` | Clústeres de proba dun só nodo |
+| Ningún | `AXON_*_PERSISTENCE_ENABLED=false` | Probas desbotables; os datos pérdense co pod |
 
-AxonOps ofrece monitorización e xestión completas para clústeres de Apache Kafka.
-O despregamento consta de catro compoñentes principais:
-
-- **axon-server**: o servidor central de monitorización e xestión
-- **axondb-timeseries**: a base de datos de series temporais para almacenar as
-  métricas
-- **axondb-search**: a base de datos de busca para agregar e consultar rexistros
-- **axon-dash**: o panel web de visualización
-
-## Requisitos previos
-
-1. **Un clúster de Kubernetes** (dun ou varios nodos)
-2. **Ferramentas necesarias**:
-   - `kubectl`: a CLI de Kubernetes
-   - `helm`: o xestor de paquetes Helm v3.x ou posterior
-3. **Espazo de nomes**: por defecto usa o espazo de nomes `axonops` (creado
-   automaticamente)
-
-## Configuración
-
-### Configuración obrigatoria
-
-**CRÍTICO**: defina os contrasinais obrigatorios antes de despregar:
+Para hostPath, cree os directorios no nodo antes de executar o script:
 
 ```bash
-export AXON_SEARCH_PASSWORD='YourSecurePasswordHere'
-export AXON_SERVER_CQL_PASSWORD='YourSecureCQLPasswordHere'
-```
-
-### Configuración opcional
-
-Personalice o despregamento definindo estas variables de entorno:
-
-```bash
-# Namespace
-export NS_AXONOPS="axonops"           # Default namespace for AxonOps
-
-# AxonOps Server configuration
-export AXON_SERVER_AGENTS_PORT="1888"       # Port for Kafka agents (default: 1888)
-export AXON_SERVER_API_PORT="8080"          # API port (default: 8080)
-
-# Storage configuration
-export AXON_SEARCH_USE_HOSTPATH="false"     # Use hostPath for Search DB (default: false)
-export AXON_TIMESERIES_USE_HOSTPATH="false" # Use hostPath for Timeseries DB (default: false)
-
-# Storage sizes (for PVC mode)
-export AXON_TIMESERIES_VOLUME_SIZE="10Gi"   # Timeseries DB storage
-export AXON_SEARCH_VOLUME_SIZE="10Gi"       # Search DB storage
-
-# Dashboard access
-export AXON_DASH_INGRESS_ENABLED="false"    # Enable Ingress (default: false)
-export AXON_DASH_INGRESS_HOST=""            # Ingress hostname
-export AXON_DASH_NODEPORT_ENABLED="false"   # Enable NodePort (default: false)
-export AXON_DASH_NODEPORT_PORT=""           # NodePort port number
-
-export AXON_SEARCH_USER=admin
-export AXON_SEARCH_PASSWORD=secure-password-here-5o02GzIn+58JbgU437WI8QksSHE
-export AXON_SERVER_CQL_USERNAME=axonops
-export AXON_SERVER_CQL_PASSWORD=secure-password-here-4kaZo3tLV3zuBRsLN2Xtudn1qwc
-```
-
-### Opcións de almacenamento
-
-AxonOps admite dous modos de almacenamento para as súas bases de datos:
-
-#### Modo PVC (por defecto, recomendado)
-
-Usa PersistentVolumeClaims dinámicos coa clase de almacenamento por defecto do
-seu clúster, ou a que indique:
-
-```bash
-# Use default storage class
-./axonops-setup.sh
-
-# Or specify storage sizes
-export AXON_TIMESERIES_VOLUME_SIZE="50Gi"
-export AXON_SEARCH_VOLUME_SIZE="20Gi"
-./axonops-setup.sh
-```
-
-**Vantaxes:**
-- Funciona con calquera provedor de almacenamento
-- Apto para entornos de produción
-- Admite clústeres de varios nodos
-- Xestión automática dos volumes
-
-#### Modo hostPath (só para probas nun só nodo)
-
-Usa directorios locais do nodo de Kubernetes:
-
-```bash
-export AXON_SEARCH_USE_HOSTPATH="true"
-export AXON_TIMESERIES_USE_HOSTPATH="true"
-./axonops-setup.sh
-```
-
-**Limitacións:**
-- Require un clúster dun só nodo
-- Non é apto para produción
-- Hai que crear os directorios a man
-
-Se usa o modo hostPath, cree os directorios no nodo:
-
-```bash
-# On the Kubernetes node
 sudo mkdir -p /data/axon-timeseries /data/axon-search
 sudo chown -R 999:999 /data/axon-timeseries /data/axon-search
-sudo chmod -R 755 /data/axon-timeseries /data/axon-search
 ```
 
-## Pasos do despregamento
+## Acceso ao panel
 
-### Paso 1: definir os contrasinais obrigatorios
+| Método | Opcións | Enderezo |
+| --- | --- | --- |
+| Port-forward (por defecto) | ningunha | `kubectl port-forward -n "$AXONOPS_NAMESPACE" svc/axon-dash-svc 3000:3000`, despois <http://localhost:3000> |
+| NodePort | `AXON_DASH_NODEPORT_ENABLED=true` | `http://<node-ip>:<port>`; o script mostra o porto |
+| Ingress | `AXON_DASH_INGRESS_ENABLED=true`, `AXON_DASH_INGRESS_HOST`, `AXON_DASH_INGRESS_CLASS_NAME` | `https://<host>` |
+
+## Conectar Kafka e Cassandra
+
+Os axentes do mesmo clúster conéctanse a:
+
+```text
+axon-server-agent.<AXONOPS_NAMESPACE>.svc.cluster.local:1888   (TLS disabled)
+```
+
+Os exemplos [Strimzi on-premises](strimzi/on-premises/), [Strimzi local-disk](strimzi/local-disk/) e [K8ssandra](k8ssandra/README.md#examples) len `AXONOPS_NAMESPACE`, `AXON_SERVER_ORG_NAME` e `AXON_SERVER_AGENTS_PORT` de `axonops/axonops-config.env`. Faga `source` del antes do seu propio ficheiro de configuración:
 
 ```bash
-export AXON_SEARCH_PASSWORD='your-secure-password'
-export AXON_SERVER_CQL_PASSWORD='your-secure-cql-password'
+source examples/axonops/axonops-config.env
+source examples/strimzi/on-premises/strimzi-config.env
 ```
 
-### Paso 2: (opcional) personalizar a configuración
+Para axentes fóra do clúster, active o Ingress gRPC con `AXON_SERVER_AGENT_INGRESS_ENABLED=true` e `AXON_SERVER_AGENT_INGRESS_HOST`, e apunte os axentes a ese host no porto 443 con `AXON_AGENT_TLS_MODE=TLS`.
+
+## Verificar
 
 ```bash
-# Example: Change namespace
-export NS_AXONOPS="monitoring"
-
-# Example: Use larger storage
-export AXON_TIMESERIES_VOLUME_SIZE="100Gi"
-export AXON_SEARCH_VOLUME_SIZE="50Gi"
+helm list -n "$AXONOPS_NAMESPACE"
+kubectl get pods,pvc -n "$AXONOPS_NAMESPACE"
+kubectl logs -n "$AXONOPS_NAMESPACE" deploy/axon-server --tail=50
 ```
 
-### Paso 3: executar o script de despregamento
+## Eliminar
 
 ```bash
-chmod +x axonops-setup.sh
-./axonops-setup.sh
+for r in axon-dash axon-server axondb-search axondb-timeseries; do
+  helm uninstall "$r" -n "$AXONOPS_NAMESPACE"
+done
+kubectl delete secret axon-server-config -n "$AXONOPS_NAMESPACE"
+kubectl delete pvc --all -n "$AXONOPS_NAMESPACE"   # deletes all AxonOps data
+kubectl delete namespace "$AXONOPS_NAMESPACE"
 ```
 
-O script:
-1. Instala cert-manager (se non está xa instalado)
-2. Desprega a base de datos AxonDB Timeseries
-3. Desprega a base de datos AxonDB Search
-4. Desprega o servidor de AxonOps
-5. Desprega o panel de AxonOps
-6. Crea `axonops-config.env` cos datos de conexión
-
-### Paso 4: agardar a que os servizos estean listos
-
-```bash
-# Check pod status
-kubectl get pods -n axonops
-
-# Wait for all pods to be Running
-kubectl wait --for=condition=ready pod --all -n axonops --timeout=300s
-```
-
-## Acceder ao panel de AxonOps
-
-### Opción 1: port-forward (acceso rápido)
-
-```bash
-kubectl port-forward -n axonops svc/axon-dash 3000:3000
-
-# Access at: http://localhost:3000
-```
-
-### Opción 2: NodePort (acceso externo)
-
-Active NodePort durante o despregamento:
-
-```bash
-export AXON_DASH_NODEPORT_ENABLED="true"
-export AXON_DASH_NODEPORT_PORT="32000"
-./axonops-setup.sh
-
-# Access at: http://<node-ip>:32000
-```
-
-### Opción 3: Ingress (produción)
-
-Active Ingress durante o despregamento:
-
-```bash
-export AXON_DASH_INGRESS_ENABLED="true"
-export AXON_DASH_INGRESS_HOST="axonops.yourdomain.com"
-./axonops-setup.sh
-
-# Access at: https://axonops.yourdomain.com
-```
-
-**Nota:** require un controlador de Ingress instalado no seu clúster.
-
-## Integración con Kafka
-
-Tras despregar AxonOps, pode conectalo cos seus clústeres de Kafka:
-
-### Para despregamentos novos de Strimzi
-
-```bash
-# Source the AxonOps configuration
-source axonops-config.env
-
-# Deploy Strimzi with AxonOps integration
-./strimzi-setup.sh
-```
-
-Consulte [STRIMZI_DEPLOYMENT.gl.md](STRIMZI_DEPLOYMENT.gl.md) para os detalles.
-
-### Para clústeres de Kafka existentes
-
-Configure o axente de AxonOps nos seus brokers de Kafka cos datos de conexión de
-`axonops-config.env`:
-
-```bash
-# Agent connection details
-AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-AXON_AGENT_SERVER_PORT=1888
-```
-
-## Verificar o despregamento
-
-### Comprobar o estado dos compoñentes
-
-```bash
-# View all AxonOps pods
-kubectl get pods -n axonops
-
-# View all services
-kubectl get svc -n axonops
-
-# Check Helm releases
-helm list -n axonops
-```
-
-Saída esperada:
-- 4 releases de Helm: `axon-server`, `axondb-timeseries`, `axondb-search`,
-  `axon-dash`
-- Todos os pods en estado Running
-- Servizos con endpoints ClusterIP
-
-### Consultar os rexistros
-
-```bash
-# AxonOps Server logs
-kubectl logs -n axonops deployment/axon-server -f
-
-# Dashboard logs
-kubectl logs -n axonops deployment/axon-dash -f
-
-# Timeseries DB logs
-kubectl logs -n axonops statefulset/axondb-timeseries -f
-
-# Search DB logs
-kubectl logs -n axonops statefulset/axondb-search -f
-```
-
-### Probar o acceso ao panel
-
-```bash
-# Port-forward and open browser
-kubectl port-forward -n axonops svc/axon-dash 3000:3000
-
-# In another terminal or browser, navigate to:
-# http://localhost:3000
-```
-
-## Resolución de problemas
-
-### Pods atascados en estado Pending
-
-**Revise as PersistentVolumeClaims:**
-
-```bash
-kubectl get pvc -n axonops
-```
-
-**Causas posibles:**
-- Non hai ningunha clase de almacenamento dispoñible
-- Capacidade de almacenamento insuficiente
-- En modo hostPath: os directorios non se crearon ou teñen permisos incorrectos
-
-**Solucións:**
-
-```bash
-# Check available storage classes
-kubectl get storageclass
-
-# For hostPath mode, verify directories exist
-ssh <node> "ls -la /data/axon-timeseries /data/axon-search"
-
-# Check pod events
-kubectl describe pod <pod-name> -n axonops
-```
-
-### Problemas de conexión coa base de datos de busca
-
-**Síntoma:** o servidor de AxonOps non pode conectarse á base de datos de busca.
-
-**Revise a configuración de contrasinais:**
-
-```bash
-# Verify secret exists
-kubectl get secret axon-server-config -n axonops
-
-# Check server configuration
-kubectl get secret axon-server-config -n axonops -o jsonpath='{.data.axon-server\.yml}' | base64 -d
-```
-
-**Solución:**
-
-```bash
-# Recreate the secret with correct password
-kubectl delete secret axon-server-config -n axonops
-export AXON_SEARCH_PASSWORD='your-password'
-export AXON_SERVER_CQL_PASSWORD='your-cql-password'
-./axonops-setup.sh
-```
-
-### O panel non é accesible
-
-**Comprobe o tipo de servizo:**
-
-```bash
-kubectl get svc axon-dash -n axonops
-```
-
-**Se usa NodePort, verifique que o porto é accesible:**
-
-```bash
-# Check firewall rules
-# Ensure node port is open in security groups/firewall
-
-# Test connectivity
-curl http://<node-ip>:<nodeport>
-```
-
-**Se usa Ingress, verifique a configuración do Ingress:**
-
-```bash
-kubectl get ingress -n axonops
-kubectl describe ingress axon-dash -n axonops
-```
-
-### Problemas cos certificados
-
-**Comprobe o estado de cert-manager:**
-
-```bash
-kubectl get pods -n cert-manager
-kubectl get clusterissuer
-```
-
-**Consulte o estado dos certificados:**
-
-```bash
-kubectl get certificate -n axonops
-kubectl describe certificate -n axonops
-```
-
-## Referencia de configuración
-
-### Ficheiro de configuración xerado
-
-Tras o despregamento créase `axonops-config.env` con estas variables:
-
-```bash
-NS_AXONOPS=axonops
-AXON_SERVER_AGENTS_PORT=1888
-AXON_SERVER_API_PORT=8080
-AXON_SERVER_ORG_NAME=example
-```
-
-Cargue este ficheiro antes de despregar Kafka para habilitar a integración
-automática.
-
-### Versións dos charts de Helm
-
-O script usa versións concretas dos charts:
-
-- **axondb-timeseries**: a última do repositorio de AxonOps
-- **axondb-search**: a última do repositorio de AxonOps
-- **axon-server**: a última do repositorio de AxonOps
-- **axon-dash**: a última do repositorio de AxonOps
-
-## Limpeza
-
-### Eliminar os servizos de AxonOps
-
-```bash
-# Uninstall Helm releases
-helm uninstall -n axonops axon-dash
-helm uninstall -n axonops axon-server
-helm uninstall -n axonops axondb-search
-helm uninstall -n axonops axondb-timeseries
-
-# Delete namespace
-kubectl delete namespace axonops
-```
-
-### Eliminar os datos (ATENCIÓN: borra todos os datos)
-
-Para almacenamento hostPath:
-
-```bash
-# On the Kubernetes node
-sudo rm -rf /data/axon-timeseries
-sudo rm -rf /data/axon-search
-```
-
-Para almacenamento PVC, borre as PVC:
-
-```bash
-kubectl delete pvc -n axonops --all
-```
-
-### Eliminar cert-manager (opcional)
-
-Só se non o usan outros servizos:
-
-```bash
-helm uninstall -n cert-manager cert-manager
-kubectl delete namespace cert-manager
-```
-
-## Consideracións para produción
-
-Para despregamentos en produción:
-
-1. **Almacenamento**: use almacenamento distribuído con copias de seguranza e
-   recuperación ante desastres axeitadas
-2. **Alta dispoñibilidade**: valore despregar varias réplicas (require
-   personalizar os charts de Helm)
-3. **Seguridade**:
-   - Use contrasinais fortes
-   - Active TLS en todos os compoñentes
-   - Configure un RBAC axeitado
-   - Use network policies
-4. **Monitorización**: monitorice os propios compoñentes de AxonOps
-5. **Límites de recursos**: fixe límites de CPU e memoria axeitados
-6. **Copias de seguranza**: faga copias periódicas das bases de datos de busca e
-   de series temporais
-7. **Control de acceso**: use Ingress con autenticación e autorización
-
-## Configuracións de exemplo
-
-Hai configuracións listas para usar no directorio [axonops/](axonops/):
-
-- `axonops-config.env`: variables de entorno
-- `axonops-setup.sh`: script de despregamento automatizado
-- `axonops-server-secret.yaml`: exemplo de configuración do servidor
-- Ficheiros de values de Helm para cada compoñente
-
-## Recursos adicionais
-
-- **Documentación de AxonOps**: [https://docs.axonops.com](https://docs.axonops.com)
-- **Configuración do axente de AxonOps**: [https://axonops.com/docs/get_started/agent_setup/](https://axonops.com/docs/get_started/agent_setup/)
-- **Integración con Strimzi Kafka**: [STRIMZI_DEPLOYMENT.gl.md](STRIMZI_DEPLOYMENT.gl.md)
-- **Integración con K8ssandra Cassandra**: [K8SSANDRA_DEPLOYMENT.gl.md](K8SSANDRA_DEPLOYMENT.gl.md)
-- **Exemplos de Strimzi para cloud**: [strimzi/cloud/](strimzi/cloud/), manifestos de Kubernetes listos para usar
-- **Exemplos de K8ssandra**: [k8ssandra/](k8ssandra/), exemplos de clúster de Cassandra
-- **Charts de Helm**: o repositorio de Helm de AxonOps
-- **Soporte**: contacte co soporte de AxonOps para despregamentos en produción
-
----
-
-**Última actualización:** 2026-02-13
+## Notas para produción
+
+- Use unha StorageClass con copias de seguridade e dimensione os volumes segundo a súa retención.
+- Defina unha chave de licenza con `AXON_SERVER_LICENSE_KEY`.
+- Para activar TLS entre axon-server e as bases de datos, defina `AXON_TIMESERIES_TLS_ENABLED=true` e `AXON_SEARCH_TLS_ENABLED=true`. Os certificados veñen de cert-manager (`CERT_MANAGER_INSTALL=true` instálao) ou dos seus propios Secrets; consulte [axonops/README.md](axonops/README.md#tls).
+- Garde os contrasinais xerados nun xestor de segredos; `axonops/generated/` contéñenos en texto plano.
+- O [meta-chart de AxonOps](../axonops/charts/axonops/README.gl.md) instala a mesma pila como unha única release de Helm, que encaixa mellor ca un script coas ferramentas de GitOps.
+
+## Relacionado
+
+- [axonops/README.md](axonops/README.md): todas as opcións do script
+- [Guía de despregamento](DEPLOYMENT_GUIDE.gl.md)
+- [Documentación de AxonOps](https://docs.axonops.com)

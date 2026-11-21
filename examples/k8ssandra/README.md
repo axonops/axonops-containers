@@ -1,162 +1,119 @@
-# AxonOps K8ssandra Cassandra Examples
+# K8ssandra Cassandra with the AxonOps agent
 
-This directory contains example manifests to deploy Apache Cassandra using K8ssandra with AxonOps monitoring.
+A Cassandra cluster run by the K8ssandra operator, using the AxonOps Cassandra image so every node runs the AxonOps agent. The agents report to AxonOps Cloud by default, or to a self-hosted AxonOps server.
 
-## Overview
-
-- **Cassandra Version**: 5.0.9
-- **Operator**: K8ssandra
-- **Nodes**: 3 replicas (configurable)
-- **Storage**: 2Gi per node (configurable)
-- **Monitoring**: AxonOps Cloud integration
+| Setting | Default |
+| --- | --- |
+| Cassandra | 5.0.9 |
+| Datacenter | `dc1`, 3 nodes |
+| Storage | 10Gi data + 2Gi agent state per node, default StorageClass |
+| Resources | 1-2 CPU, 2-4 GiB memory, 1G heap per node |
 
 ## Prerequisites
 
-- A Kubernetes cluster with the [K8ssandra operator](https://k8ssandra.io/) installed
-- `envsubst` command available (part of `gettext` package)
-- AxonOps account (optional, for monitoring)
+- Kubernetes 1.27 or newer, with a default StorageClass
+- The K8ssandra operator and cert-manager (see [K8SSANDRA_DEPLOYMENT.md](../K8SSANDRA_DEPLOYMENT.md#install-the-k8ssandra-operator))
+- `envsubst` (package `gettext`)
+- An AxonOps Cloud organisation and agent key, or a self-hosted AxonOps server
 
-## Installing K8ssandra Operator
+## Quick start
 
 ```bash
-# Add Helm repository
-helm repo add k8ssandra https://helm.k8ssandra.io/stable
-helm repo update
+cd examples/k8ssandra
+source k8ssandra-config.env
+export AXON_AGENT_ORG=your-org
+export AXON_AGENT_KEY=your-agent-key
 
-# Install the operator. Set the global scope to true if you would like to use
-# multiple namespaces
-helm install k8ssandra-operator k8ssandra/k8ssandra-operator \
-  -n k8ssandra-operator \
-  --create-namespace \
-  --set global.clusterScoped=true
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+kubectl wait k8ssandracluster/"$K8SSANDRA_CLUSTER_NAME" -n "$K8SSANDRA_NAMESPACE" \
+  --for=condition=CassandraInitialized --timeout=20m
+```
 
-# Verify installation
-kubectl get pods -n k8ssandra-operator
+The Secret must exist before the cluster: the Cassandra container reads the agent settings from it and does not start without it.
+
+## Files
+
+| File | Resource |
+| --- | --- |
+| `k8ssandra-config.env` | Settings for both manifests |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent` with the agent settings |
+| `cluster-axonops-ubi.yaml` | K8ssandraCluster `<cluster>` with the AxonOps image and a PVC for `/var/lib/axonops` |
+
+Pods are named `<cluster>-<dc>-default-sts-<n>`.
+
+## Examples
+
+Report to the self-hosted AxonOps server from [../axonops/](../axonops/):
+
+```bash
+source ../axonops/axonops-config.env
+source k8ssandra-config.env
+export AXON_AGENT_ORG="$AXON_SERVER_ORG_NAME" AXON_AGENT_KEY=not-used
+export AXON_AGENT_SERVER_HOST="axon-server-agent.$AXONOPS_NAMESPACE.svc.cluster.local"
+export AXON_AGENT_SERVER_PORT="$AXON_SERVER_AGENTS_PORT" AXON_AGENT_TLS_MODE=disabled
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+```
+
+Deploy into a namespace other than the operator's. The operator must have been installed with `--set global.clusterScoped=true`:
+
+```bash
+source k8ssandra-config.env
+export K8SSANDRA_NAMESPACE=cassandra
+kubectl create namespace "$K8SSANDRA_NAMESPACE"
+envsubst < axonops-agent-secret.yaml | kubectl apply -f -
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+```
+
+Scale the datacenter to 5 nodes:
+
+```bash
+export CASSANDRA_DC_SIZE=5
+envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 ```
 
 ## Configuration
 
-A `k8ssandra-config.env` file is provided with default configuration values.
-
-```bash
-# Review and edit the configuration
-cat k8ssandra-config.env
-
-# Source the environment variables
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-```
-
-### Configuration Variables
-
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps Cassandra image |
-| `K8SSANDRA_CLUSTER_NAME` | `axonops-k8ssandra-5` | Cluster name |
-| `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Kubernetes namespace |
-| `CASSANDRA_DC_NAME` | `dc1` | Datacenter name |
-| `CASSANDRA_DC_SIZE` | `3` | Number of nodes |
-| `STORAGE_CLASS` | `` | StorageClass name |
-| `STORAGE_SIZE` | `2Gi` | Storage per node |
-| `AXONOPS_STORAGE_SIZE` | `2Gi` | Size of the AxonOps agent data volume (`/var/lib/axonops`) |
-| `AXON_AGENT_KEY` | - | AxonOps API key |
-| `AXON_AGENT_ORG` | - | AxonOps organization |
-| `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps server |
-| `AXON_AGENT_SERVER_PORT` | `443` | AxonOps port |
-| `AXON_AGENT_TLS_MODE` | `TLS` | Agent TLS mode; set to `disabled` for a self-hosted server without TLS |
+| `K8SSANDRA_OPERATOR_NAMESPACE` | `k8ssandra-operator` | Namespace of the operator |
+| `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Namespace of the cluster. Must equal the operator namespace unless the operator is cluster-scoped. |
+| `K8SSANDRA_CLUSTER_NAME` | `my-cassandra` | K8ssandraCluster name and Cassandra cluster name |
+| `CASSANDRA_VERSION` | `5.0.9` | Cassandra version |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps image, tag `<cassandra>-v<k8ssandra api>-<image>`. Must match `CASSANDRA_VERSION`. |
+| `CASSANDRA_DC_NAME` / `CASSANDRA_DC_SIZE` | `dc1` / `3` | Datacenter name and node count |
+| `STORAGE_CLASS` | empty (cluster default) | StorageClass for both PVCs |
+| `STORAGE_SIZE` | `10Gi` | Cassandra data volume |
+| `AXONOPS_STORAGE_SIZE` | `2Gi` | Agent state volume at `/var/lib/axonops`. Most StorageClasses cannot shrink it later. |
+| `CPU_REQUEST` / `CPU_LIMIT` | `1` / `2` | CPU per node |
+| `MEMORY_REQUEST` / `MEMORY_LIMIT` | `2Gi` / `4Gi` | Memory per node |
+| `HEAP_SIZE` | `1G` | Cassandra heap |
+| `AXON_AGENT_ORG` | `your-org` | AxonOps organisation |
+| `AXON_AGENT_KEY` | none, required for AxonOps Cloud | Agent key. Export it; do not write it in the file. |
+| `AXON_AGENT_SERVER_HOST` | `agents.axonops.cloud` | AxonOps endpoint |
+| `AXON_AGENT_SERVER_PORT` | `443` | `1888` for a self-hosted server |
+| `AXON_AGENT_TLS_MODE` | `TLS` | `disabled` for a self-hosted server without TLS on the agent port |
 
-## Manifests
-
-| File | Description |
-| --- | --- |
-| `k8ssandra-config.env` | Environment variables for configuration |
-| `cluster-axonops-ubi.yaml` | K8ssandraCluster resource with AxonOps agent |
-
-## Deployment
-
-### Using envsubst
-
-The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsubst` to substitute the values before applying:
+## Verify
 
 ```bash
-# 1. Source the configuration
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-
-# 2. Apply the cluster manifest with variable substitution
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+kubectl get k8ssandracluster,cassandradatacenter,pods -n "$K8SSANDRA_NAMESPACE"
+POD="$K8SSANDRA_CLUSTER_NAME-$CASSANDRA_DC_NAME-default-sts-0"
+kubectl logs -n "$K8SSANDRA_NAMESPACE" "$POD" -c cassandra | grep -i axon
 ```
 
-### One-liner Deployment
+## Remove
 
 ```bash
-export $(grep -v '^#' k8ssandra-config.env | xargs) && \
-envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
+kubectl delete k8ssandracluster "$K8SSANDRA_CLUSTER_NAME" -n "$K8SSANDRA_NAMESPACE"
+kubectl delete secret "$K8SSANDRA_CLUSTER_NAME-axonops-agent" -n "$K8SSANDRA_NAMESPACE"
+# Deletes the Cassandra data:
+kubectl delete pvc -n "$K8SSANDRA_NAMESPACE" -l cassandra.datastax.com/cluster="$K8SSANDRA_CLUSTER_NAME"
 ```
 
-### Generate Processed Manifest
+## Related
 
-To generate a processed manifest for review or GitOps:
-
-```bash
-export $(grep -v '^#' k8ssandra-config.env | xargs)
-envsubst < cluster-axonops-ubi.yaml > processed-cluster.yaml
-```
-
-## Verification
-
-```bash
-# Check the K8ssandraCluster status
-kubectl get k8ssandraclusters -n k8ssandra-operator
-
-# Check CassandraDatacenter
-kubectl get cassandradatacenters -n k8ssandra-operator
-
-# Check pods
-kubectl get pods -n k8ssandra-operator
-
-# Connect to Cassandra
-kubectl exec -it axonops-k8ssandra-5-dc1-default-sts-0 \
-  -n k8ssandra-operator -- cqlsh
-```
-
-## AxonOps Integration
-
-### AxonOps Cloud
-
-1. Sign up at [https://axonops.cloud](https://axonops.cloud)
-2. Get your API key and organization name
-3. Update `k8ssandra-config.env` with your credentials:
-
-```bash
-AXON_AGENT_KEY=your-api-key
-AXON_AGENT_ORG=your-organization
-AXON_AGENT_SERVER_HOST=agents.axonops.cloud
-AXON_AGENT_SERVER_PORT=443
-```
-
-### Self-Hosted AxonOps
-
-For on-premises AxonOps, update the connection details:
-
-```bash
-AXON_AGENT_SERVER_HOST=axon-server-agent.axonops.svc.cluster.local
-AXON_AGENT_SERVER_PORT=1888
-# Only when the AxonOps server agents port has TLS disabled
-AXON_AGENT_TLS_MODE=disabled
-```
-
-## Cleanup
-
-```bash
-# Delete the cluster
-kubectl delete k8ssandracluster axonops-k8ssandra-5 -n k8ssandra-operator
-
-# Delete PVCs (WARNING: deletes data)
-kubectl delete pvc -l cassandra.datastax.com/cluster=axonops-k8ssandra-5 \
-  -n k8ssandra-operator
-```
-
-## Related Documentation
-
-- [Full K8ssandra Deployment Guide](../K8SSANDRA_DEPLOYMENT.md)
-- [AxonOps Deployment Guide](../AXONOPS_DEPLOYMENT.md)
-- [K8ssandra Documentation](https://docs.k8ssandra.io/)
+- [K8ssandra deployment guide](../K8SSANDRA_DEPLOYMENT.md)
+- [AxonOps K8ssandra image](../../k8ssandra/README.md)
+- [K8ssandra documentation](https://docs.k8ssandra.io/)
