@@ -27,18 +27,18 @@ on:
         description: 'Schema Registry version to test'
         required: false
         type: string
-        default: '0.2.0'
+        default: '0.2.1'
   workflow_dispatch:
     inputs:
       sr_version:
         description: 'Schema Registry version to test'
         required: false
         type: string
-        default: '0.2.0'
+        default: '0.2.1'
 
 env:
   REGISTRY: ghcr.io
-  SR_VERSION: 0.2.0
+  SR_VERSION: 0.2.1
 
 jobs:
   # Full test suite on amd64 (native runner architecture)

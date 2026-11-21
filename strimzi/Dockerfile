@@ -8,7 +8,7 @@ FROM quay.io/strimzi/kafka@${STRIMZI_BASE_DIGEST}
 ARG STRIMZI_VERSION
 ARG KAFKA_VERSION
 ARG STRIMZI_BASE_DIGEST
-ARG AXON_AGENT_VERSION=2.0.20
+ARG AXON_AGENT_VERSION=2.0.36
 
 RUN echo "AXONOPS_BUILD: Inheriting from strimzi/kafka:${STRIMZI_VERSION}-kafka-${KAFKA_VERSION} (digest: ${STRIMZI_BASE_DIGEST})"
 
@@ -18,6 +18,11 @@ ARG KAFKA_AGENT_PACKAGE=axon-kafka3-agent
 ARG AXONOPS_REPO_FILE=axonops.repo.release
 
 USER root
+
+# Update all packages to latest versions (security patches, including the JDK)
+RUN microdnf update -y \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum /var/cache/dnf
 
 # Add AxonOps repo
 COPY files/${AXONOPS_REPO_FILE} /etc/yum.repos.d/axonops-yum.repo
