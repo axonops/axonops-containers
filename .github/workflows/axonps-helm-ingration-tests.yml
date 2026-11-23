@@ -30,6 +30,9 @@ jobs:
         run: |
           cd examples/axonops/
           source axonops-config.env
+          AXON_SEARCH_PASSWORD="$(openssl rand -base64 24)"
+          AXON_SERVER_CQL_PASSWORD="$(openssl rand -base64 24)"
+          export AXON_SEARCH_PASSWORD AXON_SERVER_CQL_PASSWORD
 
           # Reduce memory for CI environment
           export AXON_TIMESERIES_HEAP_SIZE="1024M"

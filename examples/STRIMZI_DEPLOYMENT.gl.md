@@ -2,83 +2,77 @@
 
 [English](STRIMZI_DEPLOYMENT.md) | [Français](STRIMZI_DEPLOYMENT.fr.md) | [Español](STRIMZI_DEPLOYMENT.es.md) | **Galego**
 
-Esta guía trata o despregamento de Apache Kafka co operador Strimzi sobre Kubernetes, con integración opcional da monitorización de AxonOps.
+Esta guía desprega Apache Kafka co operador Strimzi e a imaxe de Kafka de AxonOps, que executa o axente de AxonOps en cada contedor de Kafka.
 
-## Inicio rápido
+## Escoller un exemplo
 
-### Paso 1: instalar o operador Strimzi
+| Exemplo | Almacenamento | Destino de AxonOps | Despregamento |
+| --- | --- | --- | --- |
+| [strimzi/cloud/](strimzi/cloud/) | PVC dunha StorageClass | AxonOps Cloud | `envsubst` e `kubectl apply` |
+| [strimzi/on-premises/](strimzi/on-premises/) | PVC dunha StorageClass | AxonOps autoaloxado | `envsubst` e `kubectl apply` |
+| [strimzi/local-disk/](strimzi/local-disk/) | PV hostPath fixados a nodos | AxonOps autoaloxado | `strimzi-setup.sh` |
 
-Antes de despregar clústeres de Kafka, instale o operador Strimzi con Helm.
+Os tres comparten os mesmos recursos e nomes de variables:
 
-**Importante:** consulte a [páxina de descargas de Strimzi](https://strimzi.io/downloads/) para comprobar que versión de Strimzi admite a versión de Kafka desexada. A matriz de compatibilidade indica as versións de Kafka compatibles con cada release de Strimzi.
+| Recurso | Nome |
+| --- | --- |
+| Kafka | `$STRIMZI_CLUSTER_NAME` (por defecto `my-cluster`) en `$KAFKA_NAMESPACE` (por defecto `kafka`) |
+| KafkaNodePools | `controller` e `broker` |
+| Secret do axente | `$STRIMZI_CLUSTER_NAME-axonops-agent`, lido por cada contedor de Kafka |
+| Service de bootstrap | `$STRIMZI_CLUSTER_NAME-kafka-bootstrap:9092` (plain), `:9093` (TLS) |
+
+## Instalar o operador Strimzi
+
+Instáleo unha vez por clúster de Kubernetes. Os exemplos precisan un operador que vixíe o espazo de nomes de Kafka; `watchAnyNamespace=true` cobre calquera espazo de nomes.
 
 ```bash
-# Add Strimzi Helm repository
-helm repo add strimzi https://strimzi.io/charts/
-helm repo update
-
-# Create namespaces
-kubectl create namespace strimzi
-kubectl create namespace kafka
-
-# Check available versions
-helm search repo strimzi --versions
-
-# Install the operator (specify version based on support matrix)
-# Example: Strimzi 1.1.0 supports Kafka 4.2.0, 4.2.1, 4.3.0
-helm install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
-  -n strimzi \
+export STRIMZI_OPERATOR_NAMESPACE=strimzi
+helm upgrade --install strimzi-kafka-operator \
+  oci://quay.io/strimzi-helm/strimzi-kafka-operator \
   --version 1.1.0 \
-  --set watchNamespaces="{kafka}" \
+  --namespace "$STRIMZI_OPERATOR_NAMESPACE" --create-namespace \
+  --set watchAnyNamespace=true \
   --wait
-
-# Verify installation
-kubectl get pods -n strimzi
-kubectl get crd | grep strimzi
+kubectl get pods -n "$STRIMZI_OPERATOR_NAMESPACE"
 ```
 
-### Paso 2: despregar o clúster de Kafka
+Para limitar o operador a un só espazo de nomes, substitúa `watchAnyNamespace=true` por `--set "watchNamespaces={$KAFKA_NAMESPACE}"` e cree antes ese espazo de nomes.
 
-Escolla un dos exemplos de despregamento segundo o seu caso de uso. Cada exemplo inclúe o seu propio README con instrucións de despregamento detalladas:
+`strimzi/local-disk/strimzi-setup.sh` executa este paso por si mesmo cando faltan os CRD de Strimzi.
 
-| Directorio | Caso de uso | Descrición |
-| --- | --- | --- |
-| [strimzi/cloud/](strimzi/cloud/) | Produción | 6 brokers, 3 controllers, almacenamento na nube |
-| [strimzi/local-disk/](strimzi/local-disk/) | On-premises | Volumes persistentes locais, configurables |
+## Despregar
 
-Cada directorio de exemplo contén:
+Siga o README do exemplo escollido. Para [strimzi/cloud/](strimzi/cloud/):
 
-- `README.md`: as instrucións de despregamento completas
-- `strimzi-config.env`: as variables de configuración
-- os manifestos YAML de todos os compoñentes do clúster de Kafka
+```bash
+cd examples/strimzi/cloud
+source strimzi-config.env
+export AXON_AGENT_ORG=your-org AXON_AGENT_KEY=your-agent-key
+kubectl create namespace "$KAFKA_NAMESPACE"
+for f in axonops-agent-secret.yaml kafka-node-pool-controller.yaml \
+         kafka-node-pool-brokers.yaml kafka-cluster.yaml; do
+  envsubst < "$f" | kubectl apply -f -
+done
+kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
+  --for=condition=Ready --timeout=600s
+```
 
-### Paso 3: engadir a monitorización de AxonOps (opcional)
+## Compatibilidade de versións
 
-Consulte [AXONOPS_DEPLOYMENT.gl.md](AXONOPS_DEPLOYMENT.gl.md) para despregar a monitorización de AxonOps. Os manifestos de exemplo de Strimzi xa inclúen as variables de configuración do axente de AxonOps.
+`KAFKA_VERSION` debe estar admitida polo operador, e `KAFKA_CONTAINER_IMAGE` debe estar construída para os dous. As etiquetas das imaxes de AxonOps teñen a forma `<strimzi>-<kafka>-<agent>-<image>`, así que `1.1.0-4.3.0-2.0.32-0.1.28` é Strimzi 1.1.0 con Kafka 4.3.0. O valor por defecto é a etiqueta flotante `<strimzi>-<kafka>`, por exemplo `1.1.0-4.3.0`, que sempre apunta á última build de AxonOps para esa combinación. Vale para unha demo; en produción, fixe a imaxe por digest SHA256 (`ghcr.io/axonops/strimzi/kafka@sha256:<digest>`) para que todos os brokers executen a mesma build. As etiquetas publicadas están listadas en [VERSIONS.md](../VERSIONS.md).
 
----
-
-## Compatibilidade das versións de Strimzi
-
-Comprobe sempre a [matriz de compatibilidade de Strimzi](https://strimzi.io/downloads/) antes de instalar, para asegurarse da compatibilidade:
-
-| Versión de Strimzi | Versións de Kafka admitidas | Versións de Kubernetes |
+| Strimzi | Kafka | Kubernetes |
 | --- | --- | --- |
 | 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | 1.27+ |
 | 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | 1.27+ |
 | 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | 1.26+ |
 | 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
-| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
-| 0.47.0 | 3.9.0, 3.9.1 | 1.25+ |
 
-*Nota: esta táboa é unicamente orientativa. Verifique sempre a compatibilidade actual en [strimzi.io/downloads](https://strimzi.io/downloads/).*
+Os exemplos usan a API `kafka.strimzi.io/v1`, dispoñible dende Strimzi 0.49. Consulte a [páxina de descargas de Strimzi](https://strimzi.io/downloads/) para a matriz actual.
 
-## Recursos adicionais
+## Relacionado
 
-- **Documentación de Strimzi**: [https://strimzi.io/docs/](https://strimzi.io/docs/)
-- **Strimzi en GitHub**: [https://github.com/strimzi/strimzi-kafka-operator](https://github.com/strimzi/strimzi-kafka-operator)
-- **Guía de node selectors**: [NODE_SELECTOR_GUIDE.gl.md](NODE_SELECTOR_GUIDE.gl.md)
-
----
-
-**Última actualización:** 2026-02-13
+- [Guía de node selectors](NODE_SELECTOR_GUIDE.gl.md) para `strimzi/local-disk/`
+- [Imaxe de Kafka de AxonOps](../strimzi/README.gl.md)
+- [Guía de despregamento de AxonOps](AXONOPS_DEPLOYMENT.gl.md)
+- [Documentación de Strimzi](https://strimzi.io/docs/operators/latest/)

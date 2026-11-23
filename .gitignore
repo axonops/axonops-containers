@@ -44,3 +44,6 @@ TAGGING.md
 # Session/progress tracking files
 PROGRESS.md
 SESSION_RESUME.md
+
+# Files rendered by the example setup scripts (may contain passwords)
+examples/**/generated/

@@ -9,6 +9,7 @@ on:
       - 'fix/**'
     paths:
       - 'strimzi/**'
+      - 'examples/strimzi/**'
       - '.github/workflows/strimzi-cloud-install-test.yml'
   pull_request:
     branches:
@@ -16,6 +17,7 @@ on:
       - development
     paths:
       - 'strimzi/**'
+      - 'examples/strimzi/**'
       - '.github/workflows/strimzi-cloud-install-test.yml'
   workflow_dispatch:
 
@@ -32,6 +34,10 @@ env:
   AXON_AGENT_ORG: ${{ secrets.AXON_AGENT_ORG }}
   AXON_AGENT_KEY: ${{ secrets.AXON_AGENT_KEY }}
   AXON_AGENT_SERVER_HOST: ${{ secrets.AXON_AGENT_SERVER_HOST }}
+  AXON_AGENT_SERVER_PORT: "443"
+  KAFKA_RACK_TOPOLOGY_KEY: topology.kubernetes.io/zone
+  KAFKA_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
 # Broker Pool Configuration
   STRIMZI_BROKER_REPLICAS: 3
   STRIMZI_BROKER_STORAGE_SIZE: 1Gi
@@ -68,8 +74,6 @@ jobs:
           kubectl create namespace $KAFKA_NAMESPACE
           for yaml in examples/strimzi/cloud/*.yaml; do
             [[ "$yaml" == *kafka-connect* ]] && continue
-            [[ "$yaml" == *.md ]] && continue
-            [[ "$yaml" == *.env ]] && continue
             echo "--- Applying $yaml ---"
             envsubst < "$yaml" | tee /dev/stderr | kubectl apply -f - -n $KAFKA_NAMESPACE
           done
