@@ -2,7 +2,7 @@
 
 **English** | [Français](README.fr.md) | [Español](README.es.md) | [Galego](README.gl.md)
 
-![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.7.0-1.6.1](https://img.shields.io/badge/AppVersion-3.7.0--1.6.1-informational?style=flat-square)
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.10.0-1.7.0](https://img.shields.io/badge/AppVersion-3.10.0--1.7.0-informational?style=flat-square)
 
 A Helm chart for deploying the AxonOps Search DB on Kubernetes. This search database powers the AxonOps platform's indexing and search capabilities for logs, events, and operational data.
 
@@ -27,6 +27,7 @@ A Helm chart for deploying the AxonOps Search DB on Kubernetes. This search data
 - [Configuration](#configuration)
 - [Upgrading](#upgrading)
   - [Upgrading to chart 0.3.0 (OpenSearch 3.3.2 to 3.7.0)](#upgrading-to-chart-030-opensearch-332-to-370)
+  - [Upgrading to chart 0.4.0 (OpenSearch 3.7.0 to 3.10.0)](#upgrading-to-chart-040-opensearch-370-to-3100)
 - [Uninstalling](#uninstalling)
 - [Troubleshooting](#troubleshooting)
 
@@ -996,6 +997,17 @@ The rolling update takes each node down in turn, so query latency rises and sing
 ```yaml
 image:
   tag: "3.3.2-1.5.0"
+```
+
+### Upgrading to chart 0.4.0 (OpenSearch 3.7.0 to 3.10.0)
+
+Chart 0.4.0 moves `appVersion` from `3.7.0-1.6.1` to `3.10.0-1.7.0`. Because `image.tag` is empty by default, the chart takes its image tag from `appVersion`, so a `helm upgrade` to 0.4.0 moves OpenSearch across three minor versions in one step. This is not reversible by rolling the chart back: once a node has started on 3.10.0 it has upgraded its on-disk Lucene index, and 3.7.0 will not read it.
+
+Take and verify a snapshot, and confirm the cluster is green, as described in [Upgrading to chart 0.3.0](#upgrading-to-chart-030-opensearch-332-to-370) before you start. To stay on OpenSearch 3.7.0 while still picking up the chart's template changes, pin the old image explicitly:
+
+```yaml
+image:
+  tag: "3.7.0-1.6.1"
 ```
 
 ## Uninstalling

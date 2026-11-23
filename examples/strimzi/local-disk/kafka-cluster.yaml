@@ -1,0 +1,51 @@
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: ${STRIMZI_CLUSTER_NAME}
+  namespace: ${KAFKA_NAMESPACE}
+spec:
+  kafka:
+    version: ${KAFKA_VERSION}
+    image: ${KAFKA_CONTAINER_IMAGE}
+    rack:
+      topologyKey: ${KAFKA_RACK_TOPOLOGY_KEY}
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      default.replication.factor: ${KAFKA_REPLICATION_FACTOR}
+      min.insync.replicas: ${KAFKA_MIN_INSYNC_REPLICAS}
+      offsets.topic.replication.factor: ${KAFKA_REPLICATION_FACTOR}
+      transaction.state.log.replication.factor: ${KAFKA_REPLICATION_FACTOR}
+      transaction.state.log.min.isr: ${KAFKA_MIN_INSYNC_REPLICAS}
+    jvmOptions:
+      javaSystemProperties:
+        - name: kafka.logs.dir
+          value: /var/log/kafka
+    # The AxonOps agent reads the Kafka log from /var/log/kafka/server.log.
+    logging:
+      type: inline
+      loggers:
+        rootLogger.level: "INFO"
+        rootLogger.appenderRefs: "file"
+        rootLogger.appenderRef.file.ref: "FILE"
+        appender.file.type: "RollingFile"
+        appender.file.name: "FILE"
+        appender.file.fileName: "${sys:kafka.logs.dir}/server.log"
+        appender.file.filePattern: "${sys:kafka.logs.dir}/server.log.%i"
+        appender.file.layout.type: "PatternLayout"
+        appender.file.layout.pattern: "[%d] %p %m (%c)%n"
+        appender.file.policies.type: "Policies"
+        appender.file.policies.size.type: "SizeBasedTriggeringPolicy"
+        appender.file.policies.size.size: "10MB"
+        appender.file.strategy.type: "DefaultRolloverStrategy"
+        appender.file.strategy.max: "5"
+        logger.netty.name: "axonops.io.netty"
+        logger.netty.level: "ERROR"

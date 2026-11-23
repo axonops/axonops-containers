@@ -32,7 +32,7 @@ almacenes de datos, y detrás de ellos suben `axon-server` y el panel.
 | Servicio | Imagen | Propósito | Puerto publicado |
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra) | — |
-| `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de registros y eventos (OpenSearch) | — |
+| `axondb-search` | `ghcr.io/axonops/axondb-search:3.10.0-1.7.0` | Almacén de registros y eventos (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | Backend y endpoint de los agentes | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Panel web | `3000` |
 | `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2: véase [más abajo](#reports-v2) | — |

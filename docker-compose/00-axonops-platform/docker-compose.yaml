@@ -51,11 +51,11 @@ services:
     restart: unless-stopped
 
   # =============================================================================
-  # axondb-search: OpenSearch 3.7.0 for logs and search functionality
+  # axondb-search: OpenSearch 3.10.0 for logs and search functionality
   # =============================================================================
   axondb-search:
     # Preferred (immutable): ghcr.io/axonops/axondb-search@sha256:a7f2d508a54b3f0d890e70bf0bec1710345ea34696aa0a2bc66c66a0d075f565
-    image: ghcr.io/axonops/axondb-search:3.7.0-1.6.1
+    image: ghcr.io/axonops/axondb-search:3.10.0-1.7.0
     container_name: axondb-search
     hostname: axondb-search
     networks:

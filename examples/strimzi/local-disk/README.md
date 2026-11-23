@@ -1,210 +1,127 @@
-# AxonOps Strimzi Kafka Local Disk Examples
+# Strimzi Kafka on local disks
 
-This directory contains example manifests to deploy a Strimzi-based Kafka cluster with AxonOps monitoring using local persistent volumes.
+A KRaft Kafka cluster with the AxonOps agent whose data lives in directories on chosen Kubernetes nodes, through hostPath PersistentVolumes. Use it on bare metal or lab clusters without a storage provisioner. With a StorageClass that provisions volumes, use [../on-premises/](../on-premises/) instead.
 
-## Overview
+`strimzi-setup.sh` does the deployment: it installs the Strimzi operator if its CRDs are missing, creates one PersistentVolume per controller and broker on the node you choose for it, and applies the node pools and the Kafka cluster. The agents report to a self-hosted AxonOps server, by default the one from [../../axonops/](../../axonops/).
 
-- **Kafka Version**: 4.3.0
-- **Mode**: KRaft (no ZooKeeper)
-- **Brokers**: 3 replicas (configurable), 10Gi storage
-- **Controllers**: 3 replicas (configurable), 5Gi storage
-- **Replication Factor**: 1 (development/testing)
-- **Storage**: Local persistent volumes with manual provisioning
+| Setting | Default |
+| --- | --- |
+| Kafka | 4.3.0, KRaft |
+| Controllers | 3, 10Gi each |
+| Brokers | 3, 20Gi each |
+| Replication factor / min ISR | 3 / 2 |
+| Volume directories | `/data/strimzi/<cluster>/controller-<n>` and `/data/strimzi/<cluster>/broker-<n>` |
 
 ## Prerequisites
 
-- A Kubernetes cluster with the [Strimzi operator](https://strimzi.io/) installed
-- `envsubst` command available (part of `gettext` package)
-- Local storage paths available on nodes
+- Kubernetes 1.27 or newer, `kubectl`, `helm` and `envsubst` (package `gettext`)
+- bash 3.2 or newer
+- Shell access to the nodes that hold the volumes, to create the directories
+- A self-hosted AxonOps server reachable from the pods
 
-## Configuration
+## Quick start
 
-A `strimzi-config.env` file is provided with default configuration values. Edit this file to customize your deployment.
+On a single-node cluster the script places every volume on that node:
 
 ```bash
-# Review and edit the configuration
-cat strimzi-config.env
-
-# Source the environment variables
+cd examples/strimzi/local-disk
+source ../../axonops/axonops-config.env   # AxonOps namespace, organisation and port
 source strimzi-config.env
+RENDER_ONLY=true ./strimzi-setup.sh       # prints the directories to create
 ```
 
-### Configuration Variables
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `STRIMZI_NAMESPACE` | `kafka` | Kubernetes namespace for deployment |
-| `STRIMZI_CLUSTER_NAME` | `my-cluster` | Name of the Kafka cluster |
-| `STRIMZI_BROKER_REPLICAS` | `3` | Number of broker replicas |
-| `STRIMZI_BROKER_STORAGE_SIZE` | `10Gi` | Storage size per broker |
-| `STRIMZI_CONTROLLER_REPLICAS` | `3` | Number of controller replicas |
-| `STRIMZI_CONTROLLER_STORAGE_SIZE` | `5Gi` | Storage size per controller |
-| `AXON_AGENT_CLUSTER_NAME` | `my-cluster` | AxonOps cluster name |
-| `AXON_AGENT_ORG` | `your-org` | AxonOps organization |
-| `AXON_AGENT_TLS_MODE` | `disabled` | AxonOps TLS mode |
-| `AXON_AGENT_SERVER_HOST` | `axon-server.axonops.svc.cluster.local` | AxonOps server host |
-| `AXON_AGENT_SERVER_PORT` | `1888` | AxonOps server port |
-
-### Per-Node Volume Variables
-
-The following variables must be set when creating PersistentVolumes. Since each broker and controller needs its own PV, you must apply the volume manifests **multiple times** with different values:
-
-| Variable | Description |
-| --- | --- |
-| `STRIMZI_BROKER_ID` | Broker index (0, 1, 2, etc.) - set for each broker volume |
-| `STRIMZI_BROKER_NODE` | Kubernetes node hostname where the broker volume resides |
-| `STRIMZI_CONTROLLER_ID` | Controller index (0, 1, 2, etc.) - set for each controller volume |
-| `STRIMZI_CONTROLLER_NODE` | Kubernetes node hostname where the controller volume resides |
-
-## Manifests
-
-| File | Description |
-| --- | --- |
-| `strimzi-config.env` | Environment variables for configuration |
-| `strimzi-storageclass.yaml` | StorageClass for local persistent volumes |
-| `strimzi-broker-volumes.yaml` | PersistentVolumes for brokers |
-| `strimzi-controller-volumes.yaml` | PersistentVolumes for controllers |
-| `strimzi-kafka-rbac.yaml` | RBAC resources for Kafka |
-| `strimzi-controller-pools.yaml` | KafkaNodePool for KRaft controllers |
-| `strimzi-broker-pools.yaml` | KafkaNodePool for brokers |
-| `strimzi-kafka-cluster.yaml` | Kafka cluster resource (KRaft mode) |
-
-## Deployment
-
-**Prerequisites:** Before proceeding, ensure you have created the local storage directories on each node and set the correct ownership. See [Local Storage Setup](#local-storage-setup) below.
-
-### Using envsubst
-
-The manifests use environment variable placeholders (`${VAR_NAME}`). Use `envsubst` to substitute the values before applying:
+Run the printed commands on the node, for example:
 
 ```bash
-# 1. Source the configuration
-source strimzi-config.env
-
-# 2. Create the namespace
-kubectl create namespace $STRIMZI_NAMESPACE
-
-# 3. Apply the StorageClass
-kubectl apply -f strimzi-storageclass.yaml
-
-# 4. Create PersistentVolumes for each broker (repeat for each broker ID)
-# You must apply the broker volume manifest once per broker with unique STRIMZI_BROKER_ID and STRIMZI_BROKER_NODE
-export STRIMZI_BROKER_ID=0 STRIMZI_BROKER_NODE=node1 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-export STRIMZI_BROKER_ID=1 STRIMZI_BROKER_NODE=node2 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-export STRIMZI_BROKER_ID=2 STRIMZI_BROKER_NODE=node3 && envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-
-# 5. Create PersistentVolumes for each controller (repeat for each controller ID)
-# You must apply the controller volume manifest once per controller with unique STRIMZI_CONTROLLER_ID and STRIMZI_CONTROLLER_NODE
-export STRIMZI_CONTROLLER_ID=0 STRIMZI_CONTROLLER_NODE=node1 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-export STRIMZI_CONTROLLER_ID=1 STRIMZI_CONTROLLER_NODE=node2 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-export STRIMZI_CONTROLLER_ID=2 STRIMZI_CONTROLLER_NODE=node3 && envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-
-# 6. Apply RBAC resources
-envsubst < strimzi-kafka-rbac.yaml | kubectl apply -f -
-
-# 7. Create the controller node pool
-envsubst < strimzi-controller-pools.yaml | kubectl apply -f -
-
-# 8. Create the broker node pool
-envsubst < strimzi-broker-pools.yaml | kubectl apply -f -
-
-# 9. Create the Kafka cluster
-envsubst < strimzi-kafka-cluster.yaml | kubectl apply -f -
-```
-
-### One-liner Deployment
-
-Apply all manifests in order. Note that you must customize the node names (`node1`, `node2`, `node3`) to match your actual Kubernetes node hostnames:
-
-```bash
-source strimzi-config.env && \
-kubectl create namespace $STRIMZI_NAMESPACE --dry-run=client -o yaml | kubectl apply -f - && \
-kubectl apply -f strimzi-storageclass.yaml && \
-# Create broker PVs (adjust node names to match your cluster)
-for i in 0 1 2; do
-  export STRIMZI_BROKER_ID=$i STRIMZI_BROKER_NODE=node$((i+1))
-  envsubst < strimzi-broker-volumes.yaml | kubectl apply -f -
-done && \
-# Create controller PVs (adjust node names to match your cluster)
-for i in 0 1 2; do
-  export STRIMZI_CONTROLLER_ID=$i STRIMZI_CONTROLLER_NODE=node$((i+1))
-  envsubst < strimzi-controller-volumes.yaml | kubectl apply -f -
-done && \
-# Apply remaining manifests
-for f in strimzi-kafka-rbac.yaml strimzi-controller-pools.yaml strimzi-broker-pools.yaml strimzi-kafka-cluster.yaml; do
-  envsubst < $f | kubectl apply -f -
-done
-```
-
-### Generate Processed Manifests
-
-To generate processed manifests for review or GitOps (adjust node names to match your cluster):
-
-```bash
-source strimzi-config.env
-
-# Generate all processed manifests to a single file
-{
-  echo "---"
-  cat strimzi-storageclass.yaml
-  # Generate broker PVs
-  for i in 0 1 2; do
-    export STRIMZI_BROKER_ID=$i STRIMZI_BROKER_NODE=node$((i+1))
-    echo "---"
-    envsubst < strimzi-broker-volumes.yaml
-  done
-  # Generate controller PVs
-  for i in 0 1 2; do
-    export STRIMZI_CONTROLLER_ID=$i STRIMZI_CONTROLLER_NODE=node$((i+1))
-    echo "---"
-    envsubst < strimzi-controller-volumes.yaml
-  done
-  # Generate remaining manifests
-  for f in strimzi-kafka-rbac.yaml strimzi-controller-pools.yaml strimzi-broker-pools.yaml \
-           strimzi-kafka-cluster.yaml; do
-    echo "---"
-    envsubst < $f
-  done
-} > processed-manifests.yaml
-```
-
-## Local Storage Setup
-
-**Important:** Before deploying, you must create the local storage directories on each Kubernetes node and set the correct ownership. Kafka runs as user ID 1001, so the directories must be owned by this user.
-
-The paths follow the pattern:
-
-- Brokers: `/data/strimzi/${STRIMZI_CLUSTER_NAME}/broker-pool-${STRIMZI_BROKER_ID}`
-- Controllers: `/data/strimzi/${STRIMZI_CLUSTER_NAME}/controller-${STRIMZI_CONTROLLER_ID}`
-
-```bash
-# On each node, create the storage directories (using default cluster name 'my-cluster')
-sudo mkdir -p /data/strimzi/my-cluster/broker-pool-{0,1,2}
-sudo mkdir -p /data/strimzi/my-cluster/controller-{0,1,2}
-
-# Set ownership to Kafka user (UID 1001)
+sudo mkdir -p /data/strimzi/my-cluster/controller-{0,1,2} /data/strimzi/my-cluster/broker-{0,1,2}
 sudo chown -R 1001:1001 /data/strimzi/my-cluster
 ```
 
-Make sure to create the directories on the correct nodes as specified by `STRIMZI_BROKER_NODE` and `STRIMZI_CONTROLLER_NODE` variables. For example, if broker-0 is on node1, create `/data/strimzi/my-cluster/broker-pool-0` on node1.
-
-## Verification
+Then deploy:
 
 ```bash
-# Check the Kafka cluster status
-kubectl get kafka -n $STRIMZI_NAMESPACE
-
-# Check node pools
-kubectl get kafkanodepool -n $STRIMZI_NAMESPACE
-
-# Check pods
-kubectl get pods -n $STRIMZI_NAMESPACE
-
-# Check persistent volumes
-kubectl get pv | grep kafka
+./strimzi-setup.sh
 ```
 
-## Related Documentation
+The script waits until the Kafka resource is Ready and prints each pod with its node.
 
-- [Full Strimzi Deployment Guide](../../STRIMZI_DEPLOYMENT.md)
-- [AxonOps Deployment Guide](../../AXONOPS_DEPLOYMENT.md)
+## Placing volumes on several nodes
+
+Each volume is pinned to one node. Map volume indices to nodes with `<index>:<node>` pairs; indices without a mapping use `STRIMZI_NODE_HOSTNAME`:
+
+```bash
+source strimzi-config.env
+export KAFKA_CONTROLLER_NODE_SELECTORS="0:node-a,1:node-b,2:node-c"
+export KAFKA_BROKER_NODE_SELECTORS="0:node-a,1:node-b,2:node-c"
+./strimzi-setup.sh
+```
+
+A pod runs on the node of the volume it binds to. The volume index is not the Kafka node id; Strimzi numbers pods across both pools. See the [node selector guide](../../NODE_SELECTOR_GUIDE.md) for more layouts.
+
+## Files
+
+| File | Resource |
+| --- | --- |
+| `strimzi-config.env` | Settings for the script and every manifest |
+| `strimzi-setup.sh` | Renders and applies everything below |
+| `strimzi-storageclass.yaml` | StorageClass `strimzi-local` (no provisioner, `WaitForFirstConsumer`) |
+| `strimzi-controller-volumes.yaml`, `strimzi-broker-volumes.yaml` | One PersistentVolume, rendered once per replica with `STRIMZI_VOLUME_INDEX` and `STRIMZI_VOLUME_NODE` |
+| `axonops-agent-secret.yaml` | Secret `<cluster>-axonops-agent`, read by every Kafka container |
+| `kafka-node-pool-controller.yaml`, `kafka-node-pool-brokers.yaml` | KafkaNodePools `controller` and `broker`. Their claims select only the volumes labelled for their pool. |
+| `kafka-cluster.yaml` | Kafka `<cluster>` |
+
+## Configuration
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `KAFKA_NAMESPACE` | `kafka` | Namespace for the Kafka resources |
+| `STRIMZI_CLUSTER_NAME` | `my-cluster` | Kafka resource name, also part of the PV names and paths |
+| `STRIMZI_CONTROLLER_REPLICAS` / `STRIMZI_BROKER_REPLICAS` | `3` / `3` | Pool sizes. One volume is created per replica. |
+| `STRIMZI_CONTROLLER_STORAGE_SIZE` / `STRIMZI_BROKER_STORAGE_SIZE` | `10Gi` / `20Gi` | Size requested and declared on each PV. hostPath does not enforce it. |
+| `KAFKA_REPLICATION_FACTOR` / `KAFKA_MIN_INSYNC_REPLICAS` | `3` / `2` | Use `1` / `1` with a single broker |
+| `STRIMZI_HOST_BASE_DIR` | `/data/strimzi` | Parent directory of the volumes on each node |
+| `STRIMZI_HOST_UID` / `STRIMZI_HOST_GID` | `1001` / `1001` | Owner of the directories. Kafka runs as UID 1001. |
+| `STRIMZI_LOCAL_STORAGE_CLASS` | `strimzi-local` | StorageClass for the PVs |
+| `STRIMZI_NODE_HOSTNAME` | empty | Node for unmapped volumes. Found automatically on a single-node cluster. |
+| `KAFKA_CONTROLLER_NODE_SELECTORS` / `KAFKA_BROKER_NODE_SELECTORS` | empty | `<index>:<node>,...`. `broker-0`, `controller-0` and `ctrl-0` are accepted as indices. |
+| `STRIMZI_CREATE_HOST_DIRS` | `false` | Create the directories with `sudo` on the machine running the script. Only useful when it is the node. |
+| `KAFKA_RACK_TOPOLOGY_KEY` | `kubernetes.io/hostname` | Node label for rack awareness |
+| `STRIMZI_VERSION` | `$STRIMZI_OPERATOR_VERSION` | Installed operator version, used for the image tag. Set it when the operator was already installed at another version. |
+| `KAFKA_VERSION`, `KAFKA_CONTAINER_IMAGE` | `4.3.0`, AxonOps image | As in the [cloud example](../cloud/README.md#configuration) |
+| `AXONOPS_NAMESPACE` | `axonops` | Namespace of the AxonOps server |
+| `AXON_AGENT_*` | self-hosted server in `AXONOPS_NAMESPACE`, TLS disabled | As in the [on-premises example](../on-premises/README.md#configuration) |
+| `STRIMZI_OPERATOR_INSTALL` / `STRIMZI_OPERATOR_NAMESPACE` / `STRIMZI_OPERATOR_VERSION` | `true` / `strimzi` / `1.1.0` | Operator install when its CRDs are missing. Script only. |
+| `HELM_WAIT` | `true` | Install the operator with `helm --wait`. Script only. |
+| `RENDER_ONLY` | `false` | Write `generated/strimzi-local-disk.yaml`, print the directories and the commands a real run would execute, apply nothing. Script only. |
+| `KAFKA_READY_TIMEOUT` | `600s` | How long to wait for the Kafka resource. Script only. |
+
+## Verify
+
+```bash
+kubectl get kafka,kafkanodepool,pvc -n "$KAFKA_NAMESPACE"
+kubectl get pv -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
+kubectl get pods -n "$KAFKA_NAMESPACE" -o wide
+```
+
+| Symptom | Cause |
+| --- | --- |
+| PVC `Pending`, event `didn't find available persistent volumes to bind` | Fewer PVs than replicas, or the size in the PV is smaller than the claim |
+| Pod `ContainerCreating`, event `hostPath type check failed` | The directory does not exist on that node |
+| Kafka container exits with `AccessDeniedException` | The directory is not owned by UID 1001 |
+
+## Remove
+
+```bash
+kubectl delete kafka "$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE"
+kubectl delete kafkanodepool controller broker -n "$KAFKA_NAMESPACE"
+kubectl delete secret "$STRIMZI_CLUSTER_NAME-axonops-agent" -n "$KAFKA_NAMESPACE"
+kubectl delete pvc -n "$KAFKA_NAMESPACE" -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
+kubectl delete pv -l strimzi.io/cluster="$STRIMZI_CLUSTER_NAME"
+# The data stays on the nodes until you delete the directories:
+# sudo rm -rf /data/strimzi/my-cluster
+```
+
+## Related
+
+- [Node selector guide](../../NODE_SELECTOR_GUIDE.md)
+- [Strimzi deployment guide](../../STRIMZI_DEPLOYMENT.md)

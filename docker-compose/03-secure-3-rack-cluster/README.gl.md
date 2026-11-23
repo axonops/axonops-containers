@@ -85,7 +85,7 @@ Cassandra vén cun superusuario por defecto de sobra coñecido e cun keyspace
 | `cassandra02` | 10.17.64.6 | a mesma | Nodo do clúster, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | a mesma | Nodo do clúster, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra dun só nodo) | — |
-| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de rexistros e eventos (OpenSearch) | — |
+| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.10.0-1.7.0` | Almacén de rexistros e eventos (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend e endpoint dos axentes | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Panel web | `3000` |
 | `axon-reporting` | a de `axon-dash` | `axon-reporting:1.0.3` | Reports v2 | — |

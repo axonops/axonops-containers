@@ -2,7 +2,7 @@
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
-  name: axonops-controller
+  name: controller
   namespace: ${KAFKA_NAMESPACE}
   labels:
     strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
@@ -13,34 +13,54 @@ spec:
   storage:
     type: jbod
     volumes:
+      # AxonOps keeps its agent state on the volume with id 0.
       - id: 0
         type: persistent-claim
         size: ${STRIMZI_CONTROLLER_STORAGE_SIZE}
-        deleteClaim: false
         class: ${STRIMZI_CONTROLLER_STORAGE_CLASS}
+        deleteClaim: false
         kraftMetadata: shared
   template:
     pod:
       topologySpreadConstraints:
         - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
+          topologyKey: ${KAFKA_RACK_TOPOLOGY_KEY}
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              strimzi.io/name: ${STRIMZI_CLUSTER_NAME}
+              strimzi.io/cluster: ${STRIMZI_CLUSTER_NAME}
+              strimzi.io/pool-name: controller
     kafkaContainer:
       env:
-      - name: KAFKA_NODE_TYPE
-        value: kraft-controller
-      - name: AXON_AGENT_CLUSTER_NAME
-        value: "${AXON_AGENT_CLUSTER_NAME}"
-      - name: AXON_AGENT_ORG
-        value: "${AXON_AGENT_ORG}"
-      - name: AXON_AGENT_TLS_MODE
-        value: "${AXON_AGENT_TLS_MODE}"
-      - name: AXON_AGENT_SERVER_PORT
-        value: "${AXON_AGENT_SERVER_PORT}"
-      - name: AXON_AGENT_SERVER_HOST
-        value: "${AXON_AGENT_SERVER_HOST}"
-      - name: AXON_AGENT_KEY
-        value: "${AXON_AGENT_KEY}"
+        - name: KAFKA_NODE_TYPE
+          value: kraft-controller
+        - name: AXON_AGENT_CLUSTER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: ${STRIMZI_CLUSTER_NAME}-axonops-agent
+              key: AXON_AGENT_CLUSTER_NAME
+        - name: AXON_AGENT_ORG
+          valueFrom:
+            secretKeyRef:
+              name: ${STRIMZI_CLUSTER_NAME}-axonops-agent
+              key: AXON_AGENT_ORG
+        - name: AXON_AGENT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ${STRIMZI_CLUSTER_NAME}-axonops-agent
+              key: AXON_AGENT_KEY
+        - name: AXON_AGENT_SERVER_HOST
+          valueFrom:
+            secretKeyRef:
+              name: ${STRIMZI_CLUSTER_NAME}-axonops-agent
+              key: AXON_AGENT_SERVER_HOST
+        - name: AXON_AGENT_SERVER_PORT
+          valueFrom:
+            secretKeyRef:
+              name: ${STRIMZI_CLUSTER_NAME}-axonops-agent
+              key: AXON_AGENT_SERVER_PORT
+        - name: AXON_AGENT_TLS_MODE
+          valueFrom:
+            secretKeyRef:
+              name: ${STRIMZI_CLUSTER_NAME}-axonops-agent
+              key: AXON_AGENT_TLS_MODE

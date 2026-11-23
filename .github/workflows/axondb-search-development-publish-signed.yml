@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        opensearch_version: ['3.3.2', '3.7.0']
+        opensearch_version: ['3.3.2', '3.7.0', '3.8.0', '3.9.0', '3.10.0']
         # Platform removed - tests only run on the runner's native platform (linux/amd64)
     permissions:
       contents: read
@@ -188,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        opensearch_version: ['3.3.2', '3.7.0']
+        opensearch_version: ['3.3.2', '3.7.0', '3.8.0', '3.9.0', '3.10.0']
     permissions:
       contents: read
       packages: write
@@ -232,7 +232,7 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.opensearch_version }}-${{ needs.setup.outputs.version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.opensearch_version }}
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ${{ matrix.opensearch_version == '3.10.0' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             OPENSEARCH_VERSION=${{ matrix.opensearch_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
@@ -260,7 +260,7 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.opensearch_version }}-${{ needs.setup.outputs.version }}
             ghcr.io/${{ env.IMAGE_NAME }}:${{ matrix.opensearch_version }}
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ${{ matrix.opensearch_version == '3.10.0' && format('ghcr.io/{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
             OPENSEARCH_VERSION=${{ matrix.opensearch_version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
@@ -283,7 +283,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        opensearch_version: ['3.3.2', '3.7.0']
+        opensearch_version: ['3.3.2', '3.7.0', '3.8.0', '3.9.0', '3.10.0']
     permissions:
       contents: read
     steps:

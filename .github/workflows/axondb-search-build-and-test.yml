@@ -27,12 +27,12 @@ on:
         description: 'OpenSearch version to test'
         required: false
         type: string
-        default: '3.7.0'
+        default: '3.10.0'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  OPENSEARCH_VERSION: 3.7.0
+  OPENSEARCH_VERSION: 3.10.0
 
 jobs:
   axondb-search-test:
@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        opensearch_version: ['3.3.2', '3.7.0']
+        opensearch_version: ['3.3.2', '3.7.0', '3.8.0', '3.9.0', '3.10.0']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
