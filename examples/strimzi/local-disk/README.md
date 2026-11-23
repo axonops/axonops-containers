@@ -86,6 +86,7 @@ A pod runs on the node of the volume it binds to. The volume index is not the Ka
 | `KAFKA_CONTROLLER_NODE_SELECTORS` / `KAFKA_BROKER_NODE_SELECTORS` | empty | `<index>:<node>,...`. `broker-0`, `controller-0` and `ctrl-0` are accepted as indices. |
 | `STRIMZI_CREATE_HOST_DIRS` | `false` | Create the directories with `sudo` on the machine running the script. Only useful when it is the node. |
 | `KAFKA_RACK_TOPOLOGY_KEY` | `kubernetes.io/hostname` | Node label for rack awareness |
+| `STRIMZI_VERSION` | `$STRIMZI_OPERATOR_VERSION` | Installed operator version, used for the image tag. Set it when the operator was already installed at another version. |
 | `KAFKA_VERSION`, `KAFKA_CONTAINER_IMAGE` | `4.3.0`, AxonOps image | As in the [cloud example](../cloud/README.md#configuration) |
 | `AXONOPS_NAMESPACE` | `axonops` | Namespace of the AxonOps server |
 | `AXON_AGENT_*` | self-hosted server in `AXONOPS_NAMESPACE`, TLS disabled | As in the [on-premises example](../on-premises/README.md#configuration) |

@@ -310,19 +310,9 @@ KRaft, conciencia de rack e o axente de AxonOps en cada contedor.
 | Kubernetes | 1.24+ | Calquera distribución conforme á CNCF |
 | Axente de AxonOps | Última | Instálase automaticamente dende o repositorio |
 
-### Historial de versións de Strimzi
+### Etiquetas de imaxe
 
-| Versión de Strimzi | Versións de Kafka admitidas | Data de publicación |
-| --------------- | ------------------------ | ------------ |
-| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | ago. 2026 |
-| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | xuñ. 2026 |
-| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | xuñ. 2026 |
-| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | abr. 2026 |
-| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | mar. 2026 |
-| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | feb. 2025 |
-| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | dec. 2024 |
-| 0.48.0 | 4.0.0, 4.1.0 | nov. 2024 |
-| 0.47.0 | 3.9.0, 3.9.1 | out. 2024 |
+As etiquetas teñen a forma `<strimzi>-<kafka>` (flotante) ou `<strimzi>-<kafka>-<agent>-<image>` (fixa). A parte de Strimzi debe coincidir co operador instalado: `0.50.0-4.1.1` é para Strimzi 0.50.0. Unha combinación que non se constrúe, como `1.1.0-4.1.0`, falla con `ImagePullBackOff`. Consulte [Compatibilidade de versións](../examples/STRIMZI_DEPLOYMENT.gl.md#compatibilidade-de-versións) para ver como ler a versión do operador instalado e todos os operadores e etiquetas que se constrúen.
 
 ## Limitacións coñecidas e pendentes
 
