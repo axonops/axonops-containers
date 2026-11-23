@@ -59,7 +59,7 @@ kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
 
 ## Compatibilité des versions
 
-`KAFKA_VERSION` doit être pris en charge par l'opérateur, et `KAFKA_CONTAINER_IMAGE` doit être construite pour les deux. Les tags d'image AxonOps se lisent `<strimzi>-<kafka>-<agent>-<image>` : `1.1.0-4.3.0-2.0.32-0.1.28` correspond donc à Strimzi 1.1.0 avec Kafka 4.3.0. Les tags publiés sont listés dans [VERSIONS.md](../VERSIONS.md).
+`KAFKA_VERSION` doit être pris en charge par l'opérateur, et `KAFKA_CONTAINER_IMAGE` doit être construite pour les deux. Les tags d'image AxonOps se lisent `<strimzi>-<kafka>-<agent>-<image>` : `1.1.0-4.3.0-2.0.32-0.1.28` correspond donc à Strimzi 1.1.0 avec Kafka 4.3.0. La valeur par défaut est le tag flottant `<strimzi>-<kafka>`, par exemple `1.1.0-4.3.0`, qui pointe toujours vers le dernier build AxonOps pour cette combinaison. Cela convient à une démo ; en production, épinglez l'image par digest SHA256 (`ghcr.io/axonops/strimzi/kafka@sha256:<digest>`) afin que tous les brokers exécutent le même build. Les tags publiés sont listés dans [VERSIONS.md](../VERSIONS.md).
 
 | Strimzi | Kafka | Kubernetes |
 | --- | --- | --- |

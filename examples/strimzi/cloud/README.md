@@ -90,7 +90,7 @@ done > rendered.yaml
 | `STRIMZI_CLUSTER_NAME` | `my-cluster` | Kafka resource name, used as a prefix for pods, Services and the Secret |
 | `KAFKA_RACK_TOPOLOGY_KEY` | `topology.kubernetes.io/zone` | Node label for rack awareness and pod spreading |
 | `KAFKA_VERSION` | `4.3.0` | Kafka version. Must be supported by the operator version. |
-| `KAFKA_CONTAINER_IMAGE` | `ghcr.io/axonops/strimzi/kafka:1.1.0-4.3.0-2.0.32-0.1.28` | AxonOps Kafka image, tag `<strimzi>-<kafka>-<agent>-<image>` |
+| `KAFKA_CONTAINER_IMAGE` | `ghcr.io/axonops/strimzi/kafka:1.1.0-4.3.0` | AxonOps Kafka image. The default floating tag follows the latest build for Strimzi 1.1.0 and `KAFKA_VERSION`; in production pin it by SHA256 digest. |
 | `KAFKA_REPLICATION_FACTOR` | `3` | Default and internal topic replication factor. At most the broker count. |
 | `KAFKA_MIN_INSYNC_REPLICAS` | `2` | Default and transaction log min ISR |
 | `STRIMZI_CONTROLLER_REPLICAS` | `3` | Controllers. Use an odd number. |
