@@ -51,7 +51,7 @@ Para un servidor autoalojado instalado desde [axonops/](axonops/), cargue antes 
 
 ## Versiones de imagen
 
-`IMAGE_NAME` debe corresponder a `CASSANDRA_VERSION`. Las etiquetas siguen el formato `<cassandra>-v<k8ssandra api>-<image>`, por ejemplo `5.0.9-v0.1.125-1.6.3`. Las etiquetas publicadas se enumeran en [VERSIONS.md](../VERSIONS.md) y en el [README de la imagen de K8ssandra](../k8ssandra/README.es.md).
+`IMAGE_NAME` debe corresponder a `CASSANDRA_VERSION`. El valor por defecto es la etiqueta flotante `<cassandra>`, por ejemplo `5.0.9`, que siempre apunta a la última build de AxonOps para esa versión de Cassandra. Sirve para una demo; en producción, fije la imagen por digest SHA256 (`ghcr.io/axonops/k8ssandra/cassandra@sha256:<digest>`) para que todos los nodos ejecuten la misma build. Las etiquetas inmutables siguen el formato `<cassandra>-v<k8ssandra api>-<image>`, por ejemplo `5.0.9-v0.1.125-1.6.3`. Las etiquetas publicadas se enumeran en [VERSIONS.md](../VERSIONS.md) y en el [README de la imagen de K8ssandra](../k8ssandra/README.es.md).
 
 ## Escalado
 

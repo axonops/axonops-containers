@@ -81,7 +81,7 @@ envsubst < cluster-axonops-ubi.yaml | kubectl apply -f -
 | `K8SSANDRA_NAMESPACE` | `k8ssandra-operator` | Namespace of the cluster. Must equal the operator namespace unless the operator is cluster-scoped. |
 | `K8SSANDRA_CLUSTER_NAME` | `my-cassandra` | K8ssandraCluster name and Cassandra cluster name |
 | `CASSANDRA_VERSION` | `5.0.9` | Cassandra version |
-| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9-v0.1.125-1.6.3` | AxonOps image, tag `<cassandra>-v<k8ssandra api>-<image>`. Must match `CASSANDRA_VERSION`. |
+| `IMAGE_NAME` | `ghcr.io/axonops/k8ssandra/cassandra:5.0.9` | AxonOps image. The default floating tag follows the latest build for `CASSANDRA_VERSION`; in production pin it by SHA256 digest. Must match `CASSANDRA_VERSION`. |
 | `CASSANDRA_DC_NAME` / `CASSANDRA_DC_SIZE` | `dc1` / `3` | Datacenter name and node count |
 | `STORAGE_CLASS` | empty (cluster default) | StorageClass for both PVCs |
 | `STORAGE_SIZE` | `10Gi` | Cassandra data volume |

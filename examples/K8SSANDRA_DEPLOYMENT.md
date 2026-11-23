@@ -51,7 +51,7 @@ For a self-hosted server installed from [axonops/](axonops/), source `axonops/ax
 
 ## Image versions
 
-`IMAGE_NAME` must match `CASSANDRA_VERSION`. Tags read `<cassandra>-v<k8ssandra api>-<image>`, for example `5.0.9-v0.1.125-1.6.3`. Published tags are listed in [VERSIONS.md](../VERSIONS.md) and the [K8ssandra image README](../k8ssandra/README.md).
+`IMAGE_NAME` must match `CASSANDRA_VERSION`. The default is the floating tag `<cassandra>`, for example `5.0.9`, which always points to the latest AxonOps build for that Cassandra version. That suits a demo; in production, pin the image by SHA256 digest (`ghcr.io/axonops/k8ssandra/cassandra@sha256:<digest>`) so every node runs the same build. Immutable tags read `<cassandra>-v<k8ssandra api>-<image>`, for example `5.0.9-v0.1.125-1.6.3`. Published tags are listed in [VERSIONS.md](../VERSIONS.md) and the [K8ssandra image README](../k8ssandra/README.md).
 
 ## Scaling
 
