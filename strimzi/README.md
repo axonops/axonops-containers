@@ -288,19 +288,9 @@ The examples are described in [`examples/STRIMZI_DEPLOYMENT.md`](../examples/STR
 | Kubernetes | 1.24+ | Any CNCF-compliant distribution |
 | AxonOps Agent | Latest | Auto-installed from repository |
 
-### Strimzi Version History
+### Image Tags
 
-| Strimzi Version | Supported Kafka Versions | Release Date |
-| --------------- | ------------------------ | ------------ |
-| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | Aug 2026 |
-| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | Jun 2026 |
-| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Jun 2026 |
-| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | Apr 2026 |
-| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | Mar 2026 |
-| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Feb 2025 |
-| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | Dec 2024 |
-| 0.48.0 | 4.0.0, 4.1.0 | Nov 2024 |
-| 0.47.0 | 3.9.0, 3.9.1 | Oct 2024 |
+Tags read `<strimzi>-<kafka>` (floating) or `<strimzi>-<kafka>-<agent>-<image>` (pinned). The Strimzi part must match the installed operator: `0.50.0-4.1.1` is for Strimzi 0.50.0. A combination that is not built, such as `1.1.0-4.1.0`, fails with `ImagePullBackOff`. See [Version compatibility](../examples/STRIMZI_DEPLOYMENT.md#version-compatibility) for how to read the installed operator version and for every operator and tag that is built.
 
 ## Known Limitations and TODOs
 

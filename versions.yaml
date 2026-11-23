@@ -193,7 +193,7 @@ components:
       - "1.1.0-4.3.0-2.0.20-0.1.26"
       - "1.1.0-4.3.0-2.0.20-0.1.25"
     notes: >-
-      Build 0.1.28 publishes one tag per supported operator/Kafka combination (operators 0.46.0 through 1.1.0, AxonOps agent 2.0.32). `current.tag` is the newest combination; see the VERSION_MATRIX in .github/workflows/strimzi-publish-signed.yml for the full set.
+      Each build publishes one tag per operator/Kafka pair in the VERSION_MATRIX of .github/workflows/strimzi-publish-signed.yml, plus the floating `{operator}-{kafka}` and `{operator}-latest` tags. The tag must match the installed Strimzi operator; examples/STRIMZI_DEPLOYMENT.md#version-compatibility lists every supported operator and its floating tags. `current.digest` is the digest of the `current.tag` variant only.
   - name: chart-axonops
     kind: chart
     description: Umbrella chart deploying the full AxonOps stack

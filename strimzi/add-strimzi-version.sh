@@ -192,6 +192,9 @@ with open(filepath, "w") as fh:
 print("  Done.")
 PYEOF
 
+echo "==> Updating the compatibility table in examples/STRIMZI_DEPLOYMENT*.md"
+"$REPO_ROOT/scripts/strimzi-compat-table.sh"
+
 echo ""
 echo "=== All done! ==="
 echo ""
@@ -205,5 +208,6 @@ echo "Files modified:"
 for f in "${WORKFLOW_FILES[@]}"; do
   echo "  $(basename "$f")"
 done
+echo "  examples/STRIMZI_DEPLOYMENT*.md"
 echo ""
 echo "Please review the changes with: git diff"

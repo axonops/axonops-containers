@@ -59,16 +59,45 @@ kubectl wait kafka/"$STRIMZI_CLUSTER_NAME" -n "$KAFKA_NAMESPACE" \
 
 ## Compatibilidade de versións
 
-`KAFKA_VERSION` debe estar admitida polo operador, e `KAFKA_CONTAINER_IMAGE` debe estar construída para os dous. As etiquetas das imaxes de AxonOps teñen a forma `<strimzi>-<kafka>-<agent>-<image>`, así que `1.1.0-4.3.0-2.0.32-0.1.28` é Strimzi 1.1.0 con Kafka 4.3.0. O valor por defecto é a etiqueta flotante `<strimzi>-<kafka>`, por exemplo `1.1.0-4.3.0`, que sempre apunta á última build de AxonOps para esa combinación. Vale para unha demo; en produción, fixe a imaxe por digest SHA256 (`ghcr.io/axonops/strimzi/kafka@sha256:<digest>`) para que todos os brokers executen a mesma build. As etiquetas publicadas están listadas en [VERSIONS.md](../VERSIONS.md).
+A imaxe de AxonOps debe estar construída para o operador instalado e para `KAFKA_VERSION`. Unha etiqueta que nunca se construíu falla con `ImagePullBackOff`.
 
-| Strimzi | Kafka | Kubernetes |
+1. Descubra a versión do operador instalado. É a etiqueta da imaxe do Deployment do operador, tanto se se instalou con Helm como co YAML de Strimzi:
+
+   ```bash
+   kubectl get deployments -A --field-selector metadata.name=strimzi-cluster-operator \
+     -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+   ```
+
+   `quay.io/strimzi/operator:0.50.0` significa Strimzi 0.50.0.
+
+2. Escolla unha versión de Kafka da fila dese operador na táboa de abaixo. Exporte as dúas antes de cargar `strimzi-config.env`, que constrúe `KAFKA_CONTAINER_IMAGE` a partir delas. Se xa cargou o ficheiro nesta shell, elimine antes `KAFKA_CONTAINER_IMAGE` con `unset`, ou conservará a etiqueta anterior:
+
+   ```bash
+   export STRIMZI_VERSION=0.50.0 KAFKA_VERSION=4.1.1
+   unset KAFKA_CONTAINER_IMAGE
+   source strimzi-config.env
+   ```
+
+As etiquetas das imaxes de AxonOps teñen a forma `<strimzi>-<kafka>` (flotante) ou `<strimzi>-<kafka>-<agent>-<image>` (fixa), así que `1.1.0-4.3.0-2.0.32-0.1.28` é Strimzi 1.1.0 con Kafka 4.3.0, o axente de AxonOps 2.0.32 e a build de imaxe 0.1.28. Unha etiqueta flotante sempre apunta á última build de AxonOps para esa combinación, e `<strimzi>-latest` á versión de Kafka máis recente para ese operador. Vale para unha demo; en produción, fixe a imaxe por digest SHA256 (`ghcr.io/axonops/strimzi/kafka@sha256:<digest>`) para que todos os brokers executen a mesma build. A versión actual indícase en [VERSIONS.md](../VERSIONS.md).
+
+<!-- strimzi-compat-table:start -->
+| Operador Strimzi | Versións de Kafka | Etiquetas flotantes |
 | --- | --- | --- |
-| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | 1.27+ |
-| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | 1.27+ |
-| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | 1.26+ |
-| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | 1.25+ |
+| 1.2.0 | 4.2.0, 4.2.1, 4.3.0, 4.3.1 | `1.2.0-4.2.0`, `1.2.0-4.2.1`, `1.2.0-4.3.0`, `1.2.0-4.3.1`, `1.2.0-latest` |
+| 1.1.0 | 4.2.0, 4.2.1, 4.3.0 | `1.1.0-4.2.0`, `1.1.0-4.2.1`, `1.1.0-4.3.0`, `1.1.0-latest` |
+| 1.0.1 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | `1.0.1-4.1.0`, `1.0.1-4.1.1`, `1.0.1-4.1.2`, `1.0.1-4.2.0`, `1.0.1-latest` |
+| 1.0.0 | 4.1.0, 4.1.1, 4.1.2, 4.2.0 | `1.0.0-4.1.0`, `1.0.0-4.1.1`, `1.0.0-4.1.2`, `1.0.0-4.2.0`, `1.0.0-latest` |
+| 0.51.0 | 4.1.0, 4.1.1, 4.2.0 | `0.51.0-4.1.0`, `0.51.0-4.1.1`, `0.51.0-4.2.0`, `0.51.0-latest` |
+| 0.50.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | `0.50.1-4.0.0`, `0.50.1-4.0.1`, `0.50.1-4.1.0`, `0.50.1-4.1.1`, `0.50.1-latest` |
+| 0.50.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | `0.50.0-4.0.0`, `0.50.0-4.0.1`, `0.50.0-4.1.0`, `0.50.0-4.1.1`, `0.50.0-latest` |
+| 0.49.1 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | `0.49.1-4.0.0`, `0.49.1-4.0.1`, `0.49.1-4.1.0`, `0.49.1-4.1.1`, `0.49.1-latest` |
+| 0.49.0 | 4.0.0, 4.0.1, 4.1.0, 4.1.1 | `0.49.0-4.0.0`, `0.49.0-4.0.1`, `0.49.0-4.1.0`, `0.49.0-4.1.1`, `0.49.0-latest` |
+| 0.48.0 | 4.0.0, 4.1.0 | `0.48.0-4.0.0`, `0.48.0-4.1.0`, `0.48.0-latest` |
+| 0.47.0 | 3.9.0, 3.9.1 | `0.47.0-3.9.0`, `0.47.0-3.9.1`, `0.47.0-latest` |
+| 0.46.1 | 3.9.0 | `0.46.1-3.9.0`, `0.46.1-latest` |
+<!-- strimzi-compat-table:end -->
 
-Os exemplos usan a API `kafka.strimzi.io/v1`, dispoñible dende Strimzi 0.49. Consulte a [páxina de descargas de Strimzi](https://strimzi.io/downloads/) para a matriz actual.
+A táboa xérase a partir da matriz de build con `scripts/strimzi-compat-table.sh`. Os exemplos usan a API `kafka.strimzi.io/v1`, dispoñible dende Strimzi 0.49. Consulte a [páxina de descargas de Strimzi](https://strimzi.io/downloads/) para as versións de Kubernetes que admite cada operador.
 
 ## Relacionado
 
