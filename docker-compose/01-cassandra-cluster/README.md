@@ -34,7 +34,7 @@ the Cassandra nodes bootstrap one at a time.
 | Service | Image | Purpose | Published port |
 |---------|-------|---------|----------------|
 | `axondb-timeseries` | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (Cassandra) | — |
-| `axondb-search` | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
+| `axondb-search` | `ghcr.io/axonops/axondb-search:3.10.0-1.7.0` | Log and event store (OpenSearch) | — |
 | `axon-server` | `registry.axonops.com/axonops-public/axonops-docker/axon-server:2.0.39` | AxonOps backend and agent endpoint | `1888` |
 | `axon-dash` | `registry.axonops.com/axonops-public/axonops-docker/axon-dash:2.0.39` | Web dashboard | `3000` |
 | `axon-reporting` | `registry.axonops.com/axonops-public/axonops-docker/axon-reporting:1.0.3` | Reports v2, see [below](#reports-v2) | — |

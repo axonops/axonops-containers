@@ -87,7 +87,7 @@ keyspace `system_auth` que no sobrevive a la pérdida de un nodo.
 | `cassandra02` | 10.17.64.6 | la misma | Nodo del clúster, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | la misma | Nodo del clúster, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Almacén de métricas (Cassandra de un solo nodo) | — |
-| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Almacén de registros y eventos (OpenSearch) | — |
+| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.10.0-1.7.0` | Almacén de registros y eventos (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend y endpoint de los agentes | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Panel web | `3000` |
 | `axon-reporting` | la de `axon-dash` | `axon-reporting:1.0.3` | Reports v2 | — |

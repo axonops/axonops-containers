@@ -83,7 +83,7 @@ that does not survive losing a node.
 | `cassandra02` | 10.17.64.6 | same | Cluster node, rack2 | `9242` CQL, `7299` JMX¹ |
 | `cassandra03` | 10.17.64.7 | same | Cluster node, rack3 | `9342` CQL, `7399` JMX¹ |
 | `axondb-timeseries` | 10.17.64.20 | `ghcr.io/axonops/axondb-timeseries:5.0.8-1.4.0` | Metrics store (single-node Cassandra) | — |
-| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.7.0-1.6.1` | Log and event store (OpenSearch) | — |
+| `axondb-search` | 10.17.64.21 | `ghcr.io/axonops/axondb-search:3.10.0-1.7.0` | Log and event store (OpenSearch) | — |
 | `axon-server` | 10.17.64.22 | `axon-server:2.0.39` | Backend and agent endpoint | `1888` |
 | `axon-dash` | 10.17.64.23 | `axon-dash:2.0.39` | Web dashboard | `3000` |
 | `axon-reporting` | shares `axon-dash`'s | `axon-reporting:1.0.3` | Reports v2 | — |
