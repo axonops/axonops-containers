@@ -18,7 +18,16 @@ MGMT_API_JAR="${MAAC_PATH:-/opt/management-api}/datastax-mgmtapi-server.jar"
 CASSANDRA_HOME="${CASSANDRA_HOME:-/opt/cassandra}"
 CASSANDRA_CONF="${CASSANDRA_CONF:-${CASSANDRA_HOME}/conf}"
 
-touch /var/log/axonops/axon-agent.log
+# Paths and timings of the processes this script starts. Overridable so that
+# tests/k8ssandra-entrypoint-stop.test.sh can run the script with stand-ins;
+# nothing in the image sets them.
+MGMT_API_ENTRYPOINT="${MGMT_API_ENTRYPOINT:-/docker-entrypoint.sh}"
+AXON_AGENT_BIN="${AXON_AGENT_BIN:-/usr/share/axonops/axon-agent}"
+AXON_AGENT_LOG="${AXON_AGENT_LOG:-/var/log/axonops/axon-agent.log}"
+AXONOPS_SOCKET_FILE="${AXONOPS_SOCKET_FILE:-/var/lib/axonops/6868681090314641335.socket}"
+AXONOPS_READY_POLL_SECONDS="${AXONOPS_READY_POLL_SECONDS:-5}"
+
+touch "$AXON_AGENT_LOG"
 
 # Startup banner function - prints version information
 # This function is designed to never fail - all errors are caught
@@ -309,7 +318,7 @@ print_startup_banner
 # process the container tracks; without it, Cassandra itself is that process.
 if [ -f "${MGMT_API_JAR}" ]; then
   echo "Starting Cassandra management API"
-  /docker-entrypoint.sh mgmtapi &
+  "$MGMT_API_ENTRYPOINT" mgmtapi &
   MAIN_PID=$!
   MAIN_PROCESS="Management API"
 else
@@ -321,13 +330,13 @@ else
 fi
 
 # Wait for the axonops socket file to appear (created by Java agent)
-SOCKET_FILE="/var/lib/axonops/6868681090314641335.socket"
+SOCKET_FILE="$AXONOPS_SOCKET_FILE"
 CQL_PORT=$(sed -E '/^native_transport_port:[[:space:]]+[[:digit:]]+[[:space:]]*$/!d; s/^native_transport_port:[[:space:]]+([[:digit:]]+)[[:space:]]*$/\1/' "${CASSANDRA_CONF}/cassandra.yaml")
 CQL_PORT="${CQL_PORT:-9042}"
 echo "Waiting for Cassandra to start up. Detected CQL port $CQL_PORT"
 while true; do
     echo "Waiting for Cassandra to be ready before starting axon-agent..."
-    sleep 5
+    sleep "$AXONOPS_READY_POLL_SECONDS"
     # Check the process the container tracks is still running
     if ! kill -0 $MAIN_PID 2>/dev/null; then
         echo "${MAIN_PROCESS} died while waiting for Cassandra to be ready"
@@ -345,13 +354,13 @@ echo "Cassandra is ready, starting axon-agent"
 # Management API, not the agent. The agent is piped through tee, so its real exit
 # code is read from PIPESTATUS, not $?.
 supervise_axon_agent() {
-  local log="/var/log/axonops/axon-agent.log"
+  local log="$AXON_AGENT_LOG"
   local fails=0
   local window
   window=$(date +%s)
   while true; do
     echo "[axonops-supervise] starting axon-agent" | tee -a "$log" 2>/dev/null
-    /usr/share/axonops/axon-agent $AXON_AGENT_ARGS 2>&1 | tee -a "$log" 2>/dev/null
+    "$AXON_AGENT_BIN" $AXON_AGENT_ARGS 2>&1 | tee -a "$log" 2>/dev/null
     local rc=${PIPESTATUS[0]}
     echo "[axonops-supervise] axon-agent exited rc=${rc}, restarting" | tee -a "$log" 2>/dev/null
     local now
