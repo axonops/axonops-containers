@@ -22,7 +22,8 @@
 #   direct  only the entrypoint receives it: `docker run --entrypoint`, a
 #           Kubernetes `command:` override or any runtime without `tini -g`.
 #
-# Linux only (the entrypoint reads /proc). Usage:
+# Linux only (the entrypoint reads /proc). Needs bash 4+, procps `ps` and
+# python3 (to create the stand-in agent socket). Usage:
 #   k8ssandra/tests/entrypoint-stop.test.sh [path/to/axonops-entrypoint.sh]
 # Without an argument it tests k8ssandra/5.0/axonops-entrypoint.sh and checks
 # that the 4.0 and 4.1 copies are identical to it.
@@ -51,9 +52,21 @@ pass() { echo "PASS: $*"; }
 fail() { echo "FAIL: $*"; FAILURES=$((FAILURES + 1)); }
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/k8ssandra-stop.XXXXXX")"
-# shellcheck disable=SC2329 # called by the EXIT trap
-cleanup() { rm -rf "$ROOT"; }
+EP_PID=""
+# shellcheck disable=SC2329 # called by the traps below
+cleanup() {
+  if [ -n "$EP_PID" ]; then
+    kill -KILL -- "-$EP_PID" 2>/dev/null
+  fi
+  local f
+  for f in "$ROOT"/run.*/state/*.pid; do
+    [ -f "$f" ] && kill -KILL "$(cat "$f")" 2>/dev/null
+  done
+  rm -rf "$ROOT"
+}
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # ---------------------------------------------------------------------------
 # Stand-ins
@@ -68,11 +81,14 @@ make_stubs() {
   cat > "$t/bin/stub-jvm" <<'EOF'
 #!/usr/bin/env bash
 name="$1"; dir="$STUB_STATE"
-echo "$$" > "$dir/$name.pid"
-echo "started" >> "$dir/$name.log"
 shutdown_var="STUB_${name^^}_SHUTDOWN_SECONDS"; shutdown_seconds="${!shutdown_var:-1}"
 term_var="STUB_${name^^}_TERM_STATUS"; term_status="${!term_var:-143}"
 stop() {
+  # A Cassandra the Management API starts only as the stop signal arrives
+  if [ "$name" = "mgmtapi" ] && [ -n "${STUB_LATE_CASSANDRA:-}" ]; then
+    ( "$STUB_BIN/stub-jvm" cassandra & )
+    sleep 0.3
+  fi
   echo "shutdown started" >> "$dir/$name.log"
   sleep "$shutdown_seconds"
   echo "shut down cleanly" >> "$dir/$name.log"
@@ -80,7 +96,10 @@ stop() {
 }
 trap stop TERM
 trap stop INT
-if [ "$name" = "mgmtapi" ]; then
+# Markers only after the traps, so the test never signals an unprepared stub
+echo "$$" > "$dir/$name.pid"
+echo "started" >> "$dir/$name.log"
+if [ "$name" = "mgmtapi" ] && [ -z "${STUB_LATE_CASSANDRA:-}" ]; then
   ( "$STUB_BIN/stub-jvm" cassandra & )
 fi
 while :; do
@@ -108,9 +127,9 @@ EOF
   cat > "$t/bin/axon-agent" <<'EOF'
 #!/usr/bin/env bash
 dir="$STUB_STATE"
+trap 'echo "stopped" >> "$dir/agent.log"; exit 0' TERM
 echo "$$" >> "$dir/agent.pids"
 echo "started" >> "$dir/agent.log"
-trap 'echo "stopped" >> "$dir/agent.log"; exit 0' TERM
 if [ -n "${STUB_AGENT_CRASH_ONCE:-}" ] && [ ! -e "$dir/agent.crashed" ]; then
   touch "$dir/agent.crashed"
   exit 7
@@ -284,8 +303,8 @@ check_stop_during_startup() {
 
 # Cassandra exiting on its own still ends the container with its status, and
 # takes the agent supervisor down with it.
-check_main_exits_on_its_own() {
-  local label="standalone, Cassandra exits on its own with status 3"
+check_main_exits_on_its_own() { # check_main_exits_on_its_own <status>
+  local status="$1" label="standalone, Cassandra exits on its own with status $1"
   EP_STATUS=""
   start_entrypoint standalone
   touch "$T/state/ready"
@@ -294,10 +313,10 @@ check_main_exits_on_its_own() {
     finish_entrypoint 1
     return
   fi
-  echo 3 > "$T/state/cassandra.exit"
+  echo "$status" > "$T/state/cassandra.exit"
   finish_entrypoint "$STOP_TIMEOUT"
-  if [ "$EP_STATUS" = "3" ] && [ -z "$EP_LEFT" ]; then
-    pass "$label: the entrypoint exits 3 and nothing is left running"
+  if [ "$EP_STATUS" = "$status" ] && [ -z "$EP_LEFT" ]; then
+    pass "$label: the entrypoint exits $status and nothing is left running"
   else
     fail "$label: status=$EP_STATUS left=[$EP_LEFT]"
   fi
@@ -326,22 +345,43 @@ check_agent_restart_then_stop() {
 }
 
 # A main process that exits the instant it is signalled: the entrypoint must
-# report its own status (0 here), not the 143 of the interrupted wait.
+# report its own status (7 here), not the 143 of the interrupted wait.
 check_status_race() {
   local runs=5 bad=0 _run
   for _run in $(seq 1 "$runs"); do
     EP_STATUS=""
-    start_entrypoint standalone STUB_CASSANDRA_SHUTDOWN_SECONDS=0 STUB_CASSANDRA_TERM_STATUS=0
+    start_entrypoint standalone STUB_CASSANDRA_SHUTDOWN_SECONDS=0 STUB_CASSANDRA_TERM_STATUS=7
     touch "$T/state/ready"
     wait_for 15 agent_running || { bad=$((bad + 1)); finish_entrypoint 1; continue; }
     send_signal direct TERM
     finish_entrypoint "$STOP_TIMEOUT"
-    [ "$EP_STATUS" = "0" ] || bad=$((bad + 1))
+    [ "$EP_STATUS" = "7" ] || bad=$((bad + 1))
   done
   if [ "$bad" -eq 0 ]; then
-    pass "a main process that exits at once on SIGTERM: its own status is reported ($runs runs)"
+    pass "a main process that exits at once on SIGTERM: its own status 7 is reported ($runs runs)"
   else
-    fail "$bad of $runs runs reported a status other than the main process's 0"
+    fail "$bad of $runs runs reported a status other than the main process's 7"
+  fi
+}
+
+# Cassandra joins the process group after the signal was sent: the entrypoint
+# must signal it too, not wait for the runtime's SIGKILL.
+check_late_cassandra() {
+  local label="mgmtapi, Cassandra started after SIGTERM"
+  EP_STATUS=""
+  start_entrypoint mgmtapi STUB_LATE_CASSANDRA=1
+  touch "$T/state/ready"
+  if ! wait_for 15 agent_running; then
+    fail "$label: axon-agent never started"
+    finish_entrypoint 1
+    return
+  fi
+  send_signal group TERM
+  finish_entrypoint "$STOP_TIMEOUT"
+  if [ "$CASSANDRA_DONE_AT_EXIT" = yes ] && [ "$EP_STATUS" = "143" ] && [ -z "$EP_LEFT" ]; then
+    pass "$label: it is signalled and shuts down before the entrypoint exits"
+  else
+    fail "$label: cassandra done=$CASSANDRA_DONE_AT_EXIT status=$EP_STATUS left=[$EP_LEFT]"
   fi
 }
 
@@ -365,9 +405,11 @@ done
 check_stop standalone direct INT
 check_stop mgmtapi direct INT
 check_stop_during_startup
-check_main_exits_on_its_own
+check_main_exits_on_its_own 3
+check_main_exits_on_its_own 127
 check_agent_restart_then_stop
 check_status_race
+check_late_cassandra
 [ $# -eq 0 ] && check_copies_identical
 
 if [ "$FAILURES" -eq 0 ]; then

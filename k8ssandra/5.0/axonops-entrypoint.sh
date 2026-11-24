@@ -26,6 +26,9 @@ AXON_AGENT_BIN="${AXON_AGENT_BIN:-/usr/share/axonops/axon-agent}"
 AXON_AGENT_LOG="${AXON_AGENT_LOG:-/var/log/axonops/axon-agent.log}"
 AXONOPS_SOCKET_FILE="${AXONOPS_SOCKET_FILE:-/var/lib/axonops/6868681090314641335.socket}"
 AXONOPS_READY_POLL_SECONDS="${AXONOPS_READY_POLL_SECONDS:-5}"
+case "$AXONOPS_READY_POLL_SECONDS" in
+  ''|*[!0-9.]*|.|*.*.*) AXONOPS_READY_POLL_SECONDS=5 ;;
+esac
 
 touch "$AXON_AGENT_LOG"
 
@@ -329,7 +332,10 @@ configure_cassandra_from_env() {
 # background by a non-interactive shell ignore SIGINT, so the JVMs would never
 # see it. cass-operator's preStop drain runs before any of this and is not
 # affected. SIGQUIT is left alone: bash ignores it, and for a JVM it means a
-# thread dump, not a stop.
+# thread dump, not a stop. A second stop signal does not escalate: the
+# runtime's SIGKILL at the end of its grace period bounds the wait. The script
+# relies on being its process group's leader, as it is under tini, as PID 1,
+# and under `docker run --init`.
 STOP_SIGNAL=""
 STOP_SIGNALS_SEEN=0
 _on_stop_signal() {
@@ -339,26 +345,37 @@ _on_stop_signal() {
   fi
   STOP_SIGNAL="$1"
   echo "Received SIG${STOP_SIGNAL}, stopping Cassandra and axon-agent"
-  # Ignore our own copy of the signal below, and any repeat.
-  trap '' TERM INT
+  # Our own copy of the signal, and any repeat, returns above. The trap is
+  # kept rather than set to ignore, because an ignored signal would be
+  # inherited by anything started after this point and could not stop it.
   kill -TERM 0 2>/dev/null
 }
 trap '_on_stop_signal TERM' TERM
 trap '_on_stop_signal INT' INT
 
 # Waits for the main process and sets MAIN_RC to its own exit status. A trapped
-# signal interrupts `wait` with a status above 128, so wait again until the
-# status is the process's own; 127 means it was already collected.
+# signal interrupts `wait` with a status above 128; when that happens while the
+# process is still running, wait again. If it exited at that same instant, a
+# second `wait` returns the status bash saved for it (127 only if there is none).
+MAIN_REAPED=""
 _wait_main() {
-  local rc seen
-  MAIN_RC=0
+  local rc again seen
+  [ -n "$MAIN_REAPED" ] && return 0
   while :; do
     seen=$STOP_SIGNALS_SEEN
     wait "$MAIN_PID"
     rc=$?
-    [ "$rc" -eq 127 ] && break
+    if [ "$seen" -ne "$STOP_SIGNALS_SEEN" ]; then
+      if kill -0 "$MAIN_PID" 2>/dev/null; then
+        continue
+      fi
+      wait "$MAIN_PID" 2>/dev/null
+      again=$?
+      [ "$again" -ne 127 ] && rc=$again
+    fi
     MAIN_RC=$rc
-    [ "$seen" -eq "$STOP_SIGNALS_SEEN" ] && break
+    MAIN_REAPED=1
+    return 0
   done
 }
 
@@ -387,11 +404,24 @@ _group_members() {
 # Management API, Cassandra is not this shell's child and can only be waited
 # for this way. The runtime's grace period (Kubernetes
 # terminationGracePeriodSeconds, `docker stop -t`) still bounds the wait.
+#
+# A process that joins the group after the signal (Cassandra still being
+# spawned by the Management API, or restarted by its keep-alive) never got it,
+# so every member is sent SIGTERM once more the first time it is seen here.
 _wait_for_group() {
-  local members reported=""
+  local members pid signalled=" " reported=""
   while :; do
     members="$(_group_members)"
     [ -z "$members" ] && return 0
+    for pid in $members; do
+      case "$signalled" in
+        *" $pid "*) ;;
+        *)
+          kill -TERM "$pid" 2>/dev/null
+          signalled="$signalled$pid "
+          ;;
+      esac
+    done
     if [ -z "$reported" ]; then
       echo "Waiting for $(echo "$members" | wc -l | tr -d ' ') process(es) to finish shutting down"
       reported=1
@@ -410,6 +440,8 @@ _stop_agent_supervisor() {
 
 # Ends the script after a stop signal.
 _finish_stop() {
+  # The main process may have been started after the group signal was sent
+  [ -n "$MAIN_REAPED" ] || kill -TERM "$MAIN_PID" 2>/dev/null
   _wait_main
   _wait_for_group
   echo "${MAIN_PROCESS} stopped with status ${MAIN_RC}"
@@ -435,6 +467,10 @@ if [ -f "${MGMT_API_JAR}" ]; then
   MAIN_PROCESS="Management API"
 else
   configure_cassandra_from_env
+  if [ -n "$STOP_SIGNAL" ]; then
+    echo "Stopped before Cassandra was started"
+    exit 143
+  fi
   echo "Starting Cassandra"
   "${CASSANDRA_HOME}/bin/cassandra" -f -R &
   MAIN_PID=$!
@@ -482,8 +518,12 @@ supervise_axon_agent() {
   while [ "$stopping" -eq 0 ]; do
     echo "[axonops-supervise] starting axon-agent" | tee -a "$log" 2>/dev/null
     # shellcheck disable=SC2086 # AXON_AGENT_ARGS is a list of arguments
-    "$AXON_AGENT_BIN" $AXON_AGENT_ARGS > >(tee -a "$log" 2>/dev/null) 2>&1 &
+    # tee ignores SIGTERM and ends when the agent closes its output, so the
+    # agent's own shutdown messages are still logged after a group SIGTERM.
+    "$AXON_AGENT_BIN" $AXON_AGENT_ARGS > >(trap '' TERM; exec tee -a "$log" 2>/dev/null) 2>&1 &
     agent_pid=$!
+    # A SIGTERM that arrived just before the fork did not reach the agent
+    [ "$stopping" -eq 0 ] || kill -TERM "$agent_pid" 2>/dev/null
     wait "$agent_pid"
     rc=$?
     while kill -0 "$agent_pid" 2>/dev/null; do
@@ -503,6 +543,7 @@ supervise_axon_agent() {
       echo "[axonops-supervise] >5 restarts in 60s, backing off 30s" | tee -a "$log" 2>/dev/null
       sleep 30 &
       pause_pid=$!
+      [ "$stopping" -eq 0 ] || kill -TERM "$pause_pid" 2>/dev/null
       wait "$pause_pid"
       pause_pid=""
       fails=0
@@ -510,6 +551,7 @@ supervise_axon_agent() {
     else
       sleep 2 &
       pause_pid=$!
+      [ "$stopping" -eq 0 ] || kill -TERM "$pause_pid" 2>/dev/null
       wait "$pause_pid"
       pause_pid=""
     fi
@@ -519,7 +561,11 @@ supervise_axon_agent() {
   wait
 }
 
-# Start axon-agent under supervision in the background
+# Start axon-agent under supervision in the background, unless a stop signal
+# arrived after the last check in the readiness loop
+if [ -n "$STOP_SIGNAL" ]; then
+  _finish_stop
+fi
 supervise_axon_agent &
 SUPERVISOR_PID=$!
 
