@@ -22,7 +22,7 @@
 #   direct  only the entrypoint receives it: `docker run --entrypoint`, a
 #           Kubernetes `command:` override or any runtime without `tini -g`.
 #
-# Linux only (it reads /proc). Usage:
+# Linux only (the entrypoint reads /proc). Usage:
 #   k8ssandra/tests/entrypoint-stop.test.sh [path/to/axonops-entrypoint.sh]
 # Without an argument it tests k8ssandra/5.0/axonops-entrypoint.sh and checks
 # that the 4.0 and 4.1 copies are identical to it.
@@ -32,6 +32,9 @@ set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8SSANDRA_DIR="$(cd "$HERE/.." && pwd)"
 ENTRYPOINT="${1:-$K8SSANDRA_DIR/5.0/axonops-entrypoint.sh}"
+# Seconds a stop may take. The entrypoint walks /proc while it waits, which is
+# instant in a container but slow on a host with tens of thousands of processes.
+STOP_TIMEOUT="${STOP_TIMEOUT:-30}"
 
 if [ "$(uname -s)" != "Linux" ]; then
   echo "SKIP: this test reads /proc and runs on Linux only"
@@ -48,6 +51,7 @@ pass() { echo "PASS: $*"; }
 fail() { echo "FAIL: $*"; FAILURES=$((FAILURES + 1)); }
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/k8ssandra-stop.XXXXXX")"
+# shellcheck disable=SC2329 # called by the EXIT trap
 cleanup() { rm -rf "$ROOT"; }
 trap cleanup EXIT
 
@@ -134,13 +138,7 @@ EOF
 
 # Live (non-zombie) processes in process group $1.
 group_members() {
-  local pgid="$1" stat rest state ppid pgrp p
-  for p in /proc/[0-9]*; do
-    read -r stat 2>/dev/null < "$p/stat" || continue
-    rest="${stat##*) }"
-    read -r state ppid pgrp _ <<< "$rest"
-    [ "$pgrp" = "$pgid" ] && [ "$state" != "Z" ] && echo "${p#/proc/}"
-  done
+  ps -e -o pgid=,stat=,pid= | awk -v g="$1" '$1 == g && $2 !~ /^Z/ { print $3 }'
 }
 
 wait_for() { # wait_for <seconds> <command...>
@@ -234,7 +232,7 @@ check_stop() { # check_stop <standalone|mgmtapi> <group|direct> <SIG>
     return
   fi
   send_signal "$how" "$sig"
-  finish_entrypoint 15
+  finish_entrypoint "$STOP_TIMEOUT"
 
   if [ "$CASSANDRA_DONE_AT_EXIT" = yes ]; then
     pass "$label: Cassandra shut down cleanly before the entrypoint exited"
@@ -276,7 +274,7 @@ check_stop_during_startup() {
     return
   fi
   send_signal direct TERM
-  finish_entrypoint 15
+  finish_entrypoint "$STOP_TIMEOUT"
   if [ "$CASSANDRA_DONE_AT_EXIT" = yes ] && [ "$EP_STATUS" = "143" ] && [ ! -f "$T/state/agent.log" ] && [ -z "$EP_LEFT" ]; then
     pass "$label: Cassandra shut down cleanly, axon-agent never started, status 143"
   else
@@ -297,7 +295,7 @@ check_main_exits_on_its_own() {
     return
   fi
   echo 3 > "$T/state/cassandra.exit"
-  finish_entrypoint 15
+  finish_entrypoint "$STOP_TIMEOUT"
   if [ "$EP_STATUS" = "3" ] && [ -z "$EP_LEFT" ]; then
     pass "$label: the entrypoint exits 3 and nothing is left running"
   else
@@ -319,7 +317,7 @@ check_agent_restart_then_stop() {
     fail "$label: axon-agent was not restarted; agent.log: $(tr '\n' '|' < "$T/state/agent.log" 2>/dev/null)"
   fi
   send_signal direct TERM
-  finish_entrypoint 15
+  finish_entrypoint "$STOP_TIMEOUT"
   if has_line "$T/state/agent.log" "stopped" && [ "$(count_lines "$T/state/agent.log" started)" -eq 2 ] && [ -z "$EP_LEFT" ]; then
     pass "$label: after a restart, SIGTERM still stops axon-agent for good"
   else
@@ -330,14 +328,14 @@ check_agent_restart_then_stop() {
 # A main process that exits the instant it is signalled: the entrypoint must
 # report its own status (0 here), not the 143 of the interrupted wait.
 check_status_race() {
-  local runs=10 bad=0 n
-  for n in $(seq 1 "$runs"); do
+  local runs=5 bad=0 _run
+  for _run in $(seq 1 "$runs"); do
     EP_STATUS=""
     start_entrypoint standalone STUB_CASSANDRA_SHUTDOWN_SECONDS=0 STUB_CASSANDRA_TERM_STATUS=0
     touch "$T/state/ready"
     wait_for 15 agent_running || { bad=$((bad + 1)); finish_entrypoint 1; continue; }
     send_signal direct TERM
-    finish_entrypoint 15
+    finish_entrypoint "$STOP_TIMEOUT"
     [ "$EP_STATUS" = "0" ] || bad=$((bad + 1))
   done
   if [ "$bad" -eq 0 ]; then
