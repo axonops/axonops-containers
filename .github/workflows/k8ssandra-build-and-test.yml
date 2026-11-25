@@ -60,6 +60,19 @@ jobs:
           ALL=$(./scripts/build-matrix.sh versions | tail -1)
           echo "others=$(jq -c --arg n "$NEWEST" 'map(select(. != $n))' <<<"$ALL")" >> "$GITHUB_OUTPUT"
 
+  # The entrypoint's stop path (SIGTERM and SIGINT forwarding, clean agent
+  # stop, exit status), run with stand-in processes: no image build needed.
+  entrypoint-stop-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run entrypoint stop test
+        run: ./k8ssandra/tests/entrypoint-stop.test.sh
+
   k8ssandra-test:
     needs: k8ssandra-versions
     runs-on: ubuntu-latest
